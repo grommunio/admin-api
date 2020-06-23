@@ -1,0 +1,8 @@
+#Main configuration file
+#This file is under version control, do not modify
+logging:
+  version: 1
+  formatters:
+    mi-default:
+      format: '[%(asctime)s] [%(levelname)s] (%(module)s): "%(message)s"'
+confdir: "conf.d"

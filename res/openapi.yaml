@@ -1,0 +1,99 @@
+openapi: 3.0.0
+info:
+  title: Grammm MI API
+  version: 0.0.0
+servers:
+  - url: 'http://localhost:5000/api/v1'
+    description: Local Test
+
+
+paths:
+  /status:
+    summary: API state check
+    get:
+      summary: Check API connectivity and status
+      tags:
+        - Misc
+      responses:
+        '200':
+          description: API status message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+              example:
+                message: API is operational
+
+
+  /about:
+    get:
+      summary: Get general information about the backend
+      tags:
+        - Misc
+      responses:
+        '200':
+          description: Return information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  API:
+                    description: Version of the API (according to the specification)
+                    type: string
+                  backend:
+                    description: Version of the implementation
+                    type: string
+
+components:
+  responses:
+    ServerError:
+      description: An error occured while processing the request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                description: String representation of the exception
+    InvalidRequest:
+      description: Validation of input parameters failed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              errors:
+                type: array
+                description: List of errors encountered during validation
+                items:
+                  type: string
+    DatabaseError:
+      description: The database query failed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                description: Description of the error
+    NotFound:
+      description: The requested resource could not be found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+
+tags:
+  - name: Misc
+    description: Miscellaneous and organizational endpoints
