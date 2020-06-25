@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jun 23 11:21:26 2020
@@ -9,15 +8,13 @@ Created on Tue Jun 23 11:21:26 2020
 Miscelleaneous API endpoints.
 """
 
-__all__ = ["misc"]
+__all__ = ["misc", "orgs", "users"]
 
 from flask import request, jsonify
 from orm import DB
 from orm.DataModel import MissingRequiredAttributeError, InvalidAttributeError, MismatchROError
-from pyxdameraulevenshtein import damerau_levenshtein_distance as dldist
+from jellyfish import damerau_levenshtein_distance as dldist
 import re
-
-import api.security as sec
 
 from sqlalchemy.exc import IntegrityError
 
@@ -83,7 +80,7 @@ def defaultListQuery(Model, filters=None, order=None, result="response", automat
         objects = [so[1] for so in sorted(scored, key=lambda entry: entry[0])]
     if result == "list":
         return objects
-    return jsonify([obj.todict(verbosity) for obj in objects])
+    return jsonify(data=[obj.todict(verbosity) for obj in objects])
 
 
 def defaultDetailQuery(Model, ID, errName):
@@ -144,7 +141,7 @@ def defaultPatch(Model, ID, errName, obj=None):
     if obj is None:
         return jsonify(message=errName+" not found"), 404
     try:
-        obj.fromdict(request.json, user=sec.getUserName())
+        obj.fromdict(request.json)
     except (InvalidAttributeError, MismatchROError) as err:
         DB.session.rollback()
         return jsonify(message=err.args[0]), 400
@@ -183,12 +180,14 @@ def defaultCreate(Model, result="response"):
     if error is not None:
         return jsonify(message=error), 400
     try:
-        created = Model(props=data, user=sec.getUserName())
+        created = Model(props=data)
     except MissingRequiredAttributeError as err:
         return jsonify(message=err.args[0]), 400
     except ValueError as err:
         return jsonify(message=err.args[0]), 400
     except InvalidAttributeError as err:
+        return jsonify(message=err.args[0]), 400
+    except MismatchROError as err:
         return jsonify(message=err.args[0]), 400
     if result == "object":
         return created

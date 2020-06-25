@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jun 23 11:21:43 2020
@@ -407,15 +406,19 @@ class DataModel:
         Instance
             The updated object (self)
         """
+        from api import API
         self._init()
         reverse = self._meta.lookup
         for key, value in patches.items():
             if key not in reverse or reverse[key].proxy is not None:
-                raise InvalidAttributeError("Unknown attribute '{}'".format(key))
+                API.logger.warn("Unknown attribute '{}'".format(key))
+                continue # raise InvalidAttributeError("Unknown attribute '{}'".format(key))
             prop = reverse[key]
             if not prop.writable(self) and prop.value(self) != patches[key]:
                 raise MismatchROError("Attribute '{}' is read only and does not match".format(key))
         for key, value in patches.items():
+            if key not in reverse:
+                continue
             prop = reverse[key]
             if not prop.writable(self):
                 continue
@@ -579,20 +582,21 @@ def RefProp(attr, mask=None, target=None, **kwargs):
     return DataModel.Prop(attr, mask=mask, target=target, **kwargs)
 
 
-def Comment():
-    """Create a comment property."""
-    return DataModel.Prop("comment", flags="ref, patch, managed")
-
-
-def Id():
+def Id(name="ID", **kwargs):
     """Create an ID property."""
-    return DataModel.Prop("ID", filter="set")
+    return DataModel.Prop(name, filter="set", **kwargs)
 
 
-def Name(**kwargs):
+def Text(name, **kwargs):
     """Create a name property."""
-    _addFlags(kwargs, "patch,sort,match")
-    return DataModel.Prop("name", filter="range", **kwargs)
+    _addFlags(kwargs, "sort,match")
+    return DataModel.Prop(name, filter="range", **kwargs)
+
+
+def Int(name, **kwargs):
+    """Create a name property."""
+    _addFlags(kwargs, "sort")
+    return DataModel.Prop(name, filter="range", **kwargs)
 
 
 def Bool(attr, **kwargs):
@@ -601,6 +605,16 @@ def Bool(attr, **kwargs):
     return DataModel.Prop(attr, func=bool, filter="set", arg_tf=_str2bool, **kwargs)
 
 
+def BoolP(attr, **kwargs):
+    """Create a bool property."""
+    return DataModel.Prop(attr, arg_tf=_str2bool, **kwargs)
+
+
 def Proxy(attr, proxy, **kwargs):
     """Create a proxy propery."""
     return DataModel.Prop(attr, target=attr, proxy=proxy, **kwargs)
+
+
+def Date(attr, **kwargs):
+    """Create a date attribute."""
+    return DataModel.Prop(attr, func=lambda date: date.strftime("%Y-%m-%d %H:%M") if date else None, **kwargs)

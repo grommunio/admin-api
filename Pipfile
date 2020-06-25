@@ -8,7 +8,8 @@ Flask = "*"
 Flask-SQLAlchemy = "*"
 mysqlclient = "*"
 openapi-core = "~=0.12.0"
-pyxdameraulevenshtein = "*"
+pyxDamerauLevenshtein = "*"
+jellyfish = "*"
 
 [dev-packages]
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jun 23 11:22:02 2020
@@ -6,6 +5,8 @@ Created on Tue Jun 23 11:22:02 2020
 @author: Julia Schroeder, julia.schroeder@grammm.com
 @copyright: _Placeholder_copyright_
 """
+
+__all__ = ["misc", "orgs", "users"]
 
 from api import API, Config
 from flask_sqlalchemy import SQLAlchemy
@@ -57,43 +58,3 @@ else:
         DB = None
 
     del DB_uri
-
-
-def printRelation(relation):
-    """Pretty print a relationship.
-
-    Parameters
-    ----------
-    relation : SQLAlechemy relationship
-        Relationship to print.
-
-    Returns
-    -------
-    str
-        String representation of the relationship.
-    """
-    if relation is None:
-        return "None"
-    if hasattr(relation, "displayName"):
-        return "'{}'".format(relation.displayName())
-    if hasattr(relation, "name"):
-        return "'{}'".format(relation.name)
-    return repr(relation)
-
-
-def printDate(date, time=False):
-    """Pretty print date.
-
-    Parameters
-    ----------
-    date : datetime.datetime
-        Date to print
-    time : boolean, optional
-        Include time information. The default is False.
-
-    Returns
-    -------
-    str
-        String representation of the date (and time, if applicable)
-    """
-    return date.strftime("%Y-%m-%d %H:%M" if time else "%Y-%m-%d") if date is not None else None
