@@ -9,6 +9,7 @@ Created on Tue Jun 23 13:59:32 2020
 from . import DB
 from .DataModel import DataModel, Id, Text, Int, Date, BoolP
 
+from sqlalchemy import func
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 
 import crypt
@@ -145,7 +146,7 @@ class Users(DataModel, DB.Model):
                       Text("timezone", flags="patch"),
                       Text("mobilePhone", flags="patch"),
                       Int("subType", flags="patch"),
-                      Int("addressStatus", flags="patch"),
+                      Int("addressStatus", flags="init"),
                       Text("cell", flags="patch"),
                       Text("tel", flags="patch"),
                       Text("nickname", flags="patch"),
@@ -218,6 +219,52 @@ class Users(DataModel, DB.Model):
 
     def chkPw(self, pw):
         return crypt.crypt(pw, self.password) == self.password
+
+    @staticmethod
+    def checkCreateParams(data):
+        from orm.orgs import Domains, Aliases
+        domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
+        if not domain:
+            return "Invalid domain"
+        if domain.domainType != Domains.NORMAL:
+            return "Domain must not be alias"
+        domainUsers = Users.query.with_entities(func.count().label("count"), func.sum(Users.maxSize).label("size"))\
+                                 .filter(Users.domainID == domain.ID).first()
+        if domain.maxUser <= domainUsers.count:
+            return "Maximum number of domain users reached"
+        if domain.maxSize < domainUsers.size+data.get("maxSize"):
+            return "Maximum domain size reached"
+        if data.get("groupID"):
+            group = Groups.query.filter(Groups.ID == data.get("groupID")).first()
+            if group is None:
+                return "Invalid group"
+            if group.domainID != domain.ID:
+                return "Group must be in the same domain"
+            groupUsers = Users.query.with_entities(func.count().label("count"), func.sum(Users.maxSize).label("size"))\
+                                    .filter(Users.groupID == group.ID).first()
+            if group.maxUser <= groupUsers.count:
+                return "Maximum number of group users reached"
+            if group.maxSize < groupUsers.size+data.get("maxSize"):
+                return "Maximum group size reached"
+            data["groupPrivileges"] = group.privilegeBits
+            data["groupStatus"] =  group.groupStatus
+        data["domainPrivileges"] = domain.privilegeBits
+        data["domainStatus"] = domain.domainStatus
+        data["aliases"] = [alias.aliasname for alias in Aliases.query.filter(Aliases.mainname == domain.domainname).all()]
+
+    def __init__(self, props, isAlias=False, privileges=None, status=None, *args, **kwargs):
+        aliases = props.pop("aliases", [])
+        privileges = privileges or props.pop("groupPrivileges", 0xFF) << 8 | props.pop("domainPrivileges", 0) << 16
+        status = status or props.pop("groupStatus", 0) << 2 | props.pop("domainStatus") << 4
+        for alias in aliases:
+            DB.session.add(Users(props, True, privileges, status, *args, **kwargs))
+        self.fromdict(props, *args, **kwargs)
+        self.privilegeBits |= privileges
+        self.addressStatus |= status
+        self.addressType = 3 if isAlias else 0
+
+
+
 
 
 

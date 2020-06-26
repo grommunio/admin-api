@@ -21,7 +21,7 @@ from .config import Config
 BaseRoute = "/api/v1"  # Common prefix for all endpoints
 
 apiVersion = None  # API specification version. Extracted from the OpenAPI document.
-backendVersion = "0.1.1"  # Backend version number
+backendVersion = "0.1.2"  # Backend version number
 
 
 def _loadOpenAPISpec():

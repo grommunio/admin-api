@@ -70,6 +70,9 @@ class Domains(DataModel, DB.Model):
     NETDISK = 1 << 4
     EXTPASSWD = 1 << 5
 
+    NORMAL = 0
+    ALIAS = 1
+
     def _setFlag(self, flag, val):
         self.privilegeBits = (self.privilegeBits or 0) | flag if val else (self.privilegeBits or 0) & ~flag
 
