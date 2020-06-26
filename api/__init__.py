@@ -21,7 +21,7 @@ from .config import Config
 BaseRoute = "/api/v1"  # Common prefix for all endpoints
 
 apiVersion = None  # API specification version. Extracted from the OpenAPI document.
-backendVersion = "0.1.0"  # Backend version number
+backendVersion = "0.1.1"  # Backend version number
 
 
 def _loadOpenAPISpec():
@@ -91,10 +91,10 @@ def secure(requireDB=False, requireAuth=True):
                     result = None
                 if result is not None and result.errors:
                     if Config["openapi"]["validateResponse"]:
-                        # API.logger.error("Response validation failed: "+str(result.errors))
+                        API.logger.error("Response validation failed: "+str(result.errors))
                         return jsonify(error="The server generated an invalid response."), 500
                     else:
-                        pass #API.logger.warn("Response validation failed: "+str(result.errors))
+                        API.logger.warn("Response validation failed: "+str(result.errors))
                 return ret
 
             if requireAuth:
@@ -104,10 +104,10 @@ def secure(requireDB=False, requireAuth=True):
             valid, message, errors = validateRequest(request)
             if not valid:
                 if Config["openapi"]["validateRequest"]:
-                    # API.logger.info("Request validation failed: {}".format(errors))
+                    API.logger.info("Request validation failed: {}".format(errors))
                     return message, 400
                 else:
-                    pass # API.logger.warn("Request validation failed: {}".format(errors))
+                    API.logger.warn("Request validation failed: {}".format(errors))
 
             if requireDB:
                 from orm import DB

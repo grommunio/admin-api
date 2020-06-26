@@ -8,7 +8,7 @@ Created on Tue Jun 23 11:21:26 2020
 Miscelleaneous API endpoints.
 """
 
-__all__ = ["misc", "orgs", "users"]
+__all__ = ["ext", "misc", "orgs", "users"]
 
 from flask import request, jsonify
 from orm import DB
@@ -134,14 +134,15 @@ def defaultPatch(Model, ID, errName, obj=None):
     Response
         Flask response containing the new object data or an error message.
     """
-    if request.json is None:
+    data = request.get_json(silent=True)
+    if data is None:
         return jsonify(message="Could not update: no valid JSON data"), 400
     if obj is None:
         obj = Model.query.filter(Model.ID == ID).first()
     if obj is None:
         return jsonify(message=errName+" not found"), 404
     try:
-        obj.fromdict(request.json)
+        obj.fromdict(data)
     except (InvalidAttributeError, MismatchROError) as err:
         DB.session.rollback()
         return jsonify(message=err.args[0]), 400
@@ -173,7 +174,7 @@ def defaultCreate(Model, result="response"):
     Response
         Flask response containing the new object data or an error message.
     """
-    data = request.json
+    data = request.get_json(silent=True)
     if data is None:
         return jsonify(message="Invalid JSON object"), 400
     error = Model.checkCreateParams(data)

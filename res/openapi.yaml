@@ -1,11 +1,10 @@
 openapi: 3.0.0
 info:
-  title: Grammm MI API
-  version: 0.0.0
+  title: Grammm Admin API
+  version: 0.1.0
 servers:
-  - url: 'http://localhost:5000/api/v1'
-    description: Local Test
-
+  - url: '/api/v1'
+    description: Default deployment path
 
 paths:
   /status:
@@ -27,7 +26,6 @@ paths:
               example:
                 message: API is operational
 
-
   /about:
     get:
       summary: Get general information about the backend
@@ -48,7 +46,148 @@ paths:
                     description: Version of the implementation
                     type: string
 
+  /area_list:
+    get:
+      summary: Get lists of data areas
+      responses:
+        '200':
+          description: Data returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/areaList'
+                  domain:
+                    $ref: '#/components/schemas/areaList'
+                  independent:
+                    $ref: '#/components/schemas/areaList'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Create new data area
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/areaData'
+      responses:
+        '201':
+          description: Data area created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/areaData'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+  
+  /area_list/{ID}:
+    patch:
+      summary: Update data area
+      parameters: 
+        - $ref: '#/components/parameters/ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/areaData'
+      responses:
+        '200':
+          description: Data area updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/areaData'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete data area
+      parameters: 
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Data area deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+            
+          
 components:
+  parameters:
+    ID:
+      name: ID
+      description: ID of the object
+      in: path
+      required: true
+      schema:
+        type: integer
+    filterID:
+      name: ID
+      description: Filter by ID
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/filterIntList'
+  schemas:
+    filterIntList:
+      type: string
+      pattern: '^[\d]*(,[\d]*)*$'
+    ID:
+      description: Unique ID of the object
+      type: integer
+      readOnly: true
+    areaData:
+      type: object
+      additionalProperties: false
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        dataType:
+          type: integer
+          description: Type of data stored (0=User, 1=Domain, 2=Independent)
+        masterPath:
+          type: string
+          maxLength: 256
+          description: Path of the master data area
+        slavePath:
+          type: string
+          maxLength: 256
+          description: Path of slave data area
+        accelPath:
+          type: string
+          maxLength: 256
+          description: Path of accelerated database
+        maxSpace:
+          type: integer
+          description: Storage size in Megabytes
+        maxFiles:
+          type: integer
+          description: Maximum number of files
+    areaList:
+      type: array
+      items:
+        $ref: '#/components/schemas/areaData'
+          
+      
+
   responses:
     ServerError:
       description: An error occured while processing the request
