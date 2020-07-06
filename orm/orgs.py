@@ -8,6 +8,7 @@ Created on Tue Jun 23 12:21:35 2020
 
 from . import DB
 from .DataModel import DataModel, Id, Text, Int, Date, BoolP
+from .ext import AreaList
 
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 
@@ -26,7 +27,7 @@ class Domains(DataModel, DB.Model):
 
     ID = DB.Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True, nullable=False)
     orgID = DB.Column("org_id", INTEGER(10, unsigned=True), nullable=False, server_default="0", index=True)
-    domainname = DB.Column("domainname", DB.VARCHAR(64), nullable=True)
+    domainname = DB.Column("domainname", DB.VARCHAR(64), nullable=False)
     password = DB.Column("password", DB.VARCHAR(40), nullable=False, server_default="")
     homedir = DB.Column("homedir", DB.VARCHAR(128), nullable=False, server_default="")
     media = DB.Column("media", DB.VARCHAR(64), nullable=False, server_default="")
@@ -38,14 +39,14 @@ class Domains(DataModel, DB.Model):
     tel = DB.Column("tel", DB.VARCHAR(64), nullable=False, server_default="")
     createDay = DB.Column("create_day", DB.DATE , nullable=False)
     endDay = DB.Column("end_day", DB.DATE, nullable=False)
-    privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False)
+    privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     domainStatus = DB.Column("domain_status", TINYINT, nullable=False, server_default="0")
     domainType = DB.Column("domain_type", TINYINT, nullable=False, server_default="0")
 
     _dictmapping_ = ((Id(),),
                      (Id("orgID", flags="patch"),
                       Text("domainname", flags="patch"),
-                      Text("homedir", flags="patch"),
+                      Text("homedir"),
                       Text("media", flags="patch"),
                       Int("maxSize", flags="patch"),
                       Int("maxUser", flags="patch"),
@@ -72,6 +73,17 @@ class Domains(DataModel, DB.Model):
 
     NORMAL = 0
     ALIAS = 1
+
+    def __init__(self, props: dict, *args, **kwargs):
+        props.pop("areaID")
+        DataModel.__init__(self, props, args, kwargs)
+
+    @staticmethod
+    def checkCreateParams(data):
+        if "areaID" not in data:
+            return "Missing required property areaID"
+        if AreaList.query.filter(AreaList.dataType == AreaList.DOMAIN, AreaList.ID == data["areaID"]).count() == 0:
+            return "Invalid area ID"
 
     def _setFlag(self, flag, val):
         self.privilegeBits = (self.privilegeBits or 0) | flag if val else (self.privilegeBits or 0) & ~flag

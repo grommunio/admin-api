@@ -8,8 +8,10 @@ Created on Tue Jun 23 11:22:02 2020
 
 __all__ = ["misc", "orgs", "users"]
 
-from api import API, Config
+from api import API
 from flask_sqlalchemy import SQLAlchemy
+
+from tools.config import Config
 
 
 def _loadDBConfig():
@@ -35,8 +37,8 @@ def _loadDBConfig():
         return None
     if "host" not in DBconf and "port" not in DBconf:
         API.logger.info("Database connection not specified. Using default '127.0.0.1:3306'")
-    host = DBconf["host"] if "host" in DBconf else "localhost"
-    port = DBconf["port"] if "port" in DBconf else 3306
+    host = DBconf.get("host", "127.0.0.1")
+    port = DBconf.get("port", "3306")
     return "mysql+mysqldb://{user}:{password}@{host}:{port}/{db}".format(user=DBconf["user"],
                                                                          password=DBconf["pass"],
                                                                          host=host,

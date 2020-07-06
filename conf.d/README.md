@@ -32,3 +32,8 @@ The behavior of the OpenAPI validation can be configured by the `openapi` object
 Possible parameters are:
 - `validateRequest` (`boolean`, default: `true`): Whether Request vaildation is enforced. If set to `true`, an invalid request will generate a HTTP 400 response. If set to `false`, the error will only be logged, but the request will be processed.
 - `validateResponse` (`boolean`, default: `true`): Whether response validation is enforced. If set to `true`, an invalid response will be replace by a HTTP 500 response. If set to `false`, the error will only be logged and the invalid response is returned anyway.
+
+### Options ###
+Further parameters can be set in the `options` object:
+- `dataPath` (`string`, default: `/usr/share/grammm/common`): Directory where shared resources used by Grammm modules are stored
+- `systemAdminDir` (`string`, default: `sa_admin`): Subdirectory of `dataPath` holding system admin specific files

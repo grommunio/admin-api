@@ -17,7 +17,9 @@ _defaultConfig_ = {"openapi": {
                      "validateResponse": True
                    },
                    "options": {
-                     "disableDB": False
+                     "disableDB": False,
+                     "dataPath": "/usr/share/grammm/common",
+                     "systemAdminDir": "sa_admin"
                    },
                    "security": {
                      "requireAuth": True

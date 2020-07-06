@@ -16,12 +16,12 @@ from sqlalchemy.exc import DatabaseError, OperationalError
 from functools import wraps
 import traceback
 
-from .config import Config
+from tools.config import Config
 
 BaseRoute = "/api/v1"  # Common prefix for all endpoints
 
 apiVersion = None  # API specification version. Extracted from the OpenAPI document.
-backendVersion = "0.1.2"  # Backend version number
+backendVersion = "0.2.0"  # Backend version number
 
 
 def _loadOpenAPISpec():
@@ -114,12 +114,7 @@ def secure(requireDB=False, requireAuth=True):
                 if DB is None:
                     return jsonify(error="Database not available."), 503
             try:
-                try:
-                    return call()
-                except OperationalError as err:
-                    API.logger.warn("Database query failed, retrying...".format(str(type(err))))
-                    DB.session.rollback()
-                    return call()
+                return call()
             except DatabaseError as err:
                 API.logger.error("Database query failed: {}".format(err))
                 return jsonify(error="Database error."), 503

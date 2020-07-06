@@ -412,7 +412,7 @@ class DataModel:
         for key, value in patches.items():
             if key not in reverse or reverse[key].proxy is not None:
                 API.logger.warn("Unknown attribute '{}'".format(key))
-                continue # raise InvalidAttributeError("Unknown attribute '{}'".format(key))
+                raise InvalidAttributeError("Unknown attribute '{}'".format(key))
             prop = reverse[key]
             if not prop.writable(self) and prop.value(self) != patches[key]:
                 raise MismatchROError("Attribute '{}' is read only and does not match".format(key))
@@ -617,4 +617,4 @@ def Proxy(attr, proxy, **kwargs):
 
 def Date(attr, **kwargs):
     """Create a date attribute."""
-    return DataModel.Prop(attr, func=lambda date: date.strftime("%Y-%m-%d %H:%M") if date else None, **kwargs)
+    return DataModel.Prop(attr, func=lambda date: date.strftime("%Y-%m-%d") if date else None, **kwargs)

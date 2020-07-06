@@ -294,7 +294,7 @@ def defaultListHandler(Model, filters=None, order=None, result="response", autom
     if request.method == "GET":
         return defaultListQuery(Model, filters, order, result, automatch, autofilter, autosort)
     elif request.method == "POST":
-        return defaultCreate(Model)
+        return defaultCreate(Model, result)
     elif request.method == "DELETE":
         return defaultBatchDelete(Model)
 
