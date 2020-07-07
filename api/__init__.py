@@ -21,7 +21,7 @@ from tools.config import Config
 BaseRoute = "/api/v1"  # Common prefix for all endpoints
 
 apiVersion = None  # API specification version. Extracted from the OpenAPI document.
-backendVersion = "0.2.0"  # Backend version number
+backendVersion = "0.2.1"  # Backend version number
 
 
 def _loadOpenAPISpec():
@@ -60,7 +60,7 @@ def validateRequest(flask_request):
         Error message if validation failed, None otherwise"""
     result = requestValidator.validate(FlaskOpenAPIRequest(flask_request))
     if result.errors:
-        return False, jsonify(error="Bad Request", errors=[type(error).__name__ for error in result.errors]), result.errors
+        return False, jsonify(message="Bad Request", errors=[type(error).__name__ for error in result.errors]), result.errors
     return True, None, None
 
 
@@ -92,7 +92,7 @@ def secure(requireDB=False, requireAuth=True):
                 if result is not None and result.errors:
                     if Config["openapi"]["validateResponse"]:
                         API.logger.error("Response validation failed: "+str(result.errors))
-                        return jsonify(error="The server generated an invalid response."), 500
+                        return jsonify(message="The server generated an invalid response."), 500
                     else:
                         API.logger.warn("Response validation failed: "+str(result.errors))
                 return ret
@@ -112,15 +112,15 @@ def secure(requireDB=False, requireAuth=True):
             if requireDB:
                 from orm import DB
                 if DB is None:
-                    return jsonify(error="Database not available."), 503
+                    return jsonify(message="Database not available."), 503
             try:
                 return call()
             except DatabaseError as err:
                 API.logger.error("Database query failed: {}".format(err))
-                return jsonify(error="Database error."), 503
+                return jsonify(message="Database error."), 503
             except:
                 API.logger.error(traceback.format_exc())
-                return jsonify(error="The server encountered an error while processing the request."), 500
+                return jsonify(message="The server encountered an error while processing the request."), 500
         return wrapper
     return inner
 

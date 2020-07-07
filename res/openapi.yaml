@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.2.0
+  version: 0.2.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -360,7 +360,7 @@ components:
           schema:
             type: object
             properties:
-              error:
+              message:
                 type: string
                 description: String representation of the exception
     InvalidRequest:
@@ -370,7 +370,7 @@ components:
           schema:
             type: object
             properties:
-              error:
+              message:
                 type: string
               errors:
                 type: array
@@ -384,7 +384,7 @@ components:
           schema:
             type: object
             properties:
-              error:
+              message:
                 type: string
                 description: Description of the error
     NotFound:
