@@ -43,7 +43,7 @@ def areaListCreate():
     try:
         os.makedirs(area.masterPath)
         os.makedirs(area.slavePath)
-        if area.acelPath is not None:
+        if area.accelPath is not None:
             os.makedirs(area.accelPath)
     except FileExistsError:
         return jsonify(message="Cannot create area list: Storage area exists."), 400
