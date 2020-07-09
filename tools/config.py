@@ -19,7 +19,8 @@ _defaultConfig_ = {"openapi": {
                    "options": {
                      "disableDB": False,
                      "dataPath": "/usr/share/grammm/common",
-                     "systemAdminDir": "sa_admin"
+                     "propnames": "propnames.txt",
+                     "portrait": "admin/api/portrait.jpg"
                    },
                    "security": {
                      "requireAuth": True

@@ -39,13 +39,13 @@ def orgObjectEndpoint(ID):
     return defaultObjectHandler(Orgs, ID, "Org")
 
 
-@API.route(api.BaseRoute+"/domains", methods=["GET"])
+@API.route(api.BaseRoute+"/system/domains", methods=["GET"])
 @api.secure(requireDB=True)
 def domainListEndpoint():
     return defaultListHandler(Domains)
 
 
-@API.route(api.BaseRoute+"/domains", methods=["POST"])
+@API.route(api.BaseRoute+"/system/domains", methods=["POST"])
 @api.secure(requireDB=True)
 def domainCreate():
     def rollback():
@@ -70,7 +70,7 @@ def domainCreate():
         return jsonify(message="Object violates database constraints", error=err.orig.args[1]), 400
 
 
-@API.route(api.BaseRoute+"/domains/<int:ID>", methods=["GET", "PATCH", "DELETE"])
+@API.route(api.BaseRoute+"/system/domains/<int:ID>", methods=["GET", "PATCH", "DELETE"])
 @api.secure(requireDB=True)
 def domainObjectEndpoint(ID):
     return defaultObjectHandler(Domains, ID, "Domain")

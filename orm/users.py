@@ -8,6 +8,7 @@ Created on Tue Jun 23 13:59:32 2020
 
 from . import DB
 from .DataModel import DataModel, Id, Text, Int, Date, BoolP
+from .ext import AreaList
 
 from sqlalchemy import func
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
@@ -138,7 +139,7 @@ class Users(DataModel, DB.Model):
                       Text("memo", flags="patch"),
                       Id("domainID", flags="patch"),
                       Id("groupID", flags="patch"),
-                      Text("maildir", flags="patch"),
+                      Text("maildir"),
                       Int("maxSize", flags="patch"),
                       Int("maxFile", flags="patch"),
                       Date("createDay", flags="patch"),
@@ -232,7 +233,7 @@ class Users(DataModel, DB.Model):
                                  .filter(Users.domainID == domain.ID).first()
         if domain.maxUser <= domainUsers.count:
             return "Maximum number of domain users reached"
-        if domain.maxSize < domainUsers.size+data.get("maxSize"):
+        if domain.maxSize < (domainUsers.size or 0)+data.get("maxSize"):
             return "Maximum domain size reached"
         if data.get("groupID"):
             group = Groups.query.filter(Groups.ID == data.get("groupID")).first()
@@ -251,21 +252,29 @@ class Users(DataModel, DB.Model):
         data["domainPrivileges"] = domain.privilegeBits
         data["domainStatus"] = domain.domainStatus
         data["aliases"] = [alias.aliasname for alias in Aliases.query.filter(Aliases.mainname == domain.domainname).all()]
+        if "areaID" not in data:
+            return "Missing required property areaID"
+        if AreaList.query.filter(AreaList.dataType == AreaList.USER, AreaList.ID == data["areaID"]).count() == 0:
+            return "Invalid area ID"
+        if "@" in data["username"]:
+            if data["username"].split("@",1)[1] != domain.domainname:
+                return "Domain specifications mismatch."
+        else:
+            data["username"] += "@"+domain.domainname
 
     def __init__(self, props, isAlias=False, privileges=None, status=None, *args, **kwargs):
         aliases = props.pop("aliases", [])
         privileges = privileges or props.pop("groupPrivileges", 0xFF) << 8 | props.pop("domainPrivileges", 0) << 16
         status = status or props.pop("groupStatus", 0) << 2 | props.pop("domainStatus") << 4
+        props.pop("areaID")
+        if "password" in props:
+            self.password = props.pop("password")
         for alias in aliases:
             DB.session.add(Users(props, True, privileges, status, *args, **kwargs))
         self.fromdict(props, *args, **kwargs)
-        self.privilegeBits |= privileges
-        self.addressStatus |= status
+        self.privilegeBits = (self.privilegeBits or 0) | privileges
+        self.addressStatus = (self.addressStatus or 0) | status
         self.addressType = 3 if isAlias else 0
-
-
-
-
 
 
 DB.Index(Users.domainID, Users.username, unique=True)

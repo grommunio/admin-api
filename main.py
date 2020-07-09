@@ -32,7 +32,7 @@ def createDB():
     import logging
     import traceback
     if DB is None:
-        logging.fatal("Could initialize database connection - check configuration")
+        logging.fatal("Could not initialize database connection - check configuration")
     try:
         logging.info("Setting up database...")
         DB.create_all()
@@ -43,7 +43,6 @@ def createDB():
         exit(1)
 
 
-# Run in stand-alone mode if file is executed directly
 if __name__ == '__main__':
     args = parseArgs()
     if args.command == "create-db":

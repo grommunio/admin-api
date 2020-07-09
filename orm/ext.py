@@ -28,11 +28,11 @@ class AreaList(DataModel, DB.Model):
 
 
     _dictmapping_ = ((Id(),
-                      Int("dataType", flags="patch"),
+                      Int("dataType", flags="init"),
                       Text("masterPath", flags="init"),
                       Text("slavePath", flags="init"),
-                      Text("accelPath", flags="patch"),
-                      Int("maxSpace", flags="patch"),
+                      Text("accelPath", flags="init"),
+                      Int("maxSpace", flags="init"),
                       Int("maxFiles", flags="patch"),
                       Int("storeLevels", flags="init")),)
 

@@ -36,4 +36,5 @@ Possible parameters are:
 ### Options ###
 Further parameters can be set in the `options` object:
 - `dataPath` (`string`, default: `/usr/share/grammm/common`): Directory where shared resources used by Grammm modules are stored
-- `systemAdminDir` (`string`, default: `sa_admin`): Subdirectory of `dataPath` holding system admin specific files
+- `propnames` (`string`, default: `propnames.txt`): File containing the list of named properties, relative to `dataPath`
+- `portrait` (`string`, default: `admin/api/portrait.jpg`): File containing the default portrait image, relative to `dataPath`

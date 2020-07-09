@@ -21,7 +21,7 @@ from sqlalchemy.exc import IntegrityError
 matchStringRe = re.compile(r"([\w\-]*)")
 
 
-def defaultListQuery(Model, filters=None, order=None, result="response", automatch=True, autofilter=True, autosort=True):
+def defaultListQuery(Model, filters=(), order=None, result="response", automatch=True, autofilter=True, autosort=True):
     """Process a listing query for specified model.
 
     Automatically uses 'limit' (50), 'offset' (0) and 'level' (1) parameters from the request.
@@ -39,7 +39,7 @@ def defaultListQuery(Model, filters=None, order=None, result="response", automat
     Model : SQLAlchemy model with DataModel extension
         Model to perform the query on
     filters : iterable, optional
-        A list of filter expressions to apply to the query. The default is None.
+        A list of filter expressions to apply to the query. The default is ().
     order : list or Column, optional
         Column(s) to use in an order_by expression. The default is None.
     result : str, optional
@@ -59,13 +59,11 @@ def defaultListQuery(Model, filters=None, order=None, result="response", automat
     limit = request.args.get("limit", 50)
     offset = request.args.get("offset", 0)
     verbosity = request.args.get("level", 1)
-    query = Model.optimized_query(verbosity)
+    query = Model.optimized_query(verbosity).filter(*filters)
     if autosort:
         query = Model.autosort(query, request.args)
     if order is not None:
         query = query.order_by(*(order if type(order) in (list, tuple) else (order,)))
-    if filters is not None:
-        query = query.filter(*filters)
     if autofilter:
         query = Model.autofilter(query, request.args)
     if automatch and "match" in request.args:
@@ -83,7 +81,7 @@ def defaultListQuery(Model, filters=None, order=None, result="response", automat
     return jsonify(data=[obj.todict(verbosity) for obj in objects])
 
 
-def defaultDetailQuery(Model, ID, errName):
+def defaultDetailQuery(Model, ID, errName, filters=()):
     """Process a detail query for specified model.
 
     Automatically uses 'level' (2) parameter from the request.
@@ -104,7 +102,7 @@ def defaultDetailQuery(Model, ID, errName):
         Flask response containing the object data or an error message.
     """
     verbosity = request.args.get("level", 2)
-    query = Model.query.filter(Model.ID == ID)
+    query = Model.query.filter(Model.ID == ID, *filters)
     query = Model.optimize_query(query, verbosity)
     obj = query.first()
     if obj is None:
@@ -112,7 +110,7 @@ def defaultDetailQuery(Model, ID, errName):
     return jsonify(obj.todict(verbosity))
 
 
-def defaultPatch(Model, ID, errName, obj=None):
+def defaultPatch(Model, ID, errName, obj=None, filters=()):
     """Process a PATCH query for specified model.
 
     Performs an autopatch() call on the model.
@@ -138,7 +136,7 @@ def defaultPatch(Model, ID, errName, obj=None):
     if data is None:
         return jsonify(message="Could not update: no valid JSON data"), 400
     if obj is None:
-        obj = Model.query.filter(Model.ID == ID).first()
+        obj = Model.query.filter(Model.ID == ID, *filters).first()
     if obj is None:
         return jsonify(message=errName+" not found"), 404
     try:
@@ -202,7 +200,7 @@ def defaultCreate(Model, result="response"):
     return jsonify(Model.optimized_query(2).filter(Model.ID == ID).first().fulldesc()), 201
 
 
-def defaultDelete(Model, ID, name):
+def defaultDelete(Model, ID, name, filters=()):
     """Delete instance with specified ID from the model.
 
     If no object with the ID exists, a HTTP 404 error is returned.
@@ -222,7 +220,7 @@ def defaultDelete(Model, ID, name):
     Response
         Flask response containing the new object data or an error message.
     """
-    obj = Model.query.filter(Model.ID == ID).first()
+    obj = Model.query.filter(Model.ID == ID, *filters).first()
     if obj is None:
         return jsonify(message=name+" not found"), 404
     try:
@@ -233,7 +231,7 @@ def defaultDelete(Model, ID, name):
     return jsonify(message="{} #{} deleted.".format(name, ID))
 
 
-def defaultBatchDelete(Model):
+def defaultBatchDelete(Model, filters=()):
     """Delete a list of instances.
 
     If an ID is not found, it is ignored.
@@ -252,7 +250,7 @@ def defaultBatchDelete(Model):
     if "ID" not in request.args:
         return jsonify(message="Missing ID list"), 400
     IDs = request.args["ID"].split(",")
-    objs = Model.query.filter(Model.ID.in_(IDs)).all()
+    objs = Model.query.filter(Model.ID.in_(IDs), *filters).all()
     IDs = [obj.ID for obj in objs]
     try:
         for obj in objs:
@@ -263,7 +261,7 @@ def defaultBatchDelete(Model):
     return jsonify(message="Delete successful.", deleted=IDs)
 
 
-def defaultListHandler(Model, filters=None, order=None, result="response", automatch=True, autofilter=True, autosort=True):
+def defaultListHandler(Model, filters=(), order=None, result="response", automatch=True, autofilter=True, autosort=True):
     """Handle operations on lists.
 
     Handles list (GET), create (POST) and batch delete (DELETE) requests for the given model.
@@ -296,10 +294,10 @@ def defaultListHandler(Model, filters=None, order=None, result="response", autom
     elif request.method == "POST":
         return defaultCreate(Model, result)
     elif request.method == "DELETE":
-        return defaultBatchDelete(Model)
+        return defaultBatchDelete(Model, filters)
 
 
-def defaultObjectHandler(Model, ID, name):
+def defaultObjectHandler(Model, ID, name, filters=()):
     """Handle operations on objects.
 
     Handles detail (GET), update (PATCH) or delete (DELETE) requests.
@@ -320,8 +318,8 @@ def defaultObjectHandler(Model, ID, name):
         Flask response containing data or error message.
     """
     if request.method == "GET":
-        return defaultDetailQuery(Model, ID, name)
+        return defaultDetailQuery(Model, ID, name, filters)
     elif request.method == "PATCH":
-        return defaultPatch(Model, ID, name)
+        return defaultPatch(Model, ID, name, filters)
     elif request.method == "DELETE":
-        return defaultDelete(Model, ID, name)
+        return defaultDelete(Model, ID, name, filters)

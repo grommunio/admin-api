@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.2.1
+  version: 0.3.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -46,9 +46,11 @@ paths:
                     description: Version of the implementation
                     type: string
 
-  /area_list:
+  /system/area_list:
     get:
       summary: Get lists of data areas
+      tags:
+        - System Admin
       responses:
         '200':
           description: Data returned
@@ -71,6 +73,8 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Create new data area
+      tags:
+        - System Admin
       requestBody:
         content:
           application/json:
@@ -90,9 +94,11 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /area_list/{ID}:
+  /system/area_list/{ID}:
     patch:
       summary: Update data area
+      tags:
+        - System Admin
       parameters:
         - $ref: '#/components/parameters/ID'
       requestBody:
@@ -115,6 +121,8 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete data area
+      tags:
+        - System Admin
       parameters:
         - $ref: '#/components/parameters/ID'
       responses:
@@ -129,9 +137,11 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains:
+  /system/domains:
     get:
       summary: Get lists of domains
+      tags:
+        - System Admin
       responses:
         '200':
           description: Data returned
@@ -152,6 +162,8 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Create new domain
+      tags:
+        - System Admin
       requestBody:
         content:
           application/json:
@@ -171,9 +183,11 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/{ID}:
+  /system/domains/{ID}:
     patch:
       summary: Update domain
+      tags:
+        - System Admin
       parameters:
         - $ref: '#/components/parameters/ID'
       requestBody:
@@ -196,6 +210,8 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete domain
+      tags:
+        - System Admin
       parameters:
         - $ref: '#/components/parameters/ID'
       responses:
@@ -210,12 +226,146 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/{domainID}/users:
+    get:
+      summary: Get lists of users
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: Data returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/user'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Create new user
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/user'
+      responses:
+        '201':
+          description: Domain created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/users/{ID}:
+    patch:
+      summary: Update user
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/domainID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/user'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete user
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: User deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/users/{ID}/password:
+    put:
+      summary: Set user password
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                old:
+                  type: string
+                  description: Old password
+                new:
+                  type: string
+                  description: New password
+      responses:
+        '200':
+          description: User password updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
 
 components:
   parameters:
     ID:
       name: ID
       description: ID of the object
+      in: path
+      required: true
+      schema:
+        type: integer
+    domainID:
+      name: domainID
+      description: ID of the domain
       in: path
       required: true
       schema:
@@ -350,7 +500,91 @@ components:
           writeOnly: True
           type: integer
           description: In which data area to create the domain. Can only be used on creation.
-
+    user:
+      type: object
+      additionalProperties: false
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        areaID:
+          type: integer
+          description: Area to create the user directory in
+        username:
+          type: string
+          maxLength: 128
+        password:
+          type: string
+          description: Initial password
+        realName:
+          type: string
+          maxLength: 32
+        title:
+          type: string
+          maxLength: 128
+        memo:
+          type: string
+          maxLength: 128
+        domainID:
+          type: integer
+          readOnly: true
+        groupID:
+          type: integer
+        maildir:
+          type: string
+          maxLength: 128
+          readOnly: true
+        maxSize:
+          type: integer
+        maxFile:
+          type: integer
+        createDay:
+          $ref: '#/components/schemas/date'
+        lang:
+          type: string
+          maxLength: 32
+        timezone:
+          type: string
+          maxLength: 64
+        mobilePhone:
+          type: string
+          maxLength: 20
+        subType:
+          type: integer
+          description: Sub type (0=User, 1=Room, 2=Equipment)
+        addressStatus:
+          type: integer
+          description: Address status (unknown)
+        addressType:
+          type: integer
+          description: Address type (0=Normal, 1=Alias, 2=MList, 3=Virtual)
+          readOnly: True
+        cell:
+          type: string
+          maxLength: 20
+        tel:
+          type: string
+          maxLength: 20
+        nickname:
+          type: string
+          maxLength: 32
+        homeaddress:
+          type: string
+          maxLength: 128
+        pop3_imap:
+          type: boolean
+          description: POP3/IMAP privilege
+        smtp:
+          type: boolean
+          description: SMTP privilege
+        changePassword:
+          type: boolean
+          description: Password changing privilege
+        publicAddress:
+          type: boolean
+          description: Public address privilege
+        netDisk:
+          type: boolean
+          description: Network disk privilege
 
   responses:
     ServerError:
@@ -398,5 +632,9 @@ components:
                 type: string
 
 tags:
+  - name: Domain Admin
+    description: Endpoints for the domain admin interface
+  - name: System Admin
+    description: Endpoints for the system admin interface
   - name: Misc
     description: Miscellaneous and organizational endpoints

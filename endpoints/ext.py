@@ -25,7 +25,7 @@ if DB is not None:
     from orm.ext import AreaList
 
 
-@API.route(api.BaseRoute+"/area_list", methods=["GET"])
+@API.route(api.BaseRoute+"/system/area_list", methods=["GET"])
 @api.secure(requireDB=True)
 def areaListGet():
     areaList = defaultListHandler(AreaList, result="list")
@@ -34,7 +34,7 @@ def areaListGet():
                    independent=[area.fulldesc() for area in areaList if area.dataType == AreaList.INDEPENDENT])
 
 
-@API.route(api.BaseRoute+"/area_list", methods=["POST"])
+@API.route(api.BaseRoute+"/system/area_list", methods=["POST"])
 @api.secure(requireDB=True)
 def areaListCreate():
     area = defaultListHandler(AreaList, result="object")
@@ -46,7 +46,9 @@ def areaListCreate():
         if area.accelPath is not None:
             os.makedirs(area.accelPath)
     except FileExistsError:
-        return jsonify(message="Cannot create area list: Storage area exists."), 400
+        return jsonify(message="Cannot create storage area: Directory exists."), 400
+    except OSError as err:
+        return jsonify(message="Cannot create storage area: " + " - ".join(str(arg) for arg in err.args))
     DB.session.add(area)
     try:
         DB.session.commit()
@@ -56,7 +58,7 @@ def areaListCreate():
     return jsonify(area.fulldesc()), 201
 
 
-@API.route(api.BaseRoute+"/area_list/<int:ID>", methods=["GET", "PATCH", "DELETE"])
+@API.route(api.BaseRoute+"/system/area_list/<int:ID>", methods=["GET", "PATCH", "DELETE"])
 @api.secure(requireDB=True)
 def areaListObjectEndpoint(ID):
     return defaultObjectHandler(AreaList, ID, "List entry")

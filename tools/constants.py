@@ -8,6 +8,7 @@ Created on Thu Jul  2 17:47:56 2020
 
 SERIAL_ENDIAN = "little"  # Endianess used for binary serialization
 
+
 class PropTags:
     ABPROVIDERID = 0x36150102
     ACCESS = 0x0FF40003
@@ -877,6 +878,39 @@ class PublicFIDs:
     CUSTOM = 0x05
 
 
+class PrivateFIDs:
+    ROOT = 0x01
+    DEFERRED_ACTION = 0x02
+    SPOOLER_QUEUE = 0x03
+    SHORTCUTS = 0x04
+    FINDER = 0x05
+    VIEWS = 0x06
+    COMMON_VIEWS = 0x07
+    SCHEDULE = 0x08
+    IPMSUBTREE = 0x09
+    SENT_ITEMS = 0x0a
+    DELETED_ITEMS = 0x0b
+    OUTBOX = 0x0c
+    INBOX = 0x0d
+    DRAFT = 0x0e
+    CALENDAR = 0x0f
+    JOURNAL = 0x10
+    NOTES = 0x11
+    TASKS = 0x12
+    CONTACTS = 0x13
+    QUICKCONTACTS = 0x14
+    IMCONTACTLIST = 0x15
+    GALCONTACTS = 0x16
+    JUNK = 0x17
+    LOCAL_FREEBUSY = 0x18
+    SYNC_ISSUES = 0x19
+    CONFLICTS = 0x1a
+    LOCAL_FAILURES = 0x1b
+    SERVER_FAILURES = 0x1c
+    CONVERSATION_ACTION_SETTINGS = 0x1d
+    CUSTOM = 0x1e
+
+
 class Permissions:
     NONE = 0x00000000
     READANY = 0x00000001
@@ -896,3 +930,25 @@ class Permissions:
     @classmethod
     def domainDefault(cls):
         return cls.READANY | cls.CREATE | cls.FOLDERVISIBLE | cls.EDITOWNED | cls.DELETEOWNED
+
+class Misc:
+    ALLOCATED_EID_RANGE = 0x10000
+    CHANGE_NUMBER_BEGIN = 0x800000000000
+
+class FolderNames:
+    IPM = "Top of Information Store"
+    INBOX = "Inbox"
+    DRAFT = "Drafts"
+    OUTBOX = "Outbox"
+    SENT = "Sent Items"
+    DELETED = "Deleted Items"
+    CONTACTS = "Contacts"
+    CALENDAR = "Calendar"
+    JOURNAL = "Journal"
+    NOTES = "Notes"
+    TASKS = "Tasks"
+    JUNK = "Junk E-mail"
+    SYNC = "Sync Issues"
+    CONFLICT = "Conflicts"
+    LOCAL = "Local Failures"
+    SERVER = "Server Failures"

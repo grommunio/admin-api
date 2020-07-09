@@ -6,7 +6,7 @@ Created on Tue Jun 23 11:22:02 2020
 @copyright: _Placeholder_copyright_
 """
 
-__all__ = ["misc", "orgs", "users"]
+__all__ = ["misc", "orgs", "users", "ext"]
 
 from api import API
 from flask_sqlalchemy import SQLAlchemy

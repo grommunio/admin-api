@@ -13,10 +13,10 @@ from flask import jsonify, request
 @API.errorhandler(404)
 def not_found(error):
     """Return JSON object with 404 message."""
-    return jsonify(error="Resource not found"), 404
+    return jsonify(message="Resource not found"), 404
 
 
 @API.errorhandler(405)
 def method_not_allowed(error):
     """Return JSON object with 405 message."""
-    return jsonify(error="Method '{}' not allowed on this endpoint".format(request.method)), 405
+    return jsonify(message="Method '{}' not allowed on this endpoint".format(request.method)), 405

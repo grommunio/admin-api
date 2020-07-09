@@ -14,13 +14,15 @@ import time
 from .misc import AutoClean
 from .structures import XID, GUID
 
-import exmdb.domain as DomainDB
+from exmdb import midb
+from exmdb.domain import Domain as DomainExmdb
+from exmdb.user import User as UserExmdb
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from tools.config import Config
-from tools.constants import PropTags, ConfigIDs, PublicFIDs, Permissions
+from tools.constants import PropTags, ConfigIDs, PublicFIDs, PrivateFIDs, Permissions, Misc, FolderNames
 from tools.misc import ntTime
 
 import logging
@@ -101,43 +103,11 @@ def createPath(parent: str, index: int, depth: int):
     os.makedirs(path)
     return path
 
-class DomainSetup:
-    """Domain initialization context.
-
-    Can be used in a with context to ensure automatic cleanup of created directories if an error occurs.
-    Invocation of the run() method creates the complete directory structure required by a domain and
-    sets up the initial MS Exchange database.
-
-    If everything went well, the `success` attribute is set to True.
-    If any exception occurs it is caught and the stack trace is written to the log. In this case, the `error` attribute
-    contains a short error description and the `errorCode` attribute is set to an appropriate HTTP status code.
-    """
-    ALLOCATED_EID_RANGE = 0x10000
-    CHANGE_NUMBER_BEGIN = 0x800000000000
-
-    def __init__(self, domain, area):
-        """Initialize context object
-
-        Parameters
-        ----------
-        domain : orm.orgs.Domains
-            Domain to initialize.
-        area : orm.ext.AreaList
-            Storage area to place domain in.
-        """
-        self._dirs = []
-        self._lastEid = self.ALLOCATED_EID_RANGE
-        self._lastCn = self.CHANGE_NUMBER_BEGIN
-        self._lastArt = 0
-
-        self.domain = domain
-        self.area = area
-
-        self.success = False
-        self.error = self.errorCode = None
-
+class SetupContext:
     def __enter__(self):
         """Enter context."""
+        self._dirs = []
+        self.success = False
         return self
 
     def __exit__(self, *args):
@@ -151,6 +121,82 @@ class DomainSetup:
                     shutil.rmtree(d)
                 except:
                     pass
+
+    def createGenericFolder(self, folderID: int, parentID: int, objectID: int, displayName: str, containerClass: str):
+        """Create a generic MS Exchange folder.
+
+        Parameters
+        ----------
+        folderID : int
+            ID of the new folder.
+        parentID : int
+            ID of the parent folder (or `None` to create root folder).
+        objectID : int
+            ID of the domain to create the folder for.
+        displayName : str
+            Name of the folder.
+        containerClass : str, optional
+            Container class of the folder. The default is None.
+        """
+        currentEid = self._lastEid+1
+        self._lastEid += Misc.ALLOCATED_EID_RANGE
+        self._lastEid
+        self._exmdb.add(self.AllocatedEids(begin=currentEid, end=self._lastEid, time=int(time.time()), isSystem=1))
+        self._lastCn += 1
+        self._exmdb.add(self.Folders(ID=folderID, parentID=parentID, changeNum=self._lastCn, currentEid=currentEid, maxEid=self._lastEid))
+        self._lastArt += 1
+        ntNow = ntTime()
+        xidData = XID.fromDomainID(objectID, self._lastCn).serialize()
+        if containerClass is not None:
+            self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CONTAINERCLASS, propval=containerClass))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDCOUNTTOTAL, propval=0))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDFOLDERTOTAL, propval=0))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERARCHYCHANGENUMBER, propval=0))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.INTERNETARTICLENUMBER, propval=self._lastArt))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DISPLAYNAME, propval=displayName))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.COMMENT, propval=""))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CREATIONTIME, propval=ntNow))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LASTMODIFICATIONTIME, propval=ntNow))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LOCALCOMMITTIMEMAX, propval=ntNow))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERREV, propval=ntNow))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CHANGEKEY, propval=xidData))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.PREDECESSORCHANGELIST, propval=xidData))
+
+
+
+class DomainSetup(SetupContext, DomainExmdb):
+    """Domain initialization context.
+
+    Can be used in a with context to ensure automatic cleanup of created directories if an error occurs.
+    Invocation of the run() method creates the complete directory structure required by a domain and
+    sets up the initial MS Exchange database.
+
+    If everything went well, the `success` attribute is set to True.
+    If any exception occurs it is caught and the stack trace is written to the log. In this case, the `error` attribute
+    contains a short error description and the `errorCode` attribute is set to an appropriate HTTP status code.
+    """
+
+    def __init__(self, domain, area):
+        """Initialize context object
+
+        Parameters
+        ----------
+        domain : orm.orgs.Domains
+            Domain to initialize.
+        area : orm.ext.AreaList
+            Storage area to place domain in.
+        """
+        DomainExmdb.__init__(self)
+
+        self._lastEid = Misc.ALLOCATED_EID_RANGE
+        self._lastCn = Misc.CHANGE_NUMBER_BEGIN
+        self._lastArt = 0
+
+        self.domain = domain
+        self.area = area
+
+        self.success = False
+        self.error = self.errorCode = None
 
     def run(self):
         """Run domain home directory initialization."""
@@ -172,16 +218,6 @@ class DomainSetup:
         If the storage area has an acceleration path configured, an exmdb path is created and symlinked accordingly.
 
         Additional `cid`, `log` and `tmp` subdirectories are created in the home directory.
-
-        If an error occurs (e.g. a directory cannot be created), all directories that were created are automatically deleted
-        (though intermediates may remain). Related exceptions are not handled.
-
-        Parameters
-        ----------
-        domain : orm.orgs.Domains
-            Domain to create the directory for
-        area : orm.ext.AreaList
-            Storage area to place the files in
         """
         self.domain.homedir = createPath(self.area.masterPath, self.domain.ID, self.area.storeLevels)
         self._dirs.append(self.domain.homedir)
@@ -196,106 +232,246 @@ class DomainSetup:
         os.mkdir(self.domain.homedir+"/tmp")
 
     def createGenericFolder(self, folderID: int, parentID: int, domainID: int, displayName: str, containerClass: str = None):
-        """Create a generic MS Exchange folder.
-
-        Parameters
-        ----------
-        folderID : int
-            ID of the new folder.
-        parentID : int
-            ID of the parent folder (or `None` to create root folder).
-        domainID : int
-            ID of the domain to create the folder for.
-        displayName : str
-            Name of the folder.
-        containerClass : str, optional
-            Container class of the folder. The default is None.
-        """
-        currentEid = self._lastEid+1
-        self._lastEid += self.ALLOCATED_EID_RANGE
-        maxEid = self._lastEid
-        self._exmdb.add(DomainDB.AllocatedEids(begin=currentEid, end=maxEid, time=int(time.time()), isSystem=1))
-        self._lastCn += 1
-        changeNum = self._lastCn
-        self._exmdb.add(DomainDB.Folders(ID=folderID, parentID=parentID, changeNum=changeNum, currentEid=currentEid, maxEid=maxEid))
-        self._lastArt += 1
-        ntNow = ntTime()
-        xidData = XID.fromDomainID(domainID, changeNum).serialize()
-        if containerClass is not None:
-            self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.CONTAINERCLASS, propval=containerClass))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDCOUNTTOTAL, propval=0))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDFOLDERTOTAL, propval=0))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.HIERARCHYCHANGENUMBER, propval=0))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.INTERNETARTICLENUMBER, propval=self._lastArt))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.ARTICLENUMBERNEXT, propval=1))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.DISPLAYNAME, propval=displayName))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.COMMENT, propval=""))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.CREATIONTIME, propval=ntNow))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.LASTMODIFICATIONTIME, propval=ntNow))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.LOCALCOMMITTIMEMAX, propval=ntNow))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.HIERREV, propval=ntNow))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.CHANGEKEY, propval=xidData))
-        self._exmdb.add(DomainDB.FolderProperties(folderID=folderID, proptag=PropTags.PREDECESSORCHANGELIST, propval=xidData))
+        SetupContext.createGenericFolder(self, folderID, parentID, domainID, displayName, containerClass)
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.ARTICLENUMBERNEXT, propval=1))
 
     def createExmdb(self):
         """Create exchange SQLite database for domain.
 
         Database is placed under <homedir>/exmdb/exchange.sqlite3.
 
-        Propnames are filled automatically if the file `dataPath`/`serverAdminDir`/propnames.txt is found.
+        Propnames are filled automatically if the file `dataPath`/`propnames` file is found.
         """
         dbPath = os.path.join(self.domain.homedir, "exmdb", "exchange.sqlite3")
         engine = create_engine("sqlite:///"+dbPath)
-        DomainDB.Schema.metadata.create_all(engine)
+        self._Schema.metadata.create_all(engine)
         self._exmdb = sessionmaker(bind=engine)()
         self._exmdb.execute("PRAGMA journal_mode = WAL;")
         try:
-            dataPath = os.path.join(Config["options"]["dataPath"], Config["options"]["systemAdminDir"], "propnames.txt")
+            dataPath = os.path.join(Config["options"]["dataPath"], Config["options"]["systempropnamesAdminDir"])
             with open(dataPath) as file:
                 propid = 0x8001
                 for line in file:
-                    self._exmdb.add(DomainDB.NamedProperties(ID=propid, name=line.strip()))
+                    self._exmdb.add(self.NamedProperties(ID=propid, name=line.strip()))
                     propid += 1
         except FileNotFoundError:
             logging.warn("Could not open {} - skipping.".format(dataPath))
-        self._exmdb.add(DomainDB.StoreProperties(tag=PropTags.CREATIONTIME, value=ntTime()))
-        self._exmdb.add(DomainDB.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.domain.maxSize))
-        self._exmdb.add(DomainDB.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.domain.maxSize))
-        self._exmdb.add(DomainDB.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.domain.maxSize))
-        self._exmdb.add(DomainDB.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
-        self._exmdb.add(DomainDB.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
-        self._exmdb.add(DomainDB.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.CREATIONTIME, value=ntTime()))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.domain.maxSize))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.domain.maxSize))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.domain.maxSize))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
         self.createGenericFolder(PublicFIDs.ROOT, None, self.domain.ID, "Root Container")
         self.createGenericFolder(PublicFIDs.IPMSUBTREE, PublicFIDs.ROOT, self.domain.ID, "IPM_SUBTREE")
         self.createGenericFolder(PublicFIDs.NONIPMSUBTREE, PublicFIDs.ROOT, self.domain.ID, "NON_IPM_SUBTREE")
         self.createGenericFolder(PublicFIDs.EFORMSREGISTRY, PublicFIDs.NONIPMSUBTREE, self.domain.ID, "EFORMS_REGISTRY")
-        self._exmdb.add(DomainDB.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
-        self._exmdb.add(DomainDB.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
-        self._exmdb.add(DomainDB.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=self.ALLOCATED_EID_RANGE))
-        self._exmdb.add(DomainDB.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self._lastCn))
-        self._exmdb.add(DomainDB.Configurations(ID=ConfigIDs.LAST_CID, value=0))
-        self._exmdb.add(DomainDB.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self._lastArt))
-        self._exmdb.add(DomainDB.Configurations(ID=ConfigIDs.SEARCH_STATE, value=0))
-        self._exmdb.add(DomainDB.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=Permissions.domainDefault()))
-        self._exmdb.add(DomainDB.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=self.ALLOCATED_EID_RANGE))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self._lastCn))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CID, value=0))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self._lastArt))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.SEARCH_STATE, value=0))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=Permissions.domainDefault()))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
         self._exmdb.commit()
 
 
-def mkdirFailsafe(path: str):
-    """Try to create directory.
+class UserSetup(SetupContext, UserExmdb):
+    """User initialization context.
 
-    Creates intermediate directories if needed. If an exception is raised, it is caught and logged.
+    Can be used in a with context to ensure automatic cleanup of created directories if an error occurs.
+    Invocation of the run() method creates the complete directory structure required by a user and
+    sets up the initial MS Exchange databases (exchange.sqlite3 and midb.sqlite3).
 
-    Parameters
-    ----------
-    path : str
-        Path to create
+    If everything went well, the `success` attribute is set to True.
+    If any exception occurs it is caught and the stack trace is written to the log. In this case, the `error` attribute
+    contains a short error description and the `errorCode` attribute is set to an appropriate HTTP status code.
     """
-    if path is None:
-        return
-    try:
-        os.makedirs(path, exist_ok=True)
-    except OSError as err:
-        logging.warn("Could not create directory '{}': {}".format(path, " - ".join((str(arg) for arg in err.args))))
-    except BaseException as err:
-        logging.error("Could not create directory '{}': Unknown error {}".format(path, str(err)))
+
+    def __init__(self, user, area):
+        """Initialize context object.
+
+        Parameters
+        ----------
+        user : orm.users.Users
+            User to initialize.
+        area : orm.ext.AreaList
+            Storage area to place user in.
+        """
+        UserExmdb.__init__(self)
+
+        self._lastEid = Misc.ALLOCATED_EID_RANGE
+        self._lastCn = Misc.CHANGE_NUMBER_BEGIN
+        self._lastArt = 0
+
+        self.user = user
+        self.area = area
+
+        self.success = False
+        self.error = self.errorCode = None
+
+    def run(self):
+        """Run user home directory initialization."""
+        try:
+            self.createHomedir()
+            self.createExmdb()
+            self.createMidb()
+            self.success = True
+        except:
+            logging.error(traceback.format_exc())
+            self.error = "Unknown error"
+            self.errorCode = 500
+
+    def createHomedir(self):
+        """Set up directory structure for a user.
+
+        Creates the home directory according to its ID in the master directory of the storage area.
+        Intermediate directories are created automatically if necessary.
+
+        If the storage area has an acceleration path configured, an exmdb path is created and symlinked accordingly.
+
+        Additional `cid`, `config`, `disk`, `eml`, `ext` and `tmp` subdirectories are created in the home directory.
+        """
+        self.user.maildir = createPath(self.area.masterPath, self.user.ID, self.area.storeLevels)
+        self._dirs.append(self.user.maildir)
+        if self.area.accelPath is not None:
+            dbPath = createPath(self.area.accelPath, self.user.ID, self.area.storeLevels)
+            self._dirs.append(dbPath)
+            os.symlink(dbPath, self.user.maildir+"/exmdb")
+        else:
+            os.mkdir(self.user.maildir+"/exmdb")
+        os.mkdir(self.user.maildir+"/tmp")
+        os.mkdir(self.user.maildir+"/tmp/imap.rfc822")
+        os.mkdir(self.user.maildir+"/tmp/faststream")
+        os.mkdir(self.user.maildir+"/eml")
+        os.mkdir(self.user.maildir+"/ext")
+        os.mkdir(self.user.maildir+"/cid")
+        os.mkdir(self.user.maildir+"/disk")
+        os.mkdir(self.user.maildir+"/config")
+        with open(self.user.maildir+"/disk/index", "w") as file:
+            file.write('{"size":0,"files":0}'+' '*492)
+        thumbnailSrc = os.path.join(Config["options"]["dataPath"], Config["options"]["portrait"])
+        try:
+            shutil.copy(thumbnailSrc, self.user.maildir+"/config/portrait.jpg")
+        except FileNotFoundError:
+            pass
+
+    def createGenericFolder(self, folderID: int, parentID: int, domainID: int, displayName: str, containerClass: str, hidden: bool):
+        SetupContext.createGenericFolder(self, folderID, parentID, domainID, displayName, containerClass)
+        if hidden:
+            self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.ATTRIBUTEHIDDEN, propval=1))
+
+    def createSearchFolder(self, folderID: int, parentID: int, userID: int, displayName: str, containerClass: str):
+        """Create exmdb search folder entries."""
+        self._lastCn += 1
+        self._exmdb.add(self.Folders(ID=folderID, parentID=parentID, changeNum=self._lastCn, isSearch=1, currentEid=0, maxEid=0))
+        self._lastArt += 1
+        ntNow = ntTime()
+        xidData = XID.fromDomainID(userID, self._lastCn).serialize()
+        if containerClass is not None:
+            self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CONTAINERCLASS, propval=containerClass))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDCOUNTTOTAL, propval=0))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDFOLDERTOTAL, propval=0))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERARCHYCHANGENUMBER, propval=0))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.INTERNETARTICLENUMBER, propval=self._lastArt))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.ARTICLENUMBERNEXT, propval=1))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DISPLAYNAME, propval=displayName))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.COMMENT, propval=""))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CREATIONTIME, propval=ntNow))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LASTMODIFICATIONTIME, propval=ntNow))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERREV, propval=ntNow))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LOCALCOMMITTIMEMAX, propval=ntNow))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CHANGEKEY, propval=xidData))
+        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.PREDECESSORCHANGELIST, propval=xidData))
+
+    def createExmdb(self):
+        """Create exchange SQLite database for user.
+
+        Database is placed under <homedir>/exmdb/exchange.sqlite3.
+
+        Propnames are filled automatically if the file `dataPath`/`propnames` file is found.
+        """
+        dbPath = os.path.join(self.user.maildir, "exmdb", "exchange.sqlite3")
+        engine = create_engine("sqlite:///"+dbPath)
+        self._Schema.metadata.create_all(engine)
+        self._exmdb = sessionmaker(bind=engine)()
+        self._exmdb.execute("PRAGMA journal_mode = WAL;")
+        try:
+            dataPath = os.path.join(Config["options"]["dataPath"], Config["options"]["propnames"])
+            with open(dataPath) as file:
+                propid = 0x8001
+                for line in file:
+                    self._exmdb.add(self.NamedProperties(ID=propid, name=line.strip()))
+                    propid += 1
+        except FileNotFoundError:
+            logging.warn("Could not open {} - skipping.".format(dataPath))
+        ntNow = ntTime()
+        self._exmdb.add(self.ReceiveTable(cls="", folderID=PrivateFIDs.INBOX, modified=ntNow))
+        self._exmdb.add(self.ReceiveTable(cls="IPC", folderID=PrivateFIDs.ROOT, modified=ntNow))
+        self._exmdb.add(self.ReceiveTable(cls="IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
+        self._exmdb.add(self.ReceiveTable(cls="REPORT.IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.CREATIONTIME, value=ntNow))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.user.maxSize))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.user.maxSize))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.user.maxSize))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.OUTOFOFFICESTATE, value=0))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
+        self._exmdb.add(self.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
+        self.createGenericFolder(PrivateFIDs.ROOT, None, self.user.ID, "Root Container", None, False)
+        self.createGenericFolder(PrivateFIDs.IPMSUBTREE, PrivateFIDs.ROOT, self.user.ID, FolderNames.IPM, None, False)
+        self.createGenericFolder(PrivateFIDs.INBOX, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.INBOX, "IPF.Note", False)
+        self.createGenericFolder(PrivateFIDs.DRAFT, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.DRAFT, "IPF.Note", False)
+        self.createGenericFolder(PrivateFIDs.OUTBOX, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.OUTBOX, "IPF.Note", False)
+        self.createGenericFolder(PrivateFIDs.SENT_ITEMS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.SENT, "IPF.Note", False)
+        self.createGenericFolder(PrivateFIDs.DELETED_ITEMS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.DELETED, "IPF.Note", False)
+        self.createGenericFolder(PrivateFIDs.CONTACTS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.CONTACTS, "IPF.Contact", False)
+        self.createGenericFolder(PrivateFIDs.CALENDAR, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.CALENDAR, "IPF.Appointment", False)
+        self.createGenericFolder(PrivateFIDs.JOURNAL, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.JOURNAL, "IPF.Journal", False)
+        self.createGenericFolder(PrivateFIDs.NOTES, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.NOTES, "IPF.StickyNote", False)
+        self.createGenericFolder(PrivateFIDs.TASKS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.TASKS, "IPF.Task", False)
+        self.createGenericFolder(PrivateFIDs.QUICKCONTACTS, PrivateFIDs.CONTACTS, self.user.ID, "Quick Contacts", "IPF.Contact.MOC.QuickContacts", True)
+        self.createGenericFolder(PrivateFIDs.IMCONTACTLIST, PrivateFIDs.CONTACTS, self.user.ID, "IM Contacts List", "IPF.Contact.MOC.ImContactList", True)
+        self.createGenericFolder(PrivateFIDs.GALCONTACTS, PrivateFIDs.CONTACTS, self.user.ID, "GAL Contacts", "IPF.Contact.GalContacts", True)
+        self.createGenericFolder(PrivateFIDs.JUNK, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.JUNK, "IPF.Note", False)
+        self.createGenericFolder(PrivateFIDs.CONVERSATION_ACTION_SETTINGS, PrivateFIDs.IPMSUBTREE, self.user.ID, "Conversation Action Settings", "IPF.Configuration", True)
+        self.createGenericFolder(PrivateFIDs.DEFERRED_ACTION, PrivateFIDs.ROOT, self.user.ID, "Deferred Action", None, False)
+        self.createSearchFolder(PrivateFIDs.SPOOLER_QUEUE, PrivateFIDs.ROOT, self.user.ID, "Spooler Queue", "IPF.Note")
+        self.createGenericFolder(PrivateFIDs.COMMON_VIEWS, PrivateFIDs.ROOT, self.user.ID, "Common Views", None, False)
+        self.createGenericFolder(PrivateFIDs.SCHEDULE, PrivateFIDs.ROOT, self.user.ID, "Schedule", None, False)
+        self.createGenericFolder(PrivateFIDs.FINDER, PrivateFIDs.ROOT, self.user.ID, "Finder", None, False)
+        self.createGenericFolder(PrivateFIDs.VIEWS, PrivateFIDs.ROOT, self.user.ID, "Views", None, False)
+        self.createGenericFolder(PrivateFIDs.SHORTCUTS, PrivateFIDs.ROOT, self.user.ID, "Shortcuts", None, False)
+        self.createGenericFolder(PrivateFIDs.SYNC_ISSUES, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.SYNC, "IPF.Note", False)
+        self.createGenericFolder(PrivateFIDs.CONFLICTS, PrivateFIDs.SYNC_ISSUES, self.user.ID, FolderNames.CONFLICT, "IPF.Note", False)
+        self.createGenericFolder(PrivateFIDs.LOCAL_FAILURES, PrivateFIDs.SYNC_ISSUES, self.user.ID, FolderNames.LOCAL, "IPF.Note", False)
+        self.createGenericFolder(PrivateFIDs.SERVER_FAILURES, PrivateFIDs.SYNC_ISSUES, self.user.ID, FolderNames.SERVER, "IPF.Note", False)
+        self.createGenericFolder(PrivateFIDs.LOCAL_FREEBUSY, PrivateFIDs.ROOT, self.user.ID, "Freebusy Data", None, False)
+        self._exmdb.add(self.Permissions(folderID=PrivateFIDs.CALENDAR, username="default", permission=Permissions.FREEBUSYSIMPLE))
+        self._exmdb.add(self.Permissions(folderID=PrivateFIDs.LOCAL_FREEBUSY, username="default", permission=Permissions.FREEBUSYSIMPLE))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=Misc.ALLOCATED_EID_RANGE))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self._lastCn))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CID, value=0))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self._lastArt))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.SEARCH_STATE, value=0))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=0))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
+        self._exmdb.commit()
+
+    def createMidb(self):
+        """Create midb SQLite database for user.
+
+        Database is placed under <homedir>/exmdb/midb.sqlite3.
+        """
+        dbPath = os.path.join(self.user.maildir, "exmdb", "midb.sqlite3")
+        engine = create_engine("sqlite:///"+dbPath)
+        midb.Schema.metadata.create_all(engine)
+        DB = sessionmaker(bind=engine)()
+        DB.execute("PRAGMA journal_mode = WAL;")
+        DB.add(midb.Configurations(ID=1, value=self.user.username))
+        DB.commit()
