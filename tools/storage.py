@@ -121,6 +121,8 @@ class SetupContext:
                     shutil.rmtree(d)
                 except:
                     pass
+        if getattr(self, "_exmdb", None) is not None:
+            self._exmdb.rollback()
 
     def createGenericFolder(self, folderID: int, parentID: int, objectID: int, displayName: str, containerClass: str):
         """Create a generic MS Exchange folder.
@@ -248,7 +250,7 @@ class DomainSetup(SetupContext, DomainExmdb):
         self._exmdb = sessionmaker(bind=engine)()
         self._exmdb.execute("PRAGMA journal_mode = WAL;")
         try:
-            dataPath = os.path.join(Config["options"]["dataPath"], Config["options"]["systempropnamesAdminDir"])
+            dataPath = os.path.join(Config["options"]["dataPath"], Config["options"]["propnames"])
             with open(dataPath) as file:
                 propid = 0x8001
                 for line in file:
@@ -269,7 +271,7 @@ class DomainSetup(SetupContext, DomainExmdb):
         self.createGenericFolder(PublicFIDs.EFORMSREGISTRY, PublicFIDs.NONIPMSUBTREE, self.domain.ID, "EFORMS_REGISTRY")
         self._exmdb.add(self.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
         self._exmdb.add(self.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=self.ALLOCATED_EID_RANGE))
+        self._exmdb.add(self.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=Misc.ALLOCATED_EID_RANGE))
         self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self._lastCn))
         self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CID, value=0))
         self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self._lastArt))
@@ -277,6 +279,7 @@ class DomainSetup(SetupContext, DomainExmdb):
         self._exmdb.add(self.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=Permissions.domainDefault()))
         self._exmdb.add(self.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
         self._exmdb.commit()
+        self._exmdb = None
 
 
 class UserSetup(SetupContext, UserExmdb):
@@ -462,6 +465,7 @@ class UserSetup(SetupContext, UserExmdb):
         self._exmdb.add(self.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=0))
         self._exmdb.add(self.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
         self._exmdb.commit()
+        self._exmdb = None
 
     def createMidb(self):
         """Create midb SQLite database for user.

@@ -76,6 +76,20 @@ def domainObjectEndpoint(ID):
     return defaultObjectHandler(Domains, ID, "Domain")
 
 
+@API.route(api.BaseRoute+"/system/domains/<int:ID>/password", methods=["PUT"])
+@api.secure(requireDB=True)
+def setDomainPassword(ID):
+    domain = Domains.query.filter(Domains.ID == ID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    data = request.get_json(silent=True)
+    if data is None or "new" not in data:
+        return jsonify(message="Incomplete data"), 400
+    domain.password = data["new"]
+    DB.session.commit()
+    return jsonify(message="Success")
+
+
 @API.route(api.BaseRoute+"/aliases", methods=["GET", "POST"])
 @api.secure(requireDB=True)
 def aliasListEndpoint():

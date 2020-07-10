@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.3.0
+  version: 0.3.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -226,6 +226,35 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/{ID}/password:
+    put:
+      summary: Set domain password
+      tags:
+        - System Admin
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                new:
+                  type: string
+                  description: New password
+      responses:
+        '200':
+          description: Domain password updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
   /domains/{domainID}/users:
     get:
       summary: Get lists of users
@@ -336,9 +365,6 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                old:
-                  type: string
-                  description: Old password
                 new:
                   type: string
                   description: New password
@@ -439,8 +465,9 @@ components:
           maxLength: 64
         password:
           type: string
-          maxLength: 40
           default: ""
+          writeOnly: True
+          description: Initial password
         homedir:
           type: string
           maxLength: 128

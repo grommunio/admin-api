@@ -12,6 +12,9 @@ from .ext import AreaList
 
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 
+import crypt
+from datetime import datetime
+
 
 class Orgs(DataModel, DB.Model):
     __tablename__ = "orgs"
@@ -28,7 +31,7 @@ class Domains(DataModel, DB.Model):
     ID = DB.Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True, nullable=False)
     orgID = DB.Column("org_id", INTEGER(10, unsigned=True), nullable=False, server_default="0", index=True)
     domainname = DB.Column("domainname", DB.VARCHAR(64), nullable=False)
-    password = DB.Column("password", DB.VARCHAR(40), nullable=False, server_default="")
+    _password = DB.Column("password", DB.VARCHAR(40), nullable=False, server_default="")
     homedir = DB.Column("homedir", DB.VARCHAR(128), nullable=False, server_default="")
     media = DB.Column("media", DB.VARCHAR(64), nullable=False, server_default="")
     maxSize = DB.Column("max_size", INTEGER(10, unsigned=True), nullable=False)
@@ -76,14 +79,18 @@ class Domains(DataModel, DB.Model):
 
     def __init__(self, props: dict, *args, **kwargs):
         props.pop("areaID")
+        if "password" in props:
+            self.password = props.pop("password")
         DataModel.__init__(self, props, args, kwargs)
 
     @staticmethod
     def checkCreateParams(data):
         if "areaID" not in data:
             return "Missing required property areaID"
-        if AreaList.query.filter(AreaList.dataType == AreaList.DOMAIN, AreaList.ID == data["areaID"]).count() == 0:
+        elif AreaList.query.filter(AreaList.dataType == AreaList.DOMAIN, AreaList.ID == data["areaID"]).count() == 0:
             return "Invalid area ID"
+        if data.get("createDay") is None:
+            data["createDay"] = datetime.now()
 
     def _setFlag(self, flag, val):
         self.privilegeBits = (self.privilegeBits or 0) | flag if val else (self.privilegeBits or 0) & ~flag
@@ -130,6 +137,14 @@ class Domains(DataModel, DB.Model):
     @netDisk.setter
     def netDisk(self, val):
         self._setFlag(self.NETDISK, val)
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, pw):
+        self._password = crypt.crypt(pw, crypt.mksalt(crypt.METHOD_MD5))
 
 
 DB.Index(Domains.homedir, Domains.domainType)
