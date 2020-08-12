@@ -14,16 +14,16 @@ import time
 from .misc import AutoClean
 from .structures import XID, GUID
 
-from exmdb import midb
-from exmdb.domain import Domain as DomainExmdb
-from exmdb.user import User as UserExmdb
+from tools.exmdb import midb
+from tools.exmdb.domain import Domain as DomainExmdb
+from tools.exmdb.user import User as UserExmdb
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from tools.config import Config
 from tools.constants import PropTags, ConfigIDs, PublicFIDs, PrivateFIDs, Permissions, Misc, FolderNames
-from tools.misc import ntTime
+from tools.rop import ntTime
 
 import logging
 import traceback
@@ -121,52 +121,11 @@ class SetupContext:
                     shutil.rmtree(d)
                 except:
                     pass
-        if getattr(self, "_exmdb", None) is not None:
-            self._exmdb.rollback()
-
-    def createGenericFolder(self, folderID: int, parentID: int, objectID: int, displayName: str, containerClass: str):
-        """Create a generic MS Exchange folder.
-
-        Parameters
-        ----------
-        folderID : int
-            ID of the new folder.
-        parentID : int
-            ID of the parent folder (or `None` to create root folder).
-        objectID : int
-            ID of the domain to create the folder for.
-        displayName : str
-            Name of the folder.
-        containerClass : str, optional
-            Container class of the folder. The default is None.
-        """
-        currentEid = self._lastEid+1
-        self._lastEid += Misc.ALLOCATED_EID_RANGE
-        self._lastEid
-        self._exmdb.add(self.AllocatedEids(begin=currentEid, end=self._lastEid, time=int(time.time()), isSystem=1))
-        self._lastCn += 1
-        self._exmdb.add(self.Folders(ID=folderID, parentID=parentID, changeNum=self._lastCn, currentEid=currentEid, maxEid=self._lastEid))
-        self._lastArt += 1
-        ntNow = ntTime()
-        xidData = XID.fromDomainID(objectID, self._lastCn).serialize()
-        if containerClass is not None:
-            self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CONTAINERCLASS, propval=containerClass))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDCOUNTTOTAL, propval=0))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDFOLDERTOTAL, propval=0))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERARCHYCHANGENUMBER, propval=0))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.INTERNETARTICLENUMBER, propval=self._lastArt))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DISPLAYNAME, propval=displayName))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.COMMENT, propval=""))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CREATIONTIME, propval=ntNow))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LASTMODIFICATIONTIME, propval=ntNow))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LOCALCOMMITTIMEMAX, propval=ntNow))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERREV, propval=ntNow))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CHANGEKEY, propval=xidData))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.PREDECESSORCHANGELIST, propval=xidData))
+        if getattr(self, "exmdb", None) is not None:
+            self.exmdb.rollback()
 
 
-
-class DomainSetup(SetupContext, DomainExmdb):
+class DomainSetup(SetupContext):
     """Domain initialization context.
 
     Can be used in a with context to ensure automatic cleanup of created directories if an error occurs.
@@ -178,6 +137,8 @@ class DomainSetup(SetupContext, DomainExmdb):
     contains a short error description and the `errorCode` attribute is set to an appropriate HTTP status code.
     """
 
+    schema = DomainExmdb()
+
     def __init__(self, domain, area):
         """Initialize context object
 
@@ -188,11 +149,10 @@ class DomainSetup(SetupContext, DomainExmdb):
         area : orm.ext.AreaList
             Storage area to place domain in.
         """
-        DomainExmdb.__init__(self)
 
-        self._lastEid = Misc.ALLOCATED_EID_RANGE
-        self._lastCn = Misc.CHANGE_NUMBER_BEGIN
-        self._lastArt = 0
+        self.lastEId = Misc.ALLOCATED_EID_RANGE
+        self.lastCn = Misc.CHANGE_NUMBER_BEGIN
+        self.lastArt = 0
 
         self.domain = domain
         self.area = area
@@ -233,10 +193,6 @@ class DomainSetup(SetupContext, DomainExmdb):
         os.mkdir(self.domain.homedir+"/log")
         os.mkdir(self.domain.homedir+"/tmp")
 
-    def createGenericFolder(self, folderID: int, parentID: int, domainID: int, displayName: str, containerClass: str = None):
-        SetupContext.createGenericFolder(self, folderID, parentID, domainID, displayName, containerClass)
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.ARTICLENUMBERNEXT, propval=1))
-
     def createExmdb(self):
         """Create exchange SQLite database for domain.
 
@@ -246,43 +202,43 @@ class DomainSetup(SetupContext, DomainExmdb):
         """
         dbPath = os.path.join(self.domain.homedir, "exmdb", "exchange.sqlite3")
         engine = create_engine("sqlite:///"+dbPath)
-        self._Schema.metadata.create_all(engine)
-        self._exmdb = sessionmaker(bind=engine)()
-        self._exmdb.execute("PRAGMA journal_mode = WAL;")
+        self.schema.metadata.create_all(engine)
+        self.exmdb = sessionmaker(bind=engine)()
+        self.exmdb.execute("PRAGMA journal_mode = WAL;")
         try:
             dataPath = os.path.join(Config["options"]["dataPath"], Config["options"]["propnames"])
             with open(dataPath) as file:
                 propid = 0x8001
                 for line in file:
-                    self._exmdb.add(self.NamedProperties(ID=propid, name=line.strip()))
+                    self.exmdb.add(self.NamedProperties(ID=propid, name=line.strip()))
                     propid += 1
         except FileNotFoundError:
             logging.warn("Could not open {} - skipping.".format(dataPath))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.CREATIONTIME, value=ntTime()))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.domain.maxSize))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.domain.maxSize))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.domain.maxSize))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.CREATIONTIME, value=ntTime()))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.domain.maxSize))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.domain.maxSize))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.domain.maxSize))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
         self.createGenericFolder(PublicFIDs.ROOT, None, self.domain.ID, "Root Container")
         self.createGenericFolder(PublicFIDs.IPMSUBTREE, PublicFIDs.ROOT, self.domain.ID, "IPM_SUBTREE")
         self.createGenericFolder(PublicFIDs.NONIPMSUBTREE, PublicFIDs.ROOT, self.domain.ID, "NON_IPM_SUBTREE")
         self.createGenericFolder(PublicFIDs.EFORMSREGISTRY, PublicFIDs.NONIPMSUBTREE, self.domain.ID, "EFORMS_REGISTRY")
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=Misc.ALLOCATED_EID_RANGE))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self._lastCn))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CID, value=0))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self._lastArt))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.SEARCH_STATE, value=0))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=Permissions.domainDefault()))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
-        self._exmdb.commit()
-        self._exmdb = None
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=Misc.ALLOCATED_EID_RANGE))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self.lastCn))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CID, value=0))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self.lastArt))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.SEARCH_STATE, value=0))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=Permissions.domainDefault()))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
+        self.exmdb.commit()
+        self.exmdb = None
 
 
-class UserSetup(SetupContext, UserExmdb):
+class UserSetup(SetupContext):
     """User initialization context.
 
     Can be used in a with context to ensure automatic cleanup of created directories if an error occurs.
@@ -294,6 +250,8 @@ class UserSetup(SetupContext, UserExmdb):
     contains a short error description and the `errorCode` attribute is set to an appropriate HTTP status code.
     """
 
+    schema = UserExmdb()
+
     def __init__(self, user, area):
         """Initialize context object.
 
@@ -304,11 +262,9 @@ class UserSetup(SetupContext, UserExmdb):
         area : orm.ext.AreaList
             Storage area to place user in.
         """
-        UserExmdb.__init__(self)
-
-        self._lastEid = Misc.ALLOCATED_EID_RANGE
-        self._lastCn = Misc.CHANGE_NUMBER_BEGIN
-        self._lastArt = 0
+        self.lastEId = Misc.ALLOCATED_EID_RANGE
+        self.lastCn = Misc.CHANGE_NUMBER_BEGIN
+        self.lastArt = 0
 
         self.user = user
         self.area = area
@@ -362,33 +318,28 @@ class UserSetup(SetupContext, UserExmdb):
         except FileNotFoundError:
             pass
 
-    def createGenericFolder(self, folderID: int, parentID: int, domainID: int, displayName: str, containerClass: str, hidden: bool):
-        SetupContext.createGenericFolder(self, folderID, parentID, domainID, displayName, containerClass)
-        if hidden:
-            self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.ATTRIBUTEHIDDEN, propval=1))
-
     def createSearchFolder(self, folderID: int, parentID: int, userID: int, displayName: str, containerClass: str):
         """Create exmdb search folder entries."""
-        self._lastCn += 1
-        self._exmdb.add(self.Folders(ID=folderID, parentID=parentID, changeNum=self._lastCn, isSearch=1, currentEid=0, maxEid=0))
-        self._lastArt += 1
+        self.lastCn += 1
+        self.exmdb.add(self.Folders(ID=folderID, parentID=parentID, changeNum=self.lastCn, isSearch=1, currentEid=0, maxEid=0))
+        self.lastArt += 1
         ntNow = ntTime()
-        xidData = XID.fromDomainID(userID, self._lastCn).serialize()
+        xidData = XID.fromDomainID(userID, self.lastCn).serialize()
         if containerClass is not None:
-            self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CONTAINERCLASS, propval=containerClass))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDCOUNTTOTAL, propval=0))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDFOLDERTOTAL, propval=0))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERARCHYCHANGENUMBER, propval=0))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.INTERNETARTICLENUMBER, propval=self._lastArt))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.ARTICLENUMBERNEXT, propval=1))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DISPLAYNAME, propval=displayName))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.COMMENT, propval=""))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CREATIONTIME, propval=ntNow))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LASTMODIFICATIONTIME, propval=ntNow))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERREV, propval=ntNow))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LOCALCOMMITTIMEMAX, propval=ntNow))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CHANGEKEY, propval=xidData))
-        self._exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.PREDECESSORCHANGELIST, propval=xidData))
+            self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CONTAINERCLASS, propval=containerClass))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDCOUNTTOTAL, propval=0))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDFOLDERTOTAL, propval=0))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERARCHYCHANGENUMBER, propval=0))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.INTERNETARTICLENUMBER, propval=self.lastArt))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.ARTICLENUMBERNEXT, propval=1))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DISPLAYNAME, propval=displayName))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.COMMENT, propval=""))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CREATIONTIME, propval=ntNow))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LASTMODIFICATIONTIME, propval=ntNow))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERREV, propval=ntNow))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LOCALCOMMITTIMEMAX, propval=ntNow))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CHANGEKEY, propval=xidData))
+        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.PREDECESSORCHANGELIST, propval=xidData))
 
     def createExmdb(self):
         """Create exchange SQLite database for user.
@@ -399,31 +350,31 @@ class UserSetup(SetupContext, UserExmdb):
         """
         dbPath = os.path.join(self.user.maildir, "exmdb", "exchange.sqlite3")
         engine = create_engine("sqlite:///"+dbPath)
-        self._Schema.metadata.create_all(engine)
-        self._exmdb = sessionmaker(bind=engine)()
-        self._exmdb.execute("PRAGMA journal_mode = WAL;")
+        self.schema.metadata.create_all(engine)
+        self.exmdb = sessionmaker(bind=engine)()
+        self.exmdb.execute("PRAGMA journal_mode = WAL;")
         try:
             dataPath = os.path.join(Config["options"]["dataPath"], Config["options"]["propnames"])
             with open(dataPath) as file:
                 propid = 0x8001
                 for line in file:
-                    self._exmdb.add(self.NamedProperties(ID=propid, name=line.strip()))
+                    self.exmdb.add(self.NamedProperties(ID=propid, name=line.strip()))
                     propid += 1
         except FileNotFoundError:
             logging.warn("Could not open {} - skipping.".format(dataPath))
         ntNow = ntTime()
-        self._exmdb.add(self.ReceiveTable(cls="", folderID=PrivateFIDs.INBOX, modified=ntNow))
-        self._exmdb.add(self.ReceiveTable(cls="IPC", folderID=PrivateFIDs.ROOT, modified=ntNow))
-        self._exmdb.add(self.ReceiveTable(cls="IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
-        self._exmdb.add(self.ReceiveTable(cls="REPORT.IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.CREATIONTIME, value=ntNow))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.user.maxSize))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.user.maxSize))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.user.maxSize))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.OUTOFOFFICESTATE, value=0))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
-        self._exmdb.add(self.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
+        self.exmdb.add(self.ReceiveTable(cls="", folderID=PrivateFIDs.INBOX, modified=ntNow))
+        self.exmdb.add(self.ReceiveTable(cls="IPC", folderID=PrivateFIDs.ROOT, modified=ntNow))
+        self.exmdb.add(self.ReceiveTable(cls="IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
+        self.exmdb.add(self.ReceiveTable(cls="REPORT.IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.CREATIONTIME, value=ntNow))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.user.maxSize))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.user.maxSize))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.user.maxSize))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.OUTOFOFFICESTATE, value=0))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
+        self.exmdb.add(self.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
         self.createGenericFolder(PrivateFIDs.ROOT, None, self.user.ID, "Root Container", None, False)
         self.createGenericFolder(PrivateFIDs.IPMSUBTREE, PrivateFIDs.ROOT, self.user.ID, FolderNames.IPM, None, False)
         self.createGenericFolder(PrivateFIDs.INBOX, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.INBOX, "IPF.Note", False)
@@ -453,19 +404,19 @@ class UserSetup(SetupContext, UserExmdb):
         self.createGenericFolder(PrivateFIDs.LOCAL_FAILURES, PrivateFIDs.SYNC_ISSUES, self.user.ID, FolderNames.LOCAL, "IPF.Note", False)
         self.createGenericFolder(PrivateFIDs.SERVER_FAILURES, PrivateFIDs.SYNC_ISSUES, self.user.ID, FolderNames.SERVER, "IPF.Note", False)
         self.createGenericFolder(PrivateFIDs.LOCAL_FREEBUSY, PrivateFIDs.ROOT, self.user.ID, "Freebusy Data", None, False)
-        self._exmdb.add(self.Permissions(folderID=PrivateFIDs.CALENDAR, username="default", permission=Permissions.FREEBUSYSIMPLE))
-        self._exmdb.add(self.Permissions(folderID=PrivateFIDs.LOCAL_FREEBUSY, username="default", permission=Permissions.FREEBUSYSIMPLE))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=Misc.ALLOCATED_EID_RANGE))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self._lastCn))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CID, value=0))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self._lastArt))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.SEARCH_STATE, value=0))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=0))
-        self._exmdb.add(self.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
-        self._exmdb.commit()
-        self._exmdb = None
+        self.exmdb.add(self.Permissions(folderID=PrivateFIDs.CALENDAR, username="default", permission=Permissions.FREEBUSYSIMPLE))
+        self.exmdb.add(self.Permissions(folderID=PrivateFIDs.LOCAL_FREEBUSY, username="default", permission=Permissions.FREEBUSYSIMPLE))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=Misc.ALLOCATED_EID_RANGE))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self.lastCn))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CID, value=0))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self.lastArt))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.SEARCH_STATE, value=0))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=0))
+        self.exmdb.add(self.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
+        self.exmdb.commit()
+        self.exmdb = None
 
     def createMidb(self):
         """Create midb SQLite database for user.

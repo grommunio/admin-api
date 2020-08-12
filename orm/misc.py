@@ -7,7 +7,7 @@ Created on Tue Jun 23 14:30:38 2020
 """
 
 from . import DB
-from .DataModel import DataModel, Id, Text, Int, Date
+from tools.DataModel import DataModel, Id, Text, Int, Date
 
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 

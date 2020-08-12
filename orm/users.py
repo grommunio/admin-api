@@ -7,7 +7,7 @@ Created on Tue Jun 23 13:59:32 2020
 """
 
 from . import DB
-from .DataModel import DataModel, Id, Text, Int, Date, BoolP
+from tools.DataModel import DataModel, Id, Text, Int, Date, BoolP
 from .ext import AreaList
 
 from sqlalchemy import func

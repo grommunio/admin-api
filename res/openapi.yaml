@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.3.1
+  version: 0.4.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -380,6 +380,26 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/{domainID}/folders:
+    get:
+      summary: Get list of public folders
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      tags:
+        - Domain Admin
+      responses:
+        '200':
+          description: List of public folders returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/publicFolder'
+
 components:
   parameters:
     ID:
@@ -414,6 +434,9 @@ components:
     date:
       type: string
       pattern: '^\d{4}-\d{2}-\d{2}$'
+    dateTime:
+      type: string
+      pattern: '^\d{4}-\d{2}-\d{2}$ \d{2}:\d{2}:\d{2}'
     areaData:
       type: object
       additionalProperties: false
@@ -612,7 +635,17 @@ components:
         netDisk:
           type: boolean
           description: Network disk privilege
-
+    publicFolder:
+      type: object
+      properties:
+        folderid:
+          type: integer
+        displayname:
+          type: string
+        comment:
+          type: string
+        creationtime:
+          $ref: '#/components/schemas/dateTime'
   responses:
     ServerError:
       description: An error occured while processing the request

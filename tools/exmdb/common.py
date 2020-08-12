@@ -7,11 +7,30 @@ Created on Tue Jul  7 10:18:55 2020
 """
 
 from sqlalchemy import Column, INTEGER, TEXT, BLOB, ForeignKey, Index
+from sqlalchemy.ext.declarative import declarative_base
+
+from tools.constants import PropTags, Misc
+from tools.DataModel import DataModel, Int, Text
+from tools.rop import ntTime
+from tools.structures import XID
+
+import time
 
 class Common:
-    def __init__(self, Schema):
-        self._Schema = Schema
-        class Configurations(Schema):
+    class Model:
+        class classproperty(object):
+            def __init__(self, f):
+                self.f = f
+            def __get__(self, obj, owner):
+                return self.f(owner)
+        @classproperty
+        def query(self):
+            return self._session.query(self)
+
+    def __init__(self, Schema, session=None):
+        self._Schema = Schema or declarative_base(cls=self.Model)
+
+        class Configurations(self._Schema):
             __tablename__ = "configurations"
 
             ID = Column("config_id", INTEGER, primary_key=True)
@@ -21,7 +40,7 @@ class Common:
                 self.ID = ID
                 self.value = value if isinstance(value, bytes) else str(value).encode()
 
-        class AllocatedEids(Schema):
+        class AllocatedEids(self._Schema):
             __tablename__ = "allocated_eids"
 
             begin = Column("range_begin", INTEGER, nullable=False, primary_key=True)
@@ -29,14 +48,14 @@ class Common:
             time = Column("allocate_time", INTEGER, nullable=False, primary_key=True, index=True)
             isSystem = Column("is_system", INTEGER, server_default=None, primary_key=True)
 
-        class NamedProperties(Schema):
+        class NamedProperties(self._Schema):
             __tablename__ = "named_properties"
             __table_args__ = {"sqlite_autoincrement": True}
 
             ID = Column("propid", INTEGER, primary_key=True)
             name = Column("name_string", TEXT(collation="nocase"), nullable=False)
 
-        class StoreProperties(Schema):
+        class StoreProperties(self._Schema):
             __tablename__ = "store_properties"
 
             tag = Column("proptag", INTEGER, primary_key=True, unique=True, nullable=False)
@@ -46,22 +65,31 @@ class Common:
                 self.tag = tag
                 self.value = value if isinstance(value, bytes) else str(value).encode()
 
-        class FolderProperties(Schema):
+        class FolderProperties(DataModel, self._Schema):
             __tablename__ = "folder_properties"
 
             folderID = Column("folder_id", INTEGER, ForeignKey("folders.folder_id", ondelete="cascade", onupdate="cascade"),
                               primary_key=True, nullable=False, index=True)
             proptag = Column("proptag", INTEGER, primary_key=True, nullable=False)
-            propval = Column("propval", BLOB, nullable=False)
+            _propval = Column("propval", BLOB, nullable=False)
 
-            def __init__(self, folderID, proptag, propval):
-                self.folderID = folderID
-                self.proptag = proptag
-                self.propval = propval if isinstance(propval, bytes) else str(propval).encode()
+            def __init__(self, props={}, **kwargs):
+                self.augment(props, kwargs)
+                self.fromdict(props, **kwargs)
+
+            _dictmapping_ = ((Int("folderID", flags="init"), Int("proptag", flags="init"), Text("propval", flags="patch")),)
+
+            @property
+            def propval(self):
+                return self._propval
+
+            @propval.setter
+            def propval(self, value):
+                self._propval = value if isinstance(value, bytes) else str(value).encode()
 
         Index("folder_property_index", FolderProperties.folderID, FolderProperties.proptag, unique=True)
 
-        class Permissions(Schema):
+        class Permissions(self._Schema):
             __tablename__ = "permissions"
             __table_args__ = {"sqlite_autoincrement": True}
 
@@ -73,7 +101,7 @@ class Common:
 
         Index("folder_username_index", Permissions.folderID, Permissions.username, unique=True)
 
-        class Rules(Schema):
+        class Rules(self._Schema):
             __tablename__ = "rules"
             __table_args__ = {"sqlite_autoincrement": True}
 
@@ -90,7 +118,7 @@ class Common:
             folderID = Column("folder_id", INTEGER, ForeignKey("folders.folder_id", ondelete="cascade", onupdate="cascade"),
                               nullable=False, index=True)
 
-        class MessageProperties(Schema):
+        class MessageProperties(self._Schema):
             __tablename__ = "message_properties"
 
             messageID = Column("message_id", INTEGER, ForeignKey("messages.message_id", ondelete="cascade", onupdate="cascade"),
@@ -101,7 +129,7 @@ class Common:
         Index("message_property_index", MessageProperties.messageID, MessageProperties.proptag, unique=True)
         Index("proptag_propval_index", MessageProperties.proptag, MessageProperties.propval)
 
-        class MessageChanges(Schema):
+        class MessageChanges(self._Schema):
             __tablename__ = "message_changes"
 
             messageID = Column("message_id", INTEGER, ForeignKey("messages.message_id", ondelete="cascade", onupdate="cascade"),
@@ -110,7 +138,7 @@ class Common:
             indices = Column("indices", BLOB, nullable=False)
             proptags = Column("proptags", BLOB, nullable=False)
 
-        class Recipients(Schema):
+        class Recipients(self._Schema):
             __tablename__ = "recipients"
             __table_args__ = {"sqlite_autoincrement": True}
 
@@ -118,7 +146,7 @@ class Common:
             messageID = Column("message_id", INTEGER, ForeignKey("messages.message_id", ondelete="cascade", onupdate="cascade"),
                                nullable=False, index=True)
 
-        class RecipientProperties(Schema):
+        class RecipientProperties(self._Schema):
             __tablename__ = "recipients_properties"
 
             recipientID = Column("recipient_id", INTEGER, ForeignKey(Recipients.ID, ondelete="cascade", onupdate="cascade"),
@@ -128,7 +156,7 @@ class Common:
 
         Index("recipient_property_index", RecipientProperties.recipientID, RecipientProperties.proptag, unique=True)
 
-        class Attachments(Schema):
+        class Attachments(self._Schema):
             __tablename__ = "attachments"
             __table_args__ = {"sqlite_autoincrement": True}
 
@@ -136,7 +164,7 @@ class Common:
             messageID = Column("message_id", INTEGER, ForeignKey("messages.message_id", ondelete="cascade", onupdate="cascade"),
                                nullable=False, index=True)
 
-        class AttachmentProperties(Schema):
+        class AttachmentProperties(self._Schema):
             __tablename__ = "attachment_properties"
 
             attachmentID = Column("attachment_id", INTEGER, ForeignKey(Attachments.ID, ondelete="cascade", onupdate="cascade"),
@@ -159,3 +187,51 @@ class Common:
         self.RecipientProperties = RecipientProperties
         self.Attachments = Attachments
         self.AttachmentProperties = AttachmentProperties
+
+    def createGenericFolder(self, ctx, folderID: int, parentID: int, objectID: int, displayName: str, containerClass: str):
+        """Create a generic MS Exchange folder.
+
+        Parameters
+        ----------
+        folderID : int
+            ID of the new folder.
+        parentID : int
+            ID of the parent folder (or `None` to create root folder).
+        objectID : int
+            ID of the domain to create the folder for.
+        displayName : str
+            Name of the folder.
+        containerClass : str, optional
+            Container class of the folder. The default is None.
+        """
+        currentEid = ctx.lastEid+1
+        ctx.lastEid += Misc.ALLOCATED_EID_RANGE
+        ctx.lastEid
+        ctx.exmdb.add(self.AllocatedEids(begin=currentEid, end=self._lastEid, time=int(time.time()), isSystem=1))
+        ctx.lastCn += 1
+        ctx.exmdb.add(self.Folders(ID=folderID, parentID=parentID, changeNum=self._lastCn, currentEid=currentEid, maxEid=self._lastEid))
+        ctx.lastArt += 1
+        ntNow = ntTime()
+        xidData = XID.fromDomainID(objectID, ctx.lastCn).serialize()
+        if containerClass is not None:
+            ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CONTAINERCLASS, propval=containerClass))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDCOUNTTOTAL, propval=0))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDFOLDERTOTAL, propval=0))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERARCHYCHANGENUMBER, propval=0))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.INTERNETARTICLENUMBER, propval=self._lastArt))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DISPLAYNAME, propval=displayName))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.COMMENT, propval=""))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CREATIONTIME, propval=ntNow))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LASTMODIFICATIONTIME, propval=ntNow))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LOCALCOMMITTIMEMAX, propval=ntNow))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERREV, propval=ntNow))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CHANGEKEY, propval=xidData))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.PREDECESSORCHANGELIST, propval=xidData))
+
+    @classmethod
+    def connect(cls, path):
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        engine = create_engine("sqlite:///"+path)
+        obj = cls(session=sessionmaker(bind=engine)())
+        return obj

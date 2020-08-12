@@ -23,7 +23,7 @@ def parseArgs():
 def run():
     from api import API
     from endpoints import ext, misc, orgs, users
-    API.run(host="0.0.0.0", debug=True)
+    API.run(host="0.0.0.0", port=5001, debug=True)
 
 
 def createDB():

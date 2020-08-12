@@ -6,7 +6,7 @@ Created on Tue Jun 23 18:57:07 2020
 @copyright: _Placeholder_copyright_
 """
 
-from .DataModel import BoolP
+from tools.DataModel import BoolP
 
 class PrivilegeBits:
     """Helper class providing property access to privilege bits"""

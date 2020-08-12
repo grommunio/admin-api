@@ -8,18 +8,17 @@ Created on Tue Jul  7 14:25:50 2020
 
 
 from sqlalchemy import Column, BLOB, INTEGER, TEXT, ForeignKey, Index
-from sqlalchemy.ext.declarative import declarative_base
 
 from .common import Common
+from tools.constants import PropTags
 
 # Mapping of
 
 class User(Common):
     def __init__(self, Schema=None):
-        Schema = Schema or declarative_base()
         super().__init__(Schema)
 
-        class Folders(Schema):
+        class Folders(self._Schema):
             __tablename__ = "folders"
 
             ID = Column("folder_id", INTEGER, primary_key=True)
@@ -31,7 +30,7 @@ class User(Common):
             currentEid = Column("cur_eid", INTEGER, nullable=False)
             maxEid = Column("max_eid", INTEGER, nullable=False)
 
-        class Messages(Schema):
+        class Messages(self._Schema):
             __tablename__ = "messages"
 
             ID = Column("message_id", INTEGER, primary_key=True)
@@ -49,7 +48,7 @@ class User(Common):
         Index("parent_assoc_index", Messages.parentFID, Messages.isAssociated)
         Index("parent_read_assoc_index", Messages.parentFID, Messages.readState, Messages.isAssociated)
 
-        class ReceiveTable(Schema):
+        class ReceiveTable(self._Schema):
             __tablename__ = "receive_table"
 
             cls = Column("class", TEXT(collation="nocase"), unique=True, nullable=False, primary_key=True)
@@ -57,7 +56,7 @@ class User(Common):
                               nullable=False, index=True)
             modified = Column("modified_time", INTEGER, nullable=False)
 
-        class SearchScopes(Schema):
+        class SearchScopes(self._Schema):
             __tablename__ = "search_scopes"
 
             folderID = Column("folder_id", INTEGER, ForeignKey(Folders.ID, ondelete="cascade", onupdate="cascade"),
@@ -65,7 +64,7 @@ class User(Common):
             includedFID = Column("included_fid", INTEGER, ForeignKey(Folders.ID, ondelete="cascade", onupdate="cascade"),
                                  nullable=False, primary_key=True, index=True)
 
-        class SearchResult(Schema):
+        class SearchResult(self._Schema):
             __tablename__ = "search_result"
 
             folderID = Column("folder_id", INTEGER, ForeignKey(Folders.ID, ondelete="cascade", onupdate="cascade"),
@@ -80,3 +79,8 @@ class User(Common):
         self.ReceiveTable = ReceiveTable
         self.SearchScopes = SearchScopes
         self.SearchResult = SearchResult
+
+    def createGenericFolder(self, ctx, folderID: int, parentID: int, domainID: int, displayName: str, containerClass: str, hidden: bool):
+        Common.createGenericFolder(self, ctx, folderID, parentID, domainID, displayName, containerClass)
+        if hidden:
+            ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.ATTRIBUTEHIDDEN, propval=1))

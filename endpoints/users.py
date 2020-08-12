@@ -14,13 +14,15 @@ from sqlalchemy.exc import IntegrityError
 
 from . import defaultListHandler, defaultObjectHandler
 
-from tools.misc import AutoClean
+from tools.misc import AutoClean, propvals2dict
 from tools.storage import UserSetup
+from tools.queries import getFolderListQuery
 
 from orm import DB
 if DB is not None:
     from orm.ext import AreaList
     from orm.users import Users, Groups
+    from orm.orgs import Domains
 
 
 @API.route(api.BaseRoute+"/groups", methods=["GET", "POST"])
@@ -85,3 +87,14 @@ def setUserPassword(domainID, ID):
     user.password = data["new"]
     DB.session.commit()
     return jsonify(message="Success")
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["GET"])
+@api.secure(requireDB=True)
+def getPublicFoldersList(domainID):
+    domain = Domains.query.filter(Domains.ID == domainID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    table = getFolderListQuery(domain.homedir)
+    folders = [propvals2dict(entry) for entry in table.entries]
+    return jsonify(data=folders)

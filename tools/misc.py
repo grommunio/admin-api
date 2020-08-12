@@ -8,6 +8,12 @@ Created on Tue Jun 30 17:14:08 2020
 
 import time
 
+from datetime import datetime
+
+from .constants import PropTags
+from .mapi.constants import PropTypes
+from .rop import nxTime
+
 class AutoClean:
     """Simple context manager calling a function on exit."""
 
@@ -40,20 +46,10 @@ class AutoClean:
         self.func = None
 
 
-def ntTime(timestamp=None) -> int:
-    """Convert UNIX timestamp to Windows timestamp.
+def propvals2dict(vals: list) -> dict:
+    def prop2val(prop):
+        if prop.type == PropTypes.FILETIME:
+            return datetime.fromtimestamp(nxTime(prop.value)).strftime("%Y-%m-%d %H:%M:%S")
+        return prop.value
 
-    Parameters
-    ----------
-    timestamp : float, optional
-        Timestamp to convert. If not specified, use current time. The default is None.
-
-    Returns
-    -------
-    int
-        Windows NT timestamp
-    """
-    timestamp = timestamp or time.time()
-    timestamp += 11644473600
-    timestamp *= 10000000
-    return int(timestamp)
+    return {PropTags.lookup(prop.tag).lower(): prop2val(prop) for prop in vals}

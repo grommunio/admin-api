@@ -12,7 +12,7 @@ __all__ = ["ext", "misc", "orgs", "users"]
 
 from flask import request, jsonify
 from orm import DB
-from orm.DataModel import MissingRequiredAttributeError, InvalidAttributeError, MismatchROError
+from tools.DataModel import MissingRequiredAttributeError, InvalidAttributeError, MismatchROError
 from jellyfish import damerau_levenshtein_distance as dldist
 import re
 

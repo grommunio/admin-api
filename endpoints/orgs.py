@@ -10,8 +10,6 @@ Created on Tue Jun 23 17:02:02 2020
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
 
-import os
-import shutil
 
 from . import defaultListHandler, defaultObjectHandler
 
@@ -20,6 +18,7 @@ from api import API
 
 from tools.misc import AutoClean
 from tools.storage import DomainSetup
+
 
 from orm import DB
 if DB is not None:

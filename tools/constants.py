@@ -8,8 +8,15 @@ Created on Thu Jul  2 17:47:56 2020
 
 SERIAL_ENDIAN = "little"  # Endianess used for binary serialization
 
+class _ReverseLookup:
+    @classmethod
+    def lookup(cls, value, default=None):
+        if not hasattr(cls, "_lookup"):
+            cls._lookup = {getattr(cls, key): key for key in dir(cls) if not key.startswith("_")}
+        return cls._lookup.get(value, default)
 
-class PropTags:
+
+class PropTags(_ReverseLookup):
     ABPROVIDERID = 0x36150102
     ACCESS = 0x0FF40003
     ACCESSCONTROLLISTDATA = 0x3FE00102
@@ -858,7 +865,7 @@ class PropTags:
     CREATORSID = 0x0E580102
 
 
-class ConfigIDs:
+class ConfigIDs(_ReverseLookup):
     MAILBOX_GUID = 1
     CURRENT_EID = 2
     MAXIMUM_EID = 3
@@ -870,7 +877,7 @@ class ConfigIDs:
     ANONYMOUS_PERMISSION = 9
 
 
-class PublicFIDs:
+class PublicFIDs(_ReverseLookup):
     ROOT = 0x01
     IPMSUBTREE = 0x02
     NONIPMSUBTREE = 0x03
@@ -878,7 +885,7 @@ class PublicFIDs:
     CUSTOM = 0x05
 
 
-class PrivateFIDs:
+class PrivateFIDs(_ReverseLookup):
     ROOT = 0x01
     DEFERRED_ACTION = 0x02
     SPOOLER_QUEUE = 0x03

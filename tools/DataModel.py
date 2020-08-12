@@ -570,6 +570,22 @@ class DataModel:
         matchables = self._meta.matchables if fields is None else (m for m in self._meta.matchables if m.alias in fields)
         return (prop.value(self, "targetval") for prop in matchables)
 
+    @classmethod
+    def augment(cls, props: dict, kwargs: dict):
+        """Add keyword arguments to prop dictionary.
+
+        Only arguments that can be resolved to attributes are inserted.
+
+        Parameters
+        ----------
+        props : dict
+            Property dictionary to update
+        kwargs : dict
+            Keyword arguments dictionary
+        """
+        cls._init()
+        props.update((key, value) for key, value in kwargs.items() if key in cls._meta.lookup)
+
 
 def _addFlags(kwargs, flags):
     """Add flags to dictmapping entry."""
