@@ -150,7 +150,7 @@ class DomainSetup(SetupContext):
             Storage area to place domain in.
         """
 
-        self.lastEId = Misc.ALLOCATED_EID_RANGE
+        self.lastEid = Misc.ALLOCATED_EID_RANGE
         self.lastCn = Misc.CHANGE_NUMBER_BEGIN
         self.lastArt = 0
 
@@ -202,7 +202,7 @@ class DomainSetup(SetupContext):
         """
         dbPath = os.path.join(self.domain.homedir, "exmdb", "exchange.sqlite3")
         engine = create_engine("sqlite:///"+dbPath)
-        self.schema.metadata.create_all(engine)
+        self.schema._Schema.metadata.create_all(engine)
         self.exmdb = sessionmaker(bind=engine)()
         self.exmdb.execute("PRAGMA journal_mode = WAL;")
         try:
@@ -210,30 +210,30 @@ class DomainSetup(SetupContext):
             with open(dataPath) as file:
                 propid = 0x8001
                 for line in file:
-                    self.exmdb.add(self.NamedProperties(ID=propid, name=line.strip()))
+                    self.exmdb.add(self.schema.NamedProperties(ID=propid, name=line.strip()))
                     propid += 1
         except FileNotFoundError:
             logging.warn("Could not open {} - skipping.".format(dataPath))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.CREATIONTIME, value=ntTime()))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.domain.maxSize))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.domain.maxSize))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.domain.maxSize))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
-        self.createGenericFolder(PublicFIDs.ROOT, None, self.domain.ID, "Root Container")
-        self.createGenericFolder(PublicFIDs.IPMSUBTREE, PublicFIDs.ROOT, self.domain.ID, "IPM_SUBTREE")
-        self.createGenericFolder(PublicFIDs.NONIPMSUBTREE, PublicFIDs.ROOT, self.domain.ID, "NON_IPM_SUBTREE")
-        self.createGenericFolder(PublicFIDs.EFORMSREGISTRY, PublicFIDs.NONIPMSUBTREE, self.domain.ID, "EFORMS_REGISTRY")
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=Misc.ALLOCATED_EID_RANGE))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self.lastCn))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CID, value=0))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self.lastArt))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.SEARCH_STATE, value=0))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=Permissions.domainDefault()))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.CREATIONTIME, value=ntTime()))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.domain.maxSize))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.domain.maxSize))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.domain.maxSize))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
+        self.schema.createGenericFolder(self, PublicFIDs.ROOT, None, self.domain.ID, "Root Container")
+        self.schema.createGenericFolder(self, PublicFIDs.IPMSUBTREE, PublicFIDs.ROOT, self.domain.ID, "IPM_SUBTREE")
+        self.schema.createGenericFolder(self, PublicFIDs.NONIPMSUBTREE, PublicFIDs.ROOT, self.domain.ID, "NON_IPM_SUBTREE")
+        self.schema.createGenericFolder(self, PublicFIDs.EFORMSREGISTRY, PublicFIDs.NONIPMSUBTREE, self.domain.ID, "EFORMS_REGISTRY")
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=Misc.ALLOCATED_EID_RANGE))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self.lastCn))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.LAST_CID, value=0))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self.lastArt))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.SEARCH_STATE, value=0))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=Permissions.domainDefault()))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
         self.exmdb.commit()
         self.exmdb = None
 
@@ -262,7 +262,7 @@ class UserSetup(SetupContext):
         area : orm.ext.AreaList
             Storage area to place user in.
         """
-        self.lastEId = Misc.ALLOCATED_EID_RANGE
+        self.lastEid = Misc.ALLOCATED_EID_RANGE
         self.lastCn = Misc.CHANGE_NUMBER_BEGIN
         self.lastArt = 0
 
@@ -321,25 +321,25 @@ class UserSetup(SetupContext):
     def createSearchFolder(self, folderID: int, parentID: int, userID: int, displayName: str, containerClass: str):
         """Create exmdb search folder entries."""
         self.lastCn += 1
-        self.exmdb.add(self.Folders(ID=folderID, parentID=parentID, changeNum=self.lastCn, isSearch=1, currentEid=0, maxEid=0))
+        self.exmdb.add(self.schema.Folders(ID=folderID, parentID=parentID, changeNum=self.lastCn, isSearch=1, currentEid=0, maxEid=0))
         self.lastArt += 1
         ntNow = ntTime()
         xidData = XID.fromDomainID(userID, self.lastCn).serialize()
         if containerClass is not None:
-            self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CONTAINERCLASS, propval=containerClass))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDCOUNTTOTAL, propval=0))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDFOLDERTOTAL, propval=0))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERARCHYCHANGENUMBER, propval=0))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.INTERNETARTICLENUMBER, propval=self.lastArt))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.ARTICLENUMBERNEXT, propval=1))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DISPLAYNAME, propval=displayName))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.COMMENT, propval=""))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CREATIONTIME, propval=ntNow))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LASTMODIFICATIONTIME, propval=ntNow))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERREV, propval=ntNow))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.LOCALCOMMITTIMEMAX, propval=ntNow))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CHANGEKEY, propval=xidData))
-        self.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.PREDECESSORCHANGELIST, propval=xidData))
+            self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.CONTAINERCLASS, propval=containerClass))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDCOUNTTOTAL, propval=0))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDFOLDERTOTAL, propval=0))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.HIERARCHYCHANGENUMBER, propval=0))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.INTERNETARTICLENUMBER, propval=self.lastArt))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.ARTICLENUMBERNEXT, propval=1))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.DISPLAYNAME, propval=displayName))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.COMMENT, propval=""))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.CREATIONTIME, propval=ntNow))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.LASTMODIFICATIONTIME, propval=ntNow))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.HIERREV, propval=ntNow))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.LOCALCOMMITTIMEMAX, propval=ntNow))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.CHANGEKEY, propval=xidData))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.PREDECESSORCHANGELIST, propval=xidData))
 
     def createExmdb(self):
         """Create exchange SQLite database for user.
@@ -350,7 +350,7 @@ class UserSetup(SetupContext):
         """
         dbPath = os.path.join(self.user.maildir, "exmdb", "exchange.sqlite3")
         engine = create_engine("sqlite:///"+dbPath)
-        self.schema.metadata.create_all(engine)
+        self.schema._Schema.metadata.create_all(engine)
         self.exmdb = sessionmaker(bind=engine)()
         self.exmdb.execute("PRAGMA journal_mode = WAL;")
         try:
@@ -358,63 +358,63 @@ class UserSetup(SetupContext):
             with open(dataPath) as file:
                 propid = 0x8001
                 for line in file:
-                    self.exmdb.add(self.NamedProperties(ID=propid, name=line.strip()))
+                    self.exmdb.add(self.schema.NamedProperties(ID=propid, name=line.strip()))
                     propid += 1
         except FileNotFoundError:
             logging.warn("Could not open {} - skipping.".format(dataPath))
         ntNow = ntTime()
-        self.exmdb.add(self.ReceiveTable(cls="", folderID=PrivateFIDs.INBOX, modified=ntNow))
-        self.exmdb.add(self.ReceiveTable(cls="IPC", folderID=PrivateFIDs.ROOT, modified=ntNow))
-        self.exmdb.add(self.ReceiveTable(cls="IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
-        self.exmdb.add(self.ReceiveTable(cls="REPORT.IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.CREATIONTIME, value=ntNow))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.user.maxSize))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.user.maxSize))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.user.maxSize))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.OUTOFOFFICESTATE, value=0))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
-        self.exmdb.add(self.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
-        self.createGenericFolder(PrivateFIDs.ROOT, None, self.user.ID, "Root Container", None, False)
-        self.createGenericFolder(PrivateFIDs.IPMSUBTREE, PrivateFIDs.ROOT, self.user.ID, FolderNames.IPM, None, False)
-        self.createGenericFolder(PrivateFIDs.INBOX, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.INBOX, "IPF.Note", False)
-        self.createGenericFolder(PrivateFIDs.DRAFT, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.DRAFT, "IPF.Note", False)
-        self.createGenericFolder(PrivateFIDs.OUTBOX, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.OUTBOX, "IPF.Note", False)
-        self.createGenericFolder(PrivateFIDs.SENT_ITEMS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.SENT, "IPF.Note", False)
-        self.createGenericFolder(PrivateFIDs.DELETED_ITEMS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.DELETED, "IPF.Note", False)
-        self.createGenericFolder(PrivateFIDs.CONTACTS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.CONTACTS, "IPF.Contact", False)
-        self.createGenericFolder(PrivateFIDs.CALENDAR, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.CALENDAR, "IPF.Appointment", False)
-        self.createGenericFolder(PrivateFIDs.JOURNAL, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.JOURNAL, "IPF.Journal", False)
-        self.createGenericFolder(PrivateFIDs.NOTES, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.NOTES, "IPF.StickyNote", False)
-        self.createGenericFolder(PrivateFIDs.TASKS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.TASKS, "IPF.Task", False)
-        self.createGenericFolder(PrivateFIDs.QUICKCONTACTS, PrivateFIDs.CONTACTS, self.user.ID, "Quick Contacts", "IPF.Contact.MOC.QuickContacts", True)
-        self.createGenericFolder(PrivateFIDs.IMCONTACTLIST, PrivateFIDs.CONTACTS, self.user.ID, "IM Contacts List", "IPF.Contact.MOC.ImContactList", True)
-        self.createGenericFolder(PrivateFIDs.GALCONTACTS, PrivateFIDs.CONTACTS, self.user.ID, "GAL Contacts", "IPF.Contact.GalContacts", True)
-        self.createGenericFolder(PrivateFIDs.JUNK, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.JUNK, "IPF.Note", False)
-        self.createGenericFolder(PrivateFIDs.CONVERSATION_ACTION_SETTINGS, PrivateFIDs.IPMSUBTREE, self.user.ID, "Conversation Action Settings", "IPF.Configuration", True)
-        self.createGenericFolder(PrivateFIDs.DEFERRED_ACTION, PrivateFIDs.ROOT, self.user.ID, "Deferred Action", None, False)
+        self.exmdb.add(self.schema.ReceiveTable(cls="", folderID=PrivateFIDs.INBOX, modified=ntNow))
+        self.exmdb.add(self.schema.ReceiveTable(cls="IPC", folderID=PrivateFIDs.ROOT, modified=ntNow))
+        self.exmdb.add(self.schema.ReceiveTable(cls="IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
+        self.exmdb.add(self.schema.ReceiveTable(cls="REPORT.IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.CREATIONTIME, value=ntNow))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.user.maxSize))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.user.maxSize))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.user.maxSize))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.OUTOFOFFICESTATE, value=0))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
+        self.schema.createGenericFolder(self, PrivateFIDs.ROOT, None, self.user.ID, "Root Container", None, False)
+        self.schema.createGenericFolder(self, PrivateFIDs.IPMSUBTREE, PrivateFIDs.ROOT, self.user.ID, FolderNames.IPM, None, False)
+        self.schema.createGenericFolder(self, PrivateFIDs.INBOX, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.INBOX, "IPF.Note", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.DRAFT, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.DRAFT, "IPF.Note", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.OUTBOX, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.OUTBOX, "IPF.Note", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.SENT_ITEMS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.SENT, "IPF.Note", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.DELETED_ITEMS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.DELETED, "IPF.Note", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.CONTACTS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.CONTACTS, "IPF.Contact", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.CALENDAR, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.CALENDAR, "IPF.Appointment", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.JOURNAL, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.JOURNAL, "IPF.Journal", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.NOTES, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.NOTES, "IPF.StickyNote", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.TASKS, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.TASKS, "IPF.Task", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.QUICKCONTACTS, PrivateFIDs.CONTACTS, self.user.ID, "Quick Contacts", "IPF.Contact.MOC.QuickContacts", True)
+        self.schema.createGenericFolder(self, PrivateFIDs.IMCONTACTLIST, PrivateFIDs.CONTACTS, self.user.ID, "IM Contacts List", "IPF.Contact.MOC.ImContactList", True)
+        self.schema.createGenericFolder(self, PrivateFIDs.GALCONTACTS, PrivateFIDs.CONTACTS, self.user.ID, "GAL Contacts", "IPF.Contact.GalContacts", True)
+        self.schema.createGenericFolder(self, PrivateFIDs.JUNK, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.JUNK, "IPF.Note", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.CONVERSATION_ACTION_SETTINGS, PrivateFIDs.IPMSUBTREE, self.user.ID, "Conversation Action Settings", "IPF.Configuration", True)
+        self.schema.createGenericFolder(self, PrivateFIDs.DEFERRED_ACTION, PrivateFIDs.ROOT, self.user.ID, "Deferred Action", None, False)
         self.createSearchFolder(PrivateFIDs.SPOOLER_QUEUE, PrivateFIDs.ROOT, self.user.ID, "Spooler Queue", "IPF.Note")
-        self.createGenericFolder(PrivateFIDs.COMMON_VIEWS, PrivateFIDs.ROOT, self.user.ID, "Common Views", None, False)
-        self.createGenericFolder(PrivateFIDs.SCHEDULE, PrivateFIDs.ROOT, self.user.ID, "Schedule", None, False)
-        self.createGenericFolder(PrivateFIDs.FINDER, PrivateFIDs.ROOT, self.user.ID, "Finder", None, False)
-        self.createGenericFolder(PrivateFIDs.VIEWS, PrivateFIDs.ROOT, self.user.ID, "Views", None, False)
-        self.createGenericFolder(PrivateFIDs.SHORTCUTS, PrivateFIDs.ROOT, self.user.ID, "Shortcuts", None, False)
-        self.createGenericFolder(PrivateFIDs.SYNC_ISSUES, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.SYNC, "IPF.Note", False)
-        self.createGenericFolder(PrivateFIDs.CONFLICTS, PrivateFIDs.SYNC_ISSUES, self.user.ID, FolderNames.CONFLICT, "IPF.Note", False)
-        self.createGenericFolder(PrivateFIDs.LOCAL_FAILURES, PrivateFIDs.SYNC_ISSUES, self.user.ID, FolderNames.LOCAL, "IPF.Note", False)
-        self.createGenericFolder(PrivateFIDs.SERVER_FAILURES, PrivateFIDs.SYNC_ISSUES, self.user.ID, FolderNames.SERVER, "IPF.Note", False)
-        self.createGenericFolder(PrivateFIDs.LOCAL_FREEBUSY, PrivateFIDs.ROOT, self.user.ID, "Freebusy Data", None, False)
-        self.exmdb.add(self.Permissions(folderID=PrivateFIDs.CALENDAR, username="default", permission=Permissions.FREEBUSYSIMPLE))
-        self.exmdb.add(self.Permissions(folderID=PrivateFIDs.LOCAL_FREEBUSY, username="default", permission=Permissions.FREEBUSYSIMPLE))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=Misc.ALLOCATED_EID_RANGE))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self.lastCn))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_CID, value=0))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self.lastArt))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.SEARCH_STATE, value=0))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=0))
-        self.exmdb.add(self.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
+        self.schema.createGenericFolder(self, PrivateFIDs.COMMON_VIEWS, PrivateFIDs.ROOT, self.user.ID, "Common Views", None, False)
+        self.schema.createGenericFolder(self, PrivateFIDs.SCHEDULE, PrivateFIDs.ROOT, self.user.ID, "Schedule", None, False)
+        self.schema.createGenericFolder(self, PrivateFIDs.FINDER, PrivateFIDs.ROOT, self.user.ID, "Finder", None, False)
+        self.schema.createGenericFolder(self, PrivateFIDs.VIEWS, PrivateFIDs.ROOT, self.user.ID, "Views", None, False)
+        self.schema.createGenericFolder(self, PrivateFIDs.SHORTCUTS, PrivateFIDs.ROOT, self.user.ID, "Shortcuts", None, False)
+        self.schema.createGenericFolder(self, PrivateFIDs.SYNC_ISSUES, PrivateFIDs.IPMSUBTREE, self.user.ID, FolderNames.SYNC, "IPF.Note", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.CONFLICTS, PrivateFIDs.SYNC_ISSUES, self.user.ID, FolderNames.CONFLICT, "IPF.Note", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.LOCAL_FAILURES, PrivateFIDs.SYNC_ISSUES, self.user.ID, FolderNames.LOCAL, "IPF.Note", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.SERVER_FAILURES, PrivateFIDs.SYNC_ISSUES, self.user.ID, FolderNames.SERVER, "IPF.Note", False)
+        self.schema.createGenericFolder(self, PrivateFIDs.LOCAL_FREEBUSY, PrivateFIDs.ROOT, self.user.ID, "Freebusy Data", None, False)
+        self.exmdb.add(self.schema.Permissions(folderID=PrivateFIDs.CALENDAR, username="default", permission=Permissions.FREEBUSYSIMPLE))
+        self.exmdb.add(self.schema.Permissions(folderID=PrivateFIDs.LOCAL_FREEBUSY, username="default", permission=Permissions.FREEBUSYSIMPLE))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.MAILBOX_GUID, value=str(GUID.random())))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.CURRENT_EID, value=0x100))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.MAXIMUM_EID, value=Misc.ALLOCATED_EID_RANGE))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.LAST_CHANGE_NUMBER, value=self.lastCn))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.LAST_CID, value=0))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.LAST_ARTICLE_NUMBER, value=self.lastArt))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.SEARCH_STATE, value=0))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.DEFAULT_PERMISSION, value=0))
+        self.exmdb.add(self.schema.Configurations(ID=ConfigIDs.ANONYMOUS_PERMISSION, value=0))
         self.exmdb.commit()
         self.exmdb = None
 

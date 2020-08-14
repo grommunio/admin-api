@@ -320,6 +320,6 @@ def defaultObjectHandler(Model, ID, name, filters=()):
     if request.method == "GET":
         return defaultDetailQuery(Model, ID, name, filters)
     elif request.method == "PATCH":
-        return defaultPatch(Model, ID, name, filters)
+        return defaultPatch(Model, ID, name, None, filters)
     elif request.method == "DELETE":
         return defaultDelete(Model, ID, name, filters)

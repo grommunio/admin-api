@@ -100,5 +100,5 @@ class Domain(Common):
         self.ReplcaMapping = ReplcaMapping
 
     def createGenericFolder(self, ctx, folderID: int, parentID: int, domainID: int, displayName: str, containerClass: str = None):
-        Common.createGenericFolder(self, folderID, parentID, domainID, displayName, containerClass)
+        Common.createGenericFolder(self, ctx, folderID, parentID, domainID, displayName, containerClass)
         ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.ARTICLENUMBERNEXT, propval=1))

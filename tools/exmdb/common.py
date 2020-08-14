@@ -207,9 +207,9 @@ class Common:
         currentEid = ctx.lastEid+1
         ctx.lastEid += Misc.ALLOCATED_EID_RANGE
         ctx.lastEid
-        ctx.exmdb.add(self.AllocatedEids(begin=currentEid, end=self._lastEid, time=int(time.time()), isSystem=1))
+        ctx.exmdb.add(self.AllocatedEids(begin=currentEid, end=ctx.lastEid, time=int(time.time()), isSystem=1))
         ctx.lastCn += 1
-        ctx.exmdb.add(self.Folders(ID=folderID, parentID=parentID, changeNum=self._lastCn, currentEid=currentEid, maxEid=self._lastEid))
+        ctx.exmdb.add(self.Folders(ID=folderID, parentID=parentID, changeNum=ctx.lastCn, currentEid=currentEid, maxEid=ctx.lastEid))
         ctx.lastArt += 1
         ntNow = ntTime()
         xidData = XID.fromDomainID(objectID, ctx.lastCn).serialize()
@@ -218,7 +218,7 @@ class Common:
         ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDCOUNTTOTAL, propval=0))
         ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDFOLDERTOTAL, propval=0))
         ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.HIERARCHYCHANGENUMBER, propval=0))
-        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.INTERNETARTICLENUMBER, propval=self._lastArt))
+        ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.INTERNETARTICLENUMBER, propval=ctx.lastArt))
         ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DISPLAYNAME, propval=displayName))
         ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.COMMENT, propval=""))
         ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CREATIONTIME, propval=ntNow))

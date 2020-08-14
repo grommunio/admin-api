@@ -48,7 +48,7 @@ def areaListCreate():
     except FileExistsError:
         return jsonify(message="Cannot create storage area: Directory exists."), 400
     except OSError as err:
-        return jsonify(message="Cannot create storage area: " + " - ".join(str(arg) for arg in err.args))
+        return jsonify(message="Cannot create storage area: " + " - ".join(str(arg) for arg in err.args)), 400
     DB.session.add(area)
     try:
         DB.session.commit()

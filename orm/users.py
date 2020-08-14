@@ -245,7 +245,7 @@ class Users(DataModel, DB.Model):
                                     .filter(Users.groupID == group.ID).first()
             if group.maxUser <= groupUsers.count:
                 return "Maximum number of group users reached"
-            if group.maxSize < groupUsers.size+data.get("maxSize"):
+            if group.maxSize < (groupUsers.size or 0)+data.get("maxSize"):
                 return "Maximum group size reached"
             data["groupPrivileges"] = group.privilegeBits
             data["groupStatus"] =  group.groupStatus
