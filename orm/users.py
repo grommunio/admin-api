@@ -14,6 +14,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 
 import crypt
+from datetime import datetime
 
 
 class Groups(DataModel, DB.Model):
@@ -116,7 +117,7 @@ class Users(DataModel, DB.Model):
     title = DB.Column("title", DB.VARCHAR(128), nullable=False, server_default="")
     memo = DB.Column("memo", DB.VARCHAR(128), nullable=False, server_default="")
     domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
-    groupID = DB.Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True)
+    groupID = DB.Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
     maildir = DB.Column("maildir", DB.VARCHAR(128), nullable=False, server_default="")
     maxSize = DB.Column("max_size", INTEGER(10, unsigned=True), nullable=False)
     maxFile = DB.Column("max_file", INTEGER(10, unsigned=True), nullable=False)
@@ -124,7 +125,7 @@ class Users(DataModel, DB.Model):
     lang = DB.Column("lang", DB.VARCHAR(32), nullable=False, server_default="")
     timezone = DB.Column("timezone", DB.VARCHAR(64), nullable=False, server_default="")
     mobilePhone = DB.Column("mobile_phone", DB.VARCHAR(20), nullable=False, server_default="")
-    privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False)
+    privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     subType = DB.Column("sub_type", TINYINT, nullable=False, server_default='0')
     addressStatus = DB.Column("address_status", TINYINT, nullable=False, server_default="0")
     addressType = DB.Column("address_type", TINYINT, nullable=False, server_default="0")
@@ -247,6 +248,8 @@ class Users(DataModel, DB.Model):
                 return "Maximum group size reached"
             data["groupPrivileges"] = group.privilegeBits
             data["groupStatus"] =  group.groupStatus
+        else:
+            data["groupID"] = 0
         data["domainPrivileges"] = domain.privilegeBits
         data["domainStatus"] = domain.domainStatus
         data["aliases"] = [alias.aliasname for alias in Aliases.query.filter(Aliases.mainname == domain.domainname).all()]
@@ -259,6 +262,7 @@ class Users(DataModel, DB.Model):
                 return "Domain specifications mismatch."
         else:
             data["username"] += "@"+domain.domainname
+        data["createDay"] = datetime.now()
 
     def __init__(self, props, isAlias=False, privileges=None, status=None, *args, **kwargs):
         aliases = props.pop("aliases", [])
