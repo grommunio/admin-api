@@ -17,6 +17,7 @@ def parseArgs():
     from argparse import ArgumentParser
     parser = ArgumentParser(description="Grammm admin backend")
     parser.add_argument("command", default="run", choices=("run", "create-db"), nargs="?")
+    parser.add_argument("--version", "-v", action="store_true")
     return parser.parse_args()
 
 
@@ -43,9 +44,16 @@ def createDB():
         exit(1)
 
 
+def printVersion():
+    from api import backendVersion
+    print(backendVersion)
+    exit(0)
+
 if __name__ == '__main__':
     args = parseArgs()
-    if args.command == "create-db":
+    if args.version:
+        printVersion()
+    elif args.command == "create-db":
         createDB()
     elif args.command == "run":
         run()

@@ -16,7 +16,7 @@ from . import defaultListHandler, defaultObjectHandler
 
 from tools.misc import AutoClean, propvals2dict
 from tools.storage import UserSetup
-from tools.queries import getFolderListQuery
+from tools.pyexmdb import pyexmdb
 
 from orm import DB
 if DB is not None:
@@ -95,6 +95,7 @@ def getPublicFoldersList(domainID):
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    table = getFolderListQuery(domain.homedir)
+    client = pyexmdb.ExmdbClient("127.0.0.1", 5000, "/var/lib/grammm/d", False)
+    table = pyexmdb.getFolderList(client, domain.homedir)
     folders = [propvals2dict(entry) for entry in table.entries]
     return jsonify(data=folders)

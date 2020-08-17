@@ -16,6 +16,35 @@ class _ReverseLookup:
         return cls._lookup.get(value, default)
 
 
+class PropTypes(_ReverseLookup):
+    UNSPECIFIED = 0x0000
+    SHORT = 0x0002
+    LONG = 0x0003
+    FLOAT = 0x0004
+    DOUBLE = 0x0005
+    CURRENCY = 0x0006
+    FLOATINGTIME = 0x0007
+    ERROR = 0x000a
+    BYTE = 0x000b
+    OBJECT = 0x000d
+    LONGLONG = 0x0014
+    STRING = 0x001e
+    WSTRING = 0x001f
+    FILETIME = 0x0040
+    GUID = 0x0048
+    SVREID = 0x00fb
+    RESTRICTION = 0x00fd
+    RULE = 0x00fe
+    BINARY = 0x0102
+    SHORT_ARRAY = 0x1002
+    LONG_ARRAY = 0x1003
+    LONGLONG_ARRAY = 0x1014
+    STRING_ARRAY = 0x101e
+    WSTRING_ARRAY = 0x101f
+    GUID_ARRAY = 0x1048
+    BINARY_ARRAY = 0x1102
+
+
 class PropTags(_ReverseLookup):
     ABPROVIDERID = 0x36150102
     ACCESS = 0x0FF40003

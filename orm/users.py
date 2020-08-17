@@ -236,11 +236,9 @@ class Users(DataModel, DB.Model):
         if domain.maxSize < (domainUsers.size or 0)+data.get("maxSize"):
             return "Maximum domain size reached"
         if data.get("groupID"):
-            group = Groups.query.filter(Groups.ID == data.get("groupID")).first()
+            group = Groups.query.filter(Groups.ID == data.get("groupID"), Groups.domainID == domain.ID).first()
             if group is None:
                 return "Invalid group"
-            if group.domainID != domain.ID:
-                return "Group must be in the same domain"
             groupUsers = Users.query.with_entities(func.count().label("count"), func.sum(Users.maxSize).label("size"))\
                                     .filter(Users.groupID == group.ID).first()
             if group.maxUser <= groupUsers.count:

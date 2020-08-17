@@ -10,8 +10,7 @@ import time
 
 from datetime import datetime
 
-from .constants import PropTags
-from .mapi.constants import PropTypes
+from .constants import PropTags, PropTypes
 from .rop import nxTime
 
 class AutoClean:
