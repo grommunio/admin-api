@@ -8,7 +8,7 @@
 namespace exmdbpp
 {
 
-uint8_t ConnectRequest::SIDLEN = 20;
+uint8_t ConnectRequest::SIDLEN = 15;
 static const std::string sidchars("0123456789abcdefghjklmnopqrstvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
 static std::mt19937_64 rng(ulong(std::chrono::system_clock::now().time_since_epoch().count()));
 
