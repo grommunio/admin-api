@@ -15,56 +15,72 @@ static std::mt19937_64 rng(ulong(std::chrono::system_clock::now().time_since_epo
 /**
  * @brief      Initialize a connection request
  */
-ConnectRequest::ConnectRequest(const std::string& prefix, bool isPrivate) : prefix(prefix), isPrivate(isPrivate)
+ConnectRequest::ConnectRequest(const std::string& prefix, bool isPrivate) :
+    prefix(prefix),
+    sessionID(mkSessionID()),
+    isPrivate(isPrivate)
+{}
+
+/**
+ * @brief      Write serialized request data to buffer
+ *
+ * @param      buff       Buffer to write to
+ */
+void ConnectRequest::serialize(IOBuffer& buff, const std::string& prefix, bool isPrivate, const std::string& sessionID)
+{buff << CallId::CONNECT << prefix << sessionID << isPrivate;}
+
+/**
+ * @brief      Generate session ID
+ *
+ * Creates a random session ID string of length SIDLEN.
+ *
+ * @return     String containing the sessionID
+ */
+std::string ConnectRequest::mkSessionID()
 {
+    std::string sessionID;
     sessionID.reserve(SIDLEN);
     for(uint8_t i = 0; i < SIDLEN;++i)
         sessionID += sidchars[rng()%sidchars.length()];
+    return sessionID;
 }
-
-/**
- * @brief      Serialize ConnectRequest
- *
- * @param      buff  Buffer to store serialized data in
- * @param      req   Request to serialize
- *
- * @return     Reference to the buffer
- */
-IOBuffer& operator<<(IOBuffer& buff, const ConnectRequest& req)
-{
-    buff << CallId::CONNECT << req.prefix << req.sessionID << req.isPrivate;
-    return buff;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @brief      Initialize load hierarchy table request
+ */
 LoadHierarchyTableRequest::LoadHierarchyTableRequest(const std::string& homedir, uint64_t folderId,
                                                      const std::string& username, uint8_t tableFlags) :
     homedir(homedir), folderId(folderId), username(username), tableFlags(tableFlags)
 {}
 
 /**
- * @brief      Serialize LoadHierarchyTableRequest
+ * @brief      Write serialized request data to buffer
  *
- * @param      buff  Buffer to store serialized data in
- * @param      req   Request to serialize
- *
- * @return     Reference to the buffer
+ * @param      buff       Buffer to write to
  */
-IOBuffer& operator<<(IOBuffer& buff, const LoadHierarchyTableRequest& req)
+void LoadHierarchyTableRequest::serialize(IOBuffer& buff, const std::string& homedir, uint64_t folderId,
+                                          const std::string& username, uint8_t tableFlags)
 {
-    buff << CallId::LOAD_HIERARCHY_TABLE << req.homedir << req.folderId << !req.username.empty();
-    if(!req.username.empty())
-        buff << req.username;
-    buff << req.tableFlags << false;
-    return buff;
+    buff << CallId::LOAD_HIERARCHY_TABLE << homedir << folderId << !username.empty();
+    if(!username.empty())
+        buff << username;
+    buff << tableFlags << false;
 }
 
+/**
+ * @brief      Deserialize response data
+ *
+ * @param      buff  Buffer containing the data
+ */
 Response<LoadHierarchyTableRequest>::Response(IOBuffer& buff)
 {buff >> tableId >> rowCount;}
 
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @brief      Initialize query table request
+ */
 QueryTableRequest::QueryTableRequest(const std::string& homedir, const std::string& username, uint32_t cpid, uint32_t tableId,
                                      const std::vector<uint32_t>& proptags, uint32_t startPos, uint32_t rowNeeded) :
     homedir(homedir), username(username), cpid(cpid), tableId(tableId), proptags(proptags), startPos(startPos),
@@ -72,25 +88,27 @@ QueryTableRequest::QueryTableRequest(const std::string& homedir, const std::stri
 {}
 
 /**
- * @brief      Serialize QueryTableRequest
+ * @brief      Write serialized request data to buffer
  *
- * @param      buff  Buffer to store serialized data in
- * @param      req   Request to serialize
- *
- * @return     Reference to the buffer
+ * @param      buff       Buffer to write to
  */
-IOBuffer& operator<<(IOBuffer& buff, const QueryTableRequest& req)
+void QueryTableRequest::serialize(IOBuffer& buff, const std::string& homedir, const std::string& username, uint32_t cpid,
+                                  uint32_t tableId,const std::vector<uint32_t>& proptags, uint32_t startPos, uint32_t rowNeeded)
 {
-    buff << CallId::QUERY_TABLE << req.homedir << !req.username.empty();
-    if(!req.username.empty())
-        buff << req.username;
-    buff << req.cpid << req.tableId << uint16_t(req.proptags.size());
-    for(uint32_t proptag : req.proptags)
+    buff << CallId::QUERY_TABLE << homedir << !username.empty();
+    if(!username.empty())
+        buff << username;
+    buff << cpid << tableId << uint16_t(proptags.size());
+    for(uint32_t proptag : proptags)
         buff << proptag;
-    buff << req.startPos << req.rowNeeded;
-    return buff;
+    buff << startPos << rowNeeded;
 }
 
+/**
+ * @brief      Deserialize response data
+ *
+ * @param      buff  Buffer containing the data
+ */
 Response<QueryTableRequest>::Response(IOBuffer& buff)
 {
     entries.resize(buff.pop<uint32_t>());
@@ -103,23 +121,21 @@ Response<QueryTableRequest>::Response(IOBuffer& buff)
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
+/**
+ * { item_description }
+ */
+/**
+ * @brief      Initialize unload table request
+ */
 UnloadTableRequest::UnloadTableRequest(const std::string& homedir, uint32_t tableId) : homedir(homedir), tableId(tableId)
 {}
 
 /**
- * @brief      Serialize UnloadTableRequest
+ * @brief      Write serialized request data to buffer
  *
- * @param      buff  Buffer to store serialized data in
- * @param      req   Request to serialize
- *
- * @return     Reference to the buffer
+ * @param      buff       Buffer to write to
  */
-IOBuffer& operator<<(IOBuffer& buff, const UnloadTableRequest& req)
-{
-    buff << CallId::UNLOAD_TABLE << req.homedir << req.tableId;
-    return buff;
-}
+void UnloadTableRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t tableId)
+{buff << CallId::UNLOAD_TABLE << homedir << tableId;}
 
 }

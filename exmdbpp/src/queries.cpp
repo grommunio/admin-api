@@ -20,12 +20,10 @@ namespace exmdbpp::queries
 Response<QueryTableRequest> getFolderList(ExmdbClient& client, const std::string& homedir)
 {
     uint64_t folderId = util::makeEidEx(1, PublicFid::IPMSUBTREE);
-    LoadHierarchyTableRequest lhtRequest(homedir, folderId, "", 0);
-    auto lhtResponse = client.send(lhtRequest);
+    auto lhtResponse = client.send<LoadHierarchyTableRequest>(homedir, folderId, "", 0);
     std::vector<uint32_t> proptags = {PropTag::FOLDERID, PropTag::DISPLAYNAME, PropTag::COMMENT, PropTag::CREATIONTIME};
-    QueryTableRequest qtRequest(homedir, "", 0, lhtResponse.tableId, proptags, 0, lhtResponse.rowCount);
-    auto qtResponse = client.send(qtRequest);
-    client.send(UnloadTableRequest(homedir, lhtResponse.tableId));client.send(UnloadTableRequest(homedir, lhtResponse.tableId));
+    auto qtResponse = client.send<QueryTableRequest>(homedir, "", 0, lhtResponse.tableId, proptags, 0, lhtResponse.rowCount);
+    client.send<UnloadTableRequest>(homedir, lhtResponse.tableId);
     return qtResponse;
 }
 

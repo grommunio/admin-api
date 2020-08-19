@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
- #include "structures.h"
+#include "structures.h"
 
 namespace exmdbpp
 {
@@ -33,6 +33,23 @@ template<class Request>
 inline Response<Request>::Response(IOBuffer&)
 {}
 
+/**
+ * @brief      Stream insertion operator overload for IOBuffer
+ *
+ * @param      buffer   Buffer to write data to
+ * @param      req      Request to serialize
+ *
+ * @tparam     Request  Type of the request
+ *
+ * @return     Reference to the buffer
+ */
+template<class Request>
+IOBuffer& operator<<(IOBuffer& buffer, const Request& req)
+{
+    req.serialize(buffer);
+    return buffer;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -47,9 +64,23 @@ struct ConnectRequest
     bool isPrivate;         ///< Whether private or public data is accessed
 
     static uint8_t SIDLEN;  ///< Number of charaters to use for session ID
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&, bool, const std::string& = mkSessionID());
+
+private:
+    static std::string mkSessionID();
 };
 
-IOBuffer& operator<<(IOBuffer&, const ConnectRequest&);
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void ConnectRequest::serialize(IOBuffer& buff) const
+{serialize(buff, prefix, isPrivate, sessionID);}
+
+///////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief      Load hierarchy table request
@@ -65,9 +96,18 @@ struct LoadHierarchyTableRequest
     uint64_t folderId;      ///< ID of the folder to view
     std::string username;   ///< [TODO] Find out what this is used for
     uint8_t tableFlags;     ///< [TODO] Find out what this is used for
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&, uint64_t, const std::string&, uint8_t);
 };
 
-IOBuffer& operator<<(IOBuffer&, const LoadHierarchyTableRequest&);
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void LoadHierarchyTableRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir, folderId, username, tableFlags);}
 
 /**
  * @brief      Response specialization for LoadHierarchyTableRequest
@@ -80,6 +120,8 @@ struct Response<LoadHierarchyTableRequest>
     uint32_t tableId;   ///< ID of the created view
     uint32_t rowCount;  ///< Number of rows in the view
 };
+
+///////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief      Query table request
@@ -97,9 +139,18 @@ struct QueryTableRequest
     std::vector<uint32_t> proptags;
     uint32_t startPos;
     uint32_t rowNeeded;
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&, const std::string&, uint32_t, uint32_t, const std::vector<uint32_t>&, uint32_t, uint32_t);
 };
 
-IOBuffer& operator<<(IOBuffer&, const QueryTableRequest&);
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void QueryTableRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir, username, cpid, tableId, proptags, startPos, rowNeeded);}
 
 /**
  * @brief      Response specialization for QueryTableRequest
@@ -113,6 +164,8 @@ struct Response<QueryTableRequest>
     std::vector<std::vector<TaggedPropval> > entries;
 };
 
+///////////////////////////////////////////////////////////////////////////////
+
 /**
  * @brief      Unload table request
  *
@@ -124,8 +177,17 @@ struct UnloadTableRequest
 
     std::string homedir;
     uint32_t tableId;
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&, uint32_t);
 };
 
-IOBuffer& operator<<(IOBuffer&, const UnloadTableRequest&);
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void UnloadTableRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir, tableId);}
 
 }
