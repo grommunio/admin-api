@@ -212,7 +212,7 @@ class Common:
         ctx.exmdb.add(self.Folders(ID=folderID, parentID=parentID, changeNum=ctx.lastCn, currentEid=currentEid, maxEid=ctx.lastEid))
         ctx.lastArt += 1
         ntNow = ntTime()
-        xidData = XID.fromDomainID(objectID, ctx.lastCn).serialize()
+        xidData = b'\x16'+XID.fromDomainID(objectID, ctx.lastCn).serialize()
         if containerClass is not None:
             ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.CONTAINERCLASS, propval=containerClass))
         ctx.exmdb.add(self.FolderProperties(folderID=folderID, proptag=PropTags.DELETEDCOUNTTOTAL, propval=0))
