@@ -339,7 +339,7 @@ class UserSetup(SetupContext):
         self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.HIERREV, propval=ntNow))
         self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.LOCALCOMMITTIMEMAX, propval=ntNow))
         self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.CHANGEKEY, propval=xidData))
-        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.PREDECESSORCHANGELIST, propval=xidData))
+        self.exmdb.add(self.schema.FolderProperties(folderID=folderID, proptag=PropTags.PREDECESSORCHANGELIST, propval=b'\x16'+xidData))
 
     def createExmdb(self):
         """Create exchange SQLite database for user.
