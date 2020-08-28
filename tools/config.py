@@ -20,7 +20,8 @@ _defaultConfig_ = {"openapi": {
                      "disableDB": False,
                      "dataPath": "/usr/share/grammm/common",
                      "propnames": "propnames.txt",
-                     "portrait": "admin/api/portrait.jpg"
+                     "portrait": "admin/api/portrait.jpg",
+                     "domainStoreRatio": 10
                    },
                    "security": {
                      "requireAuth": True

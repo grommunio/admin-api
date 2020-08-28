@@ -202,6 +202,7 @@ class DomainSetup(SetupContext):
         """
         dbPath = os.path.join(self.domain.homedir, "exmdb", "exchange.sqlite3")
         engine = create_engine("sqlite:///"+dbPath)
+        sizeFactor = 1024*1024/Config["options"]["domainStoreRatio"]
         self.schema._Schema.metadata.create_all(engine)
         self.exmdb = sessionmaker(bind=engine)()
         self.exmdb.execute("PRAGMA journal_mode = WAL;")
@@ -215,9 +216,9 @@ class DomainSetup(SetupContext):
         except FileNotFoundError:
             logging.warn("Could not open {} - skipping.".format(dataPath))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.CREATIONTIME, value=ntTime()))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.domain.maxSize))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.domain.maxSize))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.domain.maxSize))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.domain.maxSize*sizeFactor))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.domain.maxSize*sizeFactor))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.domain.maxSize*sizeFactor))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
@@ -368,9 +369,9 @@ class UserSetup(SetupContext):
         self.exmdb.add(self.schema.ReceiveTable(cls="IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
         self.exmdb.add(self.schema.ReceiveTable(cls="REPORT.IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.CREATIONTIME, value=ntNow))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.user.maxSize))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.user.maxSize))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.user.maxSize))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.user.maxSize*1024))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.user.maxSize*1024))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.user.maxSize*1024))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.OUTOFOFFICESTATE, value=0))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
