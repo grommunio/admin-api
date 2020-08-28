@@ -36,6 +36,13 @@ class AreaList(DataModel, DB.Model):
                       Int("maxFiles", flags="patch"),
                       Int("storeLevels", flags="init")),)
 
+    @staticmethod
+    def checkCreateParams(data):
+        if data.get("dataType") not in (AreaList.USER, AreaList.DOMAIN, AreaList.INDEPENDENT):
+            return "Invalid data type"
+        if "storeLevels" not in data:
+            data["storeLevels"] = 1 if data["dataType"] == AreaList.DOMAIN else 2
+
     USER = 0
     DOMAIN = 1
     INDEPENDENT = 2

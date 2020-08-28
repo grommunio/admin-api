@@ -48,7 +48,7 @@ class Domains(DataModel, DB.Model):
 
     _dictmapping_ = ((Id(),),
                      (Id("orgID", flags="patch"),
-                      Text("domainname", flags="patch"),
+                      Text("domainname", flags="init"),
                       Text("homedir"),
                       Text("media", flags="patch"),
                       Int("maxSize", flags="patch"),

@@ -234,6 +234,8 @@ class Users(DataModel, DB.Model):
                                  .filter(Users.domainID == domain.ID).first()
         if domain.maxUser <= domainUsers.count:
             return "Maximum number of domain users reached"
+        if data.get("maxSize") is None:
+            return "Maximum size not specified"
         if domain.maxSize < (domainUsers.size or 0)+data.get("maxSize"):
             return "Maximum domain size reached"
         if data.get("groupID"):
