@@ -27,4 +27,48 @@ Response<QueryTableRequest> getFolderList(ExmdbClient& client, const std::string
     return qtResponse;
 }
 
+/**
+ * @brief      Create a public folder
+ *
+ * @param      client      Client with active server connection
+ * @param      homedir     Home directory path of the domain
+ * @param      domainId    Domain ID
+ * @param      folderName  Name of the new folder
+ * @param      container   Folder container class
+ * @param      comment     Comment to attach
+ *
+ * @return     Response returned by create folder request
+ */
+Response<CreateFolderByPropertiesRequest> createPublicFolder(ExmdbClient& client, const std::string& homedir, uint32_t domainId,
+                                  const std::string& folderName, const std::string& container, const std::string& comment)
+{
+    auto acResponse = client.send<AllocateCnRequest>(homedir);
+    std::vector<TaggedPropval> propvals;
+    uint64_t now = util::ntTime();
+    SizedXID xid(22, GUID::fromDomainId(domainId), util::valueToGc(acResponse.changeNum));
+    IOBuffer tmpbuff;
+    propvals.reserve(10);
+    tmpbuff.reserve(128);
+    propvals.emplace_back(PropTag::PARENTFOLDERID, util::makeEidEx(1, PublicFid::IPMSUBTREE));
+    propvals.emplace_back(PropTag::FOLDERTYPE, FolderType::GENERIC);
+    propvals.emplace_back(PropTag::DISPLAYNAME, folderName, false);
+    propvals.emplace_back(PropTag::COMMENT, comment, false);
+    propvals.emplace_back(PropTag::CREATIONTIME, now);
+    propvals.emplace_back(PropTag::LASTMODIFICATIONTIME, now);
+    propvals.emplace_back(PropTag::CHANGENUMBER, acResponse.changeNum);
+
+    tmpbuff.start();
+    xid.xid.serialize(tmpbuff, xid.size);
+    tmpbuff.finalize();
+    propvals.emplace_back(PropTag::CHANGEKEY, tmpbuff);
+
+    tmpbuff.start();
+    xid.serialize(tmpbuff);
+    tmpbuff.finalize();
+    propvals.emplace_back(PropTag::PREDECESSORCHANGELIST, tmpbuff, false);
+    if(!container.empty())
+        propvals.emplace_back(PropTag::CONTAINERCLASS, container);
+    return client.send<CreateFolderByPropertiesRequest>(homedir, 0, propvals);
+}
+
 }

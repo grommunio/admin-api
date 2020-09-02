@@ -17,6 +17,7 @@ from . import defaultListHandler, defaultObjectHandler
 from tools.misc import AutoClean, propvals2dict
 from tools.storage import UserSetup
 from tools.pyexmdb import pyexmdb
+from tools.config import Config
 
 from orm import DB
 if DB is not None:
@@ -95,7 +96,21 @@ def getPublicFoldersList(domainID):
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    client = pyexmdb.ExmdbClient("127.0.0.1", 5000, "/var/lib/grammm/d", False)
+    client = pyexmdb.ExmdbClient("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
     table = pyexmdb.getFolderList(client, domain.homedir)
     folders = [propvals2dict(entry) for entry in table.entries]
     return jsonify(data=folders)
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["POST"])
+@api.secure(requireDB=True)
+def createPublicFolder(domainID):
+    domain = Domains.query.filter(Domains.ID == domainID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    data = request.json
+    client = pyexmdb.ExmdbClient("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
+    response = pyexmdb.createPublicFolder(client, domain.homedir, domain.ID, data["name"], data["container"], data["comment"])
+    if response.folderId == 0:
+        return jsonify(message="Folder creation failed"), 500
+    return jsonify(message="Success", folderID=response.folderId), 201

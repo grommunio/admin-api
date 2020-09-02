@@ -21,7 +21,8 @@ _defaultConfig_ = {"openapi": {
                      "dataPath": "/usr/share/grammm/common",
                      "propnames": "propnames.txt",
                      "portrait": "admin/api/portrait.jpg",
-                     "domainStoreRatio": 10
+                     "domainStoreRatio": 10,
+                     "domainPrefix": "/d-data/"
                    },
                    "security": {
                      "requireAuth": True

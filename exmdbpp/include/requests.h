@@ -44,7 +44,7 @@ inline Response<Request>::Response(IOBuffer&)
  * @return     Reference to the buffer
  */
 template<class Request>
-IOBuffer& operator<<(IOBuffer& buffer, const Request& req)
+inline IOBuffer& operator<<(IOBuffer& buffer, const Request& req)
 {
     req.serialize(buffer);
     return buffer;
@@ -161,7 +161,7 @@ struct Response<QueryTableRequest>
     Response() = default;
     Response(IOBuffer&);
 
-    std::vector<std::vector<TaggedPropval> > entries;
+    std::vector<std::vector<TaggedPropval> > entries; ///< Returned rows of entries
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -189,5 +189,77 @@ struct UnloadTableRequest
  */
 inline void UnloadTableRequest::serialize(IOBuffer& buff) const
 {serialize(buff, homedir, tableId);}
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Change number allocation request
+ */
+struct AllocateCnRequest
+{
+    AllocateCnRequest(const std::string&);
+
+    std::string homedir;
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&);
+};
+
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void AllocateCnRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir);}
+
+/**
+ * @brief      Response specialization for AllocatCnRequest
+ */
+template<>
+struct Response<AllocateCnRequest>
+{
+    Response(IOBuffer&);
+
+    uint64_t changeNum; ///< Newly allocated change number
+};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Create folder defined by list of properties
+ */
+struct CreateFolderByPropertiesRequest
+{
+    CreateFolderByPropertiesRequest(const std::string&, uint32_t, const std::vector<TaggedPropval>&);
+
+    std::string homedir;
+    uint32_t cpid;
+    std::vector<TaggedPropval> propvals;
+
+    void serialize(IOBuffer&);
+    static void serialize(IOBuffer&, const std::string&, uint32_t, const std::vector<TaggedPropval>&);
+};
+
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+
+inline void CreateFolderByPropertiesRequest::serialize(IOBuffer& buff)
+{serialize(buff, homedir, cpid, propvals);}
+
+/**
+ * @brief      Response specialization for CreateFolderByPropertiesRequest
+ */
+template<>
+struct Response<CreateFolderByPropertiesRequest>
+{
+    Response() = default;
+    Response(IOBuffer&);
+
+    uint64_t folderId; ///< ID of the newly cerated folder
+};
 
 }

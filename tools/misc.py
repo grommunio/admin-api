@@ -48,7 +48,11 @@ class AutoClean:
 def propvals2dict(vals: list) -> dict:
     def prop2val(prop):
         if prop.type == PropTypes.FILETIME:
-            return datetime.fromtimestamp(nxTime(prop.value)).strftime("%Y-%m-%d %H:%M:%S")
-        return prop.value
+            return datetime.fromtimestamp(nxTime(int(prop.toString()))).strftime("%Y-%m-%d %H:%M:%S")
+        elif prop.type in PropTypes.intTypes:
+            return int(prop.toString())
+        elif prop.type in PropTypes().floatTypes:
+            return float(prop.toString())
+        return prop.toString()
 
     return {PropTags.lookup(prop.tag).lower(): prop2val(prop) for prop in vals}

@@ -122,9 +122,6 @@ Response<QueryTableRequest>::Response(IOBuffer& buff)
 }
 
 /**
- * { item_description }
- */
-/**
  * @brief      Initialize unload table request
  */
 UnloadTableRequest::UnloadTableRequest(const std::string& homedir, uint32_t tableId) : homedir(homedir), tableId(tableId)
@@ -137,5 +134,62 @@ UnloadTableRequest::UnloadTableRequest(const std::string& homedir, uint32_t tabl
  */
 void UnloadTableRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t tableId)
 {buff << CallId::UNLOAD_TABLE << homedir << tableId;}
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Initialize change number allocation request
+ */
+
+AllocateCnRequest::AllocateCnRequest(const std::string& homedir) : homedir(homedir)
+{}
+
+/**
+ * @brief      Write serialized request data to buffer
+ *
+ * @param      buff       Buffer to write to
+ */
+void AllocateCnRequest::serialize(IOBuffer& buff, const std::string& homedir)
+{buff << CallId::ALLOCATE_CN << homedir;}
+
+
+/**
+ * @brief      Deserialize response data
+ *
+ * @param      buff  Buffer containing the data
+ */
+Response<AllocateCnRequest>::Response(IOBuffer& buff) : changeNum(buff.pop<uint64_t>())
+{}
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Initialize folder creation request
+ */
+CreateFolderByPropertiesRequest::CreateFolderByPropertiesRequest(const std::string& homedir, uint32_t cpid,
+                                                                 const std::vector<TaggedPropval>& propvals)
+    : homedir(homedir), cpid(cpid), propvals(propvals)
+{}
+
+/**
+ * @brief      Write serialized request data to buffer
+ *
+ * @param      buff       Buffer to write to
+ */
+void CreateFolderByPropertiesRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid,
+                                                const std::vector<TaggedPropval>& propvals)
+{
+    buff << CallId::CREATE_FOLDER_BY_PROPERTIES << homedir << cpid << uint16_t(propvals.size());
+    for(const TaggedPropval& propval : propvals)
+        propval.serialize(buff);
+}
+
+/**
+ * @brief      Deserialize response data
+ *
+ * @param      buff  Buffer containing the data
+ */
+Response<CreateFolderByPropertiesRequest>::Response(IOBuffer& buff) : folderId(buff.pop<uint64_t>())
+{}
 
 }

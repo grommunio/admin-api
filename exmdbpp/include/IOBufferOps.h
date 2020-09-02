@@ -1,10 +1,38 @@
 #pragma once
 
+#include <array>
+
 #include "IOBuffer.h"
 #include <endian.h>
 
 namespace exmdbpp
 {
+
+/**
+ * @brief      Insert array of values into IOBuffer
+ *
+ * Inserts each value into the buffer using operator<< for correct
+ * serialization.
+ *
+ * Only inserts the values without any length information or terminating
+ * marker.
+ *
+ * @param      buff    Buffer to insert into
+ * @param      values  Array of values to insert
+ *
+ * @tparam     T       Type of the values
+ * @tparam     N       Number of elements
+ *
+ * @return     Reference to the buffer
+ */
+template<typename T, size_t N>
+inline IOBuffer& operator<<(IOBuffer& buff, const std::array<T, N>& values)
+{
+    for(const T& value : values)
+        buff << value;
+    return buff;
+}
+
 
 /**
  * @brief      Insert uint8_t value into IOBuffer

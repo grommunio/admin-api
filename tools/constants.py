@@ -44,6 +44,9 @@ class PropTypes(_ReverseLookup):
     GUID_ARRAY = 0x1048
     BINARY_ARRAY = 0x1102
 
+    intTypes = {BYTE, SHORT, LONG, ERROR, LONGLONG, FILETIME, CURRENCY}
+    floatTypes = {FLOAT, DOUBLE, FLOATINGTIME}
+
 
 class PropTags(_ReverseLookup):
     ABPROVIDERID = 0x36150102

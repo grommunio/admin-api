@@ -39,6 +39,13 @@ static const uint64_t CUSTOM = 0x05;
 }
 
 
+namespace exmdbpp::FolderType
+{
+static const uint8_t ROOT = 0x0;
+static const uint8_t GENERIC = 0x1;
+static const uint8_t SEARCH = 0x2;
+}
+
 namespace exmdbpp::PropvalType
 {
 static const uint16_t UNSPECIFIED = 0x0000;

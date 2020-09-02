@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.4.0
+  version: 0.5.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -399,6 +399,50 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/publicFolder'
+    post:
+      summary: Create a new public folder
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      tags:
+        - Domain Admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, container, comment]
+              additionalProperties: false
+              properties:
+                name:
+                  type: string
+                  description: Name of the folder
+                container:
+                  type: string
+                  description: Container class
+                  enum: [IPF.Note, IPF.Contact, IPF.Appointment, IPF.Stickynote, IPF.Task]
+                comment:
+                  type: string
+      responses:
+        '201':
+          description: Folder creation successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  folderID:
+                    type: integer
+                    description: ID of the created Folder
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
 
 components:
   parameters:
@@ -436,7 +480,7 @@ components:
       pattern: '^\d{4}-\d{2}-\d{2}$'
     dateTime:
       type: string
-      pattern: '^\d{4}-\d{2}-\d{2}$ \d{2}:\d{2}:\d{2}'
+      pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
     areaData:
       type: object
       additionalProperties: false

@@ -1,4 +1,5 @@
 #include <endian.h>
+#include <ctime>
 
 #include "util.h"
 
@@ -18,7 +19,24 @@ uint64_t makeEid(uint16_t replid, uint64_t gc)
 uint64_t makeEidEx(uint16_t replid, uint64_t value)
 {return makeEid(replid, valueToGc(value));}
 
+/**
+ * @brief      Convert Windows NT timestamp to UNIX timestamp
+ *
+ * @param      ntTime  Windows NT timestamp
+ *
+ * @return     UNIX timestamp
+ */
 time_t nxTime(uint64_t ntTime)
 {return ntTime/10000000-11644473600;}
+
+/**
+ * @brief      Convert UNIX timestamp to Windows NT timestamp
+ *
+ * @param      nxTime  UNIX timestamp
+ *
+ * @return     Windows NT timestamp
+ */
+uint64_t ntTime(time_t nxTime)
+{return (uint64_t(nxTime+11644473600))*10000000;}
 
 }

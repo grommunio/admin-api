@@ -39,3 +39,4 @@ Further parameters can be set in the `options` object:
 - `propnames` (`string`, default: `propnames.txt`): File containing the list of named properties, relative to `dataPath`
 - `portrait` (`string`, default: `admin/api/portrait.jpg`): File containing the default portrait image, relative to `dataPath`
 - `domainStoreRatio` (`int`, default: `10`): Mysterious storage factor for `domain.maxSize`
+- `domainPrefix` (`string`, default: `/d-data/`): Prefix used for domain exmdb connections
