@@ -114,3 +114,16 @@ def createPublicFolder(domainID):
     if response.folderId == 0:
         return jsonify(message="Folder creation failed"), 500
     return jsonify(message="Success", folderID=response.folderId), 201
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>", methods=["DELETE"])
+@api.secure(requireDB=True)
+def deletePublicFolder(domainID, folderID):
+    domain = Domains.query.filter(Domains.ID == domainID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    client = pyexmdb.ExmdbClient("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
+    response = pyexmdb.deletePublicFolder(client, domain.homedir, folderID)
+    if not response.success:
+        return jsonify(message="Folder deletion failed"), 500
+    return jsonify(message="Success")

@@ -37,7 +37,7 @@ Response<QueryTableRequest> getFolderList(ExmdbClient& client, const std::string
  * @param      container   Folder container class
  * @param      comment     Comment to attach
  *
- * @return     Response returned by create folder request
+ * @return     Response returned by the server
  */
 Response<CreateFolderByPropertiesRequest> createPublicFolder(ExmdbClient& client, const std::string& homedir, uint32_t domainId,
                                   const std::string& folderName, const std::string& container, const std::string& comment)
@@ -70,5 +70,17 @@ Response<CreateFolderByPropertiesRequest> createPublicFolder(ExmdbClient& client
         propvals.emplace_back(PropTag::CONTAINERCLASS, container);
     return client.send<CreateFolderByPropertiesRequest>(homedir, 0, propvals);
 }
+
+/**
+ * @brief      Delete public folder
+ *
+ * @param      client    Client with active server connection
+ * @param      homedir   Home directory path of the domain
+ * @param      folderId  Id of the folder to delete
+ *
+ * @return     Response returned by the server
+ */
+Response<DeleteFolderRequest> deletePublicFolder(ExmdbClient& client, const std::string& homedir, uint64_t folderId)
+{return client.send<DeleteFolderRequest>(homedir, 0, folderId, true);}
 
 }

@@ -237,7 +237,7 @@ struct CreateFolderByPropertiesRequest
     uint32_t cpid;
     std::vector<TaggedPropval> propvals;
 
-    void serialize(IOBuffer&);
+    void serialize(IOBuffer&) const;
     static void serialize(IOBuffer&, const std::string&, uint32_t, const std::vector<TaggedPropval>&);
 };
 
@@ -246,8 +246,7 @@ struct CreateFolderByPropertiesRequest
  *
  * @param      buff  Buffer to write data to
  */
-
-inline void CreateFolderByPropertiesRequest::serialize(IOBuffer& buff)
+inline void CreateFolderByPropertiesRequest::serialize(IOBuffer& buff) const
 {serialize(buff, homedir, cpid, propvals);}
 
 /**
@@ -260,6 +259,44 @@ struct Response<CreateFolderByPropertiesRequest>
     Response(IOBuffer&);
 
     uint64_t folderId; ///< ID of the newly cerated folder
+};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Delete folder
+ */
+struct DeleteFolderRequest
+{
+    DeleteFolderRequest(const std::string&, uint32_t, uint64_t, bool);
+
+    std::string homedir;
+    uint32_t cpid;
+    uint64_t folderId;
+    bool hard;
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&, uint32_t, uint64_t, bool);
+};
+
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void DeleteFolderRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir, cpid, folderId, hard);}
+
+/**
+ * @brief      Response specialization for DeleteFolderRequest
+ */
+template<>
+struct Response<DeleteFolderRequest>
+{
+    Response() = default;
+    Response(IOBuffer&);
+
+    bool success;
 };
 
 }

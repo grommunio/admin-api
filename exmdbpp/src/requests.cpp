@@ -192,4 +192,29 @@ void CreateFolderByPropertiesRequest::serialize(IOBuffer& buff, const std::strin
 Response<CreateFolderByPropertiesRequest>::Response(IOBuffer& buff) : folderId(buff.pop<uint64_t>())
 {}
 
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Initialize folder deletion request
+ */
+DeleteFolderRequest::DeleteFolderRequest(const std::string& homedir, uint32_t cpid, uint64_t folderId, bool hard)
+    : homedir(homedir), cpid(cpid), folderId(folderId), hard(hard)
+{}
+
+/**
+ * @brief      Write serialized request data to buffer
+ *
+ * @param      buff       Buffer to write to
+ */
+void DeleteFolderRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid, uint64_t folderId, bool hard)
+{buff << CallId::DELETE_FOLDER << homedir << cpid << folderId << hard;}
+
+/**
+ * @brief      Deserialize response data
+ *
+ * @param      buff  Buffer containing the data
+ */
+Response<DeleteFolderRequest>::Response(IOBuffer& buff) : success(buff.pop<uint8_t>())
+{}
+
 }

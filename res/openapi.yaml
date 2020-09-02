@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.5.0
+  version: 0.5.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -437,6 +437,34 @@ paths:
                     description: ID of the created Folder
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/folders/{folderID}:
+    delete:
+      summary: Delete public folder
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - name: folderID
+          description: ID of the folder to delete
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deletion successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
         '404':
           $ref: '#/components/responses/NotFound'
         '500':

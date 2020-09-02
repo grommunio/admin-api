@@ -41,16 +41,15 @@ struct Response
 
 struct QueryTableRequest;
 struct CreateFolderByPropertiesRequest;
+struct DeleteFolderRequest;
+
+%nodefaultctor;
 
 template<>
 struct Response<QueryTableRequest>
 {
-    Response() = default;
-
     std::vector<std::vector<TaggedPropval> > entries;
 };
-
-%nodefaultctor;
 
 template<>
 struct Response<CreateFolderByPropertiesRequest>
@@ -58,16 +57,25 @@ struct Response<CreateFolderByPropertiesRequest>
     uint64_t folderId;
 };
 
+template<>
+struct Response<DeleteFolderRequest>
+{
+    bool success;
+};
+
 %clearnodefaultctor;
 
 %template(QueryTableResponse) exmdbpp::Response<exmdbpp::QueryTableRequest>;
 %template(CreateFolderByPropertiesResponse) exmdbpp::Response<exmdbpp::CreateFolderByPropertiesRequest>;
+%template(DeleteFolderResponse) exmdbpp::Response<DeleteFolderRequest>;
+
 
 namespace queries
 {
 
 Response<QueryTableRequest> getFolderList(ExmdbClient&, const std::string&) throw (std::runtime_error);
 Response<CreateFolderByPropertiesRequest> createPublicFolder(ExmdbClient&, const std::string&, uint32_t, const std::string&, const std::string&, const std::string&) throw (std::runtime_error);
+Response<DeleteFolderRequest> deletePublicFolder(ExmdbClient&, const std::string&, uint64_t) throw (std::runtime_error);
 
 }
 
