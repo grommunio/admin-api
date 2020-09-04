@@ -149,7 +149,7 @@ def defaultPatch(Model, ID, errName, obj=None, filters=()):
     except IntegrityError as err:
         DB.session.rollback()
         return jsonify(message="Could not update: invalid data", error=err.orig.args[1]), 400
-    return Model.optimized_query(2).filter(Model.ID == ID).first().fulldesc()
+    return jsonify(Model.optimized_query(2).filter(Model.ID == ID).first().fulldesc())
 
 
 def defaultCreate(Model, result="response"):
