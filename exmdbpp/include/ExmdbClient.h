@@ -7,9 +7,15 @@
 #include "IOBuffer.h"
 #include "requests.h"
 
+/**
+ * @brief Root namespace for the exmdbpp library
+ */
 namespace exmdbpp
 {
 
+/**
+ * @brief   Client managing communication with the exmdb server
+ */
 class ExmdbClient
 {
     class Connection
@@ -27,6 +33,8 @@ class ExmdbClient
     };
 
 public:
+    template<class Request>
+    using Response_t = typename requests::response_map<Request>::type; ///< Type of the response returned by a request
 
     ExmdbClient() = default;
     ExmdbClient(const std::string&, uint16_t, const std::string&, bool);
@@ -34,10 +42,10 @@ public:
     void connect(const std::string&, uint16_t, const std::string&, bool);
 
     template<class Request>
-    Response<Request> send(const Request&);
+    Response_t<Request> send(const Request&);
 
     template<class Request, typename... Args>
-    Response<Request> send(const Args&...);
+    Response_t<Request> send(const Args&...);
 private:
     Connection connection; ///< Connection used to send and receive data
     IOBuffer buffer; ///< Buffer managing data to send / received data
@@ -53,14 +61,14 @@ private:
  * @return     Parsed response object
  */
 template<class Request>
-inline Response<Request> ExmdbClient::send(const Request& request)
+inline ExmdbClient::Response_t<Request> ExmdbClient::send(const Request& request)
 {
     buffer.clear();
     buffer.start();
     buffer << request;
     buffer.finalize();
     connection.send(buffer);
-    return Response<Request>(buffer);
+    return ExmdbClient::Response_t<Request>(buffer);
 }
 
 /**
@@ -80,14 +88,14 @@ inline Response<Request> ExmdbClient::send(const Request& request)
  * @return     Parsed response object
  */
 template<class Request, typename... Args>
-inline Response<Request> ExmdbClient::send(const Args&... args)
+inline ExmdbClient::Response_t<Request> ExmdbClient::send(const Args&... args)
 {
     buffer.clear();
     buffer.start();
     Request::serialize(buffer, args...);
     buffer.finalize();
     connection.send(buffer);
-    return Response<Request>(buffer);
+    return ExmdbClient::Response_t<Request>(buffer);
 }
 
 }

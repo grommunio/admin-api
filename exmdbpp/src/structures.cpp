@@ -5,7 +5,9 @@
 #include "IOBufferOps.h"
 #include "util.h"
 
-namespace exmdbpp
+using namespace exmdbpp::constants;
+
+namespace exmdbpp::structures
 {
 /**
  * @brief      Deserialize PropTag from buffer
@@ -504,6 +506,32 @@ void SizedXID::serialize(IOBuffer& buff) const
 {
     buff << size;
     xid.serialize(buff, size);
+}
+
+const uint8_t PermissionData::ADD_ROW;
+const uint8_t PermissionData::MODIFY_ROW;
+const uint8_t PermissionData::REMOVE_ROW;
+
+
+/**
+ * @brief      Construct new PermissionData object
+ *
+ * @param      flags     Operation flags
+ * @param      propvals  List of TaggedPropvals to modify
+ */
+PermissionData::PermissionData(uint8_t flags, const std::vector<TaggedPropval>& propvals) : flags(flags), propvals(propvals)
+{}
+
+/**
+ * @brief      Serialize PermissionData to buffer
+ *
+ * @param      buff  Buffer to write data to
+ */
+void PermissionData::serialize(IOBuffer& buff) const
+{
+    buff << flags << uint16_t(propvals.size());
+    for(auto& propval : propvals)
+        propval.serialize(buff);
 }
 
 }

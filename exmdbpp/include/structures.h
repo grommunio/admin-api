@@ -11,6 +11,12 @@ namespace exmdbpp
 class IOBuffer;
 
 /**
+ * @brief   MAPI structures
+ */
+namespace structures
+{
+
+/**
  * @brief      Tagged property value
  */
 class TaggedPropval
@@ -111,5 +117,24 @@ struct SizedXID
 
     void serialize(IOBuffer&) const;
 };
+
+/**
+ * @brief      Permission data struct
+ */
+struct PermissionData
+{
+    PermissionData(uint8_t, const std::vector<TaggedPropval>&);
+
+    uint8_t flags;
+    std::vector<TaggedPropval> propvals;
+
+    void serialize(IOBuffer&) const;
+
+    static const uint8_t ADD_ROW = 0x01;
+    static const uint8_t MODIFY_ROW = 0x02;
+    static const uint8_t REMOVE_ROW = 0x04;
+};
+
+}
 
 }

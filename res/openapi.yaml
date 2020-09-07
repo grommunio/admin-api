@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.5.1
+  version: 0.6.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -447,14 +447,11 @@ paths:
   /domains/{domainID}/folders/{folderID}:
     delete:
       summary: Delete public folder
+      tags:
+        - Domain Admin
       parameters:
         - $ref: '#/components/parameters/domainID'
-        - name: folderID
-          description: ID of the folder to delete
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/folderID'
       responses:
         '200':
           description: Deletion successful
@@ -465,6 +462,100 @@ paths:
                 properties:
                   message:
                     type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/folders/{folderID}/owners:
+    get:
+      summary: Get list of folder owners
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/folderID'
+      responses:
+        '200':
+          description: List of owners returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        memberID:
+                          type: integer
+                          description: Member ID of the owner list
+                        displayName:
+                          type: string
+                          description: Name of member
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Add a user to the owner list
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/folderID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              additionalProperties: false
+              properties:
+                username:
+                  type: string
+                  description: Username (e-mail address) to add to member list
+      responses:
+        '201':
+          description: Creation successful
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/folders/{folderID}/owners/{memberID}:
+    delete:
+      summary: Remove a user from the owner list
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/folderID'
+        - name: memberID
+          description: Member ID of the owner list
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Member removed
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -484,6 +575,13 @@ components:
     domainID:
       name: domainID
       description: ID of the domain
+      in: path
+      required: true
+      schema:
+        type: integer
+    folderID:
+      name: folderID
+      description: ID of the folder
       in: path
       required: true
       schema:

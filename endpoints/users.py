@@ -18,6 +18,10 @@ from tools.misc import AutoClean, propvals2dict
 from tools.storage import UserSetup
 from tools.pyexmdb import pyexmdb
 from tools.config import Config
+from tools.rop import nxTime, makeEidEx
+from tools.constants import Permissions
+
+from datetime import datetime
 
 from orm import DB
 if DB is not None:
@@ -97,8 +101,12 @@ def getPublicFoldersList(domainID):
     if domain is None:
         return jsonify(message="Domain not found"), 404
     client = pyexmdb.ExmdbClient("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
-    table = pyexmdb.getFolderList(client, domain.homedir)
-    folders = [propvals2dict(entry) for entry in table.entries]
+    response = pyexmdb.FolderListResponse(pyexmdb.getFolderList(client, domain.homedir))
+    folders = [{"folderid": entry.folderId,
+                "displayname": entry.displayName,
+                "comment": entry.comment,
+                "creationtime": datetime.fromtimestamp(nxTime(entry.creationTime)).strftime("%Y-%m-%d %H:%M:%S")}
+               for entry in response.folders]
     return jsonify(data=folders)
 
 
@@ -127,3 +135,41 @@ def deletePublicFolder(domainID, folderID):
     if not response.success:
         return jsonify(message="Folder deletion failed"), 500
     return jsonify(message="Success")
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners", methods=["GET"])
+@api.secure(requireDB=True)
+def getPublicFolderOwnerList(domainID, folderID):
+    domain = Domains.query.filter(Domains.ID == domainID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    client = pyexmdb.ExmdbClient("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
+    response = pyexmdb.FolderOwnerListResponse(pyexmdb.getPublicFolderOwnerList(client, domain.homedir, folderID))
+    owners = [{"memberID": owner.memberId, "displayName": owner.memberName}
+              for owner in response.owners
+              if owner.memberRights & Permissions.FOLDEROWNER and owner.memberId not in (0, 0xFFFFFFFFFFFFFFFF)]
+    return jsonify(data=owners)
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners", methods=["POST"])
+@api.secure(requireDB=True)
+def addPublicFolderOwner(domainID, folderID):
+    data = request.get_json(silent=True)
+    if data is None or "username" not in data:
+        return jsonify(message="Missing required parameter 'username'"), 400
+    domain = Domains.query.filter(Domains.ID == domainID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    client = pyexmdb.ExmdbClient("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
+    response = pyexmdb.addFolderOwner(client, domain.homedir, folderID, data["username"])
+    return jsonify(message="Success"), 201
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners/<int:memberID>", methods=["DELETE"])
+@api.secure(requireDB=True)
+def deletePublicFolderOwner(domainID, folderID, memberID):
+    data = request.get_json(silent=True)
+    domain = Domains.query.filter(Domains.ID == domainID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    client = pyexmdb.ExmdbClient("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
+    response = pyexmdb.deleteFolderOwner(client, domain.homedir, folderID, memberID)
+    return jsonify(message="Success"), 200

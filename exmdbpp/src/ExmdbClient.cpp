@@ -13,6 +13,9 @@
 namespace exmdbpp
 {
 
+using namespace requests;
+using namespace constants;
+
 /**
  * @brief      Initialize connection
  *

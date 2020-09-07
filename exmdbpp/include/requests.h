@@ -11,26 +11,51 @@ namespace exmdbpp
 class IOBuffer;
 
 /**
+ * @brief   RPC requests and responses
+ */
+namespace requests
+{
+
+/**
+ * @brief   Empty response
+ */
+struct NullResponse
+{
+    NullResponse() = default;
+    NullResponse(IOBuffer&);
+
+};
+
+/**
  * @brief      Template to handle empty response.
  *
  * @tparam     Request  Request that triggered the response.
  */
 template<class Request>
-struct Response
+struct Response final : NullResponse
 {
-    Response() = default;
-    Response(IOBuffer&);
+using NullResponse::NullResponse;
 };
+
+/**
+ * @brief      Request to Response sype mapping struct
+ *
+ * Allows reuse of Response classes by explicitely mapping Requests to specific
+ * Response classes.
+ *
+ * The default is to map each Request to its own Response specialization (or
+ * the generic, empty, response if no specialization is provided).
+ */
+template<class Request>
+struct response_map
+{using type = Response<Request>;};
 
 /**
  * @brief      Do not perform any response interpretation
  *
  * @param      <unnamed>  Buffer to read from (unused)
- *
- * @tparam     Request    Request the response was triggered by
  */
-template<class Request>
-inline Response<Request>::Response(IOBuffer&)
+inline NullResponse::NullResponse(IOBuffer&)
 {}
 
 /**
@@ -49,6 +74,17 @@ inline IOBuffer& operator<<(IOBuffer& buffer, const Request& req)
     req.serialize(buffer);
     return buffer;
 }
+
+/**
+ * @brief      Generic response for requests returning only success status
+ */
+struct SuccessResponse
+{
+    SuccessResponse() = default;
+    SuccessResponse(IOBuffer&);
+
+    bool success;
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -161,7 +197,7 @@ struct Response<QueryTableRequest>
     Response() = default;
     Response(IOBuffer&);
 
-    std::vector<std::vector<TaggedPropval> > entries; ///< Returned rows of entries
+    std::vector<std::vector<structures::TaggedPropval> > entries; ///< Returned rows of entries
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -214,7 +250,7 @@ inline void AllocateCnRequest::serialize(IOBuffer& buff) const
 {serialize(buff, homedir);}
 
 /**
- * @brief      Response specialization for AllocatCnRequest
+ * @brief      Response specialization for AllocateCnRequest
  */
 template<>
 struct Response<AllocateCnRequest>
@@ -231,14 +267,14 @@ struct Response<AllocateCnRequest>
  */
 struct CreateFolderByPropertiesRequest
 {
-    CreateFolderByPropertiesRequest(const std::string&, uint32_t, const std::vector<TaggedPropval>&);
+    CreateFolderByPropertiesRequest(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
 
     std::string homedir;
     uint32_t cpid;
-    std::vector<TaggedPropval> propvals;
+    std::vector<structures::TaggedPropval> propvals;
 
     void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, uint32_t, const std::vector<TaggedPropval>&);
+    static void serialize(IOBuffer&, const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
 };
 
 /**
@@ -288,15 +324,75 @@ inline void DeleteFolderRequest::serialize(IOBuffer& buff) const
 {serialize(buff, homedir, cpid, folderId, hard);}
 
 /**
- * @brief      Response specialization for DeleteFolderRequest
+ * Response type override for delete folder request (-> SuccessResponse)
  */
 template<>
-struct Response<DeleteFolderRequest>
+struct response_map<DeleteFolderRequest>
+{using type = SuccessResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Load folder permission table
+ */
+struct LoadPermissionTableRequest
 {
-    Response() = default;
+    LoadPermissionTableRequest(const std::string&, uint64_t, uint8_t=0);
+
+    std::string homedir;
+    uint64_t folderId;
+    uint8_t tableFlags;
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&, uint64_t, uint8_t=0);
+};
+
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void LoadPermissionTableRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir, folderId, tableFlags);}
+
+/**
+ * @brief      Response specialization for LoadPermissionTableRequest
+ */
+template<>
+struct Response<LoadPermissionTableRequest>
+{
     Response(IOBuffer&);
 
-    bool success;
+    uint32_t tableId;   ///< ID of the created view
+    uint32_t rowCount;  ///< Number of rows in the view
 };
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Update folder permissions
+ */
+struct UpdateFolderPermissionRequest
+{
+    UpdateFolderPermissionRequest(const std::string&, uint64_t, bool, const std::vector<structures::PermissionData>&);
+
+    const std::string& homedir;
+    uint64_t folderId;
+    bool freebusy;
+    std::vector<structures::PermissionData> permissions;
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&, uint64_t, bool, const std::vector<structures::PermissionData>&);
+};
+
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void UpdateFolderPermissionRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir, folderId, freebusy, permissions);}
+
+}
 
 }

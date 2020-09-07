@@ -5,8 +5,21 @@
 #include <random>
 #include <chrono>
 
-namespace exmdbpp
+using namespace exmdbpp::structures;
+using namespace exmdbpp::constants;
+
+namespace exmdbpp::requests
 {
+
+/**
+ * @brief      Deserialize response data
+ *
+ * @param      buff  Buffer containing the data
+ */
+SuccessResponse::SuccessResponse(IOBuffer& buff) : success(buff.pop<uint8_t>())
+{}
+
+///////////////////////////////////////////////////////////////////////////////
 
 uint8_t ConnectRequest::SIDLEN = 15;
 static const std::string sidchars("0123456789abcdefghjklmnopqrstvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -209,12 +222,52 @@ DeleteFolderRequest::DeleteFolderRequest(const std::string& homedir, uint32_t cp
 void DeleteFolderRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid, uint64_t folderId, bool hard)
 {buff << CallId::DELETE_FOLDER << homedir << cpid << folderId << hard;}
 
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Initialize load permission table request
+ */
+LoadPermissionTableRequest::LoadPermissionTableRequest(const std::string& homedir, uint64_t folderId, uint8_t tableFlags)
+    : homedir(homedir), folderId(folderId), tableFlags(tableFlags)
+{}
+
+/**
+ * @brief      Write serialized request data to buffer
+ *
+ * @param      buff       Buffer to write to
+ */
+void LoadPermissionTableRequest::serialize(IOBuffer& buff, const std::string& homedir, uint64_t folderId, uint8_t tableFlags)
+{buff << CallId::LOAD_PERMISSION_TABLE << homedir << folderId << tableFlags;}
+
 /**
  * @brief      Deserialize response data
  *
  * @param      buff  Buffer containing the data
  */
-Response<DeleteFolderRequest>::Response(IOBuffer& buff) : success(buff.pop<uint8_t>())
+Response<LoadPermissionTableRequest>::Response(IOBuffer& buff) : tableId(buff.pop<uint32_t>()), rowCount(buff.pop<uint32_t>())
 {}
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Initialize update folder permission request
+ */
+UpdateFolderPermissionRequest::UpdateFolderPermissionRequest(const std::string& homedir, uint64_t folderId, bool freebusy,
+                                                             const std::vector<structures::PermissionData>& permissions)
+    : homedir(homedir), folderId(folderId), freebusy(freebusy), permissions(permissions)
+{}
+
+/**
+ * @brief      Write serialized request data to buffer
+ *
+ * @param      buff       Buffer to write to
+ */
+void UpdateFolderPermissionRequest::serialize(IOBuffer& buff, const std::string& homedir, uint64_t folderId, bool freebusy,
+                                              const std::vector<structures::PermissionData>& permissions)
+{
+    buff << CallId::UPDATE_FOLDER_PERMISSION << homedir << folderId << freebusy << uint16_t(permissions.size());
+    for(auto& permissionData : permissions)
+        permissionData.serialize(buff);
+}
 
 }

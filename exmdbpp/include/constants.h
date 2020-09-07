@@ -2,7 +2,10 @@
 
 #include <cstdint>
 
-namespace exmdbpp::ResponseCode
+namespace exmdbpp::constants
+{
+
+namespace ResponseCode
 {
 static const uint8_t SUCCESS = 0x00;
 static const uint8_t ACCESS_DENY = 0x01;
@@ -16,7 +19,7 @@ static const uint8_t DISPATCH_ERROR = 0x08;
 static const uint8_t PUSH_ERROR = 0x09;
 }
 
-namespace exmdbpp::CallId
+namespace CallId
 {
 static const uint8_t CONNECT = 0x00;
 static const uint8_t CREATE_FOLDER_BY_PROPERTIES = 0x15;
@@ -29,7 +32,7 @@ static const uint8_t ALLOCATE_CN = 0x5c;
 static const uint8_t UPDATE_FOLDER_PERMISSION = 0x6a;
 }
 
-namespace exmdbpp::PublicFid
+namespace PublicFid
 {
 static const uint64_t ROOT = 0x01;
 static const uint64_t IPMSUBTREE = 0x02;
@@ -38,15 +41,32 @@ static const uint64_t EFORMSREGISTRY = 0x04;
 static const uint64_t CUSTOM = 0x05;
 }
 
+namespace Permission
+{
+static const uint32_t NONE = 0x00000000;
+static const uint32_t READANY = 0x00000001;
+static const uint32_t CREATE = 0x00000002;
+static const uint32_t SENDAS = 0x00000004; /* self defined */
+static const uint32_t EDITOWNED = 0x00000008;
+static const uint32_t DELETEOWNED = 0x00000010;
+static const uint32_t EDITANY = 0x00000020;
+static const uint32_t DELETEANY = 0x00000040;
+static const uint32_t CREATESUBFOLDER = 0x00000080;
+static const uint32_t FOLDEROWNER = 0x00000100;
+static const uint32_t FOLDERCONTACT = 0x00000200;
+static const uint32_t FOLDERVISIBLE = 0x00000400;
+static const uint32_t FREEBUSYSIMPLE = 0x00000800;
+static const uint32_t FREEBUSYDETAILED = 0x00001000;
+}
 
-namespace exmdbpp::FolderType
+namespace FolderType
 {
 static const uint8_t ROOT = 0x0;
 static const uint8_t GENERIC = 0x1;
 static const uint8_t SEARCH = 0x2;
 }
 
-namespace exmdbpp::PropvalType
+namespace PropvalType
 {
 static const uint16_t UNSPECIFIED = 0x0000;
 static const uint16_t SHORT = 0x0002;
@@ -76,7 +96,7 @@ static const uint16_t GUID_ARRAY = 0x1048;
 static const uint16_t BINARY_ARRAY = 0x1102;
 }
 
-namespace exmdbpp::PropTag
+namespace PropTag
 {
 static const uint32_t ABPROVIDERID = 0x36150102;
 static const uint32_t ACCESS = 0x0FF40003;
@@ -924,4 +944,6 @@ static const uint32_t TESTLINESPEED = 0x662B0102;
 static const uint32_t PARENTDISPLAY = 0x0E05001F;
 static const uint32_t PARENTDISPLAY_STRING8 = 0x0E05001E;
 static const uint32_t CREATORSID = 0x0E580102;
+}
+
 }
