@@ -169,7 +169,7 @@ class Users(DataModel, DB.Model):
         self.privilegeBits = (self.privilegeBits or 0) | flag if val else (self.privilegeBits or 0) & ~flag
 
     def _getFlag(self, flag):
-        return bool(self.privilegeBits or 0 & flag)
+        return bool((self.privilegeBits or 0) & flag)
 
     @property
     def pop3_imap(self):
@@ -230,6 +230,7 @@ class Users(DataModel, DB.Model):
             return "Invalid domain"
         if domain.domainType != Domains.NORMAL:
             return "Domain must not be alias"
+        data["domain"] = domain
         domainUsers = Users.query.with_entities(func.count().label("count"), func.sum(Users.maxSize).label("size"))\
                                  .filter(Users.domainID == domain.ID).first()
         if domain.maxUser <= domainUsers.count:
@@ -259,11 +260,6 @@ class Users(DataModel, DB.Model):
             return "Missing required property areaID"
         if AreaList.query.filter(AreaList.dataType == AreaList.USER, AreaList.ID == data["areaID"]).count() == 0:
             return "Invalid area ID"
-        if "@" in data["username"]:
-            if data["username"].split("@",1)[1] != domain.domainname:
-                return "Domain specifications mismatch."
-        else:
-            data["username"] += "@"+domain.domainname
         data["createDay"] = datetime.now()
 
     def __init__(self, props, isAlias=False, privileges=None, status=None, *args, **kwargs):
@@ -279,6 +275,19 @@ class Users(DataModel, DB.Model):
         self.privilegeBits = (self.privilegeBits or 0) | privileges
         self.addressStatus = (self.addressStatus or 0) | status
         self.addressType = 3 if isAlias else 0
+
+    def fromdict(self, patches, *args, **kwargs):
+        if "username" in patches:
+            from orm.orgs import Domains
+            username = patches.pop("username")
+            domain = patches.pop("domain", None) or Domains.query.filter(Domains.ID == self.domainID).first()
+            if "@" in username:
+                if username.split("@",1)[1] != domain.domainname:
+                    raise ValueError("Domain specifications mismatch.")
+                self.username = username
+            else:
+                self.username = username+"@"+domain.domainname
+        DataModel.fromdict(self, patches, args, kwargs)
 
 
 DB.Index(Users.domainID, Users.username, unique=True)

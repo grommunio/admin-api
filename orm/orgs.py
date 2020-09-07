@@ -96,7 +96,7 @@ class Domains(DataModel, DB.Model):
         self.privilegeBits = (self.privilegeBits or 0) | flag if val else (self.privilegeBits or 0) & ~flag
 
     def _getFlag(self, flag):
-        return bool(self.privilegeBits or 0 & flag)
+        return bool((self.privilegeBits or 0) & flag)
 
     @property
     def mailBackup(self):
