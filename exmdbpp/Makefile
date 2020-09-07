@@ -10,7 +10,7 @@ PYEXMDB_DIR=pyexmdb
 INCLUDE=-I include
 PYTHON_INCLUDE=-I/usr/include/python3.6
 
-.PHONY: clean all libexmdbpp exmdbpp-python
+.PHONY: clean all libexmdbpp exmdbpp-python doc
 
 all: libexmdbpp exmdbpp-python
 
@@ -36,4 +36,8 @@ $(PYEXMDB_DIR):
 	$(CPP) $(INCLUDE) -c $< -o $@
 
 clean:
-	rm -rf src/*.o libexmdbpp.so $(PYEXMDB_DIR)
+	rm -rf src/*.o libexmdbpp.so $(PYEXMDB_DIR) doc
+
+doc:
+	mkdir -p doc
+	doxygen
