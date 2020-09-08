@@ -26,7 +26,7 @@ $(PYEXMDB_DIR)/_pyexmdb.so: $(OBJ) $(PYEXMDB_DIR)/pyexmdb_wrap.o
 $(PYEXMDB_DIR)/pyexmdb_wrap.o: $(PYEXMDB_DIR)/pyexmdb_wrap.cxx
 	$(CPP) -c $(PYEXMDB_DIR)/pyexmdb_wrap.cxx -o $(PYEXMDB_DIR)/pyexmdb_wrap.o $(PYTHON_INCLUDE) $(INCLUDE)
 
-$(PYEXMDB_DIR)/pyexmdb_wrap.cxx: pyexmdb pyexmdb.i
+$(PYEXMDB_DIR)/pyexmdb_wrap.cxx: pyexmdb.i | $(PYEXMDB_DIR)
 	$(SWIG) -o $(PYEXMDB_DIR)/pyexmdb_wrap.cxx pyexmdb.i
 
 $(PYEXMDB_DIR):
