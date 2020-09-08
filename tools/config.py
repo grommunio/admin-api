@@ -22,7 +22,8 @@ _defaultConfig_ = {"openapi": {
                      "propnames": "propnames.txt",
                      "portrait": "admin/api/portrait.jpg",
                      "domainStoreRatio": 10,
-                     "domainPrefix": "/d-data/"
+                     "domainPrefix": "/d-data/",
+                     "userPrefix": "/u-data/"
                    },
                    "security": {
                      "requireAuth": True

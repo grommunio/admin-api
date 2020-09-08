@@ -270,4 +270,40 @@ void UpdateFolderPermissionRequest::serialize(IOBuffer& buff, const std::string&
         permissionData.serialize(buff);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Initialize store update request
+ */
+SetStorePropertiesRequest::SetStorePropertiesRequest(const std::string& homedir, uint32_t cpid,
+                                                     const std::vector<structures::TaggedPropval>& propvals)
+    : homedir(homedir), cpid(cpid), propvals(propvals)
+{}
+
+/**
+ * @brief      Write serialized request data to buffer
+ *
+ * @param      buff       Buffer to write to
+ */
+void SetStorePropertiesRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid,
+                                          const std::vector<structures::TaggedPropval>& propvals)
+{
+    buff << CallId::SET_STORE_PROPERTIES << homedir << cpid << uint16_t(propvals.size());
+    for(const TaggedPropval& propval : propvals)
+        propval.serialize(buff);
+}
+
+/**
+ * @brief      Deserialize store update response
+ *
+ * @param     buff      Buffer containing the response
+ */
+Response<SetStorePropertiesRequest>::Response(IOBuffer& buff)
+{
+    size_t count = buff.pop<uint16_t>();
+    problems.reserve(count);
+    for(size_t i = 0; i < count; ++i)
+        problems.emplace_back(buff);
+}
+
 }

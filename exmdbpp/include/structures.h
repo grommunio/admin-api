@@ -135,6 +135,19 @@ struct PermissionData
     static const uint8_t REMOVE_ROW = 0x04;
 };
 
+/**
+ * @brief      List of problems that occured while setting store properties
+ */
+struct PropertyProblem
+{
+    PropertyProblem() = default;
+    PropertyProblem(IOBuffer&);
+
+    uint16_t index;
+    uint32_t proptag;
+    uint32_t err;
+};
+
 }
 
 }

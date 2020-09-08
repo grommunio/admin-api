@@ -169,7 +169,7 @@ Response<QueryTableRequest> getPublicFolderOwnerList(ExmdbClient& client, const 
  * @param      folderId  ID of the folder
  * @param      username  Username to add to list
  *
- * @return     Whether the call was successful
+ * @return     Empty response if successful
  */
 NullResponse addFolderOwner(ExmdbClient& client, const std::string& homedir, uint64_t folderId,
                                      const std::string& username)
@@ -192,7 +192,7 @@ NullResponse addFolderOwner(ExmdbClient& client, const std::string& homedir, uin
  * @param      folderId  ID of the folder
  * @param      memberId  ID of the member to remove
  *
- * @return     The success response.
+ * @return     Empty response if successful
  */
 NullResponse deleteFolderOwner(ExmdbClient& client, const std::string& homedir, uint64_t folderId, uint64_t memberId)
 {
@@ -201,5 +201,19 @@ NullResponse deleteFolderOwner(ExmdbClient& client, const std::string& homedir, 
     permissions.emplace_back(PermissionData::REMOVE_ROW, propvals);
     return client.send<UpdateFolderPermissionRequest>(homedir, folderId, false, permissions);
 }
+
+/**
+ * @brief      Modify store properties
+ *
+ * @param      client    Client with active server connection
+ * @param      homedir   Home directory path of the domain
+ * @param      cpid      Unknown purpose
+ * @param      propvals  PropertyValues to modify
+ *
+ * @return     Response containing a list of problems encountered
+ */
+Response<SetStorePropertiesRequest> setStoreProperties(ExmdbClient& client, const std::string& homedir, uint32_t cpid,
+                                                       const std::vector<TaggedPropval>& propvals)
+{return client.send<SetStorePropertiesRequest>(homedir, cpid, propvals);}
 
 }

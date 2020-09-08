@@ -6,6 +6,12 @@
     #include "ExmdbClient.h"
     #include "queries.h"
     #include "structures.h"
+
+    namespace exmdbpp::structures
+    {
+        TaggedPropval TaggedPropval_u64(uint32_t tag, uint64_t value)
+        {return TaggedPropval(tag, value);}
+    }
 %}
 
 %include "std_string.i"
@@ -13,8 +19,9 @@
 %include "std_vector.i"
 %include "stdint.i"
 
-%template(VI) std::vector<exmdbpp::structures::TaggedPropval>;
-%template(VVI) std::vector<std::vector<exmdbpp::structures::TaggedPropval> >;
+%template(VTaggedPropval) std::vector<exmdbpp::structures::TaggedPropval>;
+%template(VVTaggedPropval) std::vector<std::vector<exmdbpp::structures::TaggedPropval> >;
+%template(VPropertyProblem) std::vector<exmdbpp::structures::PropertyProblem>;
 
 namespace exmdbpp
 {
@@ -40,6 +47,17 @@ struct TaggedPropval
     std::string toString() const;
 };
 
+struct PropertyProblem
+{
+    PropertyProblem() = default;
+
+    uint16_t index;
+    uint32_t proptag;
+    uint32_t err;
+};
+
+TaggedPropval TaggedPropval_u64(uint32_t, uint64_t);
+
 }
 
 namespace requests
@@ -60,6 +78,7 @@ struct QueryTableRequest;
 struct CreateFolderByPropertiesRequest;
 struct DeleteFolderRequest;
 struct DeleteFolderRequest;
+struct SetStorePropertiesRequest;
 
 %nodefaultctor;
 
@@ -80,11 +99,18 @@ struct SuccessResponse
     bool success;
 };
 
+template<>
+struct Response<SetStorePropertiesRequest>
+{
+    std::vector<structures::PropertyProblem> problems; ///< List of problems that occured when setting store values
+};
+
 %clearnodefaultctor;
 
 %template(QueryTableResponse) requests::Response<requests::QueryTableRequest>;
 %template(CreateFolderByPropertiesResponse) requests::Response<requests::CreateFolderByPropertiesRequest>;
 %template(DeleteFolderResponse) requests::Response<requests::DeleteFolderRequest>;
+%template(SetStorePropertiesResponse) requests::Response<requests::SetStorePropertiesRequest>;
 
 }
 
@@ -141,6 +167,7 @@ requests::SuccessResponse deletePublicFolder(ExmdbClient&, const std::string&, u
 requests::Response<requests::QueryTableRequest> getPublicFolderOwnerList(ExmdbClient&, const std::string&, uint64_t) throw (std::runtime_error, std::out_of_range);
 requests::NullResponse addFolderOwner(ExmdbClient&, const std::string&, uint64_t, const std::string&) throw (std::runtime_error, std::out_of_range);
 requests::NullResponse deleteFolderOwner(ExmdbClient&, const std::string&, uint64_t, uint64_t) throw (std::runtime_error, std::out_of_range);
+requests::Response<requests::SetStorePropertiesRequest> setStoreProperties(ExmdbClient&, const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
 
 }
 

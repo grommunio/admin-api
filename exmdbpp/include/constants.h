@@ -22,6 +22,8 @@ static const uint8_t PUSH_ERROR = 0x09;
 namespace CallId
 {
 static const uint8_t CONNECT = 0x00;
+static const uint8_t GET_STORE_PROPERTIES = 0x09;
+static const uint8_t SET_STORE_PROPERTIES = 0x0a;
 static const uint8_t CREATE_FOLDER_BY_PROPERTIES = 0x15;
 static const uint8_t DELETE_FOLDER = 0x1a;
 static const uint8_t LOAD_HIERARCHY_TABLE = 0x26;
@@ -30,6 +32,7 @@ static const uint8_t UNLOAD_TABLE = 0x2b;
 static const uint8_t QUERY_TABLE = 0x2d;
 static const uint8_t ALLOCATE_CN = 0x5c;
 static const uint8_t UPDATE_FOLDER_PERMISSION = 0x6a;
+static const uint8_t UNLOAD_STORE = 0x80;
 }
 
 namespace PublicFid

@@ -63,6 +63,7 @@ requests::SuccessResponse deletePublicFolder(ExmdbClient&, const std::string&, u
 requests::Response<requests::QueryTableRequest> getPublicFolderOwnerList(ExmdbClient&, const std::string&, uint64_t);
 requests::NullResponse addFolderOwner(ExmdbClient&, const std::string&, uint64_t, const std::string&);
 requests::NullResponse deleteFolderOwner(ExmdbClient&, const std::string&, uint64_t, uint64_t);
+requests::Response<requests::SetStorePropertiesRequest> setStoreProperties(ExmdbClient&, const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
 
 }
 

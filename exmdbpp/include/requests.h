@@ -393,6 +393,43 @@ struct UpdateFolderPermissionRequest
 inline void UpdateFolderPermissionRequest::serialize(IOBuffer& buff) const
 {serialize(buff, homedir, folderId, freebusy, permissions);}
 
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Update store properties
+ */
+struct SetStorePropertiesRequest
+{
+    SetStorePropertiesRequest(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
+
+    std::string homedir;
+    uint32_t cpid;
+    std::vector<structures::TaggedPropval> propvals;
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
+};
+
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void SetStorePropertiesRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir, cpid, propvals);}
+
+/**
+ * @brief      Response specialization for SetStorePropertiesRequest
+ */
+template<>
+struct Response<SetStorePropertiesRequest>
+{
+    Response() = default;
+    Response(IOBuffer&);
+
+    std::vector<structures::PropertyProblem> problems; ///< List of problems that occured when setting store values
+};
+
 }
 
 }

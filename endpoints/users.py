@@ -12,14 +12,14 @@ from api import API
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
 
-from . import defaultListHandler, defaultObjectHandler
+from . import defaultListHandler, defaultObjectHandler, defaultPatch
 
 from tools.misc import AutoClean, propvals2dict
 from tools.storage import UserSetup
 from tools.pyexmdb import pyexmdb
 from tools.config import Config
 from tools.rop import nxTime, makeEidEx
-from tools.constants import Permissions
+from tools.constants import Permissions, PropTags
 
 from datetime import datetime
 
@@ -74,10 +74,31 @@ def createUser(domainID):
         return jsonify(message="Object violates database constraints", error=err.orig.args[1]), 400
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>", methods=["GET", "PATCH", "DELETE"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>", methods=["GET", "DELETE"])
 @api.secure(requireDB=True)
 def userObjectEndpoint(domainID, ID):
     return defaultObjectHandler(Users, ID, "User", filters=(Users.domainID == domainID,))
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>", methods=["PATCH"])
+@api.secure(requireDB=True)
+def patchUser(domainID, ID):
+    user = Users.query.filter(Users.domainID == domainID, Users.ID == ID).first()
+    data = request.get_json(silent=True, cache=True)
+    updateSize = user and data and "maxSize" in data and data["maxSize"] != user.maxSize
+    response = defaultPatch(Users, ID, "User", user, (Users.domainID == domainID,))
+    if not (isinstance(response, tuple) and response[1] != 200) and updateSize:
+        API.logger.info("Updating exmdb quotas")
+        client = pyexmdb.ExmdbClient("127.0.0.1", 5000, Config["options"]["userPrefix"], True)
+        propvals = (pyexmdb.TaggedPropval_u64(PropTags.PROHIBITRECEIVEQUOTA, data["maxSize"]*1024),
+                    pyexmdb.TaggedPropval_u64(PropTags.PROHIBITSENDQUOTA, data["maxSize"]*1024))
+        status = pyexmdb.setStoreProperties(client, user.maildir, 0, propvals)
+        if len(status.problems):
+            problems = ",\n".join("\t{}: {} - {}".format(problem.index, PropTags.lookup(problem.proptag), problem.err)
+                                  for problem in status.problems)
+            API.logger.error("Failed to adjust user quota:\n"+problems)
+            return jsonify(message="Failed to set user quota"), 500
+    return response
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>/password", methods=["PUT"])

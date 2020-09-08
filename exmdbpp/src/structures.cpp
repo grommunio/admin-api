@@ -534,4 +534,13 @@ void PermissionData::serialize(IOBuffer& buff) const
         propval.serialize(buff);
 }
 
+/**
+ * @brief      Load PropertyProblem from buffer
+ *
+ * @param      buff     Buffer to read data from
+ */
+PropertyProblem::PropertyProblem(IOBuffer& buff)
+    : index(buff.pop<uint16_t>()), proptag(buff.pop<uint32_t>()), err(buff.pop<uint8_t>())
+{}
+
 }
