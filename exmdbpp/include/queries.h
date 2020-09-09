@@ -3,10 +3,10 @@
 #include <vector>
 
 #include "requests.h"
+#include "ExmdbClient.h"
 
 namespace exmdbpp
 {
-class ExmdbClient;
 
 
 /**
@@ -16,10 +16,10 @@ namespace queries
 {
 
 /**
- * @brief      Interpreter class for getFolderList response
+ * @brief      Response interpreter for ExmdbQueries::getFolderList
  *
  * Utility class providing a more structured access to data returned by
- * getFolderList.
+ * ExmdbQueries::getFolderList.
  */
 struct FolderListResponse
 {
@@ -38,10 +38,10 @@ struct FolderListResponse
 
 
 /**
- * @brief      Interpreter class for getFolderOwnerList response
+ * @brief      Response interpreter for ExmdbQueries::getFolderOwnerList
  *
  * Utility class providing a more structured access to data returned by
- * getPublicFolderOwnerList.
+ * ExmdbQueries::getPublicFolderOwnerList.
  */
 struct FolderOwnerListResponse
 {
@@ -57,14 +57,27 @@ struct FolderOwnerListResponse
     std::vector<Owner> owners;
 };
 
-requests::Response<requests::QueryTableRequest> getFolderList(ExmdbClient&, const std::string&);
-requests::Response<requests::CreateFolderByPropertiesRequest> createPublicFolder(ExmdbClient&, const std::string&, uint32_t, const std::string&, const std::string&, const std::string&);
-requests::SuccessResponse deletePublicFolder(ExmdbClient&, const std::string&, uint64_t);
-requests::Response<requests::QueryTableRequest> getPublicFolderOwnerList(ExmdbClient&, const std::string&, uint64_t);
-requests::NullResponse addFolderOwner(ExmdbClient&, const std::string&, uint64_t, const std::string&);
-requests::NullResponse deleteFolderOwner(ExmdbClient&, const std::string&, uint64_t, uint64_t);
-requests::Response<requests::SetStorePropertiesRequest> setStoreProperties(ExmdbClient&, const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
-requests::NullResponse unloadStore(ExmdbClient&, const std::string&);
+/**
+ * @brief      ExmdbClient extension providing useful queries
+ *
+ * ExmdbQueries can be used as a substitute for ExmdbClient and provides
+ * implementations of frequently used queries (i.e. requests with fixed
+ * default values or queries consisting of multiple requests.
+ */
+class ExmdbQueries final: public ExmdbClient
+{
+public:
+    using ExmdbClient::ExmdbClient;
+
+    requests::Response<requests::QueryTableRequest> getFolderList(const std::string&);
+    requests::Response<requests::CreateFolderByPropertiesRequest> createPublicFolder(const std::string&, uint32_t, const std::string&, const std::string&, const std::string&);
+    requests::SuccessResponse deletePublicFolder(const std::string&, uint64_t);
+    requests::Response<requests::QueryTableRequest> getPublicFolderOwnerList(const std::string&, uint64_t);
+    requests::NullResponse addFolderOwner(const std::string&, uint64_t, const std::string&);
+    requests::NullResponse deleteFolderOwner(const std::string&, uint64_t, uint64_t);
+    requests::Response<requests::SetStorePropertiesRequest> setStoreProperties(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
+    requests::NullResponse unloadStore(const std::string&);
+};
 
 }
 

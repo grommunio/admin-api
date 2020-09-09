@@ -27,13 +27,6 @@
 namespace exmdbpp
 {
 
-class ExmdbClient
-{
-public:
-    ExmdbClient(const std::string&, uint16_t, const std::string&, bool) throw (std::runtime_error);
-};
-
-
 namespace structures
 {
 
@@ -162,14 +155,21 @@ struct FolderOwnerListResponse
     std::vector<queries::Owner> owners;
 };
 
-requests::Response<requests::QueryTableRequest> getFolderList(ExmdbClient&, const std::string&) throw (std::runtime_error, std::out_of_range);
-requests::Response<requests::CreateFolderByPropertiesRequest> createPublicFolder(ExmdbClient&, const std::string&, uint32_t, const std::string&, const std::string&, const std::string&) throw (std::runtime_error, std::out_of_range);
-requests::SuccessResponse deletePublicFolder(ExmdbClient&, const std::string&, uint64_t) throw (std::runtime_error, std::out_of_range);
-requests::Response<requests::QueryTableRequest> getPublicFolderOwnerList(ExmdbClient&, const std::string&, uint64_t) throw (std::runtime_error, std::out_of_range);
-requests::NullResponse addFolderOwner(ExmdbClient&, const std::string&, uint64_t, const std::string&) throw (std::runtime_error, std::out_of_range);
-requests::NullResponse deleteFolderOwner(ExmdbClient&, const std::string&, uint64_t, uint64_t) throw (std::runtime_error, std::out_of_range);
-requests::Response<requests::SetStorePropertiesRequest> setStoreProperties(ExmdbClient&, const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
-requests::NullResponse unloadStore(ExmdbClient&, const std::string&);
+class ExmdbQueries
+{
+public:
+    ExmdbQueries(const std::string&, uint16_t, const std::string&, bool) throw (std::runtime_error);
+
+    requests::Response<requests::QueryTableRequest> getFolderList(const std::string&) throw (std::runtime_error, std::out_of_range);
+    requests::Response<requests::CreateFolderByPropertiesRequest> createPublicFolder(const std::string&, uint32_t, const std::string&, const std::string&, const std::string&) throw (std::runtime_error, std::out_of_range);
+    requests::SuccessResponse deletePublicFolder(const std::string&, uint64_t) throw (std::runtime_error, std::out_of_range);
+    requests::Response<requests::QueryTableRequest> getPublicFolderOwnerList(const std::string&, uint64_t) throw (std::runtime_error, std::out_of_range);
+    requests::NullResponse addFolderOwner(const std::string&, uint64_t, const std::string&) throw (std::runtime_error, std::out_of_range);
+    requests::NullResponse deleteFolderOwner(const std::string&, uint64_t, uint64_t) throw (std::runtime_error, std::out_of_range);
+    requests::Response<requests::SetStorePropertiesRequest> setStoreProperties(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
+    requests::NullResponse unloadStore(const std::string&);
+
+};
 
 }
 

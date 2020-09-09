@@ -1,5 +1,4 @@
 #include "queries.h"
-#include "ExmdbClient.h"
 #include "util.h"
 #include "constants.h"
 
@@ -77,13 +76,13 @@ FolderOwnerListResponse::FolderOwnerListResponse(const Response<QueryTableReques
  *
  * @return     Response of the QueryTableRequest. Can be converted to FolderListResponse for easier access.
  */
-Response<QueryTableRequest> getFolderList(ExmdbClient& client, const std::string& homedir)
+Response<QueryTableRequest> ExmdbQueries::getFolderList(const std::string& homedir)
 {
     uint64_t folderId = util::makeEidEx(1, PublicFid::IPMSUBTREE);
-    auto lhtResponse = client.send<LoadHierarchyTableRequest>(homedir, folderId, "", 0);
+    auto lhtResponse = send<LoadHierarchyTableRequest>(homedir, folderId, "", 0);
     std::vector<uint32_t> proptags = {PropTag::FOLDERID, PropTag::DISPLAYNAME, PropTag::COMMENT, PropTag::CREATIONTIME};
-    auto qtResponse = client.send<QueryTableRequest>(homedir, "", 0, lhtResponse.tableId, proptags, 0, lhtResponse.rowCount);
-    client.send<UnloadTableRequest>(homedir, lhtResponse.tableId);
+    auto qtResponse = send<QueryTableRequest>(homedir, "", 0, lhtResponse.tableId, proptags, 0, lhtResponse.rowCount);
+    send<UnloadTableRequest>(homedir, lhtResponse.tableId);
     return qtResponse;
 }
 
@@ -99,10 +98,10 @@ Response<QueryTableRequest> getFolderList(ExmdbClient& client, const std::string
  *
  * @return     Response returned by the server
  */
-Response<CreateFolderByPropertiesRequest> createPublicFolder(ExmdbClient& client, const std::string& homedir, uint32_t domainId,
+Response<CreateFolderByPropertiesRequest> ExmdbQueries::createPublicFolder(const std::string& homedir, uint32_t domainId,
                                   const std::string& folderName, const std::string& container, const std::string& comment)
 {
-    auto acResponse = client.send<AllocateCnRequest>(homedir);
+    auto acResponse = send<AllocateCnRequest>(homedir);
     std::vector<TaggedPropval> propvals;
     uint64_t now = util::ntTime();
     SizedXID xid(22, GUID::fromDomainId(domainId), util::valueToGc(acResponse.changeNum));
@@ -128,7 +127,7 @@ Response<CreateFolderByPropertiesRequest> createPublicFolder(ExmdbClient& client
     propvals.emplace_back(PropTag::PREDECESSORCHANGELIST, tmpbuff, false);
     if(!container.empty())
         propvals.emplace_back(PropTag::CONTAINERCLASS, container);
-    return client.send<CreateFolderByPropertiesRequest>(homedir, 0, propvals);
+    return send<CreateFolderByPropertiesRequest>(homedir, 0, propvals);
 }
 
 /**
@@ -140,8 +139,8 @@ Response<CreateFolderByPropertiesRequest> createPublicFolder(ExmdbClient& client
  *
  * @return     Response returned by the server
  */
-SuccessResponse deletePublicFolder(ExmdbClient& client, const std::string& homedir, uint64_t folderId)
-{return client.send<DeleteFolderRequest>(homedir, 0, folderId, true);}
+SuccessResponse ExmdbQueries::deletePublicFolder(const std::string& homedir, uint64_t folderId)
+{return send<DeleteFolderRequest>(homedir, 0, folderId, true);}
 
 /**
  * @brief      Get list of public folder list owners
@@ -152,12 +151,12 @@ SuccessResponse deletePublicFolder(ExmdbClient& client, const std::string& homed
  *
  * @return     Response containing the owners. Can be converted to FolderOwnerListResponse for easier access.
  */
-Response<QueryTableRequest> getPublicFolderOwnerList(ExmdbClient& client, const std::string& homedir, uint64_t folderId)
+Response<QueryTableRequest> ExmdbQueries::getPublicFolderOwnerList(const std::string& homedir, uint64_t folderId)
 {
-    auto lptResponse = client.send<LoadPermissionTableRequest>(homedir, folderId);
+    auto lptResponse = send<LoadPermissionTableRequest>(homedir, folderId);
     std::vector<uint32_t> proptags = {PropTag::MEMBERID, PropTag::MEMBERNAME, PropTag::MEMBERRIGHTS};
-    auto qtResponse = client.send<QueryTableRequest>(homedir, "", 0, lptResponse.tableId, proptags, 0, lptResponse.rowCount);
-    client.send<UnloadTableRequest>(homedir, lptResponse.tableId);
+    auto qtResponse = send<QueryTableRequest>(homedir, "", 0, lptResponse.tableId, proptags, 0, lptResponse.rowCount);
+    send<UnloadTableRequest>(homedir, lptResponse.tableId);
     return qtResponse;
 }
 
@@ -171,8 +170,7 @@ Response<QueryTableRequest> getPublicFolderOwnerList(ExmdbClient& client, const 
  *
  * @return     Empty response if successful
  */
-NullResponse addFolderOwner(ExmdbClient& client, const std::string& homedir, uint64_t folderId,
-                                     const std::string& username)
+NullResponse ExmdbQueries::addFolderOwner(const std::string& homedir, uint64_t folderId, const std::string& username)
 {
     uint32_t memberRights = Permission::READANY | Permission::CREATE | Permission::EDITANY | Permission::DELETEANY |
                             Permission::CREATESUBFOLDER | Permission::FOLDEROWNER | Permission::FOLDERCONTACT |
@@ -181,7 +179,7 @@ NullResponse addFolderOwner(ExmdbClient& client, const std::string& homedir, uin
                                            TaggedPropval(PropTag::MEMBERRIGHTS, memberRights)};
     std::vector<PermissionData> permissions;
     permissions.emplace_back(PermissionData::ADD_ROW, propvals);
-    return client.send<UpdateFolderPermissionRequest>(homedir, folderId, false, permissions);
+    return send<UpdateFolderPermissionRequest>(homedir, folderId, false, permissions);
 }
 
 /**
@@ -194,12 +192,12 @@ NullResponse addFolderOwner(ExmdbClient& client, const std::string& homedir, uin
  *
  * @return     Empty response if successful
  */
-NullResponse deleteFolderOwner(ExmdbClient& client, const std::string& homedir, uint64_t folderId, uint64_t memberId)
+NullResponse ExmdbQueries::deleteFolderOwner(const std::string& homedir, uint64_t folderId, uint64_t memberId)
 {
     std::vector<TaggedPropval> propvals = {TaggedPropval(PropTag::MEMBERID, memberId)};
     std::vector<PermissionData> permissions;
     permissions.emplace_back(PermissionData::REMOVE_ROW, propvals);
-    return client.send<UpdateFolderPermissionRequest>(homedir, folderId, false, permissions);
+    return send<UpdateFolderPermissionRequest>(homedir, folderId, false, permissions);
 }
 
 /**
@@ -212,9 +210,9 @@ NullResponse deleteFolderOwner(ExmdbClient& client, const std::string& homedir, 
  *
  * @return     Response containing a list of problems encountered
  */
-Response<SetStorePropertiesRequest> setStoreProperties(ExmdbClient& client, const std::string& homedir, uint32_t cpid,
-                                                       const std::vector<TaggedPropval>& propvals)
-{return client.send<SetStorePropertiesRequest>(homedir, cpid, propvals);}
+Response<SetStorePropertiesRequest> ExmdbQueries::setStoreProperties(const std::string& homedir, uint32_t cpid,
+                                                                     const std::vector<TaggedPropval>& propvals)
+{return send<SetStorePropertiesRequest>(homedir, cpid, propvals);}
 
 /**
  * @brief      Remove member from owner list
@@ -224,7 +222,7 @@ Response<SetStorePropertiesRequest> setStoreProperties(ExmdbClient& client, cons
  *
  * @return     Empty response if successful
  */
-NullResponse unloadStore(ExmdbClient& client, const std::string& homedir)
-{return client.send<UnloadStoreRequest>(homedir);}
+NullResponse ExmdbQueries::unloadStore(const std::string& homedir)
+{return send<UnloadStoreRequest>(homedir);}
 
 }
