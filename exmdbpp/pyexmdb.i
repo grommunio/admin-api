@@ -1,6 +1,7 @@
 %module pyexmdb
 
-#pragma SWIG nowarn=SWIGWARN_PARSE_NESTED_CLASS
+%warnfilter(325) Folder;
+%warnfilter(325) Owner;
 
 %{
     #include "ExmdbClient.h"
@@ -168,6 +169,7 @@ requests::Response<requests::QueryTableRequest> getPublicFolderOwnerList(ExmdbCl
 requests::NullResponse addFolderOwner(ExmdbClient&, const std::string&, uint64_t, const std::string&) throw (std::runtime_error, std::out_of_range);
 requests::NullResponse deleteFolderOwner(ExmdbClient&, const std::string&, uint64_t, uint64_t) throw (std::runtime_error, std::out_of_range);
 requests::Response<requests::SetStorePropertiesRequest> setStoreProperties(ExmdbClient&, const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
+requests::NullResponse unloadStore(ExmdbClient&, const std::string&);
 
 }
 

@@ -56,3 +56,30 @@ def propvals2dict(vals: list) -> dict:
         return prop.toString()
 
     return {PropTags.lookup(prop.tag).lower(): prop2val(prop) for prop in vals}
+
+
+def createMapping(iterable, key, value):
+    """Convert list of elements to dictionary.
+
+    Parameters
+    ----------
+    iterable : Iterable
+        List of elements to map
+    key : function
+        Function returning the key given an element of `iterable`
+    value : function
+        Function returning the value given an element of `iterable`
+
+    Returns
+    -------
+    mapping : dict
+        A dictionary mapping each key to a list of values
+    """
+    mapping = dict()
+    for item in iterable:
+        k = key(item)
+        if k in mapping:
+            mapping[k].append(value(item))
+        else:
+            mapping[k] = [value(item)]
+    return mapping

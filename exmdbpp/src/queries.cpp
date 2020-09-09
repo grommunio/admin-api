@@ -216,4 +216,15 @@ Response<SetStorePropertiesRequest> setStoreProperties(ExmdbClient& client, cons
                                                        const std::vector<TaggedPropval>& propvals)
 {return client.send<SetStorePropertiesRequest>(homedir, cpid, propvals);}
 
+/**
+ * @brief      Remove member from owner list
+ *
+ * @param      client    Client with active server connection
+ * @param      homedir   Home directory path of the user
+ *
+ * @return     Empty response if successful
+ */
+NullResponse unloadStore(ExmdbClient& client, const std::string& homedir)
+{return client.send<UnloadStoreRequest>(homedir);}
+
 }

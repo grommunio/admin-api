@@ -165,6 +165,11 @@ class Users(DataModel, DB.Model):
     PUBADDR = 1 << 3
     NETDISK = 1 << 4
 
+    NORMAL = 0
+    ALIAS = 1
+    MLIST = 2
+    VIRTUAL = 3
+
     def _setFlag(self, flag, val):
         self.privilegeBits = (self.privilegeBits or 0) | flag if val else (self.privilegeBits or 0) & ~flag
 

@@ -10,11 +10,12 @@ import api
 from api import API
 
 from flask import request, jsonify
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from . import defaultListHandler, defaultObjectHandler, defaultPatch
 
-from tools.misc import AutoClean, propvals2dict
+from tools.misc import AutoClean, createMapping
 from tools.storage import UserSetup
 from tools.pyexmdb import pyexmdb
 from tools.config import Config
@@ -22,12 +23,14 @@ from tools.rop import nxTime, makeEidEx
 from tools.constants import Permissions, PropTags
 
 from datetime import datetime
+import shutil
 
 from orm import DB
 if DB is not None:
     from orm.ext import AreaList
     from orm.users import Users, Groups
-    from orm.orgs import Domains
+    from orm.orgs import Domains, Aliases
+    from orm.misc import Associations, Forwards, Members
 
 
 @API.route(api.BaseRoute+"/groups", methods=["GET", "POST"])
@@ -74,7 +77,7 @@ def createUser(domainID):
         return jsonify(message="Object violates database constraints", error=err.orig.args[1]), 400
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>", methods=["GET", "DELETE"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>", methods=["GET"])
 @api.secure(requireDB=True)
 def userObjectEndpoint(domainID, ID):
     return defaultObjectHandler(Users, ID, "User", filters=(Users.domainID == domainID,))
@@ -99,6 +102,53 @@ def patchUser(domainID, ID):
             API.logger.error("Failed to adjust user quota:\n"+problems)
             return jsonify(message="Failed to set user quota"), 500
     return response
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>", methods=["DELETE"])
+@api.secure(requireDB=True)
+def deleteUser(domainID, ID):
+    user = Users.query.filter(Users.ID == ID, Users.domainID == domainID).first()
+    if user is None:
+        return jsonify(message="User #{} not found".format(ID)), 404
+    stats = dict()
+    isAlias = user.addressType == Users.ALIAS
+    maildir = user.maildir
+    userName, domainName = user.username.split("@")
+    domainAliases = Aliases.query.filter(Aliases.mainname == domainName).all()
+    delUsers = [Users.ID == ID]
+    delUsers += [Users.username.in_(userName+"@"+domainAlias for domainAlias in domainAliases)]
+    if isAlias:
+        delAliases = [Aliases.aliasname == user.username]
+    else:
+        userAliases = Aliases.query.filter(Aliases.mainname == user.username).all()
+        aliases = (userAliases.aliasname.split("@") for userAlias in userAliases)
+        aliasDomains = {userAlias[1] for userAlias in aliases}
+        aliasDomainAliases = Aliases.query.filter(Aliases.mainname.in_(aliasDomains)).all()
+        aliasDomainAliasMap = createMapping(aliasDomainAliases, lambda x: x.mainname, lambda x: x.aliasname)
+        delUsers += [Users.username.in_(userAlias.aliasname for userAlias in userAliases)]
+        delAliases = [Aliases.mainname == user.username]
+        for alias in aliases:
+            delUsers += [Users.username == alias[0]+"@"+aliasDomainAlias for aliasDomainAlias in aliasDomainAliasMap[alias[1]]]
+        Forwards.query.filter(Forwards.username == user.username).delete(synchronize_session=False)
+        Members.query.filter(Members.username == user.username).delete(synchronize_session=False)
+
+    Associations.query.filter(Associations.username == user.username).delete(synchronize_session=False)
+    Aliases.query.filter(or_(criterion for criterion in delAliases)).delete(synchronize_session=False)
+    Users.query.filter(or_(criterion for criterion in delUsers)).delete(synchronize_session=False)
+
+    try:
+        DB.session.commit()
+    except:
+        return jsonify(message="Cannot delete user: Database commit failed."), 500
+
+    if not isAlias:
+        client = pyexmdb.ExmdbClient("127.0.0.1", 5000, Config["options"]["userPrefix"], True)
+        pyexmdb.unloadStore(client, maildir)
+
+    if request.args.get("deleteFiles") == "true":
+        shutil.rmtree(maildir)
+
+    return jsonify(message="isded")
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>/password", methods=["PUT"])
@@ -171,6 +221,7 @@ def getPublicFolderOwnerList(domainID, folderID):
               if owner.memberRights & Permissions.FOLDEROWNER and owner.memberId not in (0, 0xFFFFFFFFFFFFFFFF)]
     return jsonify(data=owners)
 
+
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners", methods=["POST"])
 @api.secure(requireDB=True)
 def addPublicFolderOwner(domainID, folderID):
@@ -183,6 +234,7 @@ def addPublicFolderOwner(domainID, folderID):
     client = pyexmdb.ExmdbClient("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
     response = pyexmdb.addFolderOwner(client, domain.homedir, folderID, data["username"])
     return jsonify(message="Success"), 201
+
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners/<int:memberID>", methods=["DELETE"])
 @api.secure(requireDB=True)

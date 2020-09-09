@@ -306,4 +306,20 @@ Response<SetStorePropertiesRequest>::Response(IOBuffer& buff)
         problems.emplace_back(buff);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Initialize unload store request
+ */
+UnloadStoreRequest::UnloadStoreRequest(const std::string& homedir) : homedir(homedir)
+{}
+
+/**
+ * @brief      Deserialize store update response
+ *
+ * @param     buff      Buffer containing the response
+ */
+void UnloadStoreRequest::serialize(IOBuffer& buff, const std::string& homedir)
+{buff << CallId::UNLOAD_STORE << homedir;}
+
 }

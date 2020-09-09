@@ -430,6 +430,29 @@ struct Response<SetStorePropertiesRequest>
     std::vector<structures::PropertyProblem> problems; ///< List of problems that occured when setting store values
 };
 
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Unload store
+ */
+struct UnloadStoreRequest
+{
+    UnloadStoreRequest(const std::string&);
+
+    std::string homedir;
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&);
+};
+
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void UnloadStoreRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir);}
+
 }
 
 }
