@@ -24,6 +24,7 @@ from orm import DB
 if DB is not None:
     from orm.orgs import Orgs, Domains, Aliases
     from orm.ext import AreaList
+    from orm.users import Users
 
 
 @API.route(api.BaseRoute+"/orgs", methods=["GET", "POST"])
@@ -69,10 +70,24 @@ def domainCreate():
         return jsonify(message="Object violates database constraints", error=err.orig.args[1]), 400
 
 
-@API.route(api.BaseRoute+"/system/domains/<int:ID>", methods=["GET", "PATCH", "DELETE"])
+@API.route(api.BaseRoute+"/system/domains/<int:ID>", methods=["GET", "PATCH"])
 @api.secure(requireDB=True)
 def domainObjectEndpoint(ID):
     return defaultObjectHandler(Domains, ID, "Domain")
+
+
+@API.route(api.BaseRoute+"/system/domains/<int:ID>", methods=["DELETE"])
+@api.secure(requireDB=True)
+def deleteDomain(ID):
+    domain = Domains.query.filter(Domains.ID == ID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    domain.domainStatus = Domains.DELETED
+    Users.query.filter(Users.domainID == ID, Users.addressType != Users.VIRTUAL)\
+               .update({Users.addressStatus: Users.addressStatus.op("&")(0xF) + (Domains.DELETED << 4)},
+                       synchronize_session=False)
+    DB.session.commit()
+    return jsonify(message="k.")
 
 
 @API.route(api.BaseRoute+"/system/domains/<int:ID>/password", methods=["PUT"])
