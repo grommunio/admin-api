@@ -64,9 +64,9 @@ static const uint32_t FREEBUSYDETAILED = 0x00001000;
 
 namespace FolderType
 {
-static const uint8_t ROOT = 0x0;
-static const uint8_t GENERIC = 0x1;
-static const uint8_t SEARCH = 0x2;
+static const uint32_t ROOT = 0x0;
+static const uint32_t GENERIC = 0x1;
+static const uint32_t SEARCH = 0x2;
 }
 
 namespace PropvalType
