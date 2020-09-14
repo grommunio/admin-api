@@ -91,6 +91,8 @@ class Domains(DataModel, DB.Model):
             return "Missing required property areaID"
         elif AreaList.query.filter(AreaList.dataType == AreaList.DOMAIN, AreaList.ID == data["areaID"]).count() == 0:
             return "Invalid area ID"
+        if "maxUser" not in data:
+            return "Missing required property maxUser"
         if data.get("createDay") is None:
             data["createDay"] = datetime.now()
 
