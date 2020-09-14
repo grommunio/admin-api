@@ -189,10 +189,13 @@ def createPublicFolder(domainID):
         return jsonify(message="Domain not found"), 404
     data = request.json
     client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
-    response = client.createPublicFolder(domain.homedir, domain.ID, data["name"], data["container"], data["comment"])
+    response = client.createPublicFolder(domain.homedir, domain.ID, data["displayname"], data["container"], data["comment"])
     if response.folderId == 0:
         return jsonify(message="Folder creation failed"), 500
-    return jsonify(message="Success", folderID=response.folderId), 201
+    return jsonify(folderid=response.folderId,
+                   displayname=data["displayname"],
+                   comment=data["comment"],
+                   creationtime=datetime.now().strftime("%Y-%m-%d %H:%M:%S")), 201
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>", methods=["DELETE"])
