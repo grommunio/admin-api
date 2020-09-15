@@ -95,7 +95,7 @@ def patchUser(domainID, ID):
         client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["userPrefix"], True)
         propvals = (pyexmdb.TaggedPropval_u64(PropTags.PROHIBITRECEIVEQUOTA, data["maxSize"]*1024),
                     pyexmdb.TaggedPropval_u64(PropTags.PROHIBITSENDQUOTA, data["maxSize"]*1024))
-        status = pyexmdb.setStoreProperties(client, user.maildir, 0, propvals)
+        status = client.setStoreProperties(user.maildir, 0, propvals)
         if len(status.problems):
             problems = ",\n".join("\t{}: {} - {}".format(problem.index, PropTags.lookup(problem.proptag), problem.err)
                                   for problem in status.problems)
