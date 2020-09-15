@@ -11,17 +11,22 @@ from flask import Flask, jsonify, request, make_response
 import yaml
 from openapi_core import create_spec
 from openapi_core.shortcuts import RequestValidator, ResponseValidator
-from openapi_core.wrappers.flask import FlaskOpenAPIRequest, FlaskOpenAPIResponse
 from sqlalchemy.exc import DatabaseError
 from functools import wraps
 import traceback
 
 from tools.config import Config
 
+import openapi_core
+if openapi_core.__version__ < "0.13.0":
+    from openapi_core.wrappers.flask import FlaskOpenAPIRequest, FlaskOpenAPIResponse
+else:
+    from openapi_core.contrib.flask import FlaskOpenAPIRequest, FlaskOpenAPIResponse
+
 BaseRoute = "/api/v1"  # Common prefix for all endpoints
 
 apiVersion = None  # API specification version. Extracted from the OpenAPI document.
-backendVersion = "0.6.8"  # Backend version number
+backendVersion = "0.6.9"  # Backend version number
 
 
 def _loadOpenAPISpec():
