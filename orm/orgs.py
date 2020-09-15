@@ -93,8 +93,7 @@ class Domains(DataModel, DB.Model):
             return "Invalid area ID"
         if "maxUser" not in data:
             return "Missing required property maxUser"
-        if data.get("createDay") is None:
-            data["createDay"] = datetime.now()
+        data["createDay"] = datetime.now()
 
     def _setFlag(self, flag, val):
         self.privilegeBits = (self.privilegeBits or 0) | flag if val else (self.privilegeBits or 0) & ~flag
