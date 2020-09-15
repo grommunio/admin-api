@@ -120,7 +120,7 @@ class Users(DataModel, DB.Model):
     groupID = DB.Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
     maildir = DB.Column("maildir", DB.VARCHAR(128), nullable=False, server_default="")
     maxSize = DB.Column("max_size", INTEGER(10, unsigned=True), nullable=False)
-    maxFile = DB.Column("max_file", INTEGER(10, unsigned=True), nullable=False)
+    maxFile = DB.Column("max_file", INTEGER(10, unsigned=True), nullable=False, default=0)
     createDay = DB.Column("create_day", DB.DATE, nullable=False)
     lang = DB.Column("lang", DB.VARCHAR(32), nullable=False, server_default="")
     timezone = DB.Column("timezone", DB.VARCHAR(64), nullable=False, server_default="")
@@ -271,7 +271,7 @@ class Users(DataModel, DB.Model):
         aliases = props.pop("aliases", [])
         privileges = privileges or props.pop("groupPrivileges", 0xFF) << 8 | props.pop("domainPrivileges", 0) << 16
         status = status or props.pop("groupStatus", 0) << 2 | props.pop("domainStatus") << 4
-        props.pop("areaID")
+        props.pop("areaID", None)
         if "password" in props:
             self.password = props.pop("password")
         for alias in aliases:

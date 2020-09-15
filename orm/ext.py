@@ -23,7 +23,7 @@ class AreaList(DataModel, DB.Model):
     slavePath = DB.Column("slave_path", DB.VARCHAR(256), nullable=False, unique=True)
     accelPath = DB.Column("accel_path", DB.VARCHAR(256), unique=True)
     maxSpace = DB.Column("max_space", INTEGER(10, unsigned=True), nullable=False)
-    maxFiles = DB.Column("max_files", INTEGER(10, unsigned=True), nullable=False)
+    maxFiles = DB.Column("max_files", INTEGER(10, unsigned=True), nullable=False, default=0)
     storeLevels = DB.Column("levels", TINYINT, nullable=False)
 
 
