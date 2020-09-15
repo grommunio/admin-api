@@ -10,6 +10,7 @@ from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
 
 import os
+import shutil
 
 import api
 from api import API
@@ -58,7 +59,7 @@ def areaListCreate():
     return jsonify(area.fulldesc()), 201
 
 
-@API.route(api.BaseRoute+"/system/area_list/<int:ID>", methods=["GET", "PATCH", "DELETE"])
+@API.route(api.BaseRoute+"/system/area_list/<int:ID>", methods=["GET", "PATCH"])
 @api.secure(requireDB=True)
 def areaListObjectEndpoint(ID):
     return defaultObjectHandler(AreaList, ID, "List entry")

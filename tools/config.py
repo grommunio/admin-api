@@ -23,7 +23,10 @@ _defaultConfig_ = {"openapi": {
                      "portrait": "admin/api/portrait.jpg",
                      "domainStoreRatio": 10,
                      "domainPrefix": "/d-data/",
-                     "userPrefix": "/u-data/"
+                     "userPrefix": "/u-data/",
+                     "dashboard": {
+                       "services": []
+                     }
                    },
                    "security": {
                      "requireAuth": True

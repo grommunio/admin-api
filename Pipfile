@@ -9,6 +9,8 @@ Flask-SQLAlchemy = "*"
 mysqlclient = "*"
 openapi-core = "~=0.13.4"
 jellyfish = "*"
+dbus-python = "*"
+psutil = "*"
 
 [dev-packages]
 

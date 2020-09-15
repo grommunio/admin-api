@@ -6,6 +6,11 @@ Created on Tue Jun 23 11:26:12 2020
 @copyright: _Placeholder_copyright_
 """
 
+import psutil
+
+from datetime import datetime
+from dbus import DBusException
+
 from flask import jsonify
 
 from api import API
@@ -13,6 +18,9 @@ import api
 from orm import DB
 
 from . import defaultListHandler, defaultObjectHandler
+
+from tools.config import Config
+from tools.systemd import Systemd
 
 if DB is not None:
     from orm.misc import Forwards, MLists, Associations, Classes, Hierarchy, Members, Specifieds
@@ -115,3 +123,41 @@ def specifiedListEndpoint():
 @api.secure(requireDB=True)
 def speciedObjectEndpoint(ID):
     return defaultObjectHandler(Specifieds, ID, "Specified")
+
+
+@API.route(api.BaseRoute+"/system/dashboard", methods=["GET"])
+@api.secure()
+def getDashboard():
+    sysd = Systemd()
+    services = []
+    for service in Config["options"]["dashboard"]["services"]:
+        try:
+            unit = sysd.getService(service["unit"])
+        except DBusException as err:
+            API.logger.error("Could not retrieve info about '{}': {}".format(service["unit"], err.args[0]))
+            unit = {"state": "error", "substate": "dbus error", "description": None, "since": None}
+        unit["name"] = service.get("name", service["unit"].replace(".service", ""))
+        services.append(unit)
+    disks = []
+    for disk in psutil.disk_partitions():
+        try:
+            usage = psutil.disk_usage(disk.mountpoint)
+            stat = {"percent": usage.percent, "total": usage.total, "used": usage.used, "free": usage.free}
+            stat["device"] = disk.device
+            stat["mountpoint"] = disk.mountpoint
+            stat["filesystem"] = disk.fstype
+            disks.append(stat)
+        except:
+            pass
+    vm = psutil.virtual_memory()
+    memory = dict(percent=vm.percent, total=vm.total, free=vm.free, used=vm.used, buffer=vm.buffers, cache=vm.cached,
+                  available=vm.available)
+    sm = psutil.swap_memory()
+    swap = dict(percent=sm.percent, total=sm.total, used=sm.used, free=sm.free)
+    return jsonify(services=services,
+                   disks=disks,
+                   load=psutil.getloadavg(),
+                   cpu_percent=psutil.cpu_percent(),
+                   memory=memory,
+                   swap=swap,
+                   booted=datetime.fromtimestamp(psutil.boot_time()).strftime("%Y-%m-%d %H:%M:%S"))

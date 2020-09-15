@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.6.4
+  version: 0.7.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -45,6 +45,118 @@ paths:
                   backend:
                     description: Version of the implementation
                     type: string
+
+  /system/dashboard:
+    get:
+      summary: Get System dashboard data
+      tags:
+        - Misc
+      responses:
+        '200':
+          description: Data returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    description: List of systemd services
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        state:
+                          type: string
+                        substate:
+                          type: string
+                        description:
+                          type: string
+                          nullable: true
+                        since:
+                          $ref: '#/components/schemas/dateTime'
+                        name:
+                          type: string
+                          description: Name of the service
+                  disks:
+                    description: List of disks
+                    type: array
+                    items:
+                      type: object
+                      description: Disk statistics.
+                      properties:
+                        percent:
+                          type: number
+                          description: Percentage of used memory
+                        total:
+                          description: Total disk space (bytes)
+                          type: integer
+                        used:
+                          description: Used disk space (bytes)
+                          type: integer
+                        free:
+                          description: Free disk space (bytes)
+                          type: integer
+                        device:
+                          type: string
+                        mountpoint:
+                          type: string
+                        filesystem:
+                          type: string
+                  load:
+                    type: array
+                    description: Load averages (1 / 5 / 15 minutes)
+                    items:
+                      type: number
+                  cpu_percent:
+                    description: Current CPU usage in percent
+                    type: number
+                  memory:
+                    description: RAM statistics
+                    type: object
+                    properties:
+                      percent:
+                        description: Percent of used memory
+                        type: number
+                      total:
+                        description: Total memory (bytes)
+                        type: integer
+                      free:
+                        description: Unused memory (bytes)
+                        type: integer
+                      used:
+                        description: Memory used by applications (bytes)
+                        type: integer
+                      buffer:
+                        description: Memory used for buffers (bytes)
+                        type: integer
+                      cache:
+                        description: Memory used for cached data (bytes)
+                        type: integer
+                      available:
+                        description: Memory that is available for applications (bytes)
+                  swap:
+                    description: Swap statistics
+                    type: object
+                    properties:
+                      percent:
+                        description: Percentage of used swap memory
+                        type: number
+                      total:
+                        description: Total swap memory (bytes)
+                        type: integer
+                      free:
+                        description: Available swap memory (bytes)
+                        type: integer
+                      used:
+                        description: Used swap memory (bytes)
+                        type: integer
+                  booted:
+                    allOf:
+                      - $ref: '#/components/schemas/dateTime'
+                      - description: Time the machine was booted
+
+
+
 
   /system/area_list:
     get:
@@ -608,6 +720,7 @@ components:
     dateTime:
       type: string
       pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
+      nullable: True
     areaData:
       type: object
       additionalProperties: false
