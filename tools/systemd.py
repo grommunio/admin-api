@@ -54,3 +54,49 @@ class Systemd:
             since = int(interface.Get("org.freedesktop.systemd1.Unit", "InactiveEnterTimestamp"))
         result["since"] = datetime.fromtimestamp(since/1000000).strftime("%Y-%m-%d %H:%M:%S") if since != 0 else None
         return result
+
+    def startService(self, service: str):
+        """Issue systemd service start.
+
+        Parameters
+        ----------
+        service : str
+            Name of the unit
+
+        Raises
+        ------
+        dbus.DBusException
+            DBus communication failed.
+        """
+        self.manager.StartUnit(service, "replace")
+
+    def stopService(self, service: str):
+        """Issue systemd service shutdown.
+
+        Parameters
+        ----------
+        service : str
+            Name of the unit
+
+        Raises
+        ------
+        dbus.DBusException
+            DBus communication failed.
+        """
+        self.manager.StopUnit(service, "replace")
+        raise dbus.DBusException()
+
+    def restartService(self, service: str):
+        """Issue systemd service restart.
+
+        Parameters
+        ----------
+        service : str
+            Name of the unit
+
+        Raises
+        ------
+        dbus.DBusException
+            DBus communication failed.
+        """
+        self.manager.RestartUnit(service, "replace")

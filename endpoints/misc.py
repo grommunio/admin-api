@@ -6,6 +6,7 @@ Created on Tue Jun 23 11:26:12 2020
 @copyright: _Placeholder_copyright_
 """
 
+import dbus
 import psutil
 import os
 
@@ -129,16 +130,6 @@ def speciedObjectEndpoint(ID):
 @API.route(api.BaseRoute+"/system/dashboard", methods=["GET"])
 @api.secure()
 def getDashboard():
-    sysd = Systemd(system=True)
-    services = []
-    for service in Config["options"]["dashboard"]["services"]:
-        try:
-            unit = sysd.getService(service["unit"])
-        except DBusException as err:
-            API.logger.error("Could not retrieve info about '{}': {}".format(service["unit"], err.args[0]))
-            unit = {"state": "error", "substate": "dbus error", "description": None, "since": None}
-        unit["name"] = service.get("name", service["unit"].replace(".service", ""))
-        services.append(unit)
     disks = []
     for disk in psutil.disk_partitions():
         try:
@@ -158,10 +149,49 @@ def getDashboard():
                   available=vm.available)
     sm = psutil.swap_memory()
     swap = dict(percent=sm.percent, total=sm.total, used=sm.used, free=sm.free)
-    return jsonify(services=services,
-                   disks=disks,
+    return jsonify(disks=disks,
                    load=os.getloadavg(),
                    cpuPercent=cpuPercent,
                    memory=memory,
                    swap=swap,
                    booted=datetime.fromtimestamp(psutil.boot_time()).strftime("%Y-%m-%d %H:%M:%S"))
+
+
+@API.route(api.BaseRoute+"/system/dashboard/services", methods=["GET"])
+@api.secure()
+def getDashboardServices():
+    if len(Config["options"]["dashboard"]["services"]) == 0:
+        return jsonify(services=[])
+    sysd = Systemd(system=True)
+    services = []
+    for service in Config["options"]["dashboard"]["services"]:
+        try:
+            unit = sysd.getService(service["unit"])
+        except DBusException as err:
+            API.logger.error("Could not retrieve info about '{}': {}".format(service["unit"], err.args[0]))
+            unit = {"state": "error", "substate": "dbus error", "description": None, "since": None}
+        unit["name"] = service.get("name", service["unit"].replace(".service", ""))
+        unit["unit"] = service["unit"]
+        services.append(unit)
+    return jsonify(services=services)
+
+
+@API.route(api.BaseRoute+"/system/dashboard/services/<unit>/<action>", methods=["POST"])
+@api.secure()
+def signalDashboardService(unit, action):
+    if action == "start":
+        command = Systemd.startService
+    elif action == "stop":
+        command = Systemd.stopService
+    elif action == "restart":
+        command = Systemd.restartService
+    else:
+        return jsonify(message="Invalid action"), 400
+    if unit not in (service["unit"] for service in Config["options"]["dashboard"]["services"]):
+        return jsonify(message="Unknown unit '{}'".format(unit)), 400
+    sysd = Systemd(system=True)
+    try:
+        command(sysd, unit)
+    except dbus.DBusException as exc:
+        return jsonify(message="{}ing unit '{}' failed: {}".format(action.capitalize(), unit, exc.args[0])), 500
+    return jsonify(message="k."), 201

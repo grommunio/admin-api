@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.7.2
+  version: 0.7.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -59,24 +59,6 @@ paths:
               schema:
                 type: object
                 properties:
-                  services:
-                    description: List of systemd services
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        state:
-                          type: string
-                        substate:
-                          type: string
-                        description:
-                          type: string
-                          nullable: true
-                        since:
-                          $ref: '#/components/schemas/dateTime'
-                        name:
-                          type: string
-                          description: Name of the service
                   disks:
                     description: List of disks
                     type: array
@@ -173,6 +155,73 @@ paths:
                     allOf:
                       - $ref: '#/components/schemas/dateTime'
                       - description: Time the machine was booted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /system/dashboard/services:
+    get:
+      summary: Get list of services
+      tags:
+        - Misc
+      responses:
+        '200':
+          description: List of services returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    description: List of systemd services
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        state:
+                          type: string
+                        substate:
+                          type: string
+                        description:
+                          type: string
+                          nullable: true
+                        since:
+                          $ref: '#/components/schemas/dateTime'
+                        name:
+                          type: string
+                          description: Name of the service
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /system/dashboard/services/{unit}/{action}:
+    post:
+      summary: Send signal to a service
+      tags:
+        - Misc
+      parameters:
+        - name: unit
+          description: Name of the unit to signal
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: action
+          description: Signal to send
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [start, stop, restart]
+      responses:
+        '201':
+          description: Signal was sent
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /system/area_list:
     get:
