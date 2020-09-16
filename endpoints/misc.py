@@ -7,6 +7,7 @@ Created on Tue Jun 23 11:26:12 2020
 """
 
 import psutil
+import os
 
 from datetime import datetime
 from dbus import DBusException
