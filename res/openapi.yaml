@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.7.1
+  version: 0.7.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -109,7 +109,26 @@ paths:
                       type: number
                   cpuPercent:
                     description: Current CPU usage in percent
-                    type: number
+                    type: object
+                    properties:
+                      user:
+                        type: number
+                        description: Percentage of user CPU time
+                      system:
+                        type: number
+                        description: Percentage of system CPU time
+                      io:
+                        type: number
+                        description: Percentage of CPU time used for IO operations
+                      interrupt:
+                        type: number
+                        description: Percentage of CPU time used by interrupts
+                      steal:
+                        type: number
+                        description: Percentage of CPU time spent waiting for the hypervisor
+                      idle:
+                        type: number
+                        description: Idle CPU time
                   memory:
                     description: RAM statistics
                     type: object
@@ -154,9 +173,6 @@ paths:
                     allOf:
                       - $ref: '#/components/schemas/dateTime'
                       - description: Time the machine was booted
-
-
-
 
   /system/area_list:
     get:

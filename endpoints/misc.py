@@ -150,15 +150,18 @@ def getDashboard():
             disks.append(stat)
         except:
             pass
+    cpu = psutil.cpu_times_percent()
+    cpuPercent = dict(user=cpu.user, system=cpu.system, io=cpu.iowait, interrupt=cpu.irq+cpu.softirq, steal=cpu.steal,
+                      idle=cpu.idle)
     vm = psutil.virtual_memory()
-    memory = dict(percent=vm.percent, total=vm.total, free=vm.free, used=vm.used, buffer=vm.buffers, cache=vm.cached,
+    memory = dict(percent=vm.percent, total=vm.total, used=vm.used, buffer=vm.buffers, cache=vm.cached, free=vm.free,
                   available=vm.available)
     sm = psutil.swap_memory()
     swap = dict(percent=sm.percent, total=sm.total, used=sm.used, free=sm.free)
     return jsonify(services=services,
                    disks=disks,
                    load=os.getloadavg(),
-                   cpuPercent=psutil.cpu_percent(),
+                   cpuPercent=cpuPercent,
                    memory=memory,
                    swap=swap,
                    booted=datetime.fromtimestamp(psutil.boot_time()).strftime("%Y-%m-%d %H:%M:%S"))
