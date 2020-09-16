@@ -128,7 +128,7 @@ def speciedObjectEndpoint(ID):
 @API.route(api.BaseRoute+"/system/dashboard", methods=["GET"])
 @api.secure()
 def getDashboard():
-    sysd = Systemd()
+    sysd = Systemd(system=True)
     services = []
     for service in Config["options"]["dashboard"]["services"]:
         try:
@@ -156,7 +156,7 @@ def getDashboard():
     swap = dict(percent=sm.percent, total=sm.total, used=sm.used, free=sm.free)
     return jsonify(services=services,
                    disks=disks,
-                   load=psutil.getloadavg(),
+                   load=os.getloadavg(),
                    cpu_percent=psutil.cpu_percent(),
                    memory=memory,
                    swap=swap,
