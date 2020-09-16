@@ -212,5 +212,5 @@ def signalDashboardService(unit, action):
     try:
         command(sysd, unit)
     except dbus.DBusException as exc:
-        return jsonify(message="{}ing unit '{}' failed: {}".format(action.capitalize(), unit, exc.args[0])), 500
+        return jsonify(message="Could not {} unit '{}': {}".format(action, unit, exc.args[0])), 500
     return jsonify(message="k."), 201
