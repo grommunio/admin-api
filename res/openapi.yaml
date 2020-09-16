@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.7.0
+  version: 0.7.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -107,7 +107,7 @@ paths:
                     description: Load averages (1 / 5 / 15 minutes)
                     items:
                       type: number
-                  cpu_percent:
+                  cpuPercent:
                     description: Current CPU usage in percent
                     type: number
                   memory:

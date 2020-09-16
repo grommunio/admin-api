@@ -158,7 +158,7 @@ def getDashboard():
     return jsonify(services=services,
                    disks=disks,
                    load=os.getloadavg(),
-                   cpu_percent=psutil.cpu_percent(),
+                   cpuPercent=psutil.cpu_percent(),
                    memory=memory,
                    swap=swap,
                    booted=datetime.fromtimestamp(psutil.boot_time()).strftime("%Y-%m-%d %H:%M:%S"))
