@@ -176,6 +176,25 @@ def getDashboardServices():
     return jsonify(services=services)
 
 
+@API.route(api.BaseRoute+"/system/dashboard/services/<unit>", methods=["GET"])
+@api.secure()
+def getDashboardService(unit):
+    for service in Config["options"]["dashboard"]["services"]:
+        if service["unit"] == unit:
+            break
+    else:
+        return jsonify(message="Unknown unit '{}'".format(unit)), 400
+    sysd = Systemd(system=True)
+    try:
+        unit = sysd.getService(service["unit"])
+    except DBusException as err:
+        API.logger.error("Could not retrieve info about '{}': {}".format(service["unit"], err.args[0]))
+        unit = {"state": "error", "substate": "dbus error", "description": None, "since": None}
+    unit["name"] = service.get("name", service["unit"].replace(".service", ""))
+    unit["unit"] = service["unit"]
+    return jsonify(unit)
+
+
 @API.route(api.BaseRoute+"/system/dashboard/services/<unit>/<action>", methods=["POST"])
 @api.secure()
 def signalDashboardService(unit, action):

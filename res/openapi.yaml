@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.7.3
+  version: 0.7.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -177,24 +177,26 @@ paths:
                     description: List of systemd services
                     type: array
                     items:
-                      type: object
-                      properties:
-                        state:
-                          type: string
-                        substate:
-                          type: string
-                        description:
-                          type: string
-                          nullable: true
-                        since:
-                          $ref: '#/components/schemas/dateTime'
-                        name:
-                          type: string
-                          description: Name of the service
+                      $ref: '#/components/schemas/service'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
+
+  /system/dashboard/services/{unit}:
+    get:
+      summary: Get information about a specific service
+      tags:
+        - Misc
+      parameters:
+        - $ref: '#/components/parameters/systemdUnit'
+      responses:
+        '200':
+          description: Inforamtion about service returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/service'
 
   /system/dashboard/services/{unit}/{action}:
     post:
@@ -202,12 +204,7 @@ paths:
       tags:
         - Misc
       parameters:
-        - name: unit
-          description: Name of the unit to signal
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/systemdUnit'
         - name: action
           description: Signal to send
           in: path
@@ -771,6 +768,13 @@ components:
       required: false
       schema:
         $ref: '#/components/schemas/filterIntList'
+    systemdUnit:
+      name: unit
+      description: Name of the unit to signal
+      in: path
+      required: true
+      schema:
+        type: string
   schemas:
     filterIntList:
       type: string
@@ -999,6 +1003,24 @@ components:
           type: string
         creationtime:
           $ref: '#/components/schemas/dateTime'
+    service:
+      type: object
+      properties:
+        state:
+          type: string
+        substate:
+          type: string
+        description:
+          type: string
+          nullable: true
+        since:
+          $ref: '#/components/schemas/dateTime'
+        name:
+          type: string
+          description: Name of the service
+        unit:
+          type: string
+          description: Name of the systemd unit. Required for action endpoints.
   responses:
     ServerError:
       description: An error occured while processing the request
