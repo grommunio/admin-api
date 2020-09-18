@@ -84,7 +84,6 @@ class Systemd:
             DBus communication failed.
         """
         self.manager.StopUnit(service, "replace")
-        raise dbus.DBusException()
 
     def restartService(self, service: str):
         """Issue systemd service restart.
