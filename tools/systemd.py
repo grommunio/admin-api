@@ -6,15 +6,41 @@ Created on Tue Sep 15 09:46:15 2020
 @copyright: Grammm GmbH, 2020
 """
 
+import threading
 import dbus
+import dbus.mainloop.glib
 
+from gi.repository import GLib
 from datetime import datetime
+
+class Future:
+    def __init__(self):
+        print("Creating event")
+        self._event = threading.Event()
+        print("Created event")
+
+    def set(self, value):
+        print("Triggering event")
+        self._value = value
+        self._event.set()
+
+    def get(self):
+        print("Waiting for event")
+        self._event.wait()
+        return self._value
+
+
+dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 
 class Systemd:
     """Systemd DBus wrapper."""
 
     DBusSystemd = "org.freedesktop.systemd1"
+    eventThread = None
+    activeQueries = {}
+    queryLock = threading.Lock()
+    subscribed = False
 
     def __init__(self, system: bool = False):
         """Initialize wrapper.
@@ -25,9 +51,90 @@ class Systemd:
             Whether connect to system DBus. By default, the session DBus is used.
 
         """
+        self._runEventLoop()
         self.bus = (dbus.SystemBus if system else dbus.SessionBus)()
         systemd = self.bus.get_object(self.DBusSystemd, "/org/freedesktop/systemd1")
         self.manager = dbus.Interface(systemd, self.DBusSystemd+".Manager")
+        self._enableEvents(self.manager)
+
+    @staticmethod
+    def _jobRemovedHandler(ID, job, unit, result):
+        """Handle JobRemoved signal.
+
+        Stores job result in the corresponding future object.
+        If the signaled job is not registered, the signal is ignored.
+
+        Parameters
+        ----------
+        ID : dbus.Int32
+            Unused
+        job : dbus.String
+            Path of the job object
+        unit : dbus.String
+            Unused
+        result : dbus.String
+            Result of the job
+        """
+        print("Received signal "+str(job))
+        Systemd.queryLock.acquire()
+        res = Systemd.activeQueries.pop(str(job), None)
+        Systemd.queryLock.release()
+        if res is None:
+            print("Not found")
+            return
+        res.set(result)
+
+    @staticmethod
+    def _addQuery(job):
+        """Register a job.
+
+        Parameters
+        ----------
+        job : str
+            Path of the job object
+
+        Returns
+        -------
+        future : Future
+            Future object containing the result of the job
+        """
+        print("Creating future object")
+        future = Future()
+        print("[aq] Entering")
+        Systemd.queryLock.acquire()
+        Systemd.activeQueries[str(job)] = future
+        Systemd.queryLock.release()
+        print("[aq] Exited")
+        return future
+
+    @staticmethod
+    def _runEventLoop():
+        """Start DBus event loop.
+
+        Starts a separate thread running the main event loop.
+        Blocks until Loop is running.
+        """
+        if Systemd.eventThread is None:
+            Systemd.eventLoop = GLib.MainLoop()
+            Systemd.eventThread = threading.Thread(target=Systemd.eventLoop.run)
+            Systemd.eventThread.start()
+            while not Systemd.eventLoop.is_running():
+                pass
+
+    @staticmethod
+    def _enableEvents(manager):
+        """Enable handling of JobRemoved signals.
+
+        Parameters
+        ----------
+        manager : org.freedesktop.systemd1.Manager Proxy
+            Manager proxy user for subscription.
+        """
+        if not Systemd.subscribed:
+            Systemd._runEventLoop()
+            manager.Subscribe()
+            manager.connect_to_signal("JobRemoved", Systemd._jobRemovedHandler)
+            Systemd.subscribed = True
 
     def getService(self, service: str):
         """Get status information about a service.
@@ -68,7 +175,8 @@ class Systemd:
         dbus.DBusException
             DBus communication failed.
         """
-        self.manager.StartUnit(service, "replace")
+        res = self._addQuery(self.manager.StartUnit(service, "replace"))
+        return str(res.get())
 
     def stopService(self, service: str):
         """Issue systemd service shutdown.
@@ -83,7 +191,9 @@ class Systemd:
         dbus.DBusException
             DBus communication failed.
         """
-        self.manager.StopUnit(service, "replace")
+        print("Stopping service")
+        res = self._addQuery(self.manager.StopUnit(service, "replace"))
+        return str(res.get())
 
     def restartService(self, service: str):
         """Issue systemd service restart.
@@ -98,4 +208,5 @@ class Systemd:
         dbus.DBusException
             DBus communication failed.
         """
-        self.manager.RestartUnit(service, "replace")
+        res = self._addQuery(self.manager.StartUnit(service, "replace"))
+        return str(res.get())

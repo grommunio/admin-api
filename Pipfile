@@ -11,6 +11,7 @@ openapi-core = "~=0.13.4"
 jellyfish = "*"
 dbus-python = "*"
 psutil = "*"
+pygobject = "*"
 
 [dev-packages]
 

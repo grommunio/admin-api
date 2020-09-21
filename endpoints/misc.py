@@ -210,7 +210,8 @@ def signalDashboardService(unit, action):
         return jsonify(message="Unknown unit '{}'".format(unit)), 400
     sysd = Systemd(system=True)
     try:
-        command(sysd, unit)
+        result = command(sysd, unit)
     except dbus.DBusException as exc:
-        return jsonify(message="Could not {} unit '{}': {}".format(action, unit, exc.args[0])), 500
-    return jsonify(message="k."), 201
+        errMsg = exc.args[0] if len(exc.args) > 0 else "Unknown "
+        return jsonify(message="Could not {} unit '{}': {}".format(action, unit, )), 500
+    return jsonify(message=result), 201 if result == "done" else 500
