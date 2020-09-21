@@ -12,51 +12,9 @@ Can be used to run the API in stand-alone mode by directly executing the file or
 in combination with a WSGI server using the API object as callable
 """
 
-
-def parseArgs():
-    from argparse import ArgumentParser
-    parser = ArgumentParser(description="Grammm admin backend")
-    parser.add_argument("command", default="run", choices=("run", "create-db"), nargs="?")
-    parser.add_argument("--version", "-v", action="store_true")
-    return parser.parse_args()
-
-
-def run():
-    from api import API
-    from endpoints import ext, misc, orgs, users
-    API.run(host="0.0.0.0", port=5001, debug=True)
-
-
-def createDB():
-    from orm import ext, misc, orgs, users
-    from orm import DB
-    import logging
-    import traceback
-    if DB is None:
-        logging.fatal("Could not initialize database connection - check configuration")
-    try:
-        logging.info("Setting up database...")
-        DB.create_all()
-        logging.info("Success.")
-    except:
-        logging.fatal(traceback.format_exc())
-        logging.info("Database setup failed.")
-        exit(1)
-
-
-def printVersion():
-    from api import backendVersion
-    print(backendVersion)
-    exit(0)
-
 if __name__ == '__main__':
-    args = parseArgs()
-    if args.version:
-        printVersion()
-    elif args.command == "create-db":
-        createDB()
-    elif args.command == "run":
-        run()
+    from cli import Cli
+    Cli.execute()
 else:
     from api import API
     from endpoints import *
