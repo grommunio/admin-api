@@ -89,3 +89,25 @@ def _loadConfig_():
 
 
 Config = _loadConfig_()
+
+
+def validate():
+    """Verify configuration validity.
+
+    Returns
+    -------
+    str
+        Error message, or None if validation succeeds
+    """
+    from openapi_schema_validator import OAS30Validator
+    from openapi_spec_validator.exceptions import ValidationError
+    try:
+        with open("res/config.yaml") as file:
+            configSchema = yaml.load(file, yaml.loader.SafeLoader)
+    except:
+        return "Could not open schema file"
+    validator = OAS30Validator(configSchema)
+    try:
+        validator.validate(Config)
+    except ValidationError as err:
+        return err.args[0]

@@ -1,0 +1,79 @@
+type: object
+properties:
+  openapi:
+    type: object
+    properties:
+      validateRequest:
+        type: boolean
+        default: true
+        description: Enable/disable request validation
+      validateResponse:
+        type: boolean
+        default: true
+        description: Enable/disable request validation
+  DB:
+    type: object
+    description: Database configuration object
+    properties:
+      user:
+        type: string
+        description: Username for database authentication
+      pass:
+        type: string
+        description: Password for database authentication
+      database:
+        type: string
+        description: Database schema to connect to
+      host:
+        type: string
+        description: Hostname of the database server
+        default: 127.0.0.1
+      port:
+        type: integer
+        description: Port the database server listens on
+        default: 3306
+  options:
+    type: object
+    properties:
+      dataPath:
+        type: string
+        description: Path containing shared resources
+        default: /usr/share/grammm/common
+      propnames:
+        type: string
+        description: File containing list of named properties. Path is relative to `dataPath`.
+        default: propnames.txt
+      portrait:
+        type: string
+        description: File containing default portrait image. Path is relative to `dataPath`.
+        default: admin/api/portrait.jpg
+      domainStoreRatio:
+        type: integer
+        description: Mysterious storage factor for `domain.maxSize`
+        minimum: 1
+        maximum: 999
+        default: 10
+      domainPrefix:
+        type: string
+        description: Prefix used for domain exmdb connections
+        default: /d-data/
+      userPrefix:
+        type: string
+        description: Prefix used for user exmdb connections
+        default: /u-data/
+      dashboard:
+        description: Configuration of the dashboard
+        type: object
+        properties:
+          services:
+            type: array
+            description: List of services to monitor
+            items:
+              type: object
+              properties:
+                unit:
+                  type: string
+                  description: Name of the service
+                name:
+                  type: string
+                  description: Optional alternative display name

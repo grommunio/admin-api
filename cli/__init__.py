@@ -123,3 +123,13 @@ def cliVersion(args):
         print(apiVersion)
     exit(0)
 
+@Cli.command("chkconfig")
+def cliChkConfig(args):
+    from tools.config import validate
+    result = validate()
+    if result is None:
+        print("Configuration schema valid")
+        exit(0)
+    else:
+        print("Error: "+result)
+        exit(1)
