@@ -81,6 +81,10 @@ def _runParserSetup(subp: ArgumentParser):
 @Cli.command("run", _runParserSetup)
 def cliRun(args):
     from api import API
+    import endpoints
+    import importlib
+    for group in endpoints.__all__:
+        importlib.import_module("endpoints."+group)
     API.run(host=args.ip, port=args.port, debug=args.debug)
 
 
