@@ -89,7 +89,7 @@ def cliRun(args):
 
 
 @Cli.command("create-db")
-def cliCreateDB():
+def cliCreateDB(args):
     import logging
     from orm import DB
     if DB is None:
