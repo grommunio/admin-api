@@ -261,29 +261,31 @@ class Users(DataModel, DB.Model):
             data["groupID"] = 0
         data["domainPrivileges"] = domain.privilegeBits
         data["domainStatus"] = domain.domainStatus
-        data["aliases"] = [alias.aliasname for alias in Aliases.query.filter(Aliases.mainname == domain.domainname).all()]
+        data["aliases"] = Aliases.query.filter(Aliases.mainname == domain.domainname)\
+                                       .join(Domains, Domains.domainname == Aliases.aliasname)\
+                                       .with_entities(Domains.domainname, Domains.domainStatus).all()
         if "areaID" not in data:
             return "Missing required property areaID"
         if AreaList.query.filter(AreaList.dataType == AreaList.USER, AreaList.ID == data["areaID"]).count() == 0:
             return "Invalid area ID"
         data["createDay"] = datetime.now()
 
-    def __init__(self, props, isAlias=False, privileges=None, status=None, *args, **kwargs):
+    def __init__(self, props, *args, **kwargs):
         if isinstance(props, Users):
             self._copy(props)
             return
         aliases = props.pop("aliases", [])
-        privileges = privileges or props.pop("groupPrivileges", 0xFF) << 8 | props.pop("domainPrivileges", 0) << 16
-        status = status or props.pop("groupStatus", 0) << 2 | props.pop("domainStatus") << 4
+        privileges = props.pop("groupPrivileges", 0xFF) << 8 | props.pop("domainPrivileges", 0) << 16
+        status = props.pop("groupStatus", 0) << 2 | props.pop("domainStatus") << 4
         props.pop("areaID", None)
         if "password" in props:
             self.password = props.pop("password")
-        for alias in aliases:
-            DB.session.add(Users(props, True, privileges, status, *args, **kwargs))
         self.fromdict(props, *args, **kwargs)
         self.privilegeBits = (self.privilegeBits or 0) | privileges
         self.addressStatus = (self.addressStatus or 0) | status
-        self.addressType = 3 if isAlias else 0
+        self.addressType = 0
+        for aliasDomain in aliases:
+            DB.session.add(self.mkAlias(self.baseName()+"@"+aliasDomain.domainname, Users.VIRTUAL, aliasDomain.domainStatus))
 
     def fromdict(self, patches, *args, **kwargs):
         if "username" in patches:
@@ -327,10 +329,12 @@ class Users(DataModel, DB.Model):
         self.nickname = u.nickname
         self.homeaddress = u.homeaddress
 
-    def mkAlias(self, aliasname, aliastype=ALIAS):
+    def mkAlias(self, aliasname, aliastype=ALIAS, domainStatus=None):
         alias = Users(self)
         alias.username = aliasname
         alias.addressType = aliastype
+        if domainStatus is not None:
+            alias.addressStatus = (alias.addressStatus & 0xF) | (domainStatus << 4)
         return alias
 
 

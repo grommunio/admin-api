@@ -131,7 +131,9 @@ def deleteUserEndpoint(domainID, userID):
 
 
 def deleteUser(user):
-    isAlias = user.addressType in (Users.ALIAS, Users.VIRTUAL)
+    if user.addressType == Users.VIRTUAL:
+        return jsonify(message="Cannot delete virtual user"), 400
+    isAlias = user.addressType == Users.ALIAS
     maildir = user.maildir
     userName, domainName = user.username.split("@")
     domainAliases = Aliases.query.filter(Aliases.mainname == domainName).all()
@@ -223,9 +225,7 @@ def createUserAlias(domainID, userID):
     DB.session.add(alias)
     DB.session.add(user.mkAlias(aliasname))
     for aliasDomain in aliasDomains:
-        virtual = user.mkAlias(aliasBase+"@"+aliasDomain.domainname, Users.VIRTUAL)
-        virtual.addressStatus = (virtual.addressStatus & 0xF) | (aliasDomain.domainStatus << 4)
-        DB.session.add(virtual)
+        DB.session.add(user.mkAlias(aliasBase+"@"+aliasDomain.domainname, Users.VIRTUAL, aliasDomain.domainStatus))
     try:
         DB.session.commit()
     except IntegrityError as err:
@@ -242,7 +242,7 @@ def deleteUserAlias(domainID, ID):
         return jsonify(message="Alias not found"), 404
     if alias is None:
         return jsonify(message="User not found"), 404
-    user = Users.query.filter(Users.domainID == domainID, Users.username == alias.mainname).first()
+    user = Users.query.filter(Users.domainID == domainID, Users.username == alias.aliasname).first()
     return deleteUser(user)
 
 
