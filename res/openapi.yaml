@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.8.0
+  version: 0.8.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -454,6 +454,28 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /system/domains/aliases:
+    get:
+      summary: List all user aliases grouped by user
+      tags:
+        - Domain Admin
+      responses:
+        '200':
+          description: List returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/groupedAliasList'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
   /system/domains/aliases/{ID}:
     delete:
       summary: Delete alias domain
@@ -691,6 +713,32 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/DatabaseError'
+
+
+  /domains/{domainID}/users/aliases:
+    get:
+      summary: List all user aliases grouped by user
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: List returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/groupedAliasList'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
 
   /domains/{domainID}/users/aliases/{ID}:
     delete:
@@ -1198,6 +1246,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/alias'
+    groupedAliasList:
+      type: object
+      description: Associative array of base objects with their aliases
+      additionalProperties:
+        type: array
+        items:
+          description: Name of the alias
+          type: string
   responses:
     ServerError:
       description: An error occured while processing the request

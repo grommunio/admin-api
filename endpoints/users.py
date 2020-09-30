@@ -135,10 +135,8 @@ def deleteUser(user):
         return jsonify(message="Cannot delete virtual user"), 400
     isAlias = user.addressType == Users.ALIAS
     maildir = user.maildir
-    userName, domainName = user.username.split("@")
-    domainAliases = Aliases.query.filter(Aliases.mainname == domainName).all()
-    delUsers = [Users.ID == user.ID]
-    delUsers += [Users.username.in_(userName+"@"+domainAlias.aliasname for domainAlias in domainAliases)]
+    domainAliases = Aliases.query.filter(Aliases.mainname == user.domainName()).all()
+    delQueries = [Users.query.filter(Users.domainID == user.domainID, Users.username.like(user.baseName+"@%"))]
     if isAlias:
         delAliases = [Aliases.aliasname == user.username]
     else:
@@ -232,6 +230,13 @@ def createUserAlias(domainID, userID):
         DB.session.rollback()
         return jsonify(message="Alias creation failed", error=err.orig.args[1])
     return jsonify(alias.fulldesc()), 201
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/aliases", methods=["GET"])
+@api.secure(requireDB=True)
+def getAliasesByUser(domainID):
+    aliases = Aliases.query.join(Users, Users.username == Aliases.aliasname).filter(Users.domainID==domainID).all()
+    return jsonify(data=createMapping(aliases, lambda alias: alias.mainname, lambda alias: alias.aliasname))
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/aliases/<int:ID>", methods=["DELETE"])

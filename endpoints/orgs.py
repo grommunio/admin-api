@@ -16,7 +16,7 @@ from . import defaultListHandler, defaultObjectHandler, defaultPatch
 import api
 from api import API
 
-from tools.misc import AutoClean
+from tools.misc import AutoClean, createMapping
 from tools.storage import DomainSetup
 
 
@@ -186,6 +186,13 @@ def createDomainAlias(domainID):
         DB.session.rollback()
         return jsonify(message="Alias creation failed", error=err.orig.args[1]), 500
     return jsonify(alias.fulldesc()), 201
+
+
+@API.route(api.BaseRoute+"/system/domains/aliases", methods=["GET"])
+@api.secure(requireDB=True)
+def getAliasesByDomain():
+    aliases = Aliases.query.join(Domains, Domains.domainname == Aliases.aliasname).all()
+    return jsonify(data=createMapping(aliases, lambda alias: alias.mainname, lambda alias: alias.aliasname))
 
 
 @API.route(api.BaseRoute+"/system/domains/aliases/<int:ID>", methods=["DELETE"])
