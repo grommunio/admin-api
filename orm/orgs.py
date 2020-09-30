@@ -46,11 +46,8 @@ class Domains(DataModel, DB.Model):
     domainStatus = DB.Column("domain_status", TINYINT, nullable=False, server_default="0")
     domainType = DB.Column("domain_type", TINYINT, nullable=False, server_default="0")
 
-    _dictmapping_ = ((Id(),),
+    _dictmapping_ = ((Id(), Text("domainname", flags="init")),
                      (Id("orgID", flags="patch"),
-                      Text("domainname", flags="init"),
-                      Text("homedir"),
-                      Text("media", flags="patch"),
                       Int("maxSize", flags="patch"),
                       Int("maxUser", flags="patch"),
                       Text("title", flags="patch"),
@@ -60,7 +57,7 @@ class Domains(DataModel, DB.Model):
                       Date("createDay", flags="patch"),
                       Date("endDay", flags="patch"),
                       Int("domainStatus", flags="patch"),
-                      Int("domainType", flags="patch"),
+                      Int("domainType"),
                       BoolP("mailBackup", flags="patch"),
                       BoolP("mailMonitor", flags="patch"),
                       BoolP("ignoreCheckingUser", flags="patch"),
@@ -160,4 +157,4 @@ class Aliases(DataModel, DB.Model):
     aliasname = DB.Column("aliasname", DB.VARCHAR(128), nullable=False, unique=True)
     mainname = DB.Column("mainname", DB.VARCHAR(128), nullable=False, index=True)
 
-    _dictmapping_ = ((Id(), Text("aliasname", flags="patch"), Text("mainname", flags="patch")),)
+    _dictmapping_ = ((Id(), Text("aliasname", flags="init"), Text("mainname", flags="init")),)

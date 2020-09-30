@@ -110,7 +110,7 @@ def defaultDetailQuery(Model, ID, errName, filters=()):
     return jsonify(obj.todict(verbosity))
 
 
-def defaultPatch(Model, ID, errName, obj=None, filters=()):
+def defaultPatch(Model, ID, errName, obj=None, filters=(), result="response"):
     """Process a PATCH query for specified model.
 
     Performs an autopatch() call on the model.
@@ -126,11 +126,13 @@ def defaultPatch(Model, ID, errName, obj=None, filters=()):
         Object name to use in error messages.
     obj : SQLAlchemy model instance, optional
         Object to patch (suppresses object retrieval query). The default is None.
+    response: str
+        Return value. "precommit" returns the patched object before committing the changes. Other values return the response.
 
     Returns
     -------
-    Response
-        Flask response containing the new object data or an error message.
+    <varies>
+        Return value according to `result`
     """
     data = request.get_json(silent=True)
     if data is None:
@@ -144,6 +146,8 @@ def defaultPatch(Model, ID, errName, obj=None, filters=()):
     except (InvalidAttributeError, MismatchROError) as err:
         DB.session.rollback()
         return jsonify(message=err.args[0]), 400
+    if result == "precommit":
+        return obj
     try:
         DB.session.commit()
     except IntegrityError as err:

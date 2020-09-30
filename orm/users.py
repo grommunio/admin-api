@@ -134,7 +134,7 @@ class Users(DataModel, DB.Model):
     nickname = DB.Column("nickname", DB.VARCHAR(32), nullable=False, server_default="")
     homeaddress = DB.Column("homeaddress", DB.VARCHAR(128), nullable=False, server_default="")
 
-    _dictmapping_ = ((Id(), Text("username", flags="patch")),
+    _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Text("realName", flags="patch"),
                       Text("title", flags="patch"),
                       Text("memo", flags="patch"),
@@ -148,7 +148,8 @@ class Users(DataModel, DB.Model):
                       Text("timezone", flags="patch"),
                       Text("mobilePhone", flags="patch"),
                       Int("subType", flags="patch"),
-                      Int("addressStatus", flags="init"),
+                      Int("addressStatus"),
+                      Int("addressType"),
                       Text("cell", flags="patch"),
                       Text("tel", flags="patch"),
                       Text("nickname", flags="patch"),
@@ -268,6 +269,9 @@ class Users(DataModel, DB.Model):
         data["createDay"] = datetime.now()
 
     def __init__(self, props, isAlias=False, privileges=None, status=None, *args, **kwargs):
+        if isinstance(props, Users):
+            self._copy(props)
+            return
         aliases = props.pop("aliases", [])
         privileges = privileges or props.pop("groupPrivileges", 0xFF) << 8 | props.pop("domainPrivileges", 0) << 16
         status = status or props.pop("groupStatus", 0) << 2 | props.pop("domainStatus") << 4
@@ -293,6 +297,41 @@ class Users(DataModel, DB.Model):
             else:
                 self.username = username+"@"+domain.domainname
         DataModel.fromdict(self, patches, args, kwargs)
+
+    def baseName(self):
+        return self.username.rsplit("@", 1)[0]
+
+    def domainName(self):
+        return self.username.rsplit("@", 1)[0] if "@" in self.username else None
+
+    def _copy(self, u):
+        self._password = u._password
+        self.realName = u.realName
+        self.title = u.title
+        self.memo = u.memo
+        self.domainID = u.domainID
+        self.groupID = u.groupID
+        self.maildir = u.maildir
+        self.maxSize = u.maxSize
+        self.maxFile = u.maxFile
+        self.createDay = u.createDay
+        self.lang = u.lang
+        self.timezone = u.timezone
+        self.mobilePhone = u.mobilePhone
+        self.privilegeBits = u.privilegeBits
+        self.subType = u.subType
+        self.addressStatus = u.addressStatus
+        self.addressType = u.addressType
+        self.cell = u.cell
+        self.tel = u.tel
+        self.nickname = u.nickname
+        self.homeaddress = u.homeaddress
+
+    def mkAlias(self, aliasname, aliastype=ALIAS):
+        alias = Users(self)
+        alias.username = aliasname
+        alias.addressType = aliastype
+        return alias
 
 
 DB.Index(Users.domainID, Users.username, unique=True)

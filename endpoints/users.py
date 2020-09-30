@@ -21,6 +21,7 @@ from tools.pyexmdb import pyexmdb
 from tools.config import Config
 from tools.rop import nxTime, makeEidEx
 from tools.constants import Permissions, PropTags
+from tools.DataModel import InvalidAttributeError, MismatchROError
 
 from datetime import datetime
 import shutil
@@ -77,20 +78,36 @@ def createUser(domainID):
         return jsonify(message="Object violates database constraints", error=err.orig.args[1]), 400
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>", methods=["GET"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["GET"])
 @api.secure(requireDB=True)
-def userObjectEndpoint(domainID, ID):
-    return defaultObjectHandler(Users, ID, "User", filters=(Users.domainID == domainID,))
+def userObjectEndpoint(domainID, userID):
+    return defaultObjectHandler(Users, userID, "User", filters=(Users.domainID == domainID,))
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>", methods=["PATCH"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["PATCH"])
 @api.secure(requireDB=True)
-def patchUser(domainID, ID):
-    user = Users.query.filter(Users.domainID == domainID, Users.ID == ID).first()
+def patchUser(domainID, userID):
+    user = Users.query.filter(Users.domainID == domainID, Users.ID == userID).first()
+    if user.addressType != Users.NORMAL:
+        return jsonify(message="Cannot edit alias user"), 400
     data = request.get_json(silent=True, cache=True)
     updateSize = user and data and "maxSize" in data and data["maxSize"] != user.maxSize
-    response = defaultPatch(Users, ID, "User", user, (Users.domainID == domainID,))
-    if not (isinstance(response, tuple) and response[1] != 200) and updateSize:
+    aliasUserNames = Aliases.query.filter(Aliases.mainname == user.username).with_entities(Aliases.aliasname).all()
+    aliasMatch = [alias[0].split("@")[0]+"@%" for alias in aliasUserNames]+[user.baseName()+"@%"]
+    aliasUsers = Users.query.filter(Users.domainID == user.domainID, or_(Users.username.like(am) for am in aliasMatch)).all()
+    try:
+        defaultPatch(Users, userID, "User", user, (Users.domainID == domainID,), result="precommit")
+        for alias in aliasUsers:
+            alias.fromdict(data)
+    except (InvalidAttributeError, MismatchROError) as err:
+        DB.session.rollback()
+        return jsonify(message=err.args[0]), 400
+    try:
+        DB.session.commit()
+    except IntegrityError as err:
+        DB.session.rollback()
+        return jsonify(message="Could not update: invalid data", error=err.orig.args[1]), 400
+    if updateSize:
         API.logger.info("Updating exmdb quotas")
         client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["userPrefix"], True)
         propvals = (pyexmdb.TaggedPropval_u64(PropTags.PROHIBITRECEIVEQUOTA, data["maxSize"]*1024),
@@ -101,27 +118,30 @@ def patchUser(domainID, ID):
                                   for problem in status.problems)
             API.logger.error("Failed to adjust user quota:\n"+problems)
             return jsonify(message="Failed to set user quota"), 500
-    return response
+    return jsonify(user.fulldesc())
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>", methods=["DELETE"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["DELETE"])
 @api.secure(requireDB=True)
-def deleteUser(domainID, ID):
-    user = Users.query.filter(Users.ID == ID, Users.domainID == domainID).first()
+def deleteUserEndpoint(domainID, userID):
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
-        return jsonify(message="User #{} not found".format(ID)), 404
-    stats = dict()
-    isAlias = user.addressType == Users.ALIAS
+        return jsonify(message="User #{} not found".format(userID)), 404
+    return deleteUser(user)
+
+
+def deleteUser(user):
+    isAlias = user.addressType in (Users.ALIAS, Users.VIRTUAL)
     maildir = user.maildir
     userName, domainName = user.username.split("@")
     domainAliases = Aliases.query.filter(Aliases.mainname == domainName).all()
-    delUsers = [Users.ID == ID]
-    delUsers += [Users.username.in_(userName+"@"+domainAlias for domainAlias in domainAliases)]
+    delUsers = [Users.ID == user.ID]
+    delUsers += [Users.username.in_(userName+"@"+domainAlias.aliasname for domainAlias in domainAliases)]
     if isAlias:
         delAliases = [Aliases.aliasname == user.username]
     else:
         userAliases = Aliases.query.filter(Aliases.mainname == user.username).all()
-        aliases = (userAliases.aliasname.split("@") for userAlias in userAliases)
+        aliases = (userAlias.aliasname.split("@") for userAlias in userAliases)
         aliasDomains = {userAlias[1] for userAlias in aliases}
         aliasDomainAliases = Aliases.query.filter(Aliases.mainname.in_(aliasDomains)).all()
         aliasDomainAliasMap = createMapping(aliasDomainAliases, lambda x: x.mainname, lambda x: x.aliasname)
@@ -135,26 +155,26 @@ def deleteUser(domainID, ID):
     Associations.query.filter(Associations.username == user.username).delete(synchronize_session=False)
     Aliases.query.filter(or_(criterion for criterion in delAliases)).delete(synchronize_session=False)
     Users.query.filter(or_(criterion for criterion in delUsers)).delete(synchronize_session=False)
-
     try:
         DB.session.commit()
     except:
         return jsonify(message="Cannot delete user: Database commit failed."), 500
-
     if not isAlias:
-        client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["userPrefix"], True)
-        client.unloadStore(maildir)
-
+        try:
+            client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["userPrefix"], True)
+            client.unloadStore(maildir)
+        except RuntimeError as err:
+            API.logger.error("Could not unload exmdb store: "+err.args[0])
     if request.args.get("deleteFiles") == "true":
         shutil.rmtree(maildir, ignore_errors=True)
-
     return jsonify(message="isded")
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:ID>/password", methods=["PUT"])
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/password", methods=["PUT"])
 @api.secure(requireDB=True)
-def setUserPassword(domainID, ID):
-    user = Users.query.filter(Users.ID == ID, Users.domainID == domainID).first()
+def setUserPassword(domainID, userID):
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
     data = request.get_json(silent=True)
@@ -163,6 +183,67 @@ def setUserPassword(domainID, ID):
     user.password = data["new"]
     DB.session.commit()
     return jsonify(message="Success")
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/aliases", methods=["GET"])
+@api.secure(requireDB=True)
+def userAliasListEndpoint(domainID, userID):
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    return defaultListHandler(Aliases, filters=(Aliases.mainname == user.username,))
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/aliases", methods=["POST"])
+@api.secure(requireDB=True)
+def createUserAlias(domainID, userID):
+    data = request.get_json(silent=True)
+    if data is None or "aliasname" not in data:
+        return jsonify("Missing alias name"), 400
+    aliasname = data["aliasname"]
+    user: Users = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    if user.addressType == Users.VIRTUAL:
+        return jsonify(message="Cannot alias virtual user"), 400
+    domain: Domains = Domains.query.filter(Domains.ID == domainID).first()
+    if Users.query.filter(Users.domainID == domainID, Users.addressType == Users.ALIAS).count() > domain.maxUser:
+        return jsonify(message="Maximum number of aliases reached"), 4000
+    if "@" in aliasname:
+        aliasBase, aliasDomain = aliasname.rsplit("@", 1)
+        if aliasDomain != domain.domainname:
+            return jsonify(message="Alias domain must match user domain")
+    else:
+        aliasBase = aliasname
+        aliasname += "@"+domain.domainname
+    aliasDomains = Aliases.query.filter(Aliases.mainname=="testdomain2")\
+                                .join(Domains, Domains.domainname == Aliases.aliasname)\
+                                .with_entities(Domains.domainname, Domains.domainStatus).all()
+    alias = Aliases({"mainname": user.username, "aliasname": aliasname})
+    DB.session.add(alias)
+    DB.session.add(user.mkAlias(aliasname))
+    for aliasDomain in aliasDomains:
+        virtual = user.mkAlias(aliasBase+"@"+aliasDomain.domainname, Users.VIRTUAL)
+        virtual.addressStatus = (virtual.addressStatus & 0xF) | (aliasDomain.domainStatus << 4)
+        DB.session.add(virtual)
+    try:
+        DB.session.commit()
+    except IntegrityError as err:
+        DB.session.rollback()
+        return jsonify(message="Alias creation failed", error=err.orig.args[1])
+    return jsonify(alias.fulldesc()), 201
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/aliases/<int:ID>", methods=["DELETE"])
+@api.secure(requireDB=True)
+def deleteUserAlias(domainID, ID):
+    alias = Aliases.query.filter(Aliases.ID == ID).first()
+    if alias is None:
+        return jsonify(message="Alias not found"), 404
+    if alias is None:
+        return jsonify(message="User not found"), 404
+    user = Users.query.filter(Users.domainID == domainID, Users.username == alias.mainname).first()
+    return deleteUser(user)
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["GET"])

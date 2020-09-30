@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.7.4
+  version: 0.8.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -357,13 +357,13 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /system/domains/{ID}:
+  /system/domains/{domainID}:
     patch:
       summary: Update domain
       tags:
         - System Admin
       parameters:
-        - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/domainID'
       requestBody:
         content:
           application/json:
@@ -387,7 +387,7 @@ paths:
       tags:
         - System Admin
       parameters:
-        - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/domainID'
       responses:
         '200':
           description: Domain deleted
@@ -400,13 +400,88 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/{ID}/password:
+  /system/domains/{domainID}/aliases:
+    get:
+      summary: Get domain aliases
+      tags:
+        - System Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: List of aliases returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/aliasList'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Create alias for domain
+      tags:
+        - System Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                aliasname:
+                  type: string
+                  description: Name of the alias
+      responses:
+        '201':
+          description: Domain alias created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/alias'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /system/domains/aliases/{ID}:
+    delete:
+      summary: Delete alias domain
+      description: Marks the alias domain and all virtual users as deleted
+      tags:
+        - System Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Deletion successful
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/password:
     put:
       summary: Set domain password
       tags:
         - System Admin
       parameters:
-        - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/domainID'
       requestBody:
         content:
           application/json:
@@ -479,13 +554,13 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/{domainID}/users/{ID}:
+  /domains/{domainID}/users/{userID}:
     patch:
       summary: Update user
       tags:
         - Domain Admin
       parameters:
-        - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
       requestBody:
         content:
@@ -510,7 +585,7 @@ paths:
       tags:
         - Domain Admin
       parameters:
-        - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
         - name: deleteFiles
           description: Delete user files on disk
@@ -531,14 +606,14 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/{domainID}/users/{ID}/password:
+  /domains/{domainID}/users/{userID}/password:
     put:
       summary: Set user password
       tags:
         - Domain Admin
       parameters:
         - $ref: '#/components/parameters/domainID'
-        - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/userID'
       requestBody:
         content:
           application/json:
@@ -552,6 +627,83 @@ paths:
       responses:
         '200':
           description: User password updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/users/{userID}/aliases:
+    get:
+      summary: Get list of user aliases
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/userID'
+      responses:
+        '200':
+          description: List of user aliases returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/aliasList'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Create new user alias
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/userID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                aliasname:
+                  type: string
+                  description: Name of the alias user. Domain part can be omitted, but must match domain if present.
+      responses:
+        '201':
+          description: User alias created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/alias'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/users/aliases/{ID}:
+    delete:
+      summary: Delete user alias
+      tags:
+        - Domain Admin
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: User alias deleted
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -750,6 +902,13 @@ components:
     domainID:
       name: domainID
       description: ID of the domain
+      in: path
+      required: true
+      schema:
+        type: integer
+    userID:
+      name: userID
+      description: ID of the user
       in: path
       required: true
       schema:
@@ -1021,6 +1180,24 @@ components:
         unit:
           type: string
           description: Name of the systemd unit. Required for action endpoints.
+    alias:
+      type: object
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        aliasname:
+          type: string
+          description: Name of the alias
+        mainname:
+          type: string
+          description: Name of the aliased entity
+    aliasList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/alias'
   responses:
     ServerError:
       description: An error occured while processing the request
