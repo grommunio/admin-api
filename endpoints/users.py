@@ -136,25 +136,20 @@ def deleteUser(user):
     isAlias = user.addressType == Users.ALIAS
     maildir = user.maildir
     domainAliases = Aliases.query.filter(Aliases.mainname == user.domainName()).all()
-    delQueries = [Users.query.filter(Users.domainID == user.domainID, Users.username.like(user.baseName+"@%"))]
+    delQueries = [Users.query.filter(Users.domainID == user.domainID, Users.username.like(user.baseName()+"@%"))]
     if isAlias:
-        delAliases = [Aliases.aliasname == user.username]
+        delQueries.append(Aliases.query.filter(Aliases.aliasname == user.username))
     else:
         userAliases = Aliases.query.filter(Aliases.mainname == user.username).all()
-        aliases = (userAlias.aliasname.split("@") for userAlias in userAliases)
-        aliasDomains = {userAlias[1] for userAlias in aliases}
-        aliasDomainAliases = Aliases.query.filter(Aliases.mainname.in_(aliasDomains)).all()
-        aliasDomainAliasMap = createMapping(aliasDomainAliases, lambda x: x.mainname, lambda x: x.aliasname)
-        delUsers += [Users.username.in_(userAlias.aliasname for userAlias in userAliases)]
-        delAliases = [Aliases.mainname == user.username]
-        for alias in aliases:
-            delUsers += [Users.username == alias[0]+"@"+aliasDomainAlias for aliasDomainAlias in aliasDomainAliasMap[alias[1]]]
+        delQueries.append(Users.query.filter(Users.domainID == user.domainID,
+                                             or_(Users.username.like(alias.aliasname.split("@")[0]+"@%")
+                                                 for alias in userAliases)))
+        delQueries.append(Aliases.query.filter(Aliases.mainname == user.username))
         Forwards.query.filter(Forwards.username == user.username).delete(synchronize_session=False)
         Members.query.filter(Members.username == user.username).delete(synchronize_session=False)
-
     Associations.query.filter(Associations.username == user.username).delete(synchronize_session=False)
-    Aliases.query.filter(or_(criterion for criterion in delAliases)).delete(synchronize_session=False)
-    Users.query.filter(or_(criterion for criterion in delUsers)).delete(synchronize_session=False)
+    for query in delQueries:
+        query.delete(synchronize_session=False)
     try:
         DB.session.commit()
     except:
@@ -168,7 +163,6 @@ def deleteUser(user):
     if request.args.get("deleteFiles") == "true":
         shutil.rmtree(maildir, ignore_errors=True)
     return jsonify(message="isded")
-
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/password", methods=["PUT"])
