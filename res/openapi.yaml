@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.8.1
+  version: 0.8.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1252,8 +1252,12 @@ components:
       additionalProperties:
         type: array
         items:
-          description: Name of the alias
-          type: string
+          type: object
+          properties:
+            ID:
+              $ref: '#/components/schemas/ID'
+            aliasname:
+              type: string
   responses:
     ServerError:
       description: An error occured while processing the request

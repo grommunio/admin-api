@@ -230,7 +230,9 @@ def createUserAlias(domainID, userID):
 @api.secure(requireDB=True)
 def getAliasesByUser(domainID):
     aliases = Aliases.query.join(Users, Users.username == Aliases.aliasname).filter(Users.domainID==domainID).all()
-    return jsonify(data=createMapping(aliases, lambda alias: alias.mainname, lambda alias: alias.aliasname))
+    return jsonify(data=createMapping(aliases,
+                                      lambda alias: alias.mainname,
+                                      lambda alias: {"ID": alias.ID, "aliasname": alias.aliasname}))
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/aliases/<int:ID>", methods=["DELETE"])
