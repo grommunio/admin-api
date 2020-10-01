@@ -191,10 +191,11 @@ def createDomainAlias(domainID):
 @API.route(api.BaseRoute+"/system/domains/aliases", methods=["GET"])
 @api.secure(requireDB=True)
 def getAliasesByDomain():
-    aliases = Aliases.query.join(Domains, Domains.domainname == Aliases.aliasname).all()
+    aliases = Aliases.query.join(Domains, Domains.domainname == Aliases.aliasname)\
+                           .with_entities(Aliases.ID, Aliases.mainname, Aliases.aliasname, Domains.domainStatus).all()
     return jsonify(data=createMapping(aliases,
                                       lambda alias: alias.mainname,
-                                      lambda alias: {"ID": alias.ID, "aliasname": alias.aliasname}))
+                                      lambda alias: {"ID": alias.ID, "aliasname": alias.aliasname, "domainStatus": alias.domainStatus}))
 
 
 @API.route(api.BaseRoute+"/system/domains/aliases/<int:ID>", methods=["DELETE"])
