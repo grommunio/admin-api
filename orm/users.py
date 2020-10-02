@@ -271,6 +271,8 @@ class Users(DataModel, DB.Model):
         data["createDay"] = datetime.now()
 
     def __init__(self, props, *args, **kwargs):
+        if props is None:
+            return
         if isinstance(props, Users):
             self._copy(props)
             return

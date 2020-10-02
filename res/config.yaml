@@ -11,6 +11,21 @@ properties:
         type: boolean
         default: true
         description: Enable/disable request validation
+  security:
+    type: object
+    properties:
+      jwtExpiresAfter:
+        description: Validity duration of login tokens, in seconds
+        default: 604800
+        type: integer
+      jwtPublicKeyFile:
+        description: Path to the public rsa key used for authentication
+        default: res/jwt-pubkey.pem
+        type: string
+      jwtPrivateKeyFile:
+        description: Path to the private rsa key used for authentication
+        default: res/jwt-privkey.pem
+        type: string
   DB:
     type: object
     description: Database configuration object

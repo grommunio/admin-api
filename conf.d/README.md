@@ -33,6 +33,12 @@ Possible parameters are:
 - `validateRequest` (`boolean`, default: `true`): Whether Request vaildation is enforced. If set to `true`, an invalid request will generate a HTTP 400 response. If set to `false`, the error will only be logged, but the request will be processed.
 - `validateResponse` (`boolean`, default: `true`): Whether response validation is enforced. If set to `true`, an invalid response will be replace by a HTTP 500 response. If set to `false`, the error will only be logged and the invalid response is returned anyway.
 
+### Security ###
+Parameters regarding security and authentication can be configured by the `security` object
+Possible parameters are:
+- `jwtPrivateKeyFile` (`string`, default: `res/jwt-privkey.pem`): Path to the private RSA key file
+- `jwtPublicKeyFile` (`string`, default: `res/jwt-pubkey.pem`): Path to the public RSA key file
+
 ### Options ###
 Further parameters can be set in the `options` object:
 - `dataPath` (`string`, default: `/usr/share/grammm/common`): Directory where shared resources used by Grammm modules are stored

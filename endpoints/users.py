@@ -133,6 +133,8 @@ def deleteUserEndpoint(domainID, userID):
 def deleteUser(user):
     if user.addressType == Users.VIRTUAL:
         return jsonify(message="Cannot delete virtual user"), 400
+    if user.ID == 0:
+        return jsonify(message="Cannot delete superuser"), 400
     isAlias = user.addressType == Users.ALIAS
     maildir = user.maildir
     domainAliases = Aliases.query.filter(Aliases.mainname == user.domainName()).all()
@@ -192,6 +194,8 @@ def userAliasListEndpoint(domainID, userID):
 @api.secure(requireDB=True)
 def createUserAlias(domainID, userID):
     data = request.get_json(silent=True)
+    if userID == 0:
+        return jsonify(message="Cannot alias superuser"), 400
     if data is None or "aliasname" not in data:
         return jsonify("Missing alias name"), 400
     aliasname = data["aliasname"]

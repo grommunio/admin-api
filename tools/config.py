@@ -29,7 +29,8 @@ _defaultConfig_ = {"openapi": {
                      }
                    },
                    "security": {
-                     "requireAuth": True
+                     "jwtPrivateKeyFile": "res/jwt-privkey.pem",
+                     "jwtPublicKeyFile": "res/jwt-pubkey.pem"
                    }
                    }
 
@@ -40,7 +41,7 @@ def _recursiveMerge_(dst, add):
     Add values from `src` to `dst`. If a key from `src` is already present in `dst`,
     the merge strategy depends on their types:
         - If both are lists, the lists are concatenated
-        - If both are dicts, they are merged recursevly
+        - If both are dicts, they are merged recursively
         - Otherwise the value from `dst` is overwritten
     """
     assert type(dst) is dict and type(add) is dict

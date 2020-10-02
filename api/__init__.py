@@ -26,7 +26,7 @@ else:
 BaseRoute = "/api/v1"  # Common prefix for all endpoints
 
 apiVersion = None  # API specification version. Extracted from the OpenAPI document.
-backendVersion = "0.8.5"  # Backend version number
+backendVersion = "0.9.0"  # Backend version number
 
 
 def _loadOpenAPISpec():
@@ -69,8 +69,8 @@ def validateRequest(flask_request):
     return True, None, None
 
 
-def secure(requireDB=False, requireAuth=True):
-    """Decorator securing API functions
+def secure(requireDB=False, requireAuth=True, authLevel="basic"):
+    """Decorator securing API functions.
 
        Arguments:
            - requireDB (boolean)
@@ -82,7 +82,8 @@ def secure(requireDB=False, requireAuth=True):
        deactivated in the configuration.
 
        If an exception is raised during execution, a HTTP 500 message is returned to the client and a short description of the
-       error is sent in the 'error' field of the response."""
+       error is sent in the 'error' field of the response.
+       """
     from .security import getSecurityContext
     def inner(func):
         @wraps(func)
@@ -103,7 +104,7 @@ def secure(requireDB=False, requireAuth=True):
                 return ret
 
             if requireAuth:
-                error = getSecurityContext()
+                error = getSecurityContext(authLevel)
                 if error is not None:
                     return jsonify(message="Access denied", error=error), 403
             valid, message, errors = validateRequest(request)

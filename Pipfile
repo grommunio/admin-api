@@ -12,6 +12,7 @@ jellyfish = "*"
 dbus-python = "*"
 psutil = "*"
 pygobject = "*"
+pyjwt = "*"
 
 [dev-packages]
 

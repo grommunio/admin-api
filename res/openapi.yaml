@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.8.3
+  version: 0.9.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -45,6 +45,47 @@ paths:
                   backend:
                     description: Version of the implementation
                     type: string
+
+  /login:
+    post:
+      summary: Login user
+      tags:
+        - Misc
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              anyOf:
+                - type: object
+                  required: [user, pass]
+                  properties:
+                    user:
+                      type: string
+                      description: Username
+                    pass:
+                      type: string
+                      description: User password
+                - type: string
+                  description: Workaround for flask/openapi
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  grammm-auth-jwt:
+                    type: string
+                    description: API accesss token
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          description: Login failed
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
 
   /system/dashboard:
     get:
@@ -1102,7 +1143,7 @@ components:
           $ref: '#/components/schemas/date'
         domainStatus:
           type: integer
-          description: Domain status (0=Normal, 1=Suspended)
+          description: Domain status (0=Normal, 1=Suspended, 2=Out Of Date, 3=Deleted)
           default: 0
         domainType:
           type: integer

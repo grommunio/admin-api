@@ -13,9 +13,10 @@ import os
 from datetime import datetime
 from dbus import DBusException
 
-from flask import jsonify
+from flask import jsonify, request
 
 from api import API
+from api.security import loginUser, refreshToken
 import api
 from orm import DB
 
@@ -215,3 +216,17 @@ def signalDashboardService(unit, action):
         errMsg = exc.args[0] if len(exc.args) > 0 else "Unknown "
         return jsonify(message="Could not {} unit '{}': {}".format(action, unit, )), 500
     return jsonify(message=result), 201 if result == "done" else 500
+
+
+@API.route(api.BaseRoute+"/login", methods=["POST"])
+@api.secure()
+def login():
+    if "user" not in request.form or "pass" not in request.form:
+        refreshed = refreshToken()
+        if refreshed is not None:
+            return jsonify(jwt=refreshed.decode("ascii"))
+        return jsonify(message="Incomplete login form"), 400
+    success, val = loginUser(request.form["user"], request.form["pass"])
+    if not success:
+        return jsonify(message="Login failed", error=val), 401
+    return jsonify({"grammm-auth-jwt": val.decode("ascii")})
