@@ -219,7 +219,7 @@ def signalDashboardService(unit, action):
 
 
 @API.route(api.BaseRoute+"/login", methods=["POST"])
-@api.secure()
+@api.secure(requireAuth=False)
 def login():
     if "user" not in request.form or "pass" not in request.form:
         refreshed = refreshToken()
