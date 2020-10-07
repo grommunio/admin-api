@@ -139,6 +139,16 @@ class Permissions:
         """
         return Permissions(SystemAdminPermission())
 
+    def capabilities(self):
+        """Return set of capabilities from all represented permissions.
+
+        Returns
+        -------
+        set
+            Union of capabilities from all permissions
+        """
+        return set.union(*(permission.capabilities() for permission in self.permissions))
+
 
 class PermissionBase:
     """Base class for permissions.
@@ -171,6 +181,16 @@ class PermissionBase:
         if isinstance(self, permission_t):
             return permission_t._permits(self, permission)
         return False
+
+    def capabilities(self):
+        """Get a set of capabilities provided by this permission.
+
+        Returns
+        -------
+        set
+            Empty set
+        """
+        return set()
 
 @Permissions.register("SystemAdmin")
 class SystemAdminPermission:
@@ -209,6 +229,16 @@ class SystemAdminPermission:
     def __repr__(self):
         """Return string representation."""
         return "SystemAdminPermission()"
+
+    def capabilities(self):
+        """Get a set of capabilities provided by this permission.
+
+        Returns
+        -------
+        set
+            Set containg "SystemAdmin" capability.
+        """
+        return {"SystemAdmin"}
 
 
 @Permissions.register("DomainAdmin")
@@ -257,3 +287,13 @@ class DomainAdminPermission(PermissionBase):
     def __repr__(self):
         """Return string representation."""
         return "DomainAdminPermission({})".format(repr(self.__domain))
+
+    def capabilities(self):
+        """Get a set of capabilities provided by this permission.
+
+        Returns
+        -------
+        set
+            Set containg "DomainAdmin" capability.
+        """
+        return {"DomainAdmin"}

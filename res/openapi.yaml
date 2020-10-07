@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.9.2
+  version: 0.9.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -86,6 +86,33 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/DatabaseError'
+
+  /profile:
+    get:
+      summary: Get information about currently logged in user
+      tags:
+        - Misc
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Profile data returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      username:
+                        type: string
+                      realName:
+                        type: string
+                  capabilities:
+                    type: array
+                    items:
+                      type: string
 
   /system/dashboard:
     get:

@@ -235,3 +235,12 @@ def login():
     if not success:
         return jsonify(message="Login failed", error=val), 401
     return jsonify({"grammmAuthJwt": val.decode("ascii")})
+
+
+@API.route(api.BaseRoute+"/profile", methods=["GET"])
+@api.secure(authLevel="user")
+def getProfile():
+    user = request.auth["user"]
+    userData = {"username": user.username, "realName": user.realName}
+    capabilities = tuple(user.permissions().capabilities())
+    return jsonify(user=userData, capabilities=capabilities)
