@@ -234,4 +234,4 @@ def login():
     success, val = loginUser(request.form["user"], request.form["pass"])
     if not success:
         return jsonify(message="Login failed", error=val), 401
-    return jsonify({"grammm-auth-jwt": val.decode("ascii")})
+    return jsonify({"grammmAuthJwt": val.decode("ascii")})

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.9.1
+  version: 0.9.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -75,7 +75,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  grammm-auth-jwt:
+                  grammmAuthJwt:
                     type: string
                     description: API accesss token
         '400':
@@ -1261,7 +1261,7 @@ components:
     JWTCookie:
       type: apiKey
       in: cookie
-      name: grammm-auth-jwt
+      name: grammmAuthJwt
   parameters:
     ID:
       name: ID

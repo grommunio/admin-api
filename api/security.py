@@ -54,7 +54,7 @@ def getSecurityContext(authLevel):
         Error message or None if successful
 
     """
-    cookie = request.cookies.get("grammm-auth-jwt")
+    cookie = request.cookies.get("grammmAuthJwt")
     if cookie is None:
         return "No token provided"
     success, val = checkToken(cookie)
@@ -127,7 +127,7 @@ def refreshToken():
     from orm.users import Users
     if "jwt" not in request.cookies:
         return
-    success, claims = checkToken(request.cookies["grammm-auth-jwt"])
+    success, claims = checkToken(request.cookies["grammmAuthJwt"])
     if not success:
         return
     user = Users.query.filter(Users.username == claims["usr"]).first()
