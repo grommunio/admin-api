@@ -8,7 +8,7 @@ Created on Tue Jun 23 11:21:26 2020
 Miscelleaneous API endpoints.
 """
 
-__all__ = ["ext", "misc", "orgs", "users"]
+__all__ = ["ext", "misc", "orgs", "roles", "users"]
 
 from flask import request, jsonify
 from orm import DB
@@ -143,7 +143,7 @@ def defaultPatch(Model, ID, errName, obj=None, filters=(), result="response"):
         return jsonify(message=errName+" not found"), 404
     try:
         obj.fromdict(data)
-    except (InvalidAttributeError, MismatchROError) as err:
+    except (InvalidAttributeError, MismatchROError, ValueError) as err:
         DB.session.rollback()
         return jsonify(message=err.args[0]), 400
     if result == "precommit":
@@ -186,11 +186,7 @@ def defaultCreate(Model, result="response"):
         created = Model(props=data)
     except MissingRequiredAttributeError as err:
         return jsonify(message=err.args[0]), 400
-    except ValueError as err:
-        return jsonify(message=err.args[0]), 400
-    except InvalidAttributeError as err:
-        return jsonify(message=err.args[0]), 400
-    except MismatchROError as err:
+    except (InvalidAttributeError, MismatchROError, ValueError) as err:
         return jsonify(message=err.args[0]), 400
     if result == "object":
         return created
@@ -231,7 +227,7 @@ def defaultDelete(Model, ID, name, filters=()):
         DB.session.delete(obj)
         DB.session.commit()
     except IntegrityError as err:
-        return jsonify(message="Object deletion would violate database constraints", error=err.args[0]), 400
+        return jsonify(message="Das kannste so nicht machen.", error=err.args[0]), 400
     return jsonify(message="{} #{} deleted.".format(name, ID))
 
 

@@ -8,6 +8,7 @@ Created on Tue Jun 23 16:37:38 2020
 
 import api
 from api import API
+from api.security import checkPermissions
 
 from flask import request, jsonify
 from sqlalchemy import or_
@@ -22,6 +23,7 @@ from tools.config import Config
 from tools.rop import nxTime, makeEidEx
 from tools.constants import Permissions, PropTags
 from tools.DataModel import InvalidAttributeError, MismatchROError
+from tools.permissions import SystemAdminPermission, DomainAdminPermission
 
 from datetime import datetime
 import shutil
@@ -32,6 +34,7 @@ if DB is not None:
     from orm.users import Users, Groups
     from orm.orgs import Domains, Aliases
     from orm.misc import Associations, Forwards, Members
+    from orm.roles import AdminUserRoleRelation
 
 
 @API.route(api.BaseRoute+"/groups", methods=["GET", "POST"])
@@ -49,6 +52,7 @@ def groupObjectEndpoint(ID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["GET"])
 @api.secure(requireDB=True)
 def userListEndpoint(domainID):
+    checkPermissions(DomainAdminPermission(domainID))
     return defaultListHandler(Users, filters=(Users.domainID == domainID,))
 
 
@@ -57,6 +61,8 @@ def userListEndpoint(domainID):
 def createUser(domainID):
     def rollback():
         DB.session.rollback()
+
+    checkPermissions(DomainAdminPermission(domainID))
     data = request.get_json(silent=True) or {}
     areaID = data.get("areaID")
     data["domainID"] = domainID
@@ -81,12 +87,14 @@ def createUser(domainID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["GET"])
 @api.secure(requireDB=True)
 def userObjectEndpoint(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
     return defaultObjectHandler(Users, userID, "User", filters=(Users.domainID == domainID,))
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["PATCH"])
 @api.secure(requireDB=True)
 def patchUser(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
     user = Users.query.filter(Users.domainID == domainID, Users.ID == userID).first()
     if user.addressType != Users.NORMAL:
         return jsonify(message="Cannot edit alias user"), 400
@@ -124,6 +132,7 @@ def patchUser(domainID, userID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["DELETE"])
 @api.secure(requireDB=True)
 def deleteUserEndpoint(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User #{} not found".format(userID)), 404
@@ -170,6 +179,7 @@ def deleteUser(user):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/password", methods=["PUT"])
 @api.secure(requireDB=True)
 def setUserPassword(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
@@ -184,6 +194,7 @@ def setUserPassword(domainID, userID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/aliases", methods=["GET"])
 @api.secure(requireDB=True)
 def userAliasListEndpoint(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
@@ -193,6 +204,7 @@ def userAliasListEndpoint(domainID, userID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/aliases", methods=["POST"])
 @api.secure(requireDB=True)
 def createUserAlias(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
     data = request.get_json(silent=True)
     if userID == 0:
         return jsonify(message="Cannot alias superuser"), 400
@@ -233,6 +245,7 @@ def createUserAlias(domainID, userID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/aliases", methods=["GET"])
 @api.secure(requireDB=True)
 def getAliasesByUser(domainID):
+    checkPermissions(DomainAdminPermission(domainID))
     aliases = Aliases.query.join(Users, Users.username == Aliases.aliasname).filter(Users.domainID==domainID).all()
     return jsonify(data=createMapping(aliases,
                                       lambda alias: alias.mainname,
@@ -242,6 +255,7 @@ def getAliasesByUser(domainID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/aliases/<int:ID>", methods=["DELETE"])
 @api.secure(requireDB=True)
 def deleteUserAlias(domainID, ID):
+    checkPermissions(DomainAdminPermission(domainID))
     alias = Aliases.query.filter(Aliases.ID == ID).first()
     if alias is None:
         return jsonify(message="Alias not found"), 404
@@ -251,9 +265,39 @@ def deleteUserAlias(domainID, ID):
     return deleteUser(user)
 
 
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/roles", methods=["POST"])
+@api.secure(requireDB=True)
+def addUserRole(domainID, userID):
+    checkPermissions(SystemAdminPermission())
+    data = request.get_json(silent=True)
+    if data is None or "roleID" not in data:
+        return jsonify(message="Missing 'roleID'"), 400
+    DB.session.add(AdminUserRoleRelation(userID, data["roleID"]))
+    try:
+        DB.session.commit()
+    except IntegrityError as err:
+        DB.session.rollback()
+        return jsonify(message="Cannot assign role", error=err.orig.args[1]), 400
+    return jsonify(message="Success"), 201
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/roles/<int:ID>", methods=["DELETE"])
+@api.secure(requireDB=True)
+def removeUserRole(domainID, userID, ID):
+    checkPermissions(SystemAdminPermission())
+    found = AdminUserRoleRelation.query.filter(AdminUserRoleRelation.userID == userID,
+                                               AdminUserRoleRelation.roleID == ID).delete()
+    if found != 1:
+        DB.session.rollback()
+        return jsonify(message="Role not assigned" if found == 0 else "Database integrity error")
+    DB.session.commit()
+    return jsonify(message="Success")
+
+
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["GET"])
 @api.secure(requireDB=True)
 def getPublicFoldersList(domainID):
+    checkPermissions(DomainAdminPermission(domainID))
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
@@ -270,6 +314,7 @@ def getPublicFoldersList(domainID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["POST"])
 @api.secure(requireDB=True)
 def createPublicFolder(domainID):
+    checkPermissions(DomainAdminPermission(domainID))
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
@@ -287,6 +332,7 @@ def createPublicFolder(domainID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>", methods=["DELETE"])
 @api.secure(requireDB=True)
 def deletePublicFolder(domainID, folderID):
+    checkPermissions(DomainAdminPermission(domainID))
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
@@ -300,6 +346,7 @@ def deletePublicFolder(domainID, folderID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners", methods=["GET"])
 @api.secure(requireDB=True)
 def getPublicFolderOwnerList(domainID, folderID):
+    checkPermissions(DomainAdminPermission(domainID))
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
@@ -314,6 +361,7 @@ def getPublicFolderOwnerList(domainID, folderID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners", methods=["POST"])
 @api.secure(requireDB=True)
 def addPublicFolderOwner(domainID, folderID):
+    checkPermissions(DomainAdminPermission(domainID))
     data = request.get_json(silent=True)
     if data is None or "username" not in data:
         return jsonify(message="Missing required parameter 'username'"), 400
@@ -328,6 +376,7 @@ def addPublicFolderOwner(domainID, folderID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners/<int:memberID>", methods=["DELETE"])
 @api.secure(requireDB=True)
 def deletePublicFolderOwner(domainID, folderID, memberID):
+    checkPermissions(DomainAdminPermission(domainID))
     data = request.get_json(silent=True)
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:

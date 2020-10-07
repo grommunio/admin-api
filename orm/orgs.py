@@ -74,6 +74,8 @@ class Domains(DataModel, DB.Model):
     NORMAL = 0
     ALIAS = 1
 
+    SUSPENDED = 1
+    OUTOFDATE = 2
     DELETED = 3
 
     def __init__(self, props: dict, *args, **kwargs):

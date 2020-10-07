@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.9.0
+  version: 0.9.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -92,6 +92,8 @@ paths:
       summary: Get System dashboard data
       tags:
         - Misc
+      security:
+        - JWTCookie: []
       responses:
         '200':
           description: Data returned
@@ -206,6 +208,8 @@ paths:
       summary: Get list of services
       tags:
         - Misc
+      security:
+        - JWTCookie: []
       responses:
         '200':
           description: List of services returned
@@ -229,6 +233,8 @@ paths:
       summary: Get information about a specific service
       tags:
         - Misc
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/systemdUnit'
       responses:
@@ -244,6 +250,8 @@ paths:
       summary: Send signal to a service
       tags:
         - Misc
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/systemdUnit'
         - name: action
@@ -266,6 +274,8 @@ paths:
       summary: Get lists of data areas
       tags:
         - System Admin
+      security:
+        - JWTCookie: []
       responses:
         '200':
           description: Data returned
@@ -290,6 +300,8 @@ paths:
       summary: Create new data area
       tags:
         - System Admin
+      security:
+        - JWTCookie: []
       requestBody:
         content:
           application/json:
@@ -314,6 +326,8 @@ paths:
       summary: Update data area
       tags:
         - System Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/ID'
       requestBody:
@@ -334,29 +348,14 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/DatabaseError'
-    delete:
-      summary: Delete data area
-      tags:
-        - System Admin
-      parameters:
-        - $ref: '#/components/parameters/ID'
-      responses:
-        '200':
-          description: Data area deleted
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
 
   /system/domains:
     get:
       summary: Get lists of domains
       tags:
         - System Admin
+      security:
+        - JWTCookie: []
       responses:
         '200':
           description: Data returned
@@ -379,6 +378,8 @@ paths:
       summary: Create new domain
       tags:
         - System Admin
+      security:
+        - JWTCookie: []
       requestBody:
         content:
           application/json:
@@ -403,6 +404,8 @@ paths:
       summary: Update domain
       tags:
         - System Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
       requestBody:
@@ -427,6 +430,8 @@ paths:
       summary: Delete domain
       tags:
         - System Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
       responses:
@@ -446,6 +451,8 @@ paths:
       summary: Get domain aliases
       tags:
         - System Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
       responses:
@@ -467,6 +474,8 @@ paths:
       summary: Create alias for domain
       tags:
         - System Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
       requestBody:
@@ -500,6 +509,8 @@ paths:
       summary: List all user aliases grouped by user
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       responses:
         '200':
           description: List returned
@@ -536,6 +547,8 @@ paths:
       description: Marks the alias domain and all virtual users as deleted
       tags:
         - System Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
@@ -551,11 +564,156 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /system/roles/permissions:
+    get:
+      summary: Get list of available permissions
+      tags:
+        - System Admin
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: List with permissions returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: string
+                      description: Name of the permission
+
+  /system/roles:
+    get:
+      summary: Get list of available roles
+      tags:
+        - System Admin
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: List of roles returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/adminRole'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Create a new role
+      tags:
+        - System Admin
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/adminRoleWrite'
+      responses:
+        '201':
+          description: Role created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/adminRole'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /system/roles/{ID}:
+    get:
+      summary: Get role
+      tags:
+        - System Admin
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: List of roles returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/adminRole'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    patch:
+      summary: Update a role
+      tags:
+        - System Admin
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/adminRoleWrite'
+      responses:
+        '200':
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/adminRole'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete role
+      tags:
+        - System Admin
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Role deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
   /domains/{domainID}/password:
     put:
       summary: Set domain password
       tags:
         - System Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
       requestBody:
@@ -585,6 +743,8 @@ paths:
       summary: Get lists of users
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
       responses:
@@ -609,6 +769,8 @@ paths:
       summary: Create new user
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
       requestBody:
@@ -631,10 +793,34 @@ paths:
           $ref: '#/components/responses/DatabaseError'
 
   /domains/{domainID}/users/{userID}:
+    get:
+      summary: Get information about a specific user
+      tags:
+        - Domain Admin
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: User data returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update user
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
@@ -660,6 +846,8 @@ paths:
       summary: Delete user
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
@@ -687,6 +875,8 @@ paths:
       summary: Set user password
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/userID'
@@ -717,6 +907,8 @@ paths:
       summary: Get list of user aliases
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/userID'
@@ -739,6 +931,8 @@ paths:
       summary: Create new user alias
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/userID'
@@ -774,6 +968,8 @@ paths:
       summary: List all user aliases grouped by user
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
       responses:
@@ -799,6 +995,8 @@ paths:
       summary: Delete user alias
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/userID'
@@ -815,6 +1013,60 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/{domainID}/users/{userID}/roles:
+    post:
+      summary: Associate user with role
+      tags:
+        - System Admin
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/userID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roleID:
+                  type: integer
+                  description: ID of the role to associate
+      responses:
+        '201':
+          description: Role associated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/users/{userID}/roles/{ID}:
+    delete:
+      summary: Remove role association
+      tags:
+        - System Admin
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Role association removed
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
   /domains/{domainID}/folders:
     get:
       summary: Get list of public folders
@@ -822,6 +1074,8 @@ paths:
         - $ref: '#/components/parameters/domainID'
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       responses:
         '200':
           description: List of public folders returned
@@ -840,6 +1094,8 @@ paths:
         - $ref: '#/components/parameters/domainID'
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       requestBody:
         content:
           application/json:
@@ -878,6 +1134,8 @@ paths:
       summary: Delete public folder
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/folderID'
@@ -905,6 +1163,8 @@ paths:
       summary: Get list of folder owners
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/folderID'
@@ -939,6 +1199,8 @@ paths:
       summary: Add a user to the owner list
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/folderID'
@@ -971,6 +1233,8 @@ paths:
       summary: Remove a user from the owner list
       tags:
         - Domain Admin
+      security:
+        - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/folderID'
@@ -993,6 +1257,11 @@ paths:
           $ref: '#/components/responses/DatabaseError'
 
 components:
+  securitySchemes:
+    JWTCookie:
+      type: apiKey
+      in: cookie
+      name: grammm-auth-jwt
   parameters:
     ID:
       name: ID
@@ -1225,7 +1494,7 @@ components:
         addressType:
           type: integer
           description: Address type (0=Normal, 1=Alias, 2=MList, 3=Virtual)
-          readOnly: True
+          readOnly: true
         cell:
           type: string
           maxLength: 20
@@ -1253,6 +1522,17 @@ components:
         netDisk:
           type: boolean
           description: Network disk privilege
+        roles:
+          type: array
+          description: List of role associated with the user
+          items:
+            type: object
+            readOnly: true
+            properties:
+              ID:
+                $ref: '#/components/schemas/ID'
+              name:
+                type: string
     publicFolder:
       type: object
       properties:
@@ -1312,6 +1592,55 @@ components:
               $ref: '#/components/schemas/ID'
             aliasname:
               type: string
+    adminPermission:
+      type: object
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        permission:
+          type: string
+    adminRole:
+      type: object
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        permissions:
+          type: array
+          description: List of permissions associated with the role
+          items:
+            $ref: '#/components/schemas/adminPermission'
+        users:
+          type: array
+          description: List of users associated with the role
+          items:
+            type: object
+            properties:
+              ID:
+                $ref: '#/components/schemas/ID'
+              username:
+                type: string
+    adminRoleWrite:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/adminPermission'
+        users:
+          type: array
+          description: List of user IDs to associate with the role
+          items:
+            type: integer
   responses:
     ServerError:
       description: An error occured while processing the request

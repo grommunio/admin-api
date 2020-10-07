@@ -7,11 +7,12 @@ Created on Tue Jun 23 13:59:32 2020
 """
 
 from . import DB
-from tools.DataModel import DataModel, Id, Text, Int, Date, BoolP
+from tools.DataModel import DataModel, Id, Text, Int, Date, BoolP, RefProp
 from .ext import AreaList
 
 from sqlalchemy import func
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
+from sqlalchemy.orm import relationship, selectinload
 
 import crypt
 from datetime import datetime
@@ -134,6 +135,8 @@ class Users(DataModel, DB.Model):
     nickname = DB.Column("nickname", DB.VARCHAR(32), nullable=False, server_default="")
     homeaddress = DB.Column("homeaddress", DB.VARCHAR(128), nullable=False, server_default="")
 
+    roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
+
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Text("realName", flags="patch"),
                       Text("title", flags="patch"),
@@ -158,7 +161,8 @@ class Users(DataModel, DB.Model):
                       BoolP("smtp", flags="patch"),
                       BoolP("changePassword", flags="patch"),
                       BoolP("publicAddress", flags="patch"),
-                      BoolP("netDisk", flags="patch")))
+                      BoolP("netDisk", flags="patch")),
+                     (RefProp("roles", qopt=selectinload),))
 
     POP3_IMAP = 1 << 0
     SMTP = 1 << 1
@@ -271,6 +275,7 @@ class Users(DataModel, DB.Model):
         data["createDay"] = datetime.now()
 
     def __init__(self, props, *args, **kwargs):
+        self._permissions = None
         if props is None:
             return
         if isinstance(props, Users):
@@ -338,6 +343,19 @@ class Users(DataModel, DB.Model):
         if domainStatus is not None:
             alias.addressStatus = (alias.addressStatus & 0xF) | (domainStatus << 4)
         return alias
+
+    def permissions(self):
+        if self.ID == 0:
+            from tools.permissions import Permissions
+            return Permissions.sysadmin()
+        if not hasattr(self, "_permissions") or self._permissions is None:
+            from .roles import AdminUserRoleRelation as AURR, AdminRolePermissionRelation as ARPR, AdminRoles as AR
+            from tools.permissions import Permissions
+            perms = ARPR.query.filter(AURR.userID == self.ID)\
+                              .join(AR).join(AURR).all()
+            self._permissions = Permissions.fromDB(perms)
+        return self._permissions
+
 
 
 DB.Index(Users.domainID, Users.username, unique=True)

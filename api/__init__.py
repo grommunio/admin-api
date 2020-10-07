@@ -26,7 +26,7 @@ else:
 BaseRoute = "/api/v1"  # Common prefix for all endpoints
 
 apiVersion = None  # API specification version. Extracted from the OpenAPI document.
-backendVersion = "0.9.1"  # Backend version number
+backendVersion = "0.9.2"  # Backend version number
 
 
 def _loadOpenAPISpec():
@@ -85,6 +85,7 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic"):
        error is sent in the 'error' field of the response.
        """
     from .security import getSecurityContext
+    from .errors import InsufficientPermissions
     def inner(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -106,7 +107,7 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic"):
             if requireAuth:
                 error = getSecurityContext(authLevel)
                 if error is not None:
-                    return jsonify(message="Access denied", error=error), 403
+                    return jsonify(message="Access denied", error=error), 401
             valid, message, errors = validateRequest(request)
             if not valid:
                 if Config["openapi"]["validateRequest"]:
@@ -124,6 +125,8 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic"):
             except DatabaseError as err:
                 API.logger.error("Database query failed: {}".format(err))
                 return jsonify(message="Database error."), 503
+            except InsufficientPermissions as err:
+                return jsonify(message="Insufficient permissions for this operation"), 403
             except:
                 API.logger.error(traceback.format_exc())
                 return jsonify(message="The server encountered an error while processing the request."), 500

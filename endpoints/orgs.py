@@ -15,10 +15,11 @@ from . import defaultListHandler, defaultObjectHandler, defaultPatch
 
 import api
 from api import API
+from api.security import checkPermissions
 
 from tools.misc import AutoClean, createMapping
 from tools.storage import DomainSetup
-
+from tools.permissions import SystemAdminPermission
 
 from orm import DB
 if DB is not None:
@@ -42,12 +43,14 @@ def orgObjectEndpoint(ID):
 @API.route(api.BaseRoute+"/system/domains", methods=["GET"])
 @api.secure(requireDB=True)
 def domainListEndpoint():
+    checkPermissions(SystemAdminPermission())
     return defaultListHandler(Domains)
 
 
 @API.route(api.BaseRoute+"/system/domains", methods=["POST"])
 @api.secure(requireDB=True)
 def domainCreate():
+    checkPermissions(SystemAdminPermission())
     def rollback():
         DB.session.rollback()
     data = request.get_json(silent=True) or {}
@@ -73,12 +76,14 @@ def domainCreate():
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>", methods=["GET"])
 @api.secure(requireDB=True)
 def getDomain(domainID):
+    checkPermissions(SystemAdminPermission())
     return defaultObjectHandler(Domains, domainID, "Domain")
 
 
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>", methods=["PATCH"])
 @api.secure(requireDB=True)
 def updateDomain(domainID):
+    checkPermissions(SystemAdminPermission())
     domain: Domains = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
@@ -113,6 +118,7 @@ def updateDomain(domainID):
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>", methods=["DELETE"])
 @api.secure(requireDB=True)
 def deleteDomain(domainID):
+    checkPermissions(SystemAdminPermission())
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
@@ -137,6 +143,7 @@ def deleteDomain(domainID):
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>/password", methods=["PUT"])
 @api.secure(requireDB=True)
 def setDomainPassword(domainID):
+    checkPermissions(SystemAdminPermission())
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
@@ -151,6 +158,7 @@ def setDomainPassword(domainID):
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>/aliases", methods=["GET"])
 @api.secure(requireDB=True)
 def domainAliasListEndpoint(domainID):
+    checkPermissions(SystemAdminPermission())
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
@@ -160,6 +168,7 @@ def domainAliasListEndpoint(domainID):
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>/aliases", methods=["POST"])
 @api.secure(requireDB=True)
 def createDomainAlias(domainID):
+    checkPermissions(SystemAdminPermission())
     data = request.get_json(silent=True)
     if data is None or "aliasname" not in data:
         return jsonify("Missing alias name"), 400
@@ -191,6 +200,7 @@ def createDomainAlias(domainID):
 @API.route(api.BaseRoute+"/system/domains/aliases", methods=["GET"])
 @api.secure(requireDB=True)
 def getAliasesByDomain():
+    checkPermissions(SystemAdminPermission())
     aliases = Aliases.query.join(Domains, Domains.domainname == Aliases.aliasname)\
                            .with_entities(Aliases.ID, Aliases.mainname, Aliases.aliasname, Domains.domainStatus).all()
     return jsonify(data=createMapping(aliases,
@@ -201,6 +211,7 @@ def getAliasesByDomain():
 @API.route(api.BaseRoute+"/system/domains/aliases/<int:ID>", methods=["DELETE"])
 @api.secure(requireDB=True)
 def deleteDomainAlias(ID):
+    checkPermissions(SystemAdminPermission())
     alias = Aliases.query.filter(Aliases.ID == ID).first()
     if alias is None:
         return jsonify(message="Alias not found"), 404
@@ -228,6 +239,7 @@ def deleteAliasDomain(aliasDomain=None, alias=None, domain=None):
     response
         The flask response to return
     """
+    checkPermissions(SystemAdminPermission())
     if aliasDomain is None and alias is None:
         return jsonify(message="Get out of here, stalker."), 500
     if aliasDomain is None:

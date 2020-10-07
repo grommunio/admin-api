@@ -16,7 +16,7 @@ from dbus import DBusException
 from flask import jsonify, request
 
 from api import API
-from api.security import loginUser, refreshToken
+from api.security import loginUser, refreshToken, checkPermissions
 import api
 from orm import DB
 
@@ -24,6 +24,7 @@ from . import defaultListHandler, defaultObjectHandler
 
 from tools.config import Config
 from tools.systemd import Systemd
+from tools.permissions import SystemAdminPermission
 
 if DB is not None:
     from orm.misc import Forwards, MLists, Associations, Classes, Hierarchy, Members, Specifieds
@@ -131,6 +132,7 @@ def speciedObjectEndpoint(ID):
 @API.route(api.BaseRoute+"/system/dashboard", methods=["GET"])
 @api.secure()
 def getDashboard():
+    checkPermissions(SystemAdminPermission())
     disks = []
     for disk in psutil.disk_partitions():
         try:
@@ -161,6 +163,7 @@ def getDashboard():
 @API.route(api.BaseRoute+"/system/dashboard/services", methods=["GET"])
 @api.secure()
 def getDashboardServices():
+    checkPermissions(SystemAdminPermission())
     if len(Config["options"]["dashboard"]["services"]) == 0:
         return jsonify(services=[])
     sysd = Systemd(system=True)
@@ -180,6 +183,7 @@ def getDashboardServices():
 @API.route(api.BaseRoute+"/system/dashboard/services/<unit>", methods=["GET"])
 @api.secure()
 def getDashboardService(unit):
+    checkPermissions(SystemAdminPermission())
     for service in Config["options"]["dashboard"]["services"]:
         if service["unit"] == unit:
             break
@@ -199,6 +203,7 @@ def getDashboardService(unit):
 @API.route(api.BaseRoute+"/system/dashboard/services/<unit>/<action>", methods=["POST"])
 @api.secure()
 def signalDashboardService(unit, action):
+    checkPermissions(SystemAdminPermission())
     if action == "start":
         command = Systemd.startService
     elif action == "stop":

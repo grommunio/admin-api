@@ -10,6 +10,15 @@ from api import API
 from flask import jsonify, request
 
 
+class InsufficientPermissions(RuntimeError):
+    pass
+
+
+@API.errorhandler(InsufficientPermissions)
+def insufficient_permissions(error):
+    return jsonify(message="Insufficient permissions for this operation"), 403
+
+
 @API.errorhandler(404)
 def not_found(error):
     """Return JSON object with 404 message."""

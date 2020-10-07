@@ -23,6 +23,23 @@ except:
     jwtPrivkey = jwtPubkey = None
 
 
+def getUser():
+    """Load currently logged in user from database.
+
+    Returns
+    -------
+    str
+        Error message or None if successful.
+    """
+    if "user" in request.auth:
+        return
+    from orm.users import Users
+    user = Users.query.filter(Users.username == request.auth["claims"]["usr"]).first()
+    if user is None:
+        return "Invalid user"
+    request.auth["user"] = user
+
+
 def getSecurityContext(authLevel):
     """Create security context for the request.
 
@@ -45,11 +62,7 @@ def getSecurityContext(authLevel):
         return val
     request.auth = {"claims": val}
     if authLevel == "user":
-        from orm.users import Users
-        user = Users.query.filter(Users.username == val["usr"]).first()
-        if user is None:
-            return "Invalid user"
-        request.auth["user"] = user
+        return getUser()
 
 
 def mkJWT(claims):
@@ -102,8 +115,8 @@ def checkToken(token):
 
 
 def userLoginAllowed(user):
-    from orm.roles import AdminUserRoleRelationship
-    return user.ID == 0 or AdminUserRoleRelationship.query.filter(AdminUserRoleRelationship.userID == user.ID).count() != 0
+    from orm.roles import AdminUserRoleRelation
+    return user.ID == 0 or AdminUserRoleRelation.query.filter(AdminUserRoleRelation.userID == user.ID).count() != 0
 
 
 def refreshToken():
@@ -133,3 +146,28 @@ def loginUser(username, password):
     if not userLoginAllowed(user):
         return False, "Access denied"
     return True, mkJWT({"usr": user.username})
+
+
+def checkPermissions(*requested):
+    """Check if current user has requested permissions.
+
+    Parameters
+    ----------
+    *requested : PermissionBase
+        Permissions the user needs
+
+    Raises
+    ------
+    InsufficientPermissions
+        At least one permission check failed
+
+    Returns
+    -------
+    None.
+    """
+    from .errors import InsufficientPermissions
+    if getUser() is not None:
+        raise InsufficientPermissions()
+    permissions = request.auth["user"].permissions()
+    if not all(permission in permissions for permission in requested):
+        raise InsufficientPermissions()
