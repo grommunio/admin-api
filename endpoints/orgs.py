@@ -94,7 +94,7 @@ def updateDomain(domainID):
     patched = defaultPatch(Domains, domainID, "Domain", obj=domain, result="precommit")
     if isinstance(domain, tuple):  # Return value is not the domain, but an error response
         return domain
-    if domain.privilegeBits != oldPrivileges or oldStatus != domain.stat:
+    if domain.privilegeBits != oldPrivileges or oldStatus != domain.domainStatus:
         Users.query.filter(Users.domainID == domainID)\
                    .update({Users.privilegeBits: Users.privilegeBits.op("&")(0xFFFF) + (domain.privilegeBits << 16)},
                            synchronize_session=False)
@@ -102,9 +102,10 @@ def updateDomain(domainID):
                     .update({Groups.privilegeBits: Groups.privilegeBits.op("&")(0xFF) + (domain.privilegeBits << 8)},
                             synchronize_session=False)
     data.pop("ID", None)
-    data.pop("domainname")
+    data.pop("domainname", None)
     aliasDomainNames = Aliases.query.filter(Aliases.mainname == domain.domainname).with_entities(Aliases.aliasname)
-    aliasDomains = Domains.query.join(Aliases.mainname == Domains.domainname).filter(Aliases.aliasname == domain.mainname).all()
+    aliasDomains = Domains.query.join(Aliases, Aliases.mainname == Domains.domainname)\
+                                .filter(Aliases.aliasname == domain.domainname).all()
     for aliasDomain in aliasDomains:
         aliasDomain.fromdict(data)
     try:
