@@ -19,7 +19,7 @@ from api.security import checkPermissions
 
 from tools.misc import AutoClean, createMapping
 from tools.storage import DomainSetup
-from tools.permissions import SystemAdminPermission
+from tools.permissions import SystemAdminPermission, DomainAdminPermission
 
 from orm import DB
 if DB is not None:
@@ -144,7 +144,7 @@ def deleteDomain(domainID):
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>/password", methods=["PUT"])
 @api.secure(requireDB=True)
 def setDomainPassword(domainID):
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(DomainAdminPermission(domainID))
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404

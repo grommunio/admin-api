@@ -56,6 +56,20 @@ def userListEndpointUnrestricted():
     return defaultListHandler(Users, filters=(Users.ID != 0,))
 
 
+@API.route(api.BaseRoute+"/domains", methods=["GET"])
+@api.secure(requireDB=True, authLevel="user")
+def getAvailableDomains():
+    permissions = request.auth["user"].permissions()
+    if SystemAdminPermission() in permissions:
+        domainFilters = ()
+    else:
+        domainIDs = {permission.domainID for permission in permissions if isinstance(permission, DomainAdminPermission)}
+        if len(domainIDs) == 0:
+            return jsonify(data=[])
+        domainFilters = () if "*" in domainIDs else (Domains.ID.in_(domainIDs),)
+    return defaultListHandler(Domains, filters=domainFilters)
+
+
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["GET"])
 @api.secure(requireDB=True)
 def userListEndpoint(domainID):

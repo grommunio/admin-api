@@ -73,6 +73,16 @@ class Permissions:
         """
         return self.has(permission)
 
+    def __iter__(self):
+        """Return permission iterator
+
+        Returns
+        -------
+        iterator
+            Iterator that iterates over the contained permission objects.
+        """
+        return self.permissions.__iter__()
+
     @classmethod
     def register(cls, name):
         """Class decorator to register a permission at the factory.
@@ -297,3 +307,8 @@ class DomainAdminPermission(PermissionBase):
             Set containg "DomainAdmin" capability.
         """
         return {"DomainAdmin"}
+
+    @property
+    def domainID(self):
+        """Return domain parameter."""
+        return self.__domain
