@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.9.3
+  version: 0.9.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -586,6 +586,32 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /system/users:
+    get:
+      summary: Get list of all users
+      tags:
+        - System Admin
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: User list returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/user'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
         '503':

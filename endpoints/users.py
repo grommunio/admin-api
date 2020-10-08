@@ -49,6 +49,13 @@ def groupObjectEndpoint(ID):
     return defaultObjectHandler(Groups, ID, "Group")
 
 
+@API.route(api.BaseRoute+"/system/users", methods=["GET"])
+@api.secure(requireDB=True)
+def userListEndpointUnrestricted():
+    checkPermissions(SystemAdminPermission())
+    return defaultListHandler(Users, filters=(Users.ID != 0,))
+
+
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["GET"])
 @api.secure(requireDB=True)
 def userListEndpoint(domainID):
