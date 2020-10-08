@@ -34,7 +34,7 @@ if DB is not None:
     from orm.users import Users, Groups
     from orm.orgs import Domains, Aliases
     from orm.misc import Associations, Forwards, Members
-    from orm.roles import AdminUserRoleRelation
+    from orm.roles import AdminUserRoleRelation, AdminRoles
 
 
 @API.route(api.BaseRoute+"/groups", methods=["GET", "POST"])
@@ -286,33 +286,27 @@ def deleteUserAlias(domainID, ID):
     return deleteUser(user)
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/roles", methods=["POST"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/roles", methods=["PATCH"])
 @api.secure(requireDB=True)
-def addUserRole(domainID, userID):
+def updateUserRoles(domainID, userID):
     checkPermissions(SystemAdminPermission())
     data = request.get_json(silent=True)
-    if data is None or "roleID" not in data:
-        return jsonify(message="Missing 'roleID'"), 400
-    DB.session.add(AdminUserRoleRelation(userID, data["roleID"]))
+    if data is None or "roles" not in data:
+        return jsonify(message="Missing roles array"), 400
+    roles = {role.roleID for role in AdminUserRoleRelation.query.filter(AdminUserRoleRelation.userID == userID).all()}
+    requested = set(data["roles"])
+    remove = roles-requested
+    add = requested-roles
+    AdminUserRoleRelation.query.filter(AdminUserRoleRelation.userID == userID, AdminUserRoleRelation.roleID.in_(remove))\
+                               .delete(synchronize_session=False)
+    for ID in add:
+        DB.session.add(AdminUserRoleRelation(userID, ID))
     try:
         DB.session.commit()
     except IntegrityError as err:
-        DB.session.rollback()
-        return jsonify(message="Cannot assign role", error=err.orig.args[1]), 400
-    return jsonify(message="Success"), 201
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/roles/<int:ID>", methods=["DELETE"])
-@api.secure(requireDB=True)
-def removeUserRole(domainID, userID, ID):
-    checkPermissions(SystemAdminPermission())
-    found = AdminUserRoleRelation.query.filter(AdminUserRoleRelation.userID == userID,
-                                               AdminUserRoleRelation.roleID == ID).delete()
-    if found != 1:
-        DB.session.rollback()
-        return jsonify(message="Role not assigned" if found == 0 else "Database integrity error")
-    DB.session.commit()
-    return jsonify(message="Success")
+        return jsonify(message="Invalid data", error=err.orig.args[1]), 400
+    roles = AdminRoles.query.join(AdminUserRoleRelation).filter(AdminUserRoleRelation.userID == userID).all()
+    return jsonify(data=[role.ref() for role in roles])
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["GET"])

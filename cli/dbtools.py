@@ -50,6 +50,7 @@ def createAdmin():
     admin = Users(None)
     admin.ID = 0
     admin.username = "admin"
+    admin.realName = "System Administrator"
     admin.domainID = 0
     admin.password = adminPass
     admin.maxSize = 0

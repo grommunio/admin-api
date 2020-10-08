@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.9.5
+  version: 0.9.6
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -111,6 +111,7 @@ paths:
                         type: string
                   capabilities:
                     type: array
+                    description: List of capabilities the current user has
                     items:
                       type: string
 
@@ -762,6 +763,7 @@ paths:
 
   /domains/{domainID}/password:
     put:
+      deprecated: true
       summary: Set domain password
       tags:
         - System Admin
@@ -1096,8 +1098,8 @@ paths:
           $ref: '#/components/responses/DatabaseError'
 
   /domains/{domainID}/users/{userID}/roles:
-    post:
-      summary: Associate user with role
+    patch:
+      summary: Update user roles
       tags:
         - System Admin
       security:
@@ -1111,12 +1113,31 @@ paths:
             schema:
               type: object
               properties:
-                roleID:
-                  type: integer
-                  description: ID of the role to associate
+                roles:
+                  type: array
+                  description: List of role IDs the user is associated with
+                  items:
+                    type: integer
       responses:
-        '201':
-          description: Role associated
+        '200':
+          description: Role association updated
+          content:
+            application/json:
+             schema:
+              type: object
+              properties:
+                data:
+                  type: array
+                  description: List of role references
+                  items:
+                    type: object
+                    properties:
+                      ID:
+                        type: integer
+                        description: ID of the role
+                      name:
+                        type: string
+                        description: Name of the role
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -1126,28 +1147,6 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/{domainID}/users/{userID}/roles/{ID}:
-    delete:
-      summary: Remove role association
-      tags:
-        - System Admin
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-        - $ref: '#/components/parameters/userID'
-        - $ref: '#/components/parameters/ID'
-      responses:
-        '200':
-          description: Role association removed
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
 
   /domains/{domainID}/folders:
     get:
