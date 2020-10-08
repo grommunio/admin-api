@@ -198,13 +198,13 @@ class DataModel:
             """
             if self.proxy is not None:
                 val = getattr(Model, self.proxy)
-                FModel = aliased(inspecc(val).property.entity)
+                FModel = aliased(inspecc(val).property.mapper.entity)
                 FModel._init()
                 return FModel._meta.lookup[self.target].resolve(FModel, query.outerjoin(FModel, val), unmask)
             val = getattr(Model, self.attr)
             if unmask or self.target is None:
                 return self.value(Model, "unmask" if unmask else "raw"), query
-            alias = aliased(inspecc(val).property.entity)
+            alias = aliased(inspecc(val).property.mapper.entity)
             column = getattr(alias, self.target)
             return column, query.outerjoin(alias, val)
 
@@ -426,7 +426,7 @@ class DataModel:
                 setattr(self, prop.attr, value)
             else:
                 attr = getattr(self, prop.attr)
-                Element = inspecc(getattr(type(self), prop.attr)).property.entity.class_
+                Element = inspecc(getattr(type(self), prop.attr)).property.mapper.entity
                 if prop.mask is not None and "managed" not in prop.flags:
                     setattr(self, prop.mask, value)
                 elif _isCollection(attr) and _isCollection(value):
