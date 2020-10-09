@@ -976,20 +976,39 @@ class Misc:
     ALLOCATED_EID_RANGE = 0x10000
     CHANGE_NUMBER_BEGIN = 0x800000000000
 
-class FolderNames:
-    IPM = "Top of Information Store"
-    INBOX = "Inbox"
-    DRAFT = "Drafts"
-    OUTBOX = "Outbox"
-    SENT = "Sent Items"
-    DELETED = "Deleted Items"
-    CONTACTS = "Contacts"
-    CALENDAR = "Calendar"
-    JOURNAL = "Journal"
-    NOTES = "Notes"
-    TASKS = "Tasks"
-    JUNK = "Junk E-mail"
-    SYNC = "Sync Issues"
-    CONFLICT = "Conflicts"
-    LOCAL = "Local Failures"
-    SERVER = "Server Failures"
+
+class FolderNames():
+    @classmethod
+    def _load(cls):
+        if cls._lang is not None:
+            return
+        try:
+            import yaml
+            with open("res/foldernames.yaml") as file:
+                cls._lang = yaml.load(file, Loader=yaml.SafeLoader)
+        except:
+            pass
+
+    @classmethod
+    def get(cls, name, lang):
+        cls._load()
+        return cls._lang.get(lang, {}).get(name, getattr(cls, "_"+name)) if cls._lang is not None else getattr(cls, "_"+name)
+
+    _lang = None
+
+    _IPM = "Top of Information Store"
+    _INBOX = "Inbox"
+    _DRAFT = "Drafts"
+    _OUTBOX = "Outbox"
+    _SENT = "Sent Items"
+    _DELETED = "Deleted Items"
+    _CONTACTS = "Contacts"
+    _CALENDAR = "Calendar"
+    _JOURNAL = "Journal"
+    _NOTES = "Notes"
+    _TASKS = "Tasks"
+    _JUNK = "Junk E-mail"
+    _SYNC = "Sync Issues"
+    _CONFLICT = "Conflicts"
+    _LOCAL = "Local Failures"
+    _SERVER = "Server Failures"
