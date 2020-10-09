@@ -125,7 +125,7 @@ def refreshToken():
     Check if the current token is valid and if the current user is still in the authorized group.
     """
     from orm.users import Users
-    if "jwt" not in request.cookies:
+    if "grammmAuthJwt" not in request.cookies:
         return
     success, claims = checkToken(request.cookies["grammmAuthJwt"])
     if not success:

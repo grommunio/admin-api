@@ -26,7 +26,7 @@ else:
 BaseRoute = "/api/v1"  # Common prefix for all endpoints
 
 apiVersion = None  # API specification version. Extracted from the OpenAPI document.
-backendVersion = "0.9.10"  # Backend version number
+backendVersion = "0.9.11"  # Backend version number
 
 
 def _loadOpenAPISpec():
