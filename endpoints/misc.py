@@ -229,7 +229,7 @@ def login():
     if "user" not in request.form or "pass" not in request.form:
         refreshed = refreshToken()
         if refreshed is not None:
-            return jsonify(jwt=refreshed.decode("ascii"))
+            return jsonify(grammmAuthJwt=refreshed.decode("ascii"))
         return jsonify(message="Incomplete login form"), 400
     success, val = loginUser(request.form["user"], request.form["pass"])
     if not success:
