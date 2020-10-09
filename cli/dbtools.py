@@ -96,6 +96,8 @@ def _passwdParserSetup(subp: ArgumentParser):
     subp.add_argument("--auto", "-a", action="store_true", help="Automatically generate password.")
     subp.add_argument("--length", "-l", action="store", type=int, default=defaultPassLength,
                       help="Length of auto-generated password (default {})".format(defaultPassLength))
+    subp.add_argument("--password", "-p", action="store", type=str,
+                      help="New password. If neither -p nor -a are specified, the new password is set interactively.")
 
 
 @Cli.command("passwd", _passwdParserSetup)
@@ -122,6 +124,8 @@ def setUserPassword(args):
     if args.auto:
         password = mkPasswd(args.length)
         logging.info("New password is "+password)
+    elif args.password is not None:
+        password = args.password
     else:
         password = getpass("Password: ")
         if getpass("Retype password: ") != password:
