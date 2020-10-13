@@ -37,18 +37,6 @@ if DB is not None:
     from orm.roles import AdminUserRoleRelation, AdminRoles
 
 
-@API.route(api.BaseRoute+"/groups", methods=["GET", "POST"])
-@api.secure(requireDB=True)
-def groupListEndpoint():
-    return defaultListHandler(Groups)
-
-
-@API.route(api.BaseRoute+"/groups/<int:ID>", methods=["GET", "PATCH", "DELETE"])
-@api.secure(requireDB=True)
-def groupObjectEndpoint(ID):
-    return defaultObjectHandler(Groups, ID, "Group")
-
-
 @API.route(api.BaseRoute+"/system/users", methods=["GET"])
 @api.secure(requireDB=True)
 def userListEndpointUnrestricted():

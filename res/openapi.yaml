@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.10.0
+  version: 0.10.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -752,38 +752,6 @@ paths:
       responses:
         '200':
           description: Role deleted
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
-  /domains/{domainID}/password:
-    put:
-      deprecated: true
-      summary: Set domain password
-      tags:
-        - System Admin
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              properties:
-                new:
-                  type: string
-                  description: New password
-      responses:
-        '200':
-          description: Domain password updated
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':

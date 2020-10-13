@@ -6,10 +6,8 @@ Created on Tue Jun 23 17:02:02 2020
 @copyright: _Placeholder_copyright_
 """
 
-
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
-
 
 from . import defaultListHandler, defaultObjectHandler, defaultPatch
 
@@ -26,18 +24,6 @@ if DB is not None:
     from orm.orgs import Orgs, Domains, Aliases
     from orm.ext import AreaList
     from orm.users import Users, Groups
-
-
-@API.route(api.BaseRoute+"/orgs", methods=["GET", "POST"])
-@api.secure(requireDB=True)
-def orgListEndpoint():
-    return defaultListHandler(Orgs)
-
-
-@API.route(api.BaseRoute+"/orgs/<int:ID>", methods=["GET", "PATCH", "DELETE"])
-@api.secure(requireDB=True)
-def orgObjectEndpoint(ID):
-    return defaultObjectHandler(Orgs, ID, "Org")
 
 
 @API.route(api.BaseRoute+"/system/domains", methods=["GET"])
@@ -139,21 +125,6 @@ def deleteDomain(domainID):
         Aliases.query.filter(Aliases.aliasname == domain.domainname).delete()
     DB.session.commit()
     return jsonify(message="k.")
-
-
-@API.route(api.BaseRoute+"/system/domains/<int:domainID>/password", methods=["PUT"])
-@api.secure(requireDB=True)
-def setDomainPassword(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
-    domain = Domains.query.filter(Domains.ID == domainID).first()
-    if domain is None:
-        return jsonify(message="Domain not found"), 404
-    data = request.get_json(silent=True)
-    if data is None or "new" not in data:
-        return jsonify(message="Incomplete data"), 400
-    domain.password = data["new"]
-    DB.session.commit()
-    return jsonify(message="Success")
 
 
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>/aliases", methods=["GET"])
