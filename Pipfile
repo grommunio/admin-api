@@ -13,6 +13,7 @@ dbus-python = "*"
 psutil = "*"
 pygobject = "*"
 pyjwt = "*"
+alembic = "*"
 
 [dev-packages]
 

@@ -12,6 +12,9 @@ from argparse import ArgumentParser
 
 import random
 import string
+import alembic.command
+import alembic.config
+import alembic.script
 from datetime import datetime
 from getpass import getpass
 
@@ -58,35 +61,70 @@ def createAdmin():
     return admin, adminPass
 
 
-@Cli.command("create-db")
+def checkDBVersion(DB, aconf):
+    currentVersions = alembic.migration.MigrationContext.configure(DB.session.connection()).get_current_heads()
+    directory = alembic.script.ScriptDirectory.from_config(aconf)
+    return set(currentVersions), set(directory.get_heads())
+
+
+def _createParserSetup(subp: ArgumentParser):
+    subp.add_argument("--force", "-f", action="store_true")
+    subp.add_argument("--wipe", action="store_true")
+
+
+@Cli.command("create-db", _createParserSetup)
 def cliCreateDB(args):
     import logging
     from orm import DB
     if DB is None:
         logging.fatal("Could not initialize database connection - check configuration")
 
-    from orm import ext, misc, orgs, roles, users
-    try:
-        logging.info("Setting up database...")
-        DB.create_all()
-        if users.Users.query.filter(users.Users.ID == 0).count() == 0:
-            logging.info("Creating system admin...")
-            DB.session.execute("SET sql_mode='NO_AUTO_VALUE_ON_ZERO';")
-            admin, adminPass = createAdmin()
-            DB.session.add(admin)
-            try:
-                DB.session.commit()
-                logging.info("System admin credentials are: {}:{}".format(admin.username, adminPass))
-            except:
-                logging.error("Could not create admin user. Please contact your admin administrator.")
-                exit(1)
+    upgrade = create = False
+    aconf = alembic.config.Config("alembic.ini")
+    if args.force:
+        create = True
+    elif args.wipe:
+        create = True
+        logging.warn("Wiping database")
+        DB.drop_all()
+    else:
+        current, target = checkDBVersion(DB, aconf)
+        if current == target:
+            logging.info("Schema is up to date, exiting")
+            exit(0)
+        if len(current) == 0:
+            logging.info("Could not determine current schema version - creating from scratch")
+            create = True
         else:
-            logging.info("System admin user already exists. Use `passwd` command to reset password.")
-        logging.info("Success.")
-    except:
-        import traceback
-        logging.fatal(traceback.format_exc())
-        logging.info("Database setup failed.")
+            logging.info("Upgrading from '{}' to '{}'".format("|".join(current), "|".join(target)))
+            upgrade = True
+    if upgrade:
+        alembic.command.upgrade(aconf, "head")
+        logging.info("Upgrade complete")
+    elif create:
+        from orm import ext, misc, orgs, roles, users
+        try:
+            logging.info("Setting up database...")
+            DB.create_all()
+            if users.Users.query.filter(users.Users.ID == 0).count() == 0:
+                logging.info("Creating system admin...")
+                DB.session.execute("SET sql_mode='NO_AUTO_VALUE_ON_ZERO';")
+                admin, adminPass = createAdmin()
+                DB.session.add(admin)
+                try:
+                    DB.session.commit()
+                    logging.info("System admin credentials are: {}:{}".format(admin.username, adminPass))
+                except:
+                    logging.error("Could not create admin user. Please contact your admin administrator.")
+                    exit(1)
+            else:
+                logging.info("System admin user already exists. Use `passwd` command to reset password.")
+                alembic.command.stamp(aconf, "head")
+            logging.info("Success.")
+        except:
+            import traceback
+            logging.fatal(traceback.format_exc())
+            logging.info("Database setup failed.")
         exit(1)
 
 
