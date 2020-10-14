@@ -144,7 +144,7 @@ class DomainSetup(SetupContext):
 
         Parameters
         ----------
-        domain : orm.orgs.Domains
+        domain : orm.domains.Domains
             Domain to initialize.
         area : orm.ext.AreaList
             Storage area to place domain in.

@@ -3,10 +3,10 @@
 Created on Tue Jun 23 11:20:26 2020
 
 @author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: _Placeholder_copyright_
+@copyright: Grammm GmbH, 2020
 """
 
-from api import API
+from api.core import API
 from flask import jsonify, request
 
 

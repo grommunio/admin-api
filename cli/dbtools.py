@@ -102,7 +102,7 @@ def cliCreateDB(args):
         alembic.command.upgrade(aconf, "head")
         logging.info("Upgrade complete")
     elif create:
-        from orm import ext, misc, orgs, roles, users
+        from orm import ext, misc, domains, roles, users
         try:
             logging.info("Setting up database...")
             DB.create_all()

@@ -123,8 +123,8 @@ class DataModel:
             self.arg_tf = arg_tf
             self.match = match
             if len(unknown):
-                from api import API
-                API.logger.warn("Unknown DataModel parameters: "+", ".join(unknown.keys()))
+                import  logging
+                logging.warn("Unknown DataModel parameters: "+", ".join(unknown.keys()))
 
         def __repr__(self):
             """Return string representation."""
@@ -406,12 +406,12 @@ class DataModel:
         Instance
             The updated object (self)
         """
-        from api import API
+        import logging
         self._init()
         reverse = self._meta.lookup
         for key, value in patches.items():
             if key not in reverse or reverse[key].proxy is not None:
-                API.logger.warn("Unknown attribute '{}'".format(key))
+                logging.warn("Unknown attribute '{}'".format(key))
                 raise InvalidAttributeError("Unknown attribute '{}'".format(key))
             prop = reverse[key]
             if not prop.writable(self) and prop.value(self) != patches[key]:

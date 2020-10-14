@@ -3,12 +3,12 @@
 Created on Tue Jun 23 11:21:26 2020
 
 @author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: _Placeholder_copyright_
+@copyright: Grammm GmbH, 2020
 
 Miscelleaneous API endpoints.
 """
 
-__all__ = ["ext", "misc", "orgs", "roles", "users"]
+__all__ = ["domain", "system", "misc"]
 
 from flask import request, jsonify
 from orm import DB

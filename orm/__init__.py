@@ -3,12 +3,12 @@
 Created on Tue Jun 23 11:22:02 2020
 
 @author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: _Placeholder_copyright_
+@copyright: Grammm GmbH, 2020
 """
 
-__all__ = ["misc", "orgs", "users", "ext"]
+__all__ = ["domains", "misc", "users", "ext"]
 
-from api import API
+from api.core import API
 from flask_sqlalchemy import SQLAlchemy
 
 from tools.config import Config

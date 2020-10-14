@@ -13,10 +13,10 @@ import os
 import shutil
 
 import api
-from api import API
+from api.core import API, secure
 from api.security import checkPermissions
 
-from . import defaultListHandler, defaultObjectHandler, defaultCreate
+from .. import defaultListHandler, defaultObjectHandler, defaultCreate
 
 from tools import storage
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
@@ -29,7 +29,7 @@ if DB is not None:
 
 
 @API.route(api.BaseRoute+"/system/area_list", methods=["GET"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def areaListGet():
     checkPermissions(DomainAdminPermission("*"))
     areaList = defaultListHandler(AreaList, result="list")
@@ -39,7 +39,7 @@ def areaListGet():
 
 
 @API.route(api.BaseRoute+"/system/area_list", methods=["POST"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def areaListCreate():
     checkPermissions(SystemAdminPermission())
     area = defaultListHandler(AreaList, result="object")
@@ -64,7 +64,7 @@ def areaListCreate():
 
 
 @API.route(api.BaseRoute+"/system/area_list/<int:ID>", methods=["GET", "PATCH"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def areaListObjectEndpoint(ID):
     checkPermissions(SystemAdminPermission())
     return defaultObjectHandler(AreaList, ID, "List entry")

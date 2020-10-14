@@ -7,20 +7,20 @@ Created on Tue Jun 23 16:37:38 2020
 """
 
 import api
-from api import API
+from api.core import API, secure
 from api.security import checkPermissions
 
 from flask import request, jsonify
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
-from . import defaultListHandler, defaultObjectHandler, defaultPatch
+from .. import defaultListHandler, defaultObjectHandler, defaultPatch
 
 from tools.misc import AutoClean, createMapping
 from tools.storage import UserSetup
 from tools.pyexmdb import pyexmdb
 from tools.config import Config
-from tools.rop import nxTime, makeEidEx
+from tools.rop import nxTime
 from tools.constants import Permissions, PropTags
 from tools.DataModel import InvalidAttributeError, MismatchROError
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
@@ -32,41 +32,20 @@ from orm import DB
 if DB is not None:
     from orm.ext import AreaList
     from orm.users import Users, Groups
-    from orm.orgs import Domains, Aliases
+    from orm.domains import Domains, Aliases
     from orm.misc import Associations, Forwards, Members
     from orm.roles import AdminUserRoleRelation, AdminRoles
 
 
-@API.route(api.BaseRoute+"/system/users", methods=["GET"])
-@api.secure(requireDB=True)
-def userListEndpointUnrestricted():
-    checkPermissions(SystemAdminPermission())
-    return defaultListHandler(Users, filters=(Users.ID != 0,))
-
-
-@API.route(api.BaseRoute+"/domains", methods=["GET"])
-@api.secure(requireDB=True, authLevel="user")
-def getAvailableDomains():
-    permissions = request.auth["user"].permissions()
-    if SystemAdminPermission() in permissions:
-        domainFilters = ()
-    else:
-        domainIDs = {permission.domainID for permission in permissions if isinstance(permission, DomainAdminPermission)}
-        if len(domainIDs) == 0:
-            return jsonify(data=[])
-        domainFilters = () if "*" in domainIDs else (Domains.ID.in_(domainIDs),)
-    return defaultListHandler(Domains, filters=domainFilters)
-
-
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["GET"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def userListEndpoint(domainID):
     checkPermissions(DomainAdminPermission(domainID))
     return defaultListHandler(Users, filters=(Users.domainID == domainID,))
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["POST"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def createUser(domainID):
     def rollback():
         DB.session.rollback()
@@ -94,14 +73,14 @@ def createUser(domainID):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["GET"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def userObjectEndpoint(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     return defaultObjectHandler(Users, userID, "User", filters=(Users.domainID == domainID,))
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["PATCH"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def patchUser(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     user = Users.query.filter(Users.domainID == domainID, Users.ID == userID).first()
@@ -139,7 +118,7 @@ def patchUser(domainID, userID):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["DELETE"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def deleteUserEndpoint(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
@@ -186,7 +165,7 @@ def deleteUser(user):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/password", methods=["PUT"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def setUserPassword(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
@@ -201,7 +180,7 @@ def setUserPassword(domainID, userID):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/aliases", methods=["GET"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def userAliasListEndpoint(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
@@ -211,7 +190,7 @@ def userAliasListEndpoint(domainID, userID):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/aliases", methods=["POST"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def createUserAlias(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     data = request.get_json(silent=True)
@@ -252,7 +231,7 @@ def createUserAlias(domainID, userID):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/aliases", methods=["GET"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def getAliasesByUser(domainID):
     checkPermissions(DomainAdminPermission(domainID))
     aliases = Aliases.query.join(Users, Users.username == Aliases.aliasname).filter(Users.domainID==domainID).all()
@@ -262,7 +241,7 @@ def getAliasesByUser(domainID):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/aliases/<int:ID>", methods=["DELETE"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def deleteUserAlias(domainID, ID):
     checkPermissions(DomainAdminPermission(domainID))
     alias = Aliases.query.filter(Aliases.ID == ID).first()
@@ -275,7 +254,7 @@ def deleteUserAlias(domainID, ID):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/roles", methods=["PATCH"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def updateUserRoles(domainID, userID):
     checkPermissions(SystemAdminPermission())
     data = request.get_json(silent=True)
@@ -295,95 +274,3 @@ def updateUserRoles(domainID, userID):
         return jsonify(message="Invalid data", error=err.orig.args[1]), 400
     roles = AdminRoles.query.join(AdminUserRoleRelation).filter(AdminUserRoleRelation.userID == userID).all()
     return jsonify(data=[role.ref() for role in roles])
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["GET"])
-@api.secure(requireDB=True)
-def getPublicFoldersList(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
-    domain = Domains.query.filter(Domains.ID == domainID).first()
-    if domain is None:
-        return jsonify(message="Domain not found"), 404
-    client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
-    response = pyexmdb.FolderListResponse(client.getFolderList(domain.homedir))
-    folders = [{"folderid": entry.folderId,
-                "displayname": entry.displayName,
-                "comment": entry.comment,
-                "creationtime": datetime.fromtimestamp(nxTime(entry.creationTime)).strftime("%Y-%m-%d %H:%M:%S")}
-               for entry in response.folders]
-    return jsonify(data=folders)
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["POST"])
-@api.secure(requireDB=True)
-def createPublicFolder(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
-    domain = Domains.query.filter(Domains.ID == domainID).first()
-    if domain is None:
-        return jsonify(message="Domain not found"), 404
-    data = request.json
-    client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
-    response = client.createPublicFolder(domain.homedir, domain.ID, data["displayname"], data["container"], data["comment"])
-    if response.folderId == 0:
-        return jsonify(message="Folder creation failed"), 500
-    return jsonify(folderid=response.folderId,
-                   displayname=data["displayname"],
-                   comment=data["comment"],
-                   creationtime=datetime.now().strftime("%Y-%m-%d %H:%M:%S")), 201
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>", methods=["DELETE"])
-@api.secure(requireDB=True)
-def deletePublicFolder(domainID, folderID):
-    checkPermissions(DomainAdminPermission(domainID))
-    domain = Domains.query.filter(Domains.ID == domainID).first()
-    if domain is None:
-        return jsonify(message="Domain not found"), 404
-    client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
-    response = client.deletePublicFolder(domain.homedir, folderID)
-    if not response.success:
-        return jsonify(message="Folder deletion failed"), 500
-    return jsonify(message="Success")
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners", methods=["GET"])
-@api.secure(requireDB=True)
-def getPublicFolderOwnerList(domainID, folderID):
-    checkPermissions(DomainAdminPermission(domainID))
-    domain = Domains.query.filter(Domains.ID == domainID).first()
-    if domain is None:
-        return jsonify(message="Domain not found"), 404
-    client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
-    response = pyexmdb.FolderOwnerListResponse(client.getPublicFolderOwnerList(domain.homedir, folderID))
-    owners = [{"memberID": owner.memberId, "displayName": owner.memberName}
-              for owner in response.owners
-              if owner.memberRights & Permissions.FOLDEROWNER and owner.memberId not in (0, 0xFFFFFFFFFFFFFFFF)]
-    return jsonify(data=owners)
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners", methods=["POST"])
-@api.secure(requireDB=True)
-def addPublicFolderOwner(domainID, folderID):
-    checkPermissions(DomainAdminPermission(domainID))
-    data = request.get_json(silent=True)
-    if data is None or "username" not in data:
-        return jsonify(message="Missing required parameter 'username'"), 400
-    domain = Domains.query.filter(Domains.ID == domainID).first()
-    if domain is None:
-        return jsonify(message="Domain not found"), 404
-    client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
-    response = client.addFolderOwner(domain.homedir, folderID, data["username"])
-    return jsonify(message="Success"), 201
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners/<int:memberID>", methods=["DELETE"])
-@api.secure(requireDB=True)
-def deletePublicFolderOwner(domainID, folderID, memberID):
-    checkPermissions(DomainAdminPermission(domainID))
-    data = request.get_json(silent=True)
-    domain = Domains.query.filter(Domains.ID == domainID).first()
-    if domain is None:
-        return jsonify(message="Domain not found"), 404
-    client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["domainPrefix"], False)
-    response = client.deleteFolderOwner(domain.homedir, folderID, memberID)
-    return jsonify(message="Success"), 200

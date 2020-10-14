@@ -234,7 +234,7 @@ class Users(DataModel, DB.Model):
 
     @staticmethod
     def checkCreateParams(data):
-        from orm.orgs import Domains, Aliases
+        from orm.domains import Domains, Aliases
         domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
         if not domain:
             return "Invalid domain"
@@ -296,7 +296,7 @@ class Users(DataModel, DB.Model):
 
     def fromdict(self, patches, *args, **kwargs):
         if "username" in patches:
-            from orm.orgs import Domains
+            from orm.domains import Domains
             username = patches.pop("username")
             domain = patches.pop("domain", None) or Domains.query.filter(Domains.ID == self.domainID).first()
             if "@" in username:

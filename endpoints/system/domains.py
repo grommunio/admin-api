@@ -3,38 +3,38 @@
 Created on Tue Jun 23 17:02:02 2020
 
 @author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: _Placeholder_copyright_
+@copyright: Grammm GmbH, 2020
 """
 
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
 
-from . import defaultListHandler, defaultObjectHandler, defaultPatch
+from .. import defaultListHandler, defaultObjectHandler, defaultPatch
 
 import api
-from api import API
+from api.core import API, secure
 from api.security import checkPermissions
 
 from tools.misc import AutoClean, createMapping
 from tools.storage import DomainSetup
-from tools.permissions import SystemAdminPermission, DomainAdminPermission
+from tools.permissions import SystemAdminPermission
 
 from orm import DB
 if DB is not None:
-    from orm.orgs import Orgs, Domains, Aliases
+    from orm.domains import Domains, Aliases
     from orm.ext import AreaList
     from orm.users import Users, Groups
 
 
 @API.route(api.BaseRoute+"/system/domains", methods=["GET"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def domainListEndpoint():
     checkPermissions(SystemAdminPermission())
     return defaultListHandler(Domains)
 
 
 @API.route(api.BaseRoute+"/system/domains", methods=["POST"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def domainCreate():
     checkPermissions(SystemAdminPermission())
     def rollback():
@@ -60,14 +60,14 @@ def domainCreate():
 
 
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>", methods=["GET"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def getDomain(domainID):
     checkPermissions(SystemAdminPermission())
     return defaultObjectHandler(Domains, domainID, "Domain")
 
 
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>", methods=["PATCH"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def updateDomain(domainID):
     checkPermissions(SystemAdminPermission())
     domain: Domains = Domains.query.filter(Domains.ID == domainID).first()
@@ -103,7 +103,7 @@ def updateDomain(domainID):
 
 
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>", methods=["DELETE"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def deleteDomain(domainID):
     checkPermissions(SystemAdminPermission())
     domain = Domains.query.filter(Domains.ID == domainID).first()
@@ -128,7 +128,7 @@ def deleteDomain(domainID):
 
 
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>/aliases", methods=["GET"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def domainAliasListEndpoint(domainID):
     checkPermissions(SystemAdminPermission())
     domain = Domains.query.filter(Domains.ID == domainID).first()
@@ -138,7 +138,7 @@ def domainAliasListEndpoint(domainID):
 
 
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>/aliases", methods=["POST"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def createDomainAlias(domainID):
     checkPermissions(SystemAdminPermission())
     data = request.get_json(silent=True)
@@ -170,7 +170,7 @@ def createDomainAlias(domainID):
 
 
 @API.route(api.BaseRoute+"/system/domains/aliases", methods=["GET"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def getAliasesByDomain():
     checkPermissions(SystemAdminPermission())
     aliases = Aliases.query.join(Domains, Domains.domainname == Aliases.aliasname)\
@@ -181,7 +181,7 @@ def getAliasesByDomain():
 
 
 @API.route(api.BaseRoute+"/system/domains/aliases/<int:ID>", methods=["DELETE"])
-@api.secure(requireDB=True)
+@secure(requireDB=True)
 def deleteDomainAlias(ID):
     checkPermissions(SystemAdminPermission())
     alias = Aliases.query.filter(Aliases.ID == ID).first()

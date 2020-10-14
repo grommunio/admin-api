@@ -80,7 +80,7 @@ def _runParserSetup(subp: ArgumentParser):
 
 @Cli.command("run", _runParserSetup)
 def cliRun(args):
-    from api import API
+    from api.core import API
     import endpoints
     import importlib
     for group in endpoints.__all__:

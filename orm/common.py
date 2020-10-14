@@ -3,7 +3,7 @@
 Created on Tue Jun 23 18:57:07 2020
 
 @author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: _Placeholder_copyright_
+@copyright: Grammm GmbH, 2020
 """
 
 from tools.DataModel import BoolP

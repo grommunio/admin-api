@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.10.1
+  version: 0.10.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -119,7 +119,7 @@ paths:
     get:
       summary: Get System dashboard data
       tags:
-        - Misc
+        - System Admin/Dashboard
       security:
         - JWTCookie: []
       responses:
@@ -235,7 +235,7 @@ paths:
     get:
       summary: Get list of services
       tags:
-        - Misc
+        - System Admin/Dashboard
       security:
         - JWTCookie: []
       responses:
@@ -260,7 +260,7 @@ paths:
     get:
       summary: Get information about a specific service
       tags:
-        - Misc
+        - System Admin/Dashboard
       security:
         - JWTCookie: []
       parameters:
@@ -277,7 +277,7 @@ paths:
     post:
       summary: Send signal to a service
       tags:
-        - Misc
+        - System Admin/Dashboard
       security:
         - JWTCookie: []
       parameters:
@@ -301,7 +301,7 @@ paths:
     get:
       summary: Get lists of data areas
       tags:
-        - System Admin
+        - System Admin/Data Areas
       security:
         - JWTCookie: []
       responses:
@@ -327,7 +327,7 @@ paths:
     post:
       summary: Create new data area
       tags:
-        - System Admin
+        - System Admin/Data Areas
       security:
         - JWTCookie: []
       requestBody:
@@ -353,7 +353,7 @@ paths:
     patch:
       summary: Update data area
       tags:
-        - System Admin
+        - System Admin/Data Areas
       security:
         - JWTCookie: []
       parameters:
@@ -381,7 +381,7 @@ paths:
     get:
       summary: Get lists of domains
       tags:
-        - System Admin
+        - System Admin/Domains
       security:
         - JWTCookie: []
       responses:
@@ -405,7 +405,7 @@ paths:
     post:
       summary: Create new domain
       tags:
-        - System Admin
+        - System Admin/Domains
       security:
         - JWTCookie: []
       requestBody:
@@ -431,7 +431,7 @@ paths:
     patch:
       summary: Update domain
       tags:
-        - System Admin
+        - System Admin/Domains
       security:
         - JWTCookie: []
       parameters:
@@ -457,7 +457,7 @@ paths:
     delete:
       summary: Delete domain
       tags:
-        - System Admin
+        - System Admin/Domains
       security:
         - JWTCookie: []
       parameters:
@@ -478,7 +478,7 @@ paths:
     get:
       summary: Get domain aliases
       tags:
-        - System Admin
+        - System Admin/Domains
       security:
         - JWTCookie: []
       parameters:
@@ -501,7 +501,7 @@ paths:
     post:
       summary: Create alias for domain
       tags:
-        - System Admin
+        - System Admin/Domains
       security:
         - JWTCookie: []
       parameters:
@@ -534,9 +534,9 @@ paths:
 
   /system/domains/aliases:
     get:
-      summary: List all user aliases grouped by user
+      summary: List all domain aliases grouped by domain
       tags:
-        - Domain Admin
+        - System Admin/Domains
       security:
         - JWTCookie: []
       responses:
@@ -574,7 +574,7 @@ paths:
       summary: Delete alias domain
       description: Marks the alias domain and all virtual users as deleted
       tags:
-        - System Admin
+        - System Admin/Domains
       security:
         - JWTCookie: []
       parameters:
@@ -596,7 +596,7 @@ paths:
     get:
       summary: Get list of all users
       tags:
-        - System Admin
+        - System Admin/Domains
       security:
         - JWTCookie: []
       responses:
@@ -622,7 +622,7 @@ paths:
     get:
       summary: Get list of available permissions
       tags:
-        - System Admin
+        - System Admin/Roles
       security:
         - JWTCookie: []
       responses:
@@ -643,7 +643,7 @@ paths:
     get:
       summary: Get list of available roles
       tags:
-        - System Admin
+        - System Admin/Roles
       security:
         - JWTCookie: []
       responses:
@@ -667,7 +667,7 @@ paths:
     post:
       summary: Create a new role
       tags:
-        - System Admin
+        - System Admin/Roles
       security:
         - JWTCookie: []
       requestBody:
@@ -693,7 +693,7 @@ paths:
     get:
       summary: Get role
       tags:
-        - System Admin
+        - System Admin/Roles
       security:
         - JWTCookie: []
       parameters:
@@ -716,7 +716,7 @@ paths:
     patch:
       summary: Update a role
       tags:
-        - System Admin
+        - System Admin/Roles
       security:
         - JWTCookie: []
       parameters:
@@ -744,7 +744,7 @@ paths:
     delete:
       summary: Delete role
       tags:
-        - System Admin
+        - System Admin/Roles
       security:
         - JWTCookie: []
       parameters:
@@ -765,7 +765,7 @@ paths:
     get:
       summary: Get list of domains the user has access to
       tags:
-        -  Domain Admin
+        -  Misc
       security:
         - JWTCookie: []
       responses:
@@ -794,7 +794,7 @@ paths:
     get:
       summary: Get lists of users
       tags:
-        - Domain Admin
+        - Domain Admin/Users
       security:
         - JWTCookie: []
       parameters:
@@ -820,7 +820,7 @@ paths:
     post:
       summary: Create new user
       tags:
-        - Domain Admin
+        - Domain Admin/Users
       security:
         - JWTCookie: []
       parameters:
@@ -848,7 +848,7 @@ paths:
     get:
       summary: Get information about a specific user
       tags:
-        - Domain Admin
+        - Domain Admin/Users
       security:
         - JWTCookie: []
       parameters:
@@ -870,7 +870,7 @@ paths:
     patch:
       summary: Update user
       tags:
-        - Domain Admin
+        - Domain Admin/Users
       security:
         - JWTCookie: []
       parameters:
@@ -897,7 +897,7 @@ paths:
     delete:
       summary: Delete user
       tags:
-        - Domain Admin
+        - Domain Admin/Users
       security:
         - JWTCookie: []
       parameters:
@@ -926,7 +926,7 @@ paths:
     put:
       summary: Set user password
       tags:
-        - Domain Admin
+        - Domain Admin/Users
       security:
         - JWTCookie: []
       parameters:
@@ -958,7 +958,7 @@ paths:
     get:
       summary: Get list of user aliases
       tags:
-        - Domain Admin
+        - Domain Admin/Users
       security:
         - JWTCookie: []
       parameters:
@@ -982,7 +982,7 @@ paths:
     post:
       summary: Create new user alias
       tags:
-        - Domain Admin
+        - Domain Admin/Users
       security:
         - JWTCookie: []
       parameters:
@@ -1019,7 +1019,7 @@ paths:
     get:
       summary: List all user aliases grouped by user
       tags:
-        - Domain Admin
+        - Domain Admin/Users
       security:
         - JWTCookie: []
       parameters:
@@ -1046,7 +1046,7 @@ paths:
     delete:
       summary: Delete user alias
       tags:
-        - Domain Admin
+        - Domain Admin/Users
       security:
         - JWTCookie: []
       parameters:
@@ -1069,7 +1069,7 @@ paths:
     patch:
       summary: Update user roles
       tags:
-        - System Admin
+        - System Admin/Roles
       security:
         - JWTCookie: []
       parameters:
@@ -1122,7 +1122,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/domainID'
       tags:
-        - Domain Admin
+        - Domain Admin/Folders
       security:
         - JWTCookie: []
       responses:
@@ -1142,7 +1142,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/domainID'
       tags:
-        - Domain Admin
+        - Domain Admin/Folders
       security:
         - JWTCookie: []
       requestBody:
@@ -1182,7 +1182,7 @@ paths:
     delete:
       summary: Delete public folder
       tags:
-        - Domain Admin
+        - Domain Admin/Folders
       security:
         - JWTCookie: []
       parameters:
@@ -1211,7 +1211,7 @@ paths:
     get:
       summary: Get list of folder owners
       tags:
-        - Domain Admin
+        - Domain Admin/Folders
       security:
         - JWTCookie: []
       parameters:
@@ -1247,7 +1247,7 @@ paths:
     post:
       summary: Add a user to the owner list
       tags:
-        - Domain Admin
+        - Domain Admin/Folders
       security:
         - JWTCookie: []
       parameters:
@@ -1281,7 +1281,7 @@ paths:
     delete:
       summary: Remove a user from the owner list
       tags:
-        - Domain Admin
+        - Domain Admin/Folders
       security:
         - JWTCookie: []
       parameters:
@@ -1736,9 +1736,17 @@ components:
                 type: string
 
 tags:
-  - name: Domain Admin
-    description: Endpoints for the domain admin interface
-  - name: System Admin
-    description: Endpoints for the system admin interface
+  - name: System Admin/Dashboard
+    description: Endpoints for the system admin dashboard
+  - name: System Admin/Data Areas
+    description: Endpoints for data area management
+  - name: System Admin/Domains
+    description: Endpoints for domain management
+  - name: System Admin/Roles
+    description: Endpoints for user role and permission management
+  - name: Domain Admin/Folders
+    description: Endpoints for public folder management
+  - name: Domain Admin/Users
+    description: Endpoints for user management
   - name: Misc
     description: Miscellaneous and organizational endpoints

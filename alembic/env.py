@@ -6,7 +6,7 @@ from alembic import context
 from orm import DB, _loadDBConfig
 
 def loadSchema():
-    from orm import ext, misc, orgs, roles, users
+    from orm import ext, misc, domains, roles, users
 
 
 target_metadata = DB.metadata
