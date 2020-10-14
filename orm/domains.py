@@ -41,7 +41,7 @@ class Domains(DataModel, DB.Model):
     adminName = DB.Column("admin_name", DB.VARCHAR(32), nullable=False, server_default="")
     tel = DB.Column("tel", DB.VARCHAR(64), nullable=False, server_default="")
     createDay = DB.Column("create_day", DB.DATE, nullable=False)
-    endDay = DB.Column("end_day", DB.DATE, nullable=False, default=datetime(3333, 3, 3))
+    endDay = DB.Column("end_day", DB.DATE, nullable=False, server_default="3333-03-03")
     privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     domainStatus = DB.Column("domain_status", TINYINT, nullable=False, server_default="0")
     domainType = DB.Column("domain_type", TINYINT, nullable=False, server_default="0")

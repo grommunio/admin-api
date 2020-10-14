@@ -96,9 +96,10 @@ def cliCreateDB(args):
             logging.info("Could not determine current schema version - creating from scratch")
             create = True
         else:
-            logging.info("Upgrading from '{}' to '{}'".format("|".join(current), "|".join(target)))
+            logging.info("Found outdated schema")
             upgrade = True
     if upgrade:
+        logging.info("Upgrading from '{}' to '{}'".format("|".join(current), "|".join(target)))
         alembic.command.upgrade(aconf, "head")
         logging.info("Upgrade complete")
     elif create:
