@@ -15,17 +15,13 @@ from datetime import datetime
 
 class Future:
     def __init__(self):
-        print("Creating event")
         self._event = threading.Event()
-        print("Created event")
 
     def set(self, value):
-        print("Triggering event")
         self._value = value
         self._event.set()
 
     def get(self):
-        print("Waiting for event")
         self._event.wait()
         return self._value
 
@@ -75,12 +71,10 @@ class Systemd:
         result : dbus.String
             Result of the job
         """
-        print("Received signal "+str(job))
         Systemd.queryLock.acquire()
         res = Systemd.activeQueries.pop(str(job), None)
         Systemd.queryLock.release()
         if res is None:
-            print("Not found")
             return
         res.set(result)
 
@@ -98,13 +92,10 @@ class Systemd:
         future : Future
             Future object containing the result of the job
         """
-        print("Creating future object")
         future = Future()
-        print("[aq] Entering")
         Systemd.queryLock.acquire()
         Systemd.activeQueries[str(job)] = future
         Systemd.queryLock.release()
-        print("[aq] Exited")
         return future
 
     @staticmethod
@@ -191,7 +182,6 @@ class Systemd:
         dbus.DBusException
             DBus communication failed.
         """
-        print("Stopping service")
         res = self._addQuery(self.manager.StopUnit(service, "replace"))
         return str(res.get())
 
