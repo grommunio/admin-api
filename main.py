@@ -16,5 +16,5 @@ if __name__ == '__main__':
     from cli import Cli
     Cli.execute()
 else:
-    from api import API
+    from api.core import API
     from endpoints import *
