@@ -13,6 +13,8 @@ in combination with a WSGI server using the API object as callable
 """
 
 if __name__ == '__main__':
+    import os
+    os.chdir(os.path.dirname(__file__))
     from cli import Cli
     Cli.execute()
 else:
