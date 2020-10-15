@@ -120,8 +120,8 @@ def cliCreateDB(args):
                     exit(1)
             else:
                 logging.info("System admin user already exists. Use `passwd` command to reset password.")
-            if roles.AdminRoles.query.filter(roles.AdminRoles.name == "SystemAdmin").count() == 0:
-                DB.session.add(roles.AdminRoles({"name": "SystemAdmin", "description": "System administrator role",
+            if roles.AdminRoles.query.filter(roles.AdminRoles.name == "System Admin").count() == 0:
+                DB.session.add(roles.AdminRoles({"name": "System Admin", "description": "System administrator role",
                                                  "permissions": [{"permission": "SystemAdmin"}]}))
                 DB.session.commit()
             alembic.command.stamp(aconf, "head")
