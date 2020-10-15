@@ -24,6 +24,7 @@ if DB is not None:
     from orm.domains import Domains, Aliases
     from orm.ext import AreaList
     from orm.users import Users, Groups
+    from orm.roles import AdminRoles
 
 
 @API.route(api.BaseRoute+"/system/domains", methods=["GET"])
@@ -54,7 +55,13 @@ def domainCreate():
             if not ds.success:
                 return jsonify(message="Error during domain setup", error=ds.error),  ds.errorCode
             DB.session.commit()
-            return jsonify(domain.fulldesc()), 201
+        domainAdminRoleName = "Domain Admin ({})".format(domain.domainname)
+        if AdminRoles.query.filter(AdminRoles.name == domainAdminRoleName).count() == 0:
+            DB.session.add(AdminRoles({"name": domainAdminRoleName,
+                                       "description": "Domain administrator for "+domain.domainname,
+                                       "permissions": [{"permission": "DomainAdmin", "params": domain.ID}]}))
+            DB.session.commit()
+        return jsonify(domain.fulldesc()), 201
     except IntegrityError as err:
         return jsonify(message="Object violates database constraints", error=err.orig.args[1]), 400
 

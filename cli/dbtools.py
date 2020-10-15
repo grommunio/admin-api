@@ -83,7 +83,7 @@ def cliCreateDB(args):
     aconf = alembic.config.Config("alembic.ini")
     if args.force:
         create = True
-    elif args.wipe:
+    if args.wipe:
         create = True
         logging.warn("Wiping database")
         DB.drop_all()
@@ -102,7 +102,7 @@ def cliCreateDB(args):
         logging.info("Upgrading from '{}' to '{}'".format("|".join(current), "|".join(target)))
         alembic.command.upgrade(aconf, "head")
         logging.info("Upgrade complete")
-    elif create:
+    if create:
         from orm import ext, misc, domains, roles, users
         try:
             logging.info("Setting up database...")
@@ -120,7 +120,11 @@ def cliCreateDB(args):
                     exit(1)
             else:
                 logging.info("System admin user already exists. Use `passwd` command to reset password.")
-                alembic.command.stamp(aconf, "head")
+            if roles.AdminRoles.query.filter(roles.AdminRoles.name == "SystemAdmin").count() == 0:
+                DB.session.add(roles.AdminRoles({"name": "SystemAdmin", "description": "System administrator role",
+                                                 "permissions": [{"permission": "SystemAdmin"}]}))
+                DB.session.commit()
+            alembic.command.stamp(aconf, "head")
             logging.info("Success.")
         except:
             import traceback

@@ -34,7 +34,10 @@ def getUser():
     if "user" in request.auth:
         return
     from orm.users import Users
-    user = Users.query.filter(Users.username == request.auth["claims"]["usr"]).first()
+    try:
+        user = Users.query.filter(Users.username == request.auth["claims"]["usr"]).first()
+    except:
+        return "Database error"
     if user is None:
         return "Invalid user"
     request.auth["user"] = user

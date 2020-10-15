@@ -49,6 +49,10 @@ class PropTypes(_ReverseLookup):
     intTypes = {BYTE, SHORT, LONG, ERROR, LONGLONG, FILETIME, CURRENCY}
     floatTypes = {FLOAT, DOUBLE, FLOATINGTIME}
 
+    @classmethod
+    def lookup(cls, value, default=None):
+        return super(PropTypes, cls).lookup(value & 0xFFFF, default)
+
 
 class PropTags(_ReverseLookup):
     ABPROVIDERID = 0x36150102
