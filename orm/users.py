@@ -25,22 +25,19 @@ class Groups(DataModel, DB.Model):
     groupname = DB.Column("groupname", DB.VARCHAR(128), nullable=False, unique=True)
     password = DB.Column("password", DB.VARCHAR(40), nullable=False, server_default="")
     domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
-    maxSize = DB.Column("max_size", INTEGER(10, unsigned=True), nullable=False)
+    maxSize = DB.Column("max_size", INTEGER(10, unsigned=True), nullable=False, server_default="0")
     maxUser = DB.Column("max_user", INTEGER(10, unsigned=True), nullable=False)
     title = DB.Column("title", DB.VARCHAR(128), nullable=False)
     createDay = DB.Column("create_day", DB.DATE, nullable=False)
-    privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False)
+    privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     groupStatus = DB.Column("group_status", TINYINT, nullable=False, server_default="0")
 
-    _dictmapping_ = ((Id(), Text("groupname", flags="patch")),
-                     (Text("password", flags="patch"),
-                      Id("domainID", flags="patch"),
+    _dictmapping_ = ((Id(), Text("title", flags="patch"), Text("groupname", flags="init")),
+                     (Id("domainID", flags="init"),
                       Int("maxSize", flags="patch"),
                       Int("maxUser", flags="patch"),
-                      Text("title", flags="patch"),
-                      Date("createDay", flags="patch"),
-                      Int("privilegeBits", flags="patch"),
-                      Int("groupStatus", flags="patch"),
+                      Date("createDay", flags="init")),
+                     (Int("groupStatus", flags="init"),
                       BoolP("backup", flags="patch"),
                       BoolP("monitor", flags="patch"),
                       BoolP("log", flags="patch"),
@@ -53,11 +50,14 @@ class Groups(DataModel, DB.Model):
     DOMAIN_BACKUP = 1 << 8
     DOMAIN_MONITOR = 1 << 9
 
+    NORMAL = 0
+    SUSPEND = 1
+
     def _setFlag(self, flag, val):
         self.privilegeBits = (self.privilegeBits or 0) | flag if val else (self.privilegeBits or 0) & ~flag
 
     def _getFlag(self, flag):
-        return bool(self.privilegeBits or 0 & flag)
+        return bool((self.privilegeBits or 0) & flag)
 
     @property
     def backup(self):
@@ -91,21 +91,26 @@ class Groups(DataModel, DB.Model):
     def account(self, val):
         self._setFlag(self.ACCOUNT, val)
 
-    @property
-    def domainBackup(self):
-        return self._getFlag(self.DOMAIN_BACKUP)
+    @staticmethod
+    def checkCreateParams(data):
+        from orm.domains import Domains
+        domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
+        if domain is None:
+            return "Invalid domain"
+        if domain.domainType != Domains.NORMAL:
+            return "Domain cannot be alias"
+        if "groupname" not in data:
+            return "Missing required property 'groupname'"
+        if "@" in data["groupname"] and data["groupname"].split("@")[1] != domain.domainname:
+            return "Domain specifications mismatch."
+        data["groupStatus"] = data.get("groupStatus", 0) + (domain.domainStatus << 2)
+        data["domainPrivileges"] = domain.privilegeBits
+        data["createDay"] = datetime.now()
 
-    @domainBackup.setter
-    def domainBackup(self, val):
-        self._setFlag(self.DOMAIN_BACKUP, val)
-
-    @property
-    def domainMonitor(self):
-        return self._getFlag(self.DOMAIN_MONITOR)
-
-    @domainMonitor.setter
-    def domainMonitor(self, val):
-        self._setFlag(self.DOMAIN_MONITOR, val)
+    def __init__(self, props, *args, **kwargs):
+        if "domainPrivileges" in props:
+            self.privilegeBits = ((self.privilegeBits or 0) & 0xFF) | props.pop("domainPrivileges")
+        self.fromdict(props)
 
 
 class Users(DataModel, DB.Model):
@@ -141,12 +146,12 @@ class Users(DataModel, DB.Model):
                      (Text("realName", flags="patch"),
                       Text("title", flags="patch"),
                       Text("memo", flags="patch"),
-                      Id("domainID", flags="patch"),
+                      Id("domainID", flags="init"),
                       Id("groupID", flags="patch"),
                       Text("maildir"),
                       Int("maxSize", flags="patch"),
                       Int("maxFile", flags="patch"),
-                      Date("createDay", flags="patch"),
+                      Date("createDay", flags="init"),
                       Text("lang", flags="patch"),
                       Text("timezone", flags="patch"),
                       Text("mobilePhone", flags="patch"),
@@ -355,7 +360,6 @@ class Users(DataModel, DB.Model):
                               .join(AR).join(AURR).all()
             self._permissions = Permissions.fromDB(perms)
         return self._permissions
-
 
 
 DB.Index(Users.domainID, Users.username, unique=True)

@@ -20,12 +20,10 @@ from tools.misc import AutoClean, createMapping
 from tools.storage import UserSetup
 from tools.pyexmdb import pyexmdb
 from tools.config import Config
-from tools.rop import nxTime
-from tools.constants import Permissions, PropTags
+from tools.constants import PropTags
 from tools.DataModel import InvalidAttributeError, MismatchROError
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
 
-from datetime import datetime
 import shutil
 
 from orm import DB
@@ -84,6 +82,8 @@ def userObjectEndpoint(domainID, userID):
 def patchUser(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     user = Users.query.filter(Users.domainID == domainID, Users.ID == userID).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
     if user.addressType != Users.NORMAL:
         return jsonify(message="Cannot edit alias user"), 400
     data = request.get_json(silent=True, cache=True)
@@ -274,3 +274,69 @@ def updateUserRoles(domainID, userID):
         return jsonify(message="Invalid data", error=err.orig.args[1]), 400
     roles = AdminRoles.query.join(AdminUserRoleRelation).filter(AdminUserRoleRelation.userID == userID).all()
     return jsonify(data=[role.ref() for role in roles])
+
+
+##############################################################################################################################
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/groups", methods=["GET"])
+@secure(requireDB=True)
+def getGroups(domainID):
+    checkPermissions(DomainAdminPermission(domainID))
+    return defaultListHandler(Groups, filters=(Groups.domainID == domainID,))
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/groups", methods=["POST"])
+@secure(requireDB=True)
+def createGroup(domainID):
+    checkPermissions(DomainAdminPermission(domainID))
+    data = request.get_json(silent=True, cache=True) or {}
+    data["domainID"] = domainID
+    return defaultListHandler(Groups)
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/groups/<int:ID>", methods=["DELETE"])
+@secure(requireDB=True)
+def deleteGroup(domainID, ID):
+    checkPermissions(DomainAdminPermission(domainID))
+    group = Groups.query.filter(Groups.domainID == domainID, Groups.ID == ID).first()
+    if group is None:
+        return jsonify(message="Group not found"), 404
+    Users.query.filter(Users.groupID == ID).update({Users.groupID: 0,
+                                                    Users.privilegeBits: Users.privilegeBits.op("&")(0xFF00FF)+0x00FF00,
+                                                    Users.addressStatus: Users.addressStatus.op("&")(0x33)},
+                                                   synchronize_session=False)
+    DB.session.delete(group)
+    DB.session.commit()
+    return jsonify(message="Group deleted")
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/groups/<int:ID>", methods=["GET"])
+@secure(requireDB=True)
+def getGroup(domainID, ID):
+    checkPermissions(DomainAdminPermission(domainID))
+    return defaultObjectHandler(Groups, ID, "Group", filters=(Groups.domainID == domainID,))
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/groups/<int:ID>", methods=["PATCH"])
+@secure(requireDB=True)
+def updateGroup(domainID, ID):
+    checkPermissions(DomainAdminPermission(domainID))
+    group = Groups.query.filter(Groups.domainID == domainID, Groups.ID == ID).first()
+    oldPrivileges, oldStatus = group.privilegeBits, group.groupStatus
+    if group is None:
+        return jsonify(message="Group not found"), 404
+    patched = defaultPatch(Groups, ID, "Group", group, filters=(Groups.domainID == domainID,), result="precommit")
+    if not patched == group:
+        return patched
+    if group.privilegeBits != oldPrivileges or group.groupStatus != oldStatus:
+        Users.query.filter(Users.groupID == ID)\
+                   .update({Users.addressStatus: Users.privilegeBits.op("&")(0xFF00FF)+(group.privilegeBits<<8),
+                            Users.privilegeBits: Users.privilegeBits.op("&")(0x33)+(group.privilegeBits<<2)},
+                           synchronize_session=False)
+    try:
+        DB.session.commit()
+    except IntegrityError as err:
+        DB.session.rollback()
+        return jsonify(message="Domain update failed", error=err.orig.args[1])
+    return jsonify(group.fulldesc())

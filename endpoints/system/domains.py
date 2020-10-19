@@ -85,14 +85,16 @@ def updateDomain(domainID):
     data = request.get_json(silent=True, cache=True)
     oldPrivileges, oldStatus = domain.privilegeBits, domain.domainStatus
     patched = defaultPatch(Domains, domainID, "Domain", obj=domain, result="precommit")
-    if isinstance(domain, tuple):  # Return value is not the domain, but an error response
-        return domain
+    if isinstance(patched, tuple):  # Return value is not the domain, but an error response
+        return patched
     if domain.privilegeBits != oldPrivileges or oldStatus != domain.domainStatus:
         Users.query.filter(Users.domainID == domainID)\
-                   .update({Users.privilegeBits: Users.privilegeBits.op("&")(0xFFFF) + (domain.privilegeBits << 16)},
+                   .update({Users.privilegeBits: Users.privilegeBits.op("&")(0xFFFF) + (domain.privilegeBits << 16),
+                            Users.addressStatus: Users.addressStatus.op("&")(0xF)+(domain.domainStatus << 4)},
                            synchronize_session=False)
         Groups.query.filter(Groups.domainID == domain.ID)\
-                    .update({Groups.privilegeBits: Groups.privilegeBits.op("&")(0xFF) + (domain.privilegeBits << 8)},
+                    .update({Groups.privilegeBits: Groups.privilegeBits.op("&")(0xFF) + (domain.privilegeBits << 8),
+                             Groups.groupStatus: Groups.groupStatus.op("&")(0x3) + (domain.domainStatus << 2)},
                             synchronize_session=False)
     data.pop("ID", None)
     data.pop("domainname", None)

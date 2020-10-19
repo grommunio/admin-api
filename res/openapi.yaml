@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.10.2
+  version: 0.11.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1115,6 +1115,138 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/{domainID}/groups:
+    get:
+      summary: Get list of groups/departments
+      tags:
+        - Domain Admin/Groups
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: List of groups returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/group'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Create new group
+      tags:
+        - Domain Admin/Groups
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/group'
+      responses:
+        '201':
+          description: Group created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/group'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/groups/{ID}:
+    get:
+      summary: Get information about a group
+      tags:
+        - Domain Admin/Groups
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Group information returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/group'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    patch:
+      summary: Update group
+      tags:
+        - Domain Admin/Groups
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/group'
+      responses:
+        '200':
+          description: Updated group returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/group'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete group
+      tags:
+        - Domain Admin/Group
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/ID'
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Group deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
 
   /domains/{domainID}/folders:
     get:
@@ -1690,6 +1822,40 @@ components:
           description: List of user IDs to associate with the role
           items:
             type: integer
+    group:
+      type: object
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        groupname:
+          type: string
+          description: Name of the group. Domain suffix is automatically added if not present
+        maxUser:
+          type: integer
+          description: Maximum number of users
+        title:
+          type: string
+          description: Title (display name) of the group
+        createDay:
+          $ref: '#/components/schemas/date'
+        groupStatus:
+          type: integer
+          description: Status of the group (0=Normal, 1=Suspended)
+          readOnly: true
+          enum: [0, 1]
+        backup:
+          type: boolean
+          description: Backup privilege
+        monitor:
+          type: boolean
+          description: Monitor privilege
+        log:
+          type: boolean
+          description: log privilege
+        account:
+          type: boolean
+          description: Account privilege
+
   responses:
     ServerError:
       description: An error occured while processing the request
