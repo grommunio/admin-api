@@ -178,3 +178,19 @@ def setUserPassword(args):
     DB.session.commit()
     logging.info("Password updated")
     exit(0)
+
+
+def _createMigrationParserSetup(subp: ArgumentParser):
+    subp.add_argument("--message", "-m", action="store", type=str, help="Revision message")
+    subp.add_argument("--force", "-f", action="store_true", help="Create revision even if no changes are detected")
+
+
+@Cli.command("create-migration", _createMigrationParserSetup)
+def cliCreateMigration(args):
+    def omitEmpty(contex, revision, directives):
+        if directives[0].upgrade_ops.is_empty():
+            directives[:] = []
+    from orm import domains, ext, misc, roles, users
+    from alembic import config, command
+    aconf = config.Config("alembic.ini")
+    command.revision(aconf, args.message, True, process_revision_directives=None if args.force else omitEmpty)
