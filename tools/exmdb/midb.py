@@ -46,7 +46,7 @@ class Messages(Schema):
     idx = Column("idx", INTEGER, index=True)
     modTime = Column("mod_time", INTEGER, server_default="0")
     uid = Column("uid", INTEGER, nullable=False)
-    unsent = Column("unset", INTEGER, server_default="0")
+    unsent = Column("unsent", INTEGER, server_default="0")
     recent = Column("recent", INTEGER, server_default="1")
     read = Column("read", INTEGER, server_default="0")
     flagged = Column("flagged", INTEGER, server_default="0")
