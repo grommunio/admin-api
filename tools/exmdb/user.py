@@ -25,10 +25,13 @@ class User(Common):
             parentID = Column("parent_id", INTEGER, ForeignKey("folders.folder_id", onupdate="cascade", ondelete="cascade"))
             changeNum = Column("change_number", INTEGER, unique=True, nullable=False)
             isSearch = Column("is_search", INTEGER, server_default="0", index=True)
+            isDeleted = Column("is_deleted", INTEGER, server_default="0")
             searchFlags = Column("search_flags", INTEGER)
             searchCriteria = Column("search_criteria", BLOB)
             currentEid = Column("cur_eid", INTEGER, nullable=False)
             maxEid = Column("max_eid", INTEGER, nullable=False)
+
+        Index("folder_delete_index", Folders.parentID, Folders.isDeleted)
 
         class Messages(self._Schema):
             __tablename__ = "messages"
@@ -40,6 +43,7 @@ class User(Common):
             changeNum = Column("change_number", INTEGER, unique=True, nullable=False)
             readCn = Column("read_cn", INTEGER, unique=True)
             readState = Column("read_state", INTEGER, server_default="0")
+            isDeleted = Column("is_deleted", INTEGER, server_default="0")
             messageSize = Column("message_size", INTEGER, nullable=False)
             groupID = Column("group_id", INTEGER)
             timerID = Column("timer_id", INTEGER)
@@ -47,6 +51,7 @@ class User(Common):
 
         Index("parent_assoc_index", Messages.parentFID, Messages.isAssociated)
         Index("parent_read_assoc_index", Messages.parentFID, Messages.readState, Messages.isAssociated)
+        Index("parent_assoc_delete_index", Messages.parentFID, Messages.isAssociated, Messages.isDeleted)
 
         class ReceiveTable(self._Schema):
             __tablename__ = "receive_table"
