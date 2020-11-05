@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Grammm Admin API
-  version: 0.11.0
+  version: 0.12.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -474,124 +474,6 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /system/domains/{domainID}/aliases:
-    get:
-      summary: Get domain aliases
-      tags:
-        - System Admin/Domains
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-      responses:
-        '200':
-          description: List of aliases returned
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/aliasList'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-    post:
-      summary: Create alias for domain
-      tags:
-        - System Admin/Domains
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                aliasname:
-                  type: string
-                  description: Name of the alias
-      responses:
-        '201':
-          description: Domain alias created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/alias'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
-  /system/domains/aliases:
-    get:
-      summary: List all domain aliases grouped by domain
-      tags:
-        - System Admin/Domains
-      security:
-        - JWTCookie: []
-      responses:
-        '200':
-          description: List returned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    description: Associative array of base objects with their aliases
-                    additionalProperties:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          ID:
-                            $ref: '#/components/schemas/ID'
-                          aliasname:
-                            type: string
-                          domainStatus:
-                            type: integer
-                            description: Status of the alias domain
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
-  /system/domains/aliases/{ID}:
-    delete:
-      summary: Delete alias domain
-      description: Marks the alias domain and all virtual users as deleted
-      tags:
-        - System Admin/Domains
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-        - $ref: '#/components/parameters/ID'
-      responses:
-        '200':
-          description: Deletion successful
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
   /system/users:
     get:
       summary: Get list of all users
@@ -954,117 +836,6 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/{domainID}/users/{userID}/aliases:
-    get:
-      summary: Get list of user aliases
-      tags:
-        - Domain Admin/Users
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-        - $ref: '#/components/parameters/userID'
-      responses:
-        '200':
-          description: List of user aliases returned
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/aliasList'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-    post:
-      summary: Create new user alias
-      tags:
-        - Domain Admin/Users
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-        - $ref: '#/components/parameters/userID'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                aliasname:
-                  type: string
-                  description: Name of the alias user. Domain part can be omitted, but must match domain if present.
-      responses:
-        '201':
-          description: User alias created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/alias'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
-
-  /domains/{domainID}/users/aliases:
-    get:
-      summary: List all user aliases grouped by user
-      tags:
-        - Domain Admin/Users
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-      responses:
-        '200':
-          description: List returned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: '#/components/schemas/groupedAliasList'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
-
-  /domains/{domainID}/users/aliases/{ID}:
-    delete:
-      summary: Delete user alias
-      tags:
-        - Domain Admin/Users
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-        - $ref: '#/components/parameters/userID'
-        - $ref: '#/components/parameters/ID'
-      responses:
-        '200':
-          description: User alias deleted
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
   /domains/{domainID}/users/{userID}/roles:
     patch:
       summary: Update user roles
@@ -1230,7 +1001,7 @@ paths:
     delete:
       summary: Delete group
       tags:
-        - Domain Admin/Group
+        - Domain Admin/Groups
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
@@ -1551,23 +1322,14 @@ components:
         domainname:
           type: string
           maxLength: 64
-        password:
-          type: string
-          default: ""
-          writeOnly: True
-          description: Initial password
         homedir:
           type: string
           maxLength: 128
           readOnly: True
           default: ""
-        media:
-          type: string
-          maxLength: 64
-          default: ""
-        maxSize:
-          type: integer
         maxUser:
+          type: integer
+        maxSize:
           type: integer
         title:
           type: string
@@ -1595,24 +1357,6 @@ components:
           type: integer
           description: Domain status (0=Normal, 1=Suspended, 2=Out Of Date, 3=Deleted)
           default: 0
-        domainType:
-          type: integer
-          description: Domain type (0=Normal, 1=Alias)
-          default: 0
-        mailBackup:
-          type: boolean
-          description: Mail backup privilege
-        mailMonitor:
-          type: boolean
-          description: Mail monitor privilege
-        ignoreCheckingUser:
-          type: boolean
-          description: Ignore checking user privilege
-        mailSubSystem:
-          type: boolean
-          description: Mail subsystem privilege
-        netDisk:
-          type: boolean
         areaID:
           writeOnly: True
           type: integer
@@ -1632,77 +1376,11 @@ components:
         password:
           type: string
           description: Initial password
-        realName:
-          type: string
-          maxLength: 32
-        title:
-          type: string
-          maxLength: 128
-        memo:
-          type: string
-          maxLength: 128
         domainID:
           type: integer
           readOnly: true
         groupID:
           type: integer
-        maildir:
-          type: string
-          maxLength: 128
-          readOnly: true
-        maxSize:
-          type: integer
-        maxFile:
-          type: integer
-          deprecated: true
-        createDay:
-          $ref: '#/components/schemas/date'
-        lang:
-          type: string
-          maxLength: 32
-        timezone:
-          type: string
-          maxLength: 64
-        mobilePhone:
-          type: string
-          maxLength: 20
-        subType:
-          type: integer
-          description: Sub type (0=User, 1=Room, 2=Equipment)
-        addressStatus:
-          type: integer
-          description: Address status (unknown)
-        addressType:
-          type: integer
-          description: Address type (0=Normal, 1=Alias, 2=MList, 3=Virtual)
-          readOnly: true
-        cell:
-          type: string
-          maxLength: 20
-        tel:
-          type: string
-          maxLength: 20
-        nickname:
-          type: string
-          maxLength: 32
-        homeaddress:
-          type: string
-          maxLength: 128
-        pop3_imap:
-          type: boolean
-          description: POP3/IMAP privilege
-        smtp:
-          type: boolean
-          description: SMTP privilege
-        changePassword:
-          type: boolean
-          description: Password changing privilege
-        publicAddress:
-          type: boolean
-          description: Public address privilege
-        netDisk:
-          type: boolean
-          description: Network disk privilege
         roles:
           type: array
           description: List of role associated with the user
@@ -1714,6 +1392,23 @@ components:
                 $ref: '#/components/schemas/ID'
               name:
                 type: string
+        properties:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              val:
+                anyOf:
+                  - type: string
+                  - type: integer
+                  - type: number
+        aliases:
+          type: array
+          description: List of aliases for this user
+          items:
+            type: string
     publicFolder:
       type: object
       properties:
@@ -1743,36 +1438,6 @@ components:
         unit:
           type: string
           description: Name of the systemd unit. Required for action endpoints.
-    alias:
-      type: object
-      properties:
-        ID:
-          $ref: '#/components/schemas/ID'
-        aliasname:
-          type: string
-          description: Name of the alias
-        mainname:
-          type: string
-          description: Name of the aliased entity
-    aliasList:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/alias'
-    groupedAliasList:
-      type: object
-      description: Associative array of base objects with their aliases
-      additionalProperties:
-        type: array
-        items:
-          type: object
-          properties:
-            ID:
-              $ref: '#/components/schemas/ID'
-            aliasname:
-              type: string
     adminPermission:
       type: object
       properties:
@@ -1843,18 +1508,6 @@ components:
           description: Status of the group (0=Normal, 1=Suspended)
           readOnly: true
           enum: [0, 1]
-        backup:
-          type: boolean
-          description: Backup privilege
-        monitor:
-          type: boolean
-          description: Monitor privilege
-        log:
-          type: boolean
-          description: log privilege
-        account:
-          type: boolean
-          description: Account privilege
 
   responses:
     ServerError:

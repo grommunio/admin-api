@@ -364,15 +364,15 @@ class UserSetup(SetupContext):
         except FileNotFoundError:
             logging.warn("Could not open {} - skipping.".format(dataPath))
         ntNow = ntTime()
-        lang = self.user.lang
+        lang = None
         self.exmdb.add(self.schema.ReceiveTable(cls="", folderID=PrivateFIDs.INBOX, modified=ntNow))
         self.exmdb.add(self.schema.ReceiveTable(cls="IPC", folderID=PrivateFIDs.ROOT, modified=ntNow))
         self.exmdb.add(self.schema.ReceiveTable(cls="IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
         self.exmdb.add(self.schema.ReceiveTable(cls="REPORT.IPM", folderID=PrivateFIDs.INBOX, modified=ntNow))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.CREATIONTIME, value=ntNow))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.user.maxSize*1024))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.user.maxSize*1024))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.user.maxSize*1024))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.user.propmap["prohibitreceivequota"]))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.user.propmap["prohibitsendquota"]))
+        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.user.propmap["storagequotalimit"]))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.OUTOFOFFICESTATE, value=0))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))

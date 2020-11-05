@@ -53,6 +53,11 @@ class PropTypes(_ReverseLookup):
     def lookup(cls, value, default=None):
         return super(PropTypes, cls).lookup(value & 0xFFFF, default)
 
+    @classmethod
+    def pyType(cls, value):
+        value = value & 0xFFFF
+        return int if value in cls.intTypes else float if value in cls.floatTypes else str
+
 
 class PropTags(_ReverseLookup):
     ABPROVIDERID = 0x36150102

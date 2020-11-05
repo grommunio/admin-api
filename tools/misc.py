@@ -81,5 +81,5 @@ def createMapping(iterable, key, value):
         if k in mapping:
             mapping[k].append(value(item))
         else:
-            mapping[k] = [value(item)]
+            mapping[k] = value(item)
     return mapping

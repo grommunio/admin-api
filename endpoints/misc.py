@@ -39,7 +39,7 @@ def chkState():
 
 
 @API.route(api.BaseRoute+"/about", methods=["GET"])
-@secure()
+@secure(requireAuth=False)
 def getAbout(requireAuth=False):
     """Retrieve version information."""
     return jsonify(API=api.apiVersion, backend=api.backendVersion)

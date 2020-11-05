@@ -79,6 +79,7 @@ class DataModel:
                     - managed: The referenced object(s) are fully managed through this class (enables transparent CUD)
                         The default is None.
                     - match: Use this attribute for matching. Can also be set with _matchables_
+                    - hidden: The attribute is not included at any level
             args : Collection, optional
                 List of arguments passed to the function if `call` or `func` is set. The default is None.
             kwargs : dict, optional
@@ -351,7 +352,8 @@ class DataModel:
             Dictionary representation
         """
         self._init()
-        return {prop.key: prop.value(self) for prop in self._meta.props(verbosity, lambda x: x.proxy is None)}
+        return {prop.key: prop.value(self) for prop in self._meta.props(verbosity, lambda x: x.proxy is None)
+                if "hidden" not in prop.flags}
 
     @classmethod
     def optimize_query(cls, query, verbosity):
@@ -433,8 +435,8 @@ class DataModel:
                     if "managed" in prop.flags:
                         current = {getattr(val, prop.link) for val in attr}
                         fID = prop.link
-                        patch = {val[fID]: val for val in value if fID in val}
-                        new = (val for val in value if fID not in val)
+                        patch = {val[fID]: val for val in value if fID in val and val[fID] in current}
+                        new = (val for val in value if fID not in val or val[fID] not in current)
                         setattr(self, prop.attr,
                                 [val.fromdict(patch[getattr(val, fID)], *args, **kwargs)
                                  for val in attr if getattr(val, fID) in patch] +

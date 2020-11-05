@@ -21,7 +21,7 @@ from tools.permissions import SystemAdminPermission
 
 from orm import DB
 if DB is not None:
-    from orm.domains import Domains, Aliases
+    from orm.domains import Domains
     from orm.ext import AreaList
     from orm.users import Users, Groups
     from orm.roles import AdminRoles
@@ -80,29 +80,20 @@ def updateDomain(domainID):
     domain: Domains = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    if domain.domainType == Domains.ALIAS:
-        return jsonify(message="Cannot edit alias domain"), 400
     data = request.get_json(silent=True, cache=True)
-    oldPrivileges, oldStatus = domain.privilegeBits, domain.domainStatus
+    oldStatus = domain.domainStatus
     patched = defaultPatch(Domains, domainID, "Domain", obj=domain, result="precommit")
     if isinstance(patched, tuple):  # Return value is not the domain, but an error response
         return patched
-    if domain.privilegeBits != oldPrivileges or oldStatus != domain.domainStatus:
+    if oldStatus != domain.domainStatus:
         Users.query.filter(Users.domainID == domainID)\
-                   .update({Users.privilegeBits: Users.privilegeBits.op("&")(0xFFFF) + (domain.privilegeBits << 16),
-                            Users.addressStatus: Users.addressStatus.op("&")(0xF)+(domain.domainStatus << 4)},
+                   .update({Users.addressStatus: Users.addressStatus.op("&")(0xF)+(domain.domainStatus << 4)},
                            synchronize_session=False)
         Groups.query.filter(Groups.domainID == domain.ID)\
-                    .update({Groups.privilegeBits: Groups.privilegeBits.op("&")(0xFF) + (domain.privilegeBits << 8),
-                             Groups.groupStatus: Groups.groupStatus.op("&")(0x3) + (domain.domainStatus << 2)},
+                    .update({Groups.groupStatus: Groups.groupStatus.op("&")(0x3) + (domain.domainStatus << 2)},
                             synchronize_session=False)
     data.pop("ID", None)
     data.pop("domainname", None)
-    aliasDomainNames = Aliases.query.filter(Aliases.mainname == domain.domainname).with_entities(Aliases.aliasname)
-    aliasDomains = Domains.query.join(Aliases, Aliases.mainname == Domains.domainname)\
-                                .filter(Aliases.aliasname == domain.domainname).all()
-    for aliasDomain in aliasDomains:
-        aliasDomain.fromdict(data)
     try:
         DB.session.commit()
     except IntegrityError as err:
@@ -118,8 +109,6 @@ def deleteDomain(domainID):
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    if domain.domainType == Domains.ALIAS:
-        return deleteAliasDomain(aliasDomain=domain)
     domain.domainStatus = Domains.DELETED
     Users.query.filter(Users.domainID == domainID)\
                .update({Users.addressStatus: Users.addressStatus.op("&")(0xF) + (Domains.DELETED << 4)},
@@ -127,114 +116,5 @@ def deleteDomain(domainID):
     Groups.query.filter(Groups.domainID == domain.ID)\
                 .update({Groups.groupStatus: Groups.groupStatus.op("&")(0x3) + (Domains.DELETED << 2)},
                         synchronize_session=False)
-    aliasNames = Aliases.query.filter(Aliases.mainname == domain.domainname).with_entities(Aliases.aliasname)
-    Domains.query.filter(Domains.domainname == aliasNames)\
-                 .update({Domains.domainStatus: Domains.DELETED}, synchronize_session=False)
-    if domain.domainType == Domains.ALIAS:
-        Aliases.query.filter(Aliases.aliasname == domain.domainname).delete()
     DB.session.commit()
     return jsonify(message="k.")
-
-
-@API.route(api.BaseRoute+"/system/domains/<int:domainID>/aliases", methods=["GET"])
-@secure(requireDB=True)
-def domainAliasListEndpoint(domainID):
-    checkPermissions(SystemAdminPermission())
-    domain = Domains.query.filter(Domains.ID == domainID).first()
-    if domain is None:
-        return jsonify(message="Domain not found"), 404
-    return defaultListHandler(Aliases, filters=(Aliases.mainname == domain.domainname,))
-
-
-@API.route(api.BaseRoute+"/system/domains/<int:domainID>/aliases", methods=["POST"])
-@secure(requireDB=True)
-def createDomainAlias(domainID):
-    checkPermissions(SystemAdminPermission())
-    data = request.get_json(silent=True)
-    if data is None or "aliasname" not in data:
-        return jsonify("Missing alias name"), 400
-    aliasname = data["aliasname"]
-    domain = Domains.query.filter(Domains.ID == domainID).first()
-    if domain is None:
-        return jsonify(message="Domain not found"), 404
-    alias = Aliases({"mainname": domain.domainname, "aliasname": aliasname})
-    DB.make_transient(domain)
-    domain.ID = None
-    domain.domainname = aliasname
-    domain.domainType = Domains.ALIAS
-    for user in Users.query.filter(Users.domainID == domainID, Users.addressType != Users.VIRTUAL).all():
-        DB.make_transient(user)
-        user.ID = None
-        user.username = user.baseName()+"@"+aliasname
-        user.addressType = Users.VIRTUAL
-        DB.session.add(user)
-    DB.session.add(domain)
-    DB.session.add(alias)
-    try:
-        DB.session.commit()
-    except IntegrityError as err:
-        DB.session.rollback()
-        return jsonify(message="Alias creation failed", error=err.orig.args[1]), 500
-    return jsonify(alias.fulldesc()), 201
-
-
-@API.route(api.BaseRoute+"/system/domains/aliases", methods=["GET"])
-@secure(requireDB=True)
-def getAliasesByDomain():
-    checkPermissions(SystemAdminPermission())
-    aliases = Aliases.query.join(Domains, Domains.domainname == Aliases.aliasname)\
-                           .with_entities(Aliases.ID, Aliases.mainname, Aliases.aliasname, Domains.domainStatus).all()
-    return jsonify(data=createMapping(aliases,
-                                      lambda alias: alias.mainname,
-                                      lambda alias: {"ID": alias.ID, "aliasname": alias.aliasname, "domainStatus": alias.domainStatus}))
-
-
-@API.route(api.BaseRoute+"/system/domains/aliases/<int:ID>", methods=["DELETE"])
-@secure(requireDB=True)
-def deleteDomainAlias(ID):
-    checkPermissions(SystemAdminPermission())
-    alias = Aliases.query.filter(Aliases.ID == ID).first()
-    if alias is None:
-        return jsonify(message="Alias not found"), 404
-    return deleteAliasDomain(alias=alias)
-
-
-def deleteAliasDomain(aliasDomain=None, alias=None, domain=None):
-    """Delete alias domain.
-
-    Sets an alias domain status and all its users to DELETED.
-
-    At least one of `aliasDomain` and `alias` must be set, other values can be deduced automatically.
-
-    Parameters
-    ----------
-    aliasDomain : Domains, optional
-        Alias domain to delete. The default is None.
-    alias : Aliases, optional
-        Alias to delete. The default is None.
-    domain : Domains, optional
-        Aliased domain. The default is None.
-
-    Returns
-    -------
-    response
-        The flask response to return
-    """
-    checkPermissions(SystemAdminPermission())
-    if aliasDomain is None and alias is None:
-        return jsonify(message="Get out of here, stalker."), 500
-    if aliasDomain is None:
-        aliasDomain = Domains.query.filter(Domains.domainname == alias.aliasname).first()
-    if alias is None:
-        alias = Aliases.query.filter(Aliases.aliasname == aliasDomain.domainname).first()
-    if domain is None:
-        domain = Domains.query.filter(Domains.domainname == alias.mainname).first()
-    if None in (aliasDomain, alias, domain):
-        return jsonify(message="Incomplete data"), 500
-    aliasDomain.domainStatus = Domains.DELETED
-    Users.query.filter(Users.domainID == domain.ID, Users.addressType == Users.VIRTUAL,
-                       Users.username.like("%@"+aliasDomain.domainname))\
-               .update({Users.addressStatus: Users.addressStatus.op("&")(0xF) + (Domains.DELETED << 4)},
-                       synchronize_session=False)
-    DB.session.commit()
-    return jsonify(message="Alias deleted")

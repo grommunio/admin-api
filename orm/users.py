@@ -7,14 +7,18 @@ Created on Tue Jun 23 13:59:32 2020
 """
 
 from . import DB
+from tools.constants import PropTags, PropTypes
+from tools.rop import ntTime, nxTime
 from tools.DataModel import DataModel, Id, Text, Int, Date, BoolP, RefProp
+from tools.misc import createMapping
 from .ext import AreaList
 
-from sqlalchemy import func
+from sqlalchemy import func, ForeignKey
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 from sqlalchemy.orm import relationship, selectinload
 
 import crypt
+import time
 from datetime import datetime
 
 
@@ -23,13 +27,10 @@ class Groups(DataModel, DB.Model):
 
     ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
     groupname = DB.Column("groupname", DB.VARCHAR(128), nullable=False, unique=True)
-    password = DB.Column("password", DB.VARCHAR(40), nullable=False, server_default="")
     domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
-    maxSize = DB.Column("max_size", INTEGER(10, unsigned=True), nullable=False, server_default="0")
     maxUser = DB.Column("max_user", INTEGER(10, unsigned=True), nullable=False)
     title = DB.Column("title", DB.VARCHAR(128), nullable=False)
     createDay = DB.Column("create_day", DB.DATE, nullable=False)
-    privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     groupStatus = DB.Column("group_status", TINYINT, nullable=False, server_default="0")
 
     _dictmapping_ = ((Id(), Text("title", flags="patch"), Text("groupname", flags="init")),
@@ -37,59 +38,11 @@ class Groups(DataModel, DB.Model):
                       Int("maxSize", flags="patch"),
                       Int("maxUser", flags="patch"),
                       Date("createDay", flags="init")),
-                     (Int("groupStatus", flags="init"),
-                      BoolP("backup", flags="patch"),
-                      BoolP("monitor", flags="patch"),
-                      BoolP("log", flags="patch"),
-                      BoolP("account", flags="patch")))
+                     (Int("groupStatus", flags="init"),))
 
-    BACKUP = 1 << 0
-    MONITOR = 1 << 1
-    LOG = 1 << 2
-    ACCOUNT = 1 << 3
-    DOMAIN_BACKUP = 1 << 8
-    DOMAIN_MONITOR = 1 << 9
 
     NORMAL = 0
     SUSPEND = 1
-
-    def _setFlag(self, flag, val):
-        self.privilegeBits = (self.privilegeBits or 0) | flag if val else (self.privilegeBits or 0) & ~flag
-
-    def _getFlag(self, flag):
-        return bool((self.privilegeBits or 0) & flag)
-
-    @property
-    def backup(self):
-        return self._getFlag(self.BACKUP)
-
-    @backup.setter
-    def backup(self, val):
-        self._setFlag(self.BACKUP, val)
-
-    @property
-    def monitor(self):
-        return self._getFlag(self.MONITOR)
-
-    @monitor.setter
-    def monitor(self, val):
-        self._setFlag(self.MONITOR, val)
-
-    @property
-    def log(self):
-        return self._getFlag(self.LOG)
-
-    @log.setter
-    def log(self, val):
-        self._setFlag(self.LOG, val)
-
-    @property
-    def account(self):
-        return self._getFlag(self.ACCOUNT)
-
-    @account.setter
-    def account(self, val):
-        self._setFlag(self.ACCOUNT, val)
 
     @staticmethod
     def checkCreateParams(data):
@@ -104,12 +57,9 @@ class Groups(DataModel, DB.Model):
         if "@" in data["groupname"] and data["groupname"].split("@")[1] != domain.domainname:
             return "Domain specifications mismatch."
         data["groupStatus"] = data.get("groupStatus", 0) + (domain.domainStatus << 2)
-        data["domainPrivileges"] = domain.privilegeBits
         data["createDay"] = datetime.now()
 
     def __init__(self, props, *args, **kwargs):
-        if "domainPrivileges" in props:
-            self.privilegeBits = ((self.privilegeBits or 0) & 0xFF) | props.pop("domainPrivileges")
         self.fromdict(props)
 
 
@@ -119,55 +69,37 @@ class Users(DataModel, DB.Model):
     ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
     username = DB.Column("username", DB.VARCHAR(128), nullable=False, unique=True)
     _password = DB.Column("password", DB.VARCHAR(40), nullable=False, server_default="")
-    realName = DB.Column("real_name", DB.VARCHAR(32), nullable=False, server_default="")
-    title = DB.Column("title", DB.VARCHAR(128), nullable=False, server_default="")
-    memo = DB.Column("memo", DB.VARCHAR(128), nullable=False, server_default="")
-    domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     groupID = DB.Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
+    domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     maildir = DB.Column("maildir", DB.VARCHAR(128), nullable=False, server_default="")
-    maxSize = DB.Column("max_size", INTEGER(10, unsigned=True), nullable=False)
-    maxFile = DB.Column("max_file", INTEGER(10, unsigned=True), nullable=False, default=0)
-    createDay = DB.Column("create_day", DB.DATE, nullable=False)
-    lang = DB.Column("lang", DB.VARCHAR(32), nullable=False, server_default="")
-    timezone = DB.Column("timezone", DB.VARCHAR(64), nullable=False, server_default="")
-    mobilePhone = DB.Column("mobile_phone", DB.VARCHAR(20), nullable=False, server_default="")
-    privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
-    subType = DB.Column("sub_type", TINYINT, nullable=False, server_default='0')
     addressStatus = DB.Column("address_status", TINYINT, nullable=False, server_default="0")
-    addressType = DB.Column("address_type", TINYINT, nullable=False, server_default="0")
-    cell = DB.Column("cell", DB.VARCHAR(20), nullable=False, server_default="")
-    tel = DB.Column("tel", DB.VARCHAR(20), nullable=False, server_default="")
-    nickname = DB.Column("nickname", DB.VARCHAR(32), nullable=False, server_default="")
-    homeaddress = DB.Column("homeaddress", DB.VARCHAR(128), nullable=False, server_default="")
+
+    # subType = DB.Column("sub_type", TINYINT, nullable=False, server_default='0') -> DISPLAYTYPEEX
+    # realName = DB.Column("real_name", DB.VARCHAR(32), nullable=False, server_default="") -> DISPLAYNAME
+    # title = DB.Column("title", DB.VARCHAR(128), nullable=False, server_default="") -> TITLE
+    # memo = DB.Column("memo", DB.VARCHAR(128), nullable=False, server_default="") -> COMMENT
+    # maxSize = DB.Column("max_size", INTEGER(10, unsigned=True), nullable=False)
+    # maxFile = DB.Column("max_file", INTEGER(10, unsigned=True), nullable=False, default=0)
+    # createDay = DB.Column("create_day", DB.DATE, nullable=False)-> CREATIONTIME
+    # lang = DB.Column("lang", DB.VARCHAR(32), nullable=False, server_default="") -> LANGUAGE
+    # timezone = DB.Column("timezone", DB.VARCHAR(64), nullable=False, server_default="")
+    # mobilePhone = DB.Column("mobile_phone", DB.VARCHAR(20), nullable=False, server_default="") -> MOBILETELEPHONENUMBER
+    # cell = DB.Column("cell", DB.VARCHAR(20), nullable=False, server_default="") -> DELETED
+    # tel = DB.Column("tel", DB.VARCHAR(20), nullable=False, server_default="") -> PRIMARYTELEPHONENUMBER
+    # nickname = DB.Column("nickname", DB.VARCHAR(32), nullable=False, server_default="") -> NICKNAME
+    # homeaddress = DB.Column("homeaddress", DB.VARCHAR(128), nullable=False, server_default="") -> POSTALADDRESS
+    # privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0) -> DELETED
 
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
+    properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True)
+    aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True)
 
     _dictmapping_ = ((Id(), Text("username", flags="init")),
-                     (Text("realName", flags="patch"),
-                      Text("title", flags="patch"),
-                      Text("memo", flags="patch"),
-                      Id("domainID", flags="init"),
-                      Id("groupID", flags="patch"),
-                      Text("maildir"),
-                      Int("maxSize", flags="patch"),
-                      Int("maxFile", flags="patch"),
-                      Date("createDay", flags="init"),
-                      Text("lang", flags="patch"),
-                      Text("timezone", flags="patch"),
-                      Text("mobilePhone", flags="patch"),
-                      Int("subType", flags="patch"),
-                      Int("addressStatus"),
-                      Int("addressType"),
-                      Text("cell", flags="patch"),
-                      Text("tel", flags="patch"),
-                      Text("nickname", flags="patch"),
-                      Text("homeaddress", flags="patch"),
-                      BoolP("pop3_imap", flags="patch"),
-                      BoolP("smtp", flags="patch"),
-                      BoolP("changePassword", flags="patch"),
-                      BoolP("publicAddress", flags="patch"),
-                      BoolP("netDisk", flags="patch")),
-                     (RefProp("roles", qopt=selectinload),))
+                     (Id("domainID", flags="init"),
+                      Id("groupID", flags="patch")),
+                     (RefProp("roles", qopt=selectinload),
+                      RefProp("properties", flags="patch, managed", link="name", qopt=selectinload),
+                      RefProp("aliases", flags="patch, managed", link="basename", flat="aliasname", qopt=selectinload)))
 
     POP3_IMAP = 1 << 0
     SMTP = 1 << 1
@@ -175,129 +107,75 @@ class Users(DataModel, DB.Model):
     PUBADDR = 1 << 3
     NETDISK = 1 << 4
 
-    NORMAL = 0
-    ALIAS = 1
-    MLIST = 2
-    VIRTUAL = 3
+    # NORMAL = 0 -> MAILUSER
+    # ALIAS = 1
+    # MLIST = 2 -> DISTLIST
+    # VIRTUAL = 3
 
-    def _setFlag(self, flag, val):
-        self.privilegeBits = (self.privilegeBits or 0) | flag if val else (self.privilegeBits or 0) & ~flag
-
-    def _getFlag(self, flag):
-        return bool((self.privilegeBits or 0) & flag)
-
-    @property
-    def pop3_imap(self):
-        return self._getFlag(self.POP3_IMAP)
-
-    @pop3_imap.setter
-    def pop3_imap(self, val):
-        self._setFlag(self.POP3_IMAP, val)
-
-    @property
-    def smtp(self):
-        return self._getFlag(self.SMTP)
-
-    @smtp.setter
-    def smtp(self, val):
-        self._setFlag(self.SMTP, val)
-
-    @property
-    def changePassword(self):
-        return self._getFlag(self.CHGPASSWD)
-
-    @changePassword.setter
-    def changePassword(self, val):
-        self._setFlag(self.CHGPASSWD, val)
-
-    @property
-    def publicAddress(self):
-        return self._getFlag(self.PUBADDR)
-
-    @publicAddress.setter
-    def publicAddress(self, val):
-        self._setFlag(self.PUBADDR, val)
-
-    @property
-    def netDisk(self):
-        return self._getFlag(self.NETDISK)
-
-    @netDisk.setter
-    def netDisk(self, val):
-        self._setFlag(self.NETDISK, val)
-
-    @property
-    def password(self):
-        return self._password
-
-    @password.setter
-    def password(self, pw):
-        self._password = crypt.crypt(pw, crypt.mksalt(crypt.METHOD_MD5))
-
-    def chkPw(self, pw):
-        return crypt.crypt(pw, self.password) == self.password
+    MAILUSER = 0x0
+    DISTLIST = 0x1
+    FORUM = 0x2
+    AGENT = 0x3
+    ORGANIZATION = 0x4
+    PRIVATE_DISTLIST = 0x5
+    REMOTE_MAILUSER = 0x6
+    ROOM = 0x7
+    EQUIPMENT = 0x8
+    SEC_DISTLIST = 0x9
+    CONTAINER = 0x100
+    TEMPLATE = 0x101
+    ADDRESS_TEMPLATE = 0x102
+    SEARCH = 0x200
 
     @staticmethod
     def checkCreateParams(data):
-        from orm.domains import Domains, Aliases
+        from orm.domains import Domains
         domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
         if not domain:
             return "Invalid domain"
-        if domain.domainType != Domains.NORMAL:
-            return "Domain must not be alias"
         data["domain"] = domain
-        domainUsers = Users.query.with_entities(func.count().label("count"), func.sum(Users.maxSize).label("size"))\
-                                 .filter(Users.domainID == domain.ID).first()
+        domainUsers = Users.query.with_entities(func.count().label("count")).filter(Users.domainID == domain.ID).first()
         if domain.maxUser <= domainUsers.count:
             return "Maximum number of domain users reached"
-        if data.get("maxSize") is None:
-            return "Maximum size not specified"
-        if domain.maxSize < (domainUsers.size or 0)+data.get("maxSize"):
-            return "Maximum domain size reached"
         if data.get("groupID"):
             group = Groups.query.filter(Groups.ID == data.get("groupID"), Groups.domainID == domain.ID).first()
             if group is None:
                 return "Invalid group"
-            groupUsers = Users.query.with_entities(func.count().label("count"), func.sum(Users.maxSize).label("size"))\
-                                    .filter(Users.groupID == group.ID).first()
+            groupUsers = Users.query.with_entities(func.count().label("count")).filter(Users.groupID == group.ID).first()
             if group.maxUser <= groupUsers.count:
                 return "Maximum number of group users reached"
-            if group.maxSize < (groupUsers.size or 0)+data.get("maxSize"):
-                return "Maximum group size reached"
-            data["groupPrivileges"] = group.privilegeBits
             data["groupStatus"] =  group.groupStatus
         else:
             data["groupID"] = 0
-        data["domainPrivileges"] = domain.privilegeBits
         data["domainStatus"] = domain.domainStatus
-        data["aliases"] = Aliases.query.filter(Aliases.mainname == domain.domainname)\
-                                       .join(Domains, Domains.domainname == Aliases.aliasname)\
-                                       .with_entities(Domains.domainname, Domains.domainStatus).all()
         if "areaID" not in data:
             return "Missing required property areaID"
         if AreaList.query.filter(AreaList.dataType == AreaList.USER, AreaList.ID == data["areaID"]).count() == 0:
             return "Invalid area ID"
-        data["createDay"] = datetime.now()
+        if "properties" not in data:
+            return "Missing required attribute 'properties'"
+        propmap = createMapping(data["properties"], lambda x: x["name"], lambda x: x)
+        if "storagequotalimit" not in propmap:
+            return "Missing required property 'storagequotalimit'"
+        for prop in ("prohibitreceivequota", "prohibitsendquota"):
+            if prop not in propmap:
+                data["properties"].append({"name": prop, "val": propmap["storagequotalimit"]["val"]})
+        propmap["creationtime"] = {"name": "creationtime", "val": datetime.now()}
+        if "displaytypeex" not in propmap:
+            propmap["displaytypeex"] = {"name": "displaytypeex", "val": 0}
+
 
     def __init__(self, props, *args, **kwargs):
         self._permissions = None
         if props is None:
             return
-        if isinstance(props, Users):
-            self._copy(props)
-            return
-        aliases = props.pop("aliases", [])
-        privileges = props.pop("groupPrivileges", 0xFF) << 8 | props.pop("domainPrivileges", 0) << 16
         status = props.pop("groupStatus", 0) << 2 | props.pop("domainStatus") << 4
         props.pop("areaID", None)
         if "password" in props:
             self.password = props.pop("password")
         self.fromdict(props, *args, **kwargs)
-        self.privilegeBits = (self.privilegeBits or 0) | privileges
         self.addressStatus = (self.addressStatus or 0) | status
         self.addressType = 0
-        for aliasDomain in aliases:
-            DB.session.add(self.mkAlias(self.baseName()+"@"+aliasDomain.domainname, Users.VIRTUAL, aliasDomain.domainStatus))
 
     def fromdict(self, patches, *args, **kwargs):
         if "username" in patches:
@@ -318,37 +196,6 @@ class Users(DataModel, DB.Model):
     def domainName(self):
         return self.username.rsplit("@", 1)[0] if "@" in self.username else None
 
-    def _copy(self, u):
-        self._password = u._password
-        self.realName = u.realName
-        self.title = u.title
-        self.memo = u.memo
-        self.domainID = u.domainID
-        self.groupID = u.groupID
-        self.maildir = u.maildir
-        self.maxSize = u.maxSize
-        self.maxFile = u.maxFile
-        self.createDay = u.createDay
-        self.lang = u.lang
-        self.timezone = u.timezone
-        self.mobilePhone = u.mobilePhone
-        self.privilegeBits = u.privilegeBits
-        self.subType = u.subType
-        self.addressStatus = u.addressStatus
-        self.addressType = u.addressType
-        self.cell = u.cell
-        self.tel = u.tel
-        self.nickname = u.nickname
-        self.homeaddress = u.homeaddress
-
-    def mkAlias(self, aliasname, aliastype=ALIAS, domainStatus=None):
-        alias = Users(self)
-        alias.username = aliasname
-        alias.addressType = aliastype
-        if domainStatus is not None:
-            alias.addressStatus = (alias.addressStatus & 0xF) | (domainStatus << 4)
-        return alias
-
     def permissions(self):
         if self.ID == 0:
             from tools.permissions import Permissions
@@ -356,12 +203,122 @@ class Users(DataModel, DB.Model):
         if not hasattr(self, "_permissions") or self._permissions is None:
             from .roles import AdminUserRoleRelation as AURR, AdminRolePermissionRelation as ARPR, AdminRoles as AR
             from tools.permissions import Permissions
-            perms = ARPR.query.filter(AURR.userID == self.ID)\
-                              .join(AR).join(AURR).all()
+            perms = ARPR.query.filter(AURR.userID == self.ID).join(AR).join(AURR).all()
             self._permissions = Permissions.fromDB(perms)
         return self._permissions
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, pw):
+        self._password = crypt.crypt(pw, crypt.mksalt(crypt.METHOD_MD5))
+
+    def chkPw(self, pw):
+        return crypt.crypt(pw, self.password) == self.password
+
+    @property
+    def propmap(self):
+        if not hasattr(self, "_propmap"):
+            self._propmap = createMapping(self.properties, lambda x: x.name, lambda x: x.val)
+        return self._propmap
+
+
+
+class UserProperties(DataModel, DB.Model):
+    __tablename__ = "user_properties"
+
+    supportedTypes = PropTypes.intTypes | PropTypes.floatTypes | {PropTypes.STRING, PropTypes.WSTRING, PropTypes.BINARY}
+
+    userID = DB.Column("user_id", INTEGER(unsigned=True), ForeignKey(Users.ID), primary_key=True)
+    tag = DB.Column("proptag", INTEGER(unsigned=True), primary_key=True, index=True)
+    _propvalbin = DB.Column("propval_bin", DB.VARBINARY(4096))
+    _propvalstr = DB.Column("propval_str", DB.VARCHAR(4096))
+
+    user = relationship(Users)
+
+    _dictmapping_ = (({"attr": "name", "flags": "init"},{ "attr": "val", "flags": "patch"}), (Int("userID"),))
+
+    def __init__(self, props, user, *args, **kwargs):
+        self.user = user
+        if "tag" in props and props["tag"] & 0xFFFF not in self.supportedTypes:
+            raise NotImplementedError("Prop type is currently not supported")
+        self.fromdict(props, *args, **kwargs)
+
+    @property
+    def name(self):
+        if self.tag is None:
+            return None
+        tagname = PropTags.lookup(self.tag, None)
+        return tagname.lower() if tagname else "<unknown>"
+
+    @name.setter
+    def name(self, value):
+        tag = getattr(PropTags, value.upper(), None)
+        if tag is None:
+            raise ValueError("Unknown PropTag '{}'".format(value))
+        if tag & 0xFFFF not in self.supportedTypes:
+            raise ValueError("This tag type is not supported")
+        self.tag = tag
+
+    @property
+    def type(self):
+        return self.tag & 0xFFFF
+
+    @property
+    def val(self):
+        if self.type == PropTypes.BINARY:
+            return self._propvalbin
+        if self.type == PropTypes.FILETIME:
+            return datetime.fromtimestamp(nxTime(int(self._propvalstr))).strftime("%Y-%m-%d %H:%M:%S")
+        return PropTypes.pyType(self.type)(self._propvalstr)
+
+    @val.setter
+    def val(self, value):
+        if self.type == PropTypes.FILETIME:
+            if not isinstance(value, datetime):
+                value = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+            value = ntTime(time.mktime(value.timetuple()))
+        if type(value) != PropTypes.pyType(self.type):
+            raise ValueError("Value type does not match tag type")
+        if self.type == PropTypes.BINARY:
+            self._propvalbin = value
+        else:
+            self._propvalstr = str(value)
 
 
 DB.Index(Users.domainID, Users.username, unique=True)
 DB.Index(Users.groupID, Users.username, unique=True)
-DB.Index(Users.maildir, Users.addressType)
+
+
+class Aliases(DataModel, DB.Model):
+    __tablename__ = "aliases"
+
+    aliasname = DB.Column("aliasname", DB.VARCHAR(128), nullable=False, unique=True, primary_key=True)
+    mainname = DB.Column("mainname", DB.VARCHAR(128), ForeignKey(Users.username, ondelete="cascade", onupdate="cascade"),
+                         nullable=False, index=True)
+
+    main = relationship(Users)
+
+    _dictmapping_ = ((Text("aliasname", flags="init"), Text("basename", flags="init, hidden")),
+                     (Text("mainname", flags="init"),))
+
+    def __init__(self, aliasname, main, *args, **kwargs):
+        if main.ID == 0:
+            raise ValueError("Cannot alias superuser")
+        if "@" in aliasname:
+            if aliasname.split("@")[1] != main.username.split("@")[1]:
+                raise ValueError("Domain of alias must match user domain")
+        else:
+            aliasname += "@"+main.username.split("@")[1]
+        self.aliasname = aliasname
+        self.main = main
+
+    @property
+    def basename(self):
+        return self.aliasname.split("@", 1)[0] if self.aliasname is not None else None
+
+    @basename.setter
+    def basename(self, value):
+        self.aliasname = value.split("@", 1)[0]+"@"+self.main.username.split("@", 1)[1]
