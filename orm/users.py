@@ -99,7 +99,8 @@ class Users(DataModel, DB.Model):
                       Id("groupID", flags="patch")),
                      (RefProp("roles", qopt=selectinload),
                       RefProp("properties", flags="patch, managed", link="name", qopt=selectinload),
-                      RefProp("aliases", flags="patch, managed", link="basename", flat="aliasname", qopt=selectinload)))
+                      RefProp("aliases", flags="patch, managed", link="basename", flat="aliasname", qopt=selectinload)),
+                     ({"attr": "password", "flags": "init, hidden"},))
 
     POP3_IMAP = 1 << 0
     SMTP = 1 << 1
@@ -171,8 +172,6 @@ class Users(DataModel, DB.Model):
             return
         status = props.pop("groupStatus", 0) << 2 | props.pop("domainStatus") << 4
         props.pop("areaID", None)
-        if "password" in props:
-            self.password = props.pop("password")
         self.fromdict(props, *args, **kwargs)
         self.addressStatus = (self.addressStatus or 0) | status
         self.addressType = 0

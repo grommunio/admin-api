@@ -6,28 +6,13 @@ Created on Tue Jun 23 11:26:12 2020
 @copyright: Grammm GmbH, 2020
 """
 
-import dbus
-import psutil
-import os
-
-from datetime import datetime
-from dbus import DBusException
-
 from flask import jsonify, request
 
 import api
 from api.core import API, secure
-from api.security import loginUser, refreshToken, checkPermissions
+from api.security import loginUser, refreshToken
 from orm import DB
 
-from . import defaultListHandler, defaultObjectHandler
-
-from tools.config import Config
-from tools.systemd import Systemd
-from tools.permissions import SystemAdminPermission
-
-if DB is not None:
-    from orm.misc import Forwards, MLists, Associations, Classes, Hierarchy, Members, Specifieds
 
 @API.route(api.BaseRoute+"/status", methods=["GET"])
 @secure(requireAuth=False)
@@ -63,6 +48,19 @@ def login():
 @secure(authLevel="user")
 def getProfile():
     user = request.auth["user"]
-    userData = {"username": user.username, "realName": user.realName}
     capabilities = tuple(user.permissions().capabilities())
-    return jsonify(user=userData, capabilities=capabilities)
+    return jsonify(user=user.fulldesc(), capabilities=capabilities)
+
+
+@API.route(api.BaseRoute+"/passwd", methods=["PUT"])
+@secure(authLevel="user")
+def updatePassword():
+    user = request.auth["user"]
+    data = request.get_json(silent=True)
+    if data is None or "new" not in data or "old" not in data:
+        return jsonify(message="Incomplete data"), 400
+    if not user.chkPw(data["old"]):
+        return jsonify(message="Old password does not match"), 403
+    user.password = data["new"]
+    DB.session.commit()
+    return jsonify(message="Password updated")

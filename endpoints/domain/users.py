@@ -11,12 +11,11 @@ from api.core import API, secure
 from api.security import checkPermissions
 
 from flask import request, jsonify
-from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from .. import defaultListHandler, defaultObjectHandler, defaultPatch
 
-from tools.misc import AutoClean, createMapping
+from tools.misc import AutoClean
 from tools.storage import UserSetup
 from tools.pyexmdb import pyexmdb
 from tools.config import Config
@@ -84,9 +83,11 @@ def patchUser(domainID, userID):
     if user is None:
         return jsonify(message="User not found"), 404
     data = request.get_json(silent=True, cache=True)
+    if data is None:
+        return jsonify(message="Could not update: no valid JSON data"), 400
     updateSize = False  # user and data and "maxSize" in data and data["maxSize"] != user.maxSize
     try:
-        defaultPatch(Users, userID, "User", user, (Users.domainID == domainID,), result="precommit")
+        user.fromdict(data)
         DB.session.commit()
     except (InvalidAttributeError, MismatchROError, ValueError) as err:
         DB.session.rollback()
@@ -140,9 +141,11 @@ def deleteUser(user):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/password", methods=["PUT"])
-@secure(requireDB=True)
+@secure(requireDB=True, authLevel="user")
 def setUserPassword(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
+    if userID == request.auth["user"].ID:
+        return jsonify(message="Cannot reset own password, use '/passwd' endpoint instead"), 400
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
