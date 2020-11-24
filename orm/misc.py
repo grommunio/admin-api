@@ -15,7 +15,7 @@ from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 class Forwards(DataModel, DB.Model):
     __tablename__ = "forwards"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
+    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
     username = DB.Column("username", DB.VARCHAR(128), nullable=False, unique=True)
     forwardType = DB.Column("forward_type", TINYINT, nullable=False)
     destination = DB.Column("destination", DB.VARCHAR(128), nullable=False)
@@ -28,7 +28,7 @@ class Forwards(DataModel, DB.Model):
 class MLists(DataModel, DB.Model):
     __tablename__ = "mlists"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
+    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
     listname = DB.Column("listname", DB.VARCHAR(128), nullable=False, unique=True)
     domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), index=True)
     listType = DB.Column("list_type", TINYINT, nullable=False)
@@ -43,20 +43,20 @@ class MLists(DataModel, DB.Model):
 class Associations(DataModel, DB.Model):
     __tablename__ = "associations"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
+    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
     username = DB.Column("username", DB.VARCHAR(128), nullable=False, unique=True)
     listID = DB.Column("list_id", INTEGER(10), nullable=False, index=True)
 
     _dictmapping_ = ((Id(), Text("username", flags="patch"), Id("listID", flags="patch")))
 
 
-DB.Index(Associations.listID, Associations.username, unique=True)
+DB.Index("uq_list_id_username", Associations.listID, Associations.username, unique=True)
 
 
 class Classes(DataModel, DB.Model):
     __tablename__ = "classes"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
+    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
     classname = DB.Column("classname", DB.VARCHAR(128), nullable=False)
     listname = DB.Column("listname", DB.VARCHAR(128), nullable=False, index=True)
     domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), index=True)
@@ -71,7 +71,7 @@ class Classes(DataModel, DB.Model):
 class Hierarchy(DataModel, DB.Model):
     __tablename__ = "hierarchy"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
+    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
     classID = DB.Column("class_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     childID = DB.Column("child_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
@@ -87,7 +87,7 @@ class Hierarchy(DataModel, DB.Model):
 class Members(DataModel, DB.Model):
     __tablename__ = "members"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
+    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
     username = DB.Column("username", DB.VARCHAR(128), nullable=False, index=True)
     classID = DB.Column("class_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
@@ -100,13 +100,13 @@ class Members(DataModel, DB.Model):
                       Id("groupID", flags="patch")),)
 
 
-DB.Index(Members.classID, Members.username, unique=True)
+DB.Index("uq_class_id_username", Members.classID, Members.username, unique=True)
 
 
 class Specifieds(DataModel, DB.Model):
     __tablename__ = "specifieds"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
+    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
     username = DB.Column("username", DB.VARCHAR(128), nullable=False)
     listID = DB.Column("list_id", INTEGER(10), nullable=False, index=True)
 

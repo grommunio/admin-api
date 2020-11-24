@@ -218,8 +218,8 @@ class Users(DataModel, DB.Model):
         return crypt.crypt(pw, self.password) == self.password
 
     @property
-    def propmap(self):
-        if not hasattr(self, "_propmap"):
+    def propmap(self, refresh=False):
+        if refresh or not hasattr(self, "_propmap"):
             self._propmap = createMapping(self.properties, lambda x: x.name, lambda x: x.val)
         return self._propmap
 
@@ -287,8 +287,8 @@ class UserProperties(DataModel, DB.Model):
             self._propvalstr = str(value)
 
 
-DB.Index(Users.domainID, Users.username, unique=True)
-DB.Index(Users.groupID, Users.username, unique=True)
+DB.Index("uq_domain_id_username", Users.domainID, Users.username, unique=True)
+DB.Index("uq_group_id_username", Users.groupID, Users.username, unique=True)
 
 
 class Aliases(DataModel, DB.Model):

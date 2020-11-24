@@ -61,78 +61,6 @@ def createAdmin():
     return admin, adminPass
 
 
-def checkDBVersion(DB, aconf):
-    currentVersions = alembic.migration.MigrationContext.configure(DB.session.connection()).get_current_heads()
-    directory = alembic.script.ScriptDirectory.from_config(aconf)
-    return set(currentVersions), set(directory.get_heads())
-
-
-def _createParserSetup(subp: ArgumentParser):
-    subp.add_argument("--force", "-f", action="store_true")
-    subp.add_argument("--wipe", action="store_true")
-
-
-@Cli.command("create-db", _createParserSetup)
-def cliCreateDB(args):
-    import logging
-    from orm import DB
-    if DB is None:
-        logging.fatal("Could not initialize database connection - check configuration")
-
-    upgrade = create = False
-    aconf = alembic.config.Config("alembic.ini")
-    if args.force:
-        create = True
-    if args.wipe:
-        create = True
-        logging.warn("Wiping database")
-        DB.drop_all()
-    else:
-        current, target = checkDBVersion(DB, aconf)
-        if current == target:
-            logging.info("Schema is up to date, exiting")
-            exit(0)
-        if len(current) == 0:
-            logging.info("Could not determine current schema version - creating from scratch")
-            create = True
-        else:
-            logging.info("Found outdated schema")
-            upgrade = True
-    if upgrade:
-        logging.info("Upgrading from '{}' to '{}'".format("|".join(current), "|".join(target)))
-        alembic.command.upgrade(aconf, "head")
-        logging.info("Upgrade complete")
-    if create:
-        from orm import ext, misc, domains, roles, users
-        try:
-            logging.info("Setting up database...")
-            DB.create_all()
-            if users.Users.query.filter(users.Users.ID == 0).count() == 0:
-                logging.info("Creating system admin...")
-                DB.session.execute("SET sql_mode='NO_AUTO_VALUE_ON_ZERO';")
-                admin, adminPass = createAdmin()
-                DB.session.add(admin)
-                try:
-                    DB.session.commit()
-                    logging.info("System admin credentials are: {}:{}".format(admin.username, adminPass))
-                except:
-                    logging.error("Could not create admin user. Please contact your admin administrator.")
-                    exit(1)
-            else:
-                logging.info("System admin user already exists. Use `passwd` command to reset password.")
-            if roles.AdminRoles.query.filter(roles.AdminRoles.name == "System Admin").count() == 0:
-                DB.session.add(roles.AdminRoles({"name": "System Admin", "description": "System administrator role",
-                                                 "permissions": [{"permission": "SystemAdmin"}]}))
-                DB.session.commit()
-            alembic.command.stamp(aconf, "head")
-            logging.info("Success.")
-        except:
-            import traceback
-            logging.fatal(traceback.format_exc())
-            logging.info("Database setup failed.")
-        exit(1)
-
-
 def _passwdParserSetup(subp: ArgumentParser):
     subp.add_argument("--user", "-u", action="store", type=str,
                       help="User to change the password of. If omitted, set password of system administrator.")
@@ -147,7 +75,7 @@ def _passwdParserSetup(subp: ArgumentParser):
 def setUserPassword(args):
     import logging
     from orm.users import DB, Users
-    from orm.roles import AdminRoles
+    import orm.roles
     if args.user is not None:
         user = Users.query.filter(Users.username == args.user).first()
         if user is None:
@@ -178,19 +106,3 @@ def setUserPassword(args):
     DB.session.commit()
     logging.info("Password updated")
     exit(0)
-
-
-def _createMigrationParserSetup(subp: ArgumentParser):
-    subp.add_argument("--message", "-m", action="store", type=str, help="Revision message")
-    subp.add_argument("--force", "-f", action="store_true", help="Create revision even if no changes are detected")
-
-
-@Cli.command("create-migration", _createMigrationParserSetup)
-def cliCreateMigration(args):
-    def omitEmpty(contex, revision, directives):
-        if directives[0].upgrade_ops.is_empty():
-            directives[:] = []
-    from orm import domains, ext, misc, roles, users
-    from alembic import config, command
-    aconf = config.Config("alembic.ini")
-    command.revision(aconf, args.message, True, process_revision_directives=None if args.force else omitEmpty)
