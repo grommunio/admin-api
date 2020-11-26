@@ -72,22 +72,10 @@ class Users(DataModel, DB.Model):
     domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     maildir = DB.Column("maildir", DB.VARCHAR(128), nullable=False, server_default="")
     addressStatus = DB.Column("address_status", TINYINT, nullable=False, server_default="0")
-
-    # subType = DB.Column("sub_type", TINYINT, nullable=False, server_default='0') -> DISPLAYTYPEEX
-    # realName = DB.Column("real_name", DB.VARCHAR(32), nullable=False, server_default="") -> DISPLAYNAME
-    # title = DB.Column("title", DB.VARCHAR(128), nullable=False, server_default="") -> TITLE
-    # memo = DB.Column("memo", DB.VARCHAR(128), nullable=False, server_default="") -> COMMENT
-    # maxSize = DB.Column("max_size", INTEGER(10, unsigned=True), nullable=False)
-    # maxFile = DB.Column("max_file", INTEGER(10, unsigned=True), nullable=False, default=0)
-    # createDay = DB.Column("create_day", DB.DATE, nullable=False)-> CREATIONTIME
-    # lang = DB.Column("lang", DB.VARCHAR(32), nullable=False, server_default="") -> LANGUAGE
-    # timezone = DB.Column("timezone", DB.VARCHAR(64), nullable=False, server_default="")
-    # mobilePhone = DB.Column("mobile_phone", DB.VARCHAR(20), nullable=False, server_default="") -> MOBILETELEPHONENUMBER
-    # cell = DB.Column("cell", DB.VARCHAR(20), nullable=False, server_default="") -> DELETED
-    # tel = DB.Column("tel", DB.VARCHAR(20), nullable=False, server_default="") -> PRIMARYTELEPHONENUMBER
-    # nickname = DB.Column("nickname", DB.VARCHAR(32), nullable=False, server_default="") -> NICKNAME
-    # homeaddress = DB.Column("homeaddress", DB.VARCHAR(128), nullable=False, server_default="") -> POSTALADDRESS
-    # privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0) -> DELETED
+    _deprecated_maxSize = DB.Column("max_size", INTEGER(10), nullable=False, default=0)
+    _deprecated_maxFile = DB.Column("max_file", INTEGER(10), nullable=False, default=0)
+    _deprecated_createDay = DB.Column("create_day", DB.DATE, nullable=False, default=datetime.now)
+    _deprecated_privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
 
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True)
@@ -106,11 +94,6 @@ class Users(DataModel, DB.Model):
     CHGPASSWD = 1 << 2
     PUBADDR = 1 << 3
     NETDISK = 1 << 4
-
-    # NORMAL = 0 -> MAILUSER
-    # ALIAS = 1
-    # MLIST = 2 -> DISTLIST
-    # VIRTUAL = 3
 
     MAILUSER = 0x0
     DISTLIST = 0x1
@@ -156,9 +139,12 @@ class Users(DataModel, DB.Model):
         for prop in ("prohibitreceivequota", "prohibitsendquota"):
             if prop not in propmap:
                 data["properties"].append({"name": prop, "val": propmap["storagequotalimit"]["val"]})
-        propmap["creationtime"] = {"name": "creationtime", "val": datetime.now()}
+        if "creationtime" not in propmap:
+            data["properties"].append({"name": "creationtime", "val": datetime.now()})
+        else:
+            propmap["creationtime"]["val"] = datetime.now()
         if "displaytypeex" not in propmap:
-            propmap["displaytypeex"] = {"name": "displaytypeex", "val": 0}
+            data["properties"].append({"name": "displaytypeex", "val": 0})
 
 
     def __init__(self, props, *args, **kwargs):

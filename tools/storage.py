@@ -288,7 +288,7 @@ class UserSetup(SetupContext):
         options = Config["options"]
         self.user.maildir = createPath(options["userPrefix"], self.user.ID, options["userStorageLevels"])
         self._dirs.append(self.user.maildir)
-        if options["userAccelratedStorage"] is not None:
+        if options["userAcceleratedStorage"] is not None:
             dbPath = createPath(options["userAcceleratedStorage"], self.user.ID, options["userStorageLevels"])
             self._dirs.append(dbPath)
             os.symlink(dbPath, self.user.maildir+"/exmdb")

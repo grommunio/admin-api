@@ -1243,8 +1243,6 @@ components:
           default: ""
         maxUser:
           type: integer
-        maxSize:
-          type: integer
         title:
           type: string
           maxLength: 128
@@ -1261,10 +1259,6 @@ components:
           type: string
           maxLength: 64
           default: ""
-        createDay:
-          allOf:
-            - $ref: '#/components/schemas/date'
-            - deprecated: true
         endDay:
           $ref: '#/components/schemas/date'
         domainStatus:
@@ -1414,9 +1408,11 @@ components:
           $ref: '#/components/schemas/ID'
         name:
           type: string
+          maxLength: 32
         description:
           type: string
           nullable: true
+          maxLength: 256
         permissions:
           type: array
           description: List of permissions associated with the role

@@ -22,7 +22,7 @@ class AdminRoles(DataModel, DB.Model):
     __tablename__  = "admin_roles"
 
     ID = DB.Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True)
-    name = DB.Column("name", DB.VARCHAR(128), unique=True, nullable=False)
+    name = DB.Column("name", DB.VARCHAR(32), unique=True, nullable=False)
     description = DB.Column("description", DB.VARCHAR(256))
 
     permissions = relationship("AdminRolePermissionRelation", cascade="all, delete-orphan", single_parent=True)
@@ -37,7 +37,7 @@ class AdminRoles(DataModel, DB.Model):
 class AdminRolePermissionRelation(DataModel, DB.Model):
     __tablename__ = "admin_role_permission_relation"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True)
+    ID = DB.Column("id", INTEGER(10, unsigned=True), primary_key=True)
     roleID = DB.Column("role_id", INTEGER(10, unsigned=True), ForeignKey(AdminRoles.ID), nullable=False)
     permission = DB.Column("permission", DB.VARCHAR(64), nullable=False)
     _params = DB.Column("parameters", DB.TEXT)
