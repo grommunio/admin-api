@@ -70,12 +70,34 @@ properties:
         default: 10
       domainPrefix:
         type: string
-        description: Prefix used for domain exmdb connections
+        description: Path to store domain home directories in
         default: /d-data/
       userPrefix:
         type: string
-        description: Prefix used for user exmdb connections
+        description: Path to store user home directories in
         default: /u-data/
+      domainStorageLevels:
+        type: integer
+        description: Number of sub-directory levels to use for domain storage
+        minimum: 1
+        maximum: 5
+        default: 1
+      userStorageLevels:
+        type: integer
+        description: Number of sub-directory levels to use for user storage
+        minimum: 1
+        maximum: 5
+        default: 2
+      domainAcceleratedStorage:
+        type: string
+        description: Path for accelerated domain storage
+        nullable: true
+        default: null
+      userAcceleratedStorage:
+        type: string
+        description: Path for accelerated user storage
+        nullable: true
+        default: null
       dashboard:
         description: Configuration of the dashboard
         type: object

@@ -24,6 +24,10 @@ _defaultConfig_ = {"openapi": {
                      "domainStoreRatio": 10,
                      "domainPrefix": "/d-data/",
                      "userPrefix": "/u-data/",
+                     "domainStorageLevels": 1,
+                     "userStorageLevels": 2,
+                     "domainAcceleratedStorage": None,
+                     "userAcceleratedStorage": None,
                      "dashboard": {
                        "services": []
                      }

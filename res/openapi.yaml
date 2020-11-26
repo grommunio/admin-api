@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
-  title: Grammm Admin API
-  version: 0.12.1
+  title: grammm Admin API
+  version: 0.12.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -328,86 +328,6 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
-
-  /system/area_list:
-    get:
-      summary: Get lists of data areas
-      tags:
-        - System Admin/Data Areas
-      security:
-        - JWTCookie: []
-      responses:
-        '200':
-          description: Data returned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    $ref: '#/components/schemas/areaList'
-                  domain:
-                    $ref: '#/components/schemas/areaList'
-                  independent:
-                    $ref: '#/components/schemas/areaList'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-    post:
-      summary: Create new data area
-      tags:
-        - System Admin/Data Areas
-      security:
-        - JWTCookie: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/areaData'
-      responses:
-        '201':
-          description: Data area created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/areaData'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
-  /system/area_list/{ID}:
-    patch:
-      summary: Update data area
-      tags:
-        - System Admin/Data Areas
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/ID'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/areaData'
-      responses:
-        '200':
-          description: Data area updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/areaData'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
 
   /system/domains:
     get:
@@ -1304,44 +1224,6 @@ components:
       type: string
       pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
       nullable: True
-    areaData:
-      type: object
-      additionalProperties: false
-      properties:
-        ID:
-          $ref: '#/components/schemas/ID'
-        dataType:
-          type: integer
-          description: Type of data stored (0=User, 1=Domain, 2=Independent)
-        masterPath:
-          type: string
-          maxLength: 256
-          description: Path of the master data area. Can only be set on creation.
-        slavePath:
-          type: string
-          maxLength: 256
-          description: Path of slave data area. Can only be set on creation.
-        accelPath:
-          type: string
-          maxLength: 256
-          description: Path of accelerated database
-          nullable: true
-        maxSpace:
-          type: integer
-          description: Storage size in Megabytes
-        maxFiles:
-          type: integer
-          description: Maximum number of files
-          deprecated: true
-        storeLevels:
-          type: integer
-          description: Directory structure depth
-          minimum: 1
-          maximum: 4
-    areaList:
-      type: array
-      items:
-        $ref: '#/components/schemas/areaData'
     domain:
       type: object
       additionalProperties: false
@@ -1389,10 +1271,6 @@ components:
           type: integer
           description: Domain status (0=Normal, 1=Suspended, 2=Out Of Date, 3=Deleted)
           default: 0
-        areaID:
-          writeOnly: True
-          type: integer
-          description: In which data area to create the domain. Can only be used on creation.
     user:
       type: object
       additionalProperties: false
@@ -1439,9 +1317,6 @@ components:
       type: object
       additionalProperties: false
       properties:
-        areaID:
-          type: integer
-          description: Area to create the user directory in
         username:
           type: string
           maxLength: 128
@@ -1644,8 +1519,6 @@ components:
 tags:
   - name: System Admin/Dashboard
     description: Endpoints for the system admin dashboard
-  - name: System Admin/Data Areas
-    description: Endpoints for data area management
   - name: System Admin/Domains
     description: Endpoints for domain management
   - name: System Admin/Roles

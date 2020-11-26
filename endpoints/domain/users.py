@@ -27,7 +27,6 @@ import shutil
 
 from orm import DB
 if DB is not None:
-    from orm.ext import AreaList
     from orm.users import Users, Groups
     from orm.misc import Associations, Forwards, Members
     from orm.roles import AdminUserRoleRelation, AdminRoles
@@ -48,17 +47,15 @@ def createUser(domainID):
 
     checkPermissions(DomainAdminPermission(domainID))
     data = request.get_json(silent=True) or {}
-    areaID = data.get("areaID")
     data["domainID"] = domainID
     user = defaultListHandler(Users, result="object")
     if not isinstance(user, Users):
         return user  # If the return value is not a user, it is an error response
-    area = AreaList.query.filter(AreaList.dataType == AreaList.USER, AreaList.ID == areaID).first()
     try:
         with AutoClean(rollback):
             DB.session.add(user)
             DB.session.flush()
-            with UserSetup(user, area) as us:
+            with UserSetup(user) as us:
                 us.run()
             if not us.success:
                 return jsonify(message="Error during user setup", error=us.error),  us.errorCode

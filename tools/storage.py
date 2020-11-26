@@ -9,9 +9,6 @@ Created on Tue Jun 30 10:50:14 2020
 from math import ceil
 import os
 import shutil
-import time
-
-from .misc import AutoClean
 from .structures import XID, GUID
 
 from tools.exmdb import midb
@@ -139,15 +136,13 @@ class DomainSetup(SetupContext):
 
     schema = DomainExmdb()
 
-    def __init__(self, domain, area):
+    def __init__(self, domain):
         """Initialize context object
 
         Parameters
         ----------
         domain : orm.domains.Domains
             Domain to initialize.
-        area : orm.ext.AreaList
-            Storage area to place domain in.
         """
 
         self.lastEid = Misc.ALLOCATED_EID_RANGE
@@ -155,7 +150,6 @@ class DomainSetup(SetupContext):
         self.lastArt = 0
 
         self.domain = domain
-        self.area = area
 
         self.success = False
         self.error = self.errorCode = None
@@ -174,17 +168,16 @@ class DomainSetup(SetupContext):
     def createHomedir(self):
         """Set up directory structure for a domain.
 
-        Creates the home directory according to its ID in the master directory of the storage area.
+        Creates the home directory according to its ID in the prefix specified in the configuration.
         Intermediate directories are created automatically if necessary.
-
-        If the storage area has an acceleration path configured, an exmdb path is created and symlinked accordingly.
 
         Additional `cid`, `log` and `tmp` subdirectories are created in the home directory.
         """
-        self.domain.homedir = createPath(self.area.masterPath, self.domain.ID, self.area.storeLevels)
+        options = Config["options"]
+        self.domain.homedir = createPath(options["domainPrefix"], self.domain.ID, options["domainStorageLevels"])
         self._dirs.append(self.domain.homedir)
-        if self.area.accelPath is not None:
-            dbPath = createPath(self.area.accelPath, self.domain.ID, self.area.storeLevels)
+        if options["domainAcceleratedStorage"] is not None:
+            dbPath = createPath(options["domainAcceleratedStorage"], self.domain.ID, options["domainStorageLevels"])
             self._dirs.append(dbPath)
             os.symlink(dbPath, self.domain.homedir+"/exmdb")
         else:
@@ -253,22 +246,19 @@ class UserSetup(SetupContext):
 
     schema = UserExmdb()
 
-    def __init__(self, user, area):
+    def __init__(self, user):
         """Initialize context object.
 
         Parameters
         ----------
         user : orm.users.Users
             User to initialize.
-        area : orm.ext.AreaList
-            Storage area to place user in.
         """
         self.lastEid = Misc.ALLOCATED_EID_RANGE
         self.lastCn = Misc.CHANGE_NUMBER_BEGIN
         self.lastArt = 0
 
         self.user = user
-        self.area = area
 
         self.success = False
         self.error = self.errorCode = None
@@ -288,17 +278,18 @@ class UserSetup(SetupContext):
     def createHomedir(self):
         """Set up directory structure for a user.
 
-        Creates the home directory according to its ID in the master directory of the storage area.
+        Creates the home directory according to its ID in the prefix set in the configuration.
         Intermediate directories are created automatically if necessary.
 
-        If the storage area has an acceleration path configured, an exmdb path is created and symlinked accordingly.
+        If `userAcceleratedStorage` is set, an exmdb path is created and symlinked accordingly.
 
         Additional `cid`, `config`, `disk`, `eml`, `ext` and `tmp` subdirectories are created in the home directory.
         """
-        self.user.maildir = createPath(self.area.masterPath, self.user.ID, self.area.storeLevels)
+        options = Config["options"]
+        self.user.maildir = createPath(options["userPrefix"], self.user.ID, options["userStorageLevels"])
         self._dirs.append(self.user.maildir)
-        if self.area.accelPath is not None:
-            dbPath = createPath(self.area.accelPath, self.user.ID, self.area.storeLevels)
+        if options["userAccelratedStorage"] is not None:
+            dbPath = createPath(options["userAcceleratedStorage"], self.user.ID, options["userStorageLevels"])
             self._dirs.append(dbPath)
             os.symlink(dbPath, self.user.maildir+"/exmdb")
         else:

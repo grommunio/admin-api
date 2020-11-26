@@ -1,1 +1,1 @@
-from . import arealist, domains, misc, roles
+from . import domains, misc, roles

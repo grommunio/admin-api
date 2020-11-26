@@ -8,7 +8,6 @@ Created on Tue Jun 23 12:21:35 2020
 
 from . import DB
 from tools.DataModel import DataModel, Id, Text, Int, Date, BoolP
-from .ext import AreaList
 
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 
@@ -60,17 +59,12 @@ class Domains(DataModel, DB.Model):
     DELETED = 3
 
     def __init__(self, props: dict, *args, **kwargs):
-        props.pop("areaID")
         if "password" in props:
             self.password = props.pop("password")
         DataModel.__init__(self, props, args, kwargs)
 
     @staticmethod
     def checkCreateParams(data):
-        if "areaID" not in data:
-            return "Missing required property areaID"
-        elif AreaList.query.filter(AreaList.dataType == AreaList.DOMAIN, AreaList.ID == data["areaID"]).count() == 0:
-            return "Invalid area ID"
         if "maxUser" not in data:
             return "Missing required property maxUser"
         data["createDay"] = datetime.now()

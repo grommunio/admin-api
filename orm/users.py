@@ -11,7 +11,6 @@ from tools.constants import PropTags, PropTypes
 from tools.rop import ntTime, nxTime
 from tools.DataModel import DataModel, Id, Text, Int, Date, BoolP, RefProp
 from tools.misc import createMapping
-from .ext import AreaList
 
 from sqlalchemy import func, ForeignKey
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
@@ -149,10 +148,6 @@ class Users(DataModel, DB.Model):
         else:
             data["groupID"] = 0
         data["domainStatus"] = domain.domainStatus
-        if "areaID" not in data:
-            return "Missing required property areaID"
-        if AreaList.query.filter(AreaList.dataType == AreaList.USER, AreaList.ID == data["areaID"]).count() == 0:
-            return "Invalid area ID"
         if "properties" not in data:
             return "Missing required attribute 'properties'"
         propmap = createMapping(data["properties"], lambda x: x["name"], lambda x: x)
@@ -171,7 +166,6 @@ class Users(DataModel, DB.Model):
         if props is None:
             return
         status = props.pop("groupStatus", 0) << 2 | props.pop("domainStatus") << 4
-        props.pop("areaID", None)
         self.fromdict(props, *args, **kwargs)
         self.addressStatus = (self.addressStatus or 0) | status
         self.addressType = 0

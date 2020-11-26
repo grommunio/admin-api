@@ -22,7 +22,6 @@ from tools.permissions import SystemAdminPermission
 from orm import DB
 if DB is not None:
     from orm.domains import Domains
-    from orm.ext import AreaList
     from orm.users import Users, Groups
     from orm.roles import AdminRoles
 
@@ -40,17 +39,14 @@ def domainCreate():
     checkPermissions(SystemAdminPermission())
     def rollback():
         DB.session.rollback()
-    data = request.get_json(silent=True) or {}
-    areaID = data.get("areaID")
     domain = defaultListHandler(Domains, result="object")
     if not isinstance(domain, Domains):
         return domain  # If the return value is not a domain, it is an error response
-    area = AreaList.query.filter(AreaList.dataType == AreaList.DOMAIN, AreaList.ID == areaID).first()
     try:
         with AutoClean(rollback):
             DB.session.add(domain)
             DB.session.flush()
-            with DomainSetup(domain, area) as ds:
+            with DomainSetup(domain) as ds:
                 ds.run()
             if not ds.success:
                 return jsonify(message="Error during domain setup", error=ds.error),  ds.errorCode
