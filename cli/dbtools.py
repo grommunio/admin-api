@@ -12,9 +12,6 @@ from argparse import ArgumentParser
 
 import random
 import string
-import alembic.command
-import alembic.config
-import alembic.script
 from datetime import datetime
 from getpass import getpass
 
@@ -80,10 +77,10 @@ def setUserPassword(args):
         user = Users.query.filter(Users.username == args.user).first()
         if user is None:
             logging.error("User '{}' not found.")
-            exit(1)
+            return 1
         if user.addressType != Users.NORMAL:
             logging.error("Cannot set password of alias user")
-            exit(2)
+            return 2
     else:
         user = Users.query.filter(Users.ID == 0).first()
         if user is None:
@@ -101,8 +98,7 @@ def setUserPassword(args):
         password = getpass("Password: ")
         if getpass("Retype password: ") != password:
             logging.error("Passwords do not match, aborting.")
-            exit(3)
+            return 3
     user.password = password
     DB.session.commit()
     logging.info("Password updated")
-    exit(0)

@@ -6,3 +6,5 @@ tools/pyexmdb
 
 conf.d/*.yaml
 res/*.pem
+
+__pycache__
