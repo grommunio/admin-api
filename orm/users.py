@@ -256,7 +256,10 @@ class UserProperties(DataModel, DB.Model):
     def val(self, value):
         if self.type == PropTypes.FILETIME:
             if not isinstance(value, datetime):
-                value = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+                try:
+                    value = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+                except TypeError:
+                    raise ValueError("Invalid date '{}'".format(value))
             value = ntTime(time.mktime(value.timetuple()))
         if type(value) != PropTypes.pyType(self.type):
             raise ValueError("Value type does not match tag type")
@@ -285,11 +288,6 @@ class Aliases(DataModel, DB.Model):
     def __init__(self, aliasname, main, *args, **kwargs):
         if main.ID == 0:
             raise ValueError("Cannot alias superuser")
-        if "@" in aliasname:
-            if aliasname.split("@")[1] != main.username.split("@")[1]:
-                raise ValueError("Domain of alias must match user domain")
-        else:
-            aliasname += "@"+main.username.split("@")[1]
         self.aliasname = aliasname
         self.main = main
 
