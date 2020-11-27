@@ -2,8 +2,7 @@
 """
 Created on Tue Jun 23 11:26:12 2020
 
-@author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: Grammm GmbH, 2020
+@copyright: grammm GmbH, 2020
 """
 
 from flask import jsonify, request

@@ -2,8 +2,7 @@
 """
 Created on Tue Jun 23 11:21:43 2020
 
-@author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: NETitwork GmbH, 2020
+@copyright: grammm GmbH, 2020
 """
 
 from sqlalchemy import func, or_

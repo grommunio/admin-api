@@ -2,8 +2,7 @@
 """
 Created on Tue Jul  7 10:18:55 2020
 
-@author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: Grammm GmbH, 2020
+@copyright: grammm GmbH, 2020
 """
 
 from sqlalchemy import Column, INTEGER, TEXT, BLOB, ForeignKey, Index

@@ -3,8 +3,7 @@
 """
 Created on Tue Jun 23 11:22:42 CEST 2020
 
-@author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: _Placeholder_copyright_
+@copyright: grammm GmbH, 2020
 
 Main file to execute.
 

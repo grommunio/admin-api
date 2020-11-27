@@ -2,8 +2,7 @@
 """
 Created on Fri Oct  2 10:06:43 2020
 
-@author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: Grammm GmbH, 2020
+@copyright: grammm GmbH, 2020
 """
 
 import json

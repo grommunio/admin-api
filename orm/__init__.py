@@ -2,8 +2,7 @@
 """
 Created on Tue Jun 23 11:22:02 2020
 
-@author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: Grammm GmbH, 2020
+@copyright: grammm GmbH, 2020
 """
 
 __all__ = ["domains", "misc", "users", "ext"]

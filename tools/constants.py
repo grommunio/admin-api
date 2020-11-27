@@ -2,8 +2,7 @@
 """
 Created on Thu Jul  2 17:47:56 2020
 
-@author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: Grammm GmbH, 2020
+@copyright: grammm GmbH, 2020
 """
 
 SERIAL_ENDIAN = "little"  # Endianess used for binary serialization

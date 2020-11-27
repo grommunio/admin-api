@@ -2,10 +2,7 @@
 """
 Created on Tue Jun 23 11:21:26 2020
 
-@author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: Grammm GmbH, 2020
-
-Miscelleaneous API endpoints.
+@copyright: grammm GmbH, 2020
 """
 
 __all__ = ["domain", "system", "misc"]
