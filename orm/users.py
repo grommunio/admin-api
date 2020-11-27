@@ -17,6 +17,7 @@ from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 from sqlalchemy.orm import relationship, selectinload
 
 import crypt
+import re
 import time
 from datetime import datetime
 
@@ -85,7 +86,7 @@ class Users(DataModel, DB.Model):
                       Id("groupID", flags="patch")),
                      (RefProp("roles", qopt=selectinload),
                       RefProp("properties", flags="patch, managed", link="name", qopt=selectinload),
-                      RefProp("aliases", flags="patch, managed", link="basename", flat="aliasname", qopt=selectinload)),
+                      RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload)),
                      ({"attr": "password", "flags": "init, hidden"},))
 
     POP3_IMAP = 1 << 0
@@ -276,25 +277,21 @@ DB.Index("uq_group_id_username", Users.groupID, Users.username, unique=True)
 class Aliases(DataModel, DB.Model):
     __tablename__ = "aliases"
 
+    emailRe = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
+
     aliasname = DB.Column("aliasname", DB.VARCHAR(128), nullable=False, unique=True, primary_key=True)
     mainname = DB.Column("mainname", DB.VARCHAR(128), ForeignKey(Users.username, ondelete="cascade", onupdate="cascade"),
                          nullable=False, index=True)
 
     main = relationship(Users)
 
-    _dictmapping_ = ((Text("aliasname", flags="init"), Text("basename", flags="init, hidden")),
+    _dictmapping_ = ((Text("aliasname", flags="init"),),
                      (Text("mainname", flags="init"),))
 
     def __init__(self, aliasname, main, *args, **kwargs):
         if main.ID == 0:
             raise ValueError("Cannot alias superuser")
+        if not self.emailRe.match(aliasname):
+            raise ValueError("'{}' is not a valid email address".format(aliasname))
         self.aliasname = aliasname
         self.main = main
-
-    @property
-    def basename(self):
-        return self.aliasname.split("@", 1)[0] if self.aliasname is not None else None
-
-    @basename.setter
-    def basename(self, value):
-        self.aliasname = value.split("@", 1)[0]+"@"+self.main.username.split("@", 1)[1]
