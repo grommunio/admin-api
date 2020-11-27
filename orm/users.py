@@ -119,8 +119,7 @@ class Users(DataModel, DB.Model):
         domainUsers = Users.query.with_entities(func.count().label("count")).filter(Users.domainID == domain.ID).first()
         if domain.maxUser <= domainUsers.count:
             return "Maximum number of domain users reached"
-        if data.get("groupID")@author: Julia Schroeder, julia.schroeder@grammm.com
-@copyright: Grammm GmbH, 2020:
+        if data.get("groupID"):
             group = Groups.query.filter(Groups.ID == data.get("groupID"), Groups.domainID == domain.ID).first()
             if group is None:
                 return "Invalid group"
