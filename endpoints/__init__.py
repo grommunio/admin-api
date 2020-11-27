@@ -70,6 +70,8 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
         matchStr = request.args["match"].lower()
         fields = set(request.args["fields"].split(",")) if "fields" in request.args else None
         query = Model.automatch(query, request.args["match"], fields)
+    if result == "query":
+        return query, limit, offset
     query = query.limit(limit).offset(offset)
     objects = query.all()
     if order is None and "sort" not in request.args and automatch and "match" in request.args:
@@ -78,6 +80,8 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
         objects = [so[1] for so in sorted(scored, key=lambda entry: entry[0])]
     if result == "list":
         return objects
+    if result == "data":
+        return [obj.todict(verbosity) for obj in objects]
     return jsonify(data=[obj.todict(verbosity) for obj in objects])
 
 

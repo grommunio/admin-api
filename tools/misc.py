@@ -58,7 +58,7 @@ def propvals2dict(vals: list) -> dict:
     return {PropTags.lookup(prop.tag).lower(): prop2val(prop) for prop in vals}
 
 
-def createMapping(iterable, key, value):
+def createMapping(iterable, key, value=lambda x: x):
     """Convert list of elements to dictionary.
 
     Parameters

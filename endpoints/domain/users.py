@@ -12,10 +12,11 @@ from api.security import checkPermissions
 
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased
 
 from .. import defaultListHandler, defaultObjectHandler, defaultPatch
 
-from tools.misc import AutoClean
+from tools.misc import AutoClean, createMapping
 from tools.storage import UserSetup
 from tools.pyexmdb import pyexmdb
 from tools.config import Config
@@ -27,16 +28,34 @@ import shutil
 
 from orm import DB
 if DB is not None:
-    from orm.users import Users, Groups
+    from orm.users import Users, Groups, UserProperties
     from orm.misc import Associations, Forwards, Members
     from orm.roles import AdminUserRoleRelation, AdminRoles
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["GET"])
 @secure(requireDB=True)
-def userListEndpoint(domainID):
+def getUser(domainID):
     checkPermissions(DomainAdminPermission(domainID))
-    return defaultListHandler(Users, filters=(Users.domainID == domainID,))
+    verbosity = int(request.args.get("verbosity", 0))
+    query, limit, offset = defaultListHandler(Users, filters=(Users.domainID == domainID,), result="query")
+    sorts = request.args.getlist("sort")
+    for s in sorts:
+        sprop, sorder = s.split(",", 1) if "," in s else (s, "asc")
+        if hasattr(PropTags, sprop.upper()):
+            up = aliased(UserProperties)
+            query = query.join(up, (up.userID == Users.ID) & (up.tag == getattr(PropTags, sprop.upper())))\
+                         .order_by(up._propvalstr.desc() if sorder == "desc" else up._propvalstr.asc())
+    data = [user.todict(verbosity) for user in query.limit(limit).offset(offset).all()]
+    if verbosity < 2 and "properties" in request.args:
+        tags = [getattr(PropTags, prop.upper(), None) for prop in request.args["properties"].split(",")]
+        for user in data:
+            user["properties"] = []
+        usermap = createMapping(data, lambda x: x["ID"])
+        properties = UserProperties.query.filter(UserProperties.userID.in_(usermap.keys()), UserProperties.tag.in_(tags)).all()
+        for prop in properties:
+            usermap[prop.userID]["properties"].append(prop.ref())
+    return jsonify(data=data)
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["POST"])
