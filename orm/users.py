@@ -112,6 +112,9 @@ class Users(DataModel, DB.Model):
     @staticmethod
     def checkCreateParams(data):
         from orm.domains import Domains
+        from tools.license import getLicense
+        if Users.query.count() >= getLicense().users:
+            return "License user limit exceeded"
         domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
         if not domain:
             return "Invalid domain"

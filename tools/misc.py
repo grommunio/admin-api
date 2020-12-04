@@ -82,3 +82,13 @@ def createMapping(iterable, key, value=lambda x: x):
         else:
             mapping[k] = value(item)
     return mapping
+
+
+class GenericObject:
+    def __init__(self, **attrs):
+        for key, value in attrs.items():
+            setattr(self, key, value)
+
+    def __repr__(self):
+        return "GenericObject({})".format(", ".join((key+"="+repr(getattr(self, key))
+                                                     for key in dir(self) if not key.startswith("_"))))

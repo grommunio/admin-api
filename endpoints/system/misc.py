@@ -10,6 +10,7 @@ from api.core import API, secure
 from api.security import checkPermissions
 
 from tools.config import Config
+from tools.license import getLicense, updateCertificate
 from tools.permissions import SystemAdminPermission
 from tools.systemd import Systemd
 
@@ -17,7 +18,11 @@ import os
 import psutil
 from datetime import datetime
 from dbus import DBusException
-from flask import jsonify
+from flask import jsonify, make_response, request
+
+from orm import DB
+if DB is not None:
+    from orm.users import Users
 
 
 @API.route(api.BaseRoute+"/system/dashboard", methods=["GET"])
@@ -112,3 +117,38 @@ def signalDashboardService(unit, action):
         errMsg = exc.args[0] if len(exc.args) > 0 else "Unknown "
         return jsonify(message="Could not {} unit '{}': {}".format(action, unit, )), 500
     return jsonify(message=result), 201 if result == "done" else 500
+
+
+@API.route(api.BaseRoute+"/system/license", methods=["GET"])
+@secure()
+def getLicenseInfo():
+    checkPermissions(SystemAdminPermission())
+    License = getLicense()
+    return jsonify(product=License.product,
+                   maxUsers=License.users,
+                   notBefore=License.notBefore.strftime("%Y-%m-%d %H:%M:%S"),
+                   notAfter=License.notAfter.strftime("%Y-%m-%d %H:%M:%S"),
+                   currentUsers=Users.query.count(),
+                   certificate="/api/v1/system/license/certificate.pem" if License.cert is not None else None)
+
+
+@API.route(api.BaseRoute+"/system/license/certificate.pem", methods=["GET"])
+@secure()
+def getLicenseFile():
+    checkPermissions(SystemAdminPermission())
+    License = getLicense()
+    if License.file is None:
+        return jsonify(message="No license installed"), 404
+    response = make_response(License.file)
+    response.headers.set("Content-Type", "application/x-pem-file")
+    return response
+
+
+@API.route(api.BaseRoute+"/system/license", methods=["PUT"])
+@secure()
+def updateLicense():
+    checkPermissions(SystemAdminPermission())
+    error = updateCertificate(request.get_data())
+    if error:
+        return jsonify(message=error), 400
+    return jsonify(message="License updated")
