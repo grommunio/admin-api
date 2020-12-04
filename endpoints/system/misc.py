@@ -119,10 +119,7 @@ def signalDashboardService(unit, action):
     return jsonify(message=result), 201 if result == "done" else 500
 
 
-@API.route(api.BaseRoute+"/system/license", methods=["GET"])
-@secure()
-def getLicenseInfo():
-    checkPermissions(SystemAdminPermission())
+def dumpLicense():
     License = getLicense()
     return jsonify(product=License.product,
                    maxUsers=License.users,
@@ -130,6 +127,12 @@ def getLicenseInfo():
                    notAfter=License.notAfter.strftime("%Y-%m-%d %H:%M:%S"),
                    currentUsers=Users.query.count(),
                    certificate="/api/v1/system/license/certificate.pem" if License.cert is not None else None)
+
+@API.route(api.BaseRoute+"/system/license", methods=["GET"])
+@secure()
+def getLicenseInfo():
+    checkPermissions(SystemAdminPermission())
+    return dumpLicense()
 
 
 @API.route(api.BaseRoute+"/system/license/certificate.pem", methods=["GET"])
@@ -151,4 +154,4 @@ def updateLicense():
     error = updateCertificate(request.get_data())
     if error:
         return jsonify(message=error), 400
-    return jsonify(message="License updated")
+    return dumpLicense()

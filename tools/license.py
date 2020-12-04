@@ -59,7 +59,8 @@ def _processCertificate(data):
         return False, "Bad certificate"
     except CertificateError as err:
         return False, err.args[0]
-    except:
+    except BaseException as err:
+        logging.error(str(err))
         return False, "Unknown error"
 
 

@@ -114,3 +114,6 @@ properties:
                 name:
                   type: string
                   description: Optional alternative display name
+      licenseFile:
+        type: string
+        description: Location of the license certificate. Must be writable by the server.

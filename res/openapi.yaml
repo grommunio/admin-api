@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.13.0
+  version: 0.13.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -608,26 +608,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  product:
-                    type: string
-                    nullable: true
-                    description: Product name
-                  maxUsers:
-                    type: integer
-                    description: License user limit
-                  notBefore:
-                    $ref: '#/components/schemas/dateTime'
-                  notAfter:
-                    $ref: '#/components/schemas/dateTime'
-                  currentUsers:
-                    type: integer
-                    description: Number of currently existing users
-                  certificate:
-                    type: string
-                    nullable: true
-                    description: Download link for the certificate
+                $ref: '#/components/schemas/license'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '500':
@@ -643,6 +624,10 @@ paths:
       responses:
         '200':
           description: License updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/license'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '500':
@@ -1537,7 +1522,27 @@ components:
           description: Status of the group (0=Normal, 1=Suspended)
           readOnly: true
           enum: [0, 1]
-
+    license:
+      type: object
+      properties:
+        product:
+          type: string
+          nullable: true
+          description: Product name
+        maxUsers:
+          type: integer
+          description: License user limit
+        notBefore:
+          $ref: '#/components/schemas/dateTime'
+        notAfter:
+          $ref: '#/components/schemas/dateTime'
+        currentUsers:
+          type: integer
+          description: Number of currently existing users
+        certificate:
+          type: string
+          nullable: true
+          description: Download link for the certificate
   responses:
     ServerError:
       description: An error occured while processing the request
@@ -1588,6 +1593,8 @@ tags:
     description: Endpoints for the system admin dashboard
   - name: System Admin/Domains
     description: Endpoints for domain management
+  - name: System Admin/License
+    description: Endpoints for license management
   - name: System Admin/Roles
     description: Endpoints for user role and permission management
   - name: Domain Admin/Folders
