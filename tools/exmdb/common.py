@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Jul  7 10:18:55 2020
-
-@copyright: grammm GmbH, 2020
-"""
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2020 grammm GmbH
 
 from sqlalchemy import Column, INTEGER, TEXT, BLOB, ForeignKey, Index
 from sqlalchemy.ext.declarative import declarative_base

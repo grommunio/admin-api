@@ -1,4 +1,8 @@
- #include "ExmdbClient.h"
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2020 grammm GmbH
+ */
+#include "ExmdbClient.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>

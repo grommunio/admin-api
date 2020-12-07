@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Nov 26 15:33:55 2020
-
-@copyright: grammm GmbH, 2020
-"""
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2020 grammm GmbH
 
 from . import Cli, ArgumentParser
 

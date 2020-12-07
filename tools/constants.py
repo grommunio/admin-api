@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Jul  2 17:47:56 2020
-
-@copyright: grammm GmbH, 2020
-"""
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2020 grammm GmbH
 
 SERIAL_ENDIAN = "little"  # Endianess used for binary serialization
 

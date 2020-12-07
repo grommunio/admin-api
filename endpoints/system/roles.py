@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Oct  5 15:46:26 2020
-
-@copyright: grammm GmbH, 2020
-"""
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2020 grammm GmbH
 
 from flask import jsonify, request
 

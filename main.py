@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2020 grammm GmbH
 """
-Created on Tue Jun 23 11:22:42 CEST 2020
-
-@copyright: grammm GmbH, 2020
-
 Main file to execute.
 
 Can be used to run the API in stand-alone mode by directly executing the file or
