@@ -72,7 +72,6 @@ class Users(DataModel, DB.Model):
     addressStatus = DB.Column("address_status", TINYINT, nullable=False, server_default="0")
     privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     _deprecated_maxSize = DB.Column("max_size", INTEGER(10), nullable=False, default=0)
-    _deprecated_maxFile = DB.Column("max_file", INTEGER(10), nullable=False, default=0)
 
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True)
