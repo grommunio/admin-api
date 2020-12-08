@@ -28,15 +28,12 @@ class Domains(DataModel, DB.Model):
     domainname = DB.Column("domainname", DB.VARCHAR(64), nullable=False)
     homedir = DB.Column("homedir", DB.VARCHAR(128), nullable=False, server_default="")
     maxUser = DB.Column("max_user", INTEGER(10, unsigned=True), nullable=False)
-    maxSize = DB.Column("max_size", INTEGER(10, unsigned=True), nullable=False, default=0)
     title = DB.Column("title", DB.VARCHAR(128), nullable=False, server_default="")
     address = DB.Column("address", DB.VARCHAR(128), nullable=False, server_default="")
     adminName = DB.Column("admin_name", DB.VARCHAR(32), nullable=False, server_default="")
     tel = DB.Column("tel", DB.VARCHAR(64), nullable=False, server_default="")
-    createDay = DB.Column("create_day", DB.DATE, nullable=False)
     endDay = DB.Column("end_day", DB.DATE, nullable=False, default="3333-03-03")
     domainStatus = DB.Column("domain_status", TINYINT, nullable=False, server_default="0")
-    privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
 
     _dictmapping_ = ((Id(), Text("domainname", flags="init")),
                      (Id("orgID", flags="patch"),
@@ -45,7 +42,6 @@ class Domains(DataModel, DB.Model):
                       Text("address", flags="patch"),
                       Text("adminName", flags="patch"),
                       Text("tel", flags="patch"),
-                      Date("createDay", flags="patch"),
                       Date("endDay", flags="patch"),
                       Int("domainStatus", flags="patch")))
 
@@ -63,4 +59,3 @@ class Domains(DataModel, DB.Model):
     def checkCreateParams(data):
         if "maxUser" not in data:
             return "Missing required property maxUser"
-        data["createDay"] = datetime.now()

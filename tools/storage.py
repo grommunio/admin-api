@@ -205,9 +205,6 @@ class DomainSetup(SetupContext):
         except FileNotFoundError:
             logging.warn("Could not open {} - skipping.".format(dataPath))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.CREATIONTIME, value=ntTime()))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITRECEIVEQUOTA, value=self.domain.maxSize*sizeFactor))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.PROHIBITSENDQUOTA, value=self.domain.maxSize*sizeFactor))
-        self.exmdb.add(self.schema.StoreProperties(tag=PropTags.STORAGEQUOTALIMIT, value=self.domain.maxSize*sizeFactor))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.MESSAGESIZEEXTENDED, value=0))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.ASSOCMESSAGESIZEEXTENDED, value=0))
         self.exmdb.add(self.schema.StoreProperties(tag=PropTags.NORMALMESSAGESIZEEXTENDED, value=0))
