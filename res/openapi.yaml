@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.13.1
+  version: 0.13.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1363,6 +1363,21 @@ components:
           description: List of aliases for this user
           items:
             type: string
+        pop3_imap:
+          type: boolean
+          description: POP3/IMAP privilege
+        smtp:
+          type: boolean
+          description: SMTP privilege
+        changePassword:
+          type: boolean
+          description: Password changing privilege
+        publicAddress:
+          type: boolean
+          description: Public address privilege
+        netDisk:
+          type: boolean
+          description: Network disk privilege
     userInit:
       type: object
       additionalProperties: false
@@ -1395,6 +1410,21 @@ components:
           description: List of aliases for this user
           items:
             type: string
+        pop3_imap:
+          type: boolean
+          description: POP3/IMAP privilege
+        smtp:
+          type: boolean
+          description: SMTP privilege
+        changePassword:
+          type: boolean
+          description: Password changing privilege
+        publicAddress:
+          type: boolean
+          description: Public address privilege
+        netDisk:
+          type: boolean
+          description: Network disk privilege
     userUpdate:
       type: object
       additionalProperties: false
@@ -1421,6 +1451,21 @@ components:
           description: List of aliases for this user
           items:
             type: string
+        pop3_imap:
+          type: boolean
+          description: POP3/IMAP privilege
+        smtp:
+          type: boolean
+          description: SMTP privilege
+        changePassword:
+          type: boolean
+          description: Password changing privilege
+        publicAddress:
+          type: boolean
+          description: Public address privilege
+        netDisk:
+          type: boolean
+          description: Network disk privilege
     publicFolder:
       type: object
       properties:

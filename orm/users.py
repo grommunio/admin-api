@@ -10,6 +10,7 @@ from tools.misc import createMapping
 
 from sqlalchemy import func, ForeignKey
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, selectinload
 
 import crypt
@@ -69,9 +70,9 @@ class Users(DataModel, DB.Model):
     domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     maildir = DB.Column("maildir", DB.VARCHAR(128), nullable=False, server_default="")
     addressStatus = DB.Column("address_status", TINYINT, nullable=False, server_default="0")
+    privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     _deprecated_maxSize = DB.Column("max_size", INTEGER(10), nullable=False, default=0)
     _deprecated_maxFile = DB.Column("max_file", INTEGER(10), nullable=False, default=0)
-    _deprecated_privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
 
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True)
@@ -82,7 +83,12 @@ class Users(DataModel, DB.Model):
                       Id("groupID", flags="patch")),
                      (RefProp("roles", qopt=selectinload),
                       RefProp("properties", flags="patch, managed", link="name", qopt=selectinload),
-                      RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload)),
+                      RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
+                      BoolP("pop3_imap", flags="patch"),
+                      BoolP("smtp", flags="patch"),
+                      BoolP("changePassword", flags="patch"),
+                      BoolP("publicAddress", flags="patch"),
+                      BoolP("netDisk", flags="patch")),
                      ({"attr": "password", "flags": "init, hidden"},))
 
     POP3_IMAP = 1 << 0
@@ -202,6 +208,71 @@ class Users(DataModel, DB.Model):
             self._propmap = createMapping(self.properties, lambda x: x.name, lambda x: x.val)
         return self._propmap
 
+    def _setPB(self, bit, val):
+        self.privilegeBits = (self.privilegeBits or 0) | bit if val else (self.privilegeBits or 0) & ~bit
+
+    def _getPB(self, bit):
+        return bool((self.privilegeBits or 0) & bit) if isinstance(self, Users) else self.privilegeBits
+
+    @hybrid_property
+    def pop3_imap(self):
+        return self._getPB(self.POP3_IMAP)
+
+    @pop3_imap.setter
+    def pop3_imap(self, val):
+        self._setPB(self.POP3_IMAP, val)
+
+    @pop3_imap.expression
+    def pop3_imap(cls):
+        return cls.privilegeBits.op("&")(cls.POP3_IMAP)
+
+    @hybrid_property
+    def smtp(self):
+        return self._getPB(self.SMTP)
+
+    @smtp.setter
+    def smtp(self, val):
+        self._setPB(self.SMTP, val)
+
+    @smtp.expression
+    def smtp(cls):
+        return cls.privilegeBits.op("&")(cls.SMTP)
+
+    @hybrid_property
+    def changePassword(self):
+        return self._getPB(self.CHGPASSWD)
+
+    @changePassword.setter
+    def changePassword(self, val):
+        self._setPB(self.CHGPASSWD, val)
+
+    @changePassword.expression
+    def changePassword(cls):
+        return cls.privilegeBits.op("&")(cls.CHGPASSWD)
+
+    @hybrid_property
+    def publicAddress(self):
+        return self._getPB(self.PUBADDR)
+
+    @publicAddress.setter
+    def publicAddress(self, val):
+        self._setPB(self.PUBADDR, val)
+
+    @publicAddress.expression
+    def publicAddress(cls):
+        return cls.privilegeBits.op("&")(cls.PUBADDR)
+
+    @hybrid_property
+    def netDisk(self):
+        return self._getPB(self.NETDISK)
+
+    @netDisk.setter
+    def netDisk(self, val):
+        self._setPB(self.NETDISK, val)
+
+    @netDisk.expression
+    def netDisk(cls):
+        return cls.privilegeBits.op("&")(cls.NETDISK)
 
 
 class UserProperties(DataModel, DB.Model):
