@@ -130,7 +130,7 @@ class Common:
 
             messageID = Column("message_id", INTEGER, ForeignKey("messages.message_id", ondelete="cascade", onupdate="cascade"),
                                primary_key=True, nullable=False, index=True)
-            changeNum = Column("change_nuamber", INTEGER, nullable=False, primary_key=True)
+            changeNum = Column("change_number", INTEGER, nullable=False, primary_key=True)
             indices = Column("indices", BLOB, nullable=False)
             proptags = Column("proptags", BLOB, nullable=False)
 
