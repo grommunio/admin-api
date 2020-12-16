@@ -70,4 +70,4 @@ def cliTaginfo(args):
                 continue
         propname = PropTags.lookup(ID, "unknown")
         proptype = PropTypes.lookup(ID, "unknown")
-        print("0x{:x}: {}, type {}".format(ID, propname, proptype))
+        print("0x{:x} ({}): {}, type {}".format(ID, ID, propname, proptype))
