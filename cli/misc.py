@@ -54,7 +54,7 @@ def cliChkConfig(args):
 
 
 def _setupTaginfo(subp: ArgumentParser):
-    subp.add_argument("tagID", nargs="+", help="Numeric tag ID in decimal or hexadecimal")
+    subp.add_argument("tagID", nargs="+", help="Numeric tag ID in decimal or hexadecimal or tag name")
 
 
 @Cli.command("taginfo", _setupTaginfo)
@@ -64,8 +64,10 @@ def cliTaginfo(args):
         try:
             ID = int(tagid, 0)
         except:
-            print(tagid+": not a valid number")
-            continue
+            ID = getattr(PropTags, tagid.upper(), None)
+            if ID is None or type(ID) != int:
+                print(tagid+": not a valid number")
+                continue
         propname = PropTags.lookup(ID, "unknown")
         proptype = PropTypes.lookup(ID, "unknown")
         print("0x{:x}: {}, type {}".format(ID, propname, proptype))
