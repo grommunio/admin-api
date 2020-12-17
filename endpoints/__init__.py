@@ -15,7 +15,8 @@ from sqlalchemy.exc import IntegrityError
 matchStringRe = re.compile(r"([\w\-]*)")
 
 
-def defaultListQuery(Model, filters=(), order=None, result="response", automatch=True, autofilter=True, autosort=True):
+def defaultListQuery(Model, filters=(), order=None, result="response", automatch=True, autofilter=True, autosort=True,
+                     include_count="count"):
     """Process a listing query for specified model.
 
     Automatically uses 'limit' (50), 'offset' (0) and 'level' (1) parameters from the request.
@@ -44,7 +45,9 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
         Whether to apply autofiltering. See DataModel.autofilter for more information. Default is True.
     autosort: boolean, optional
         Whether to apply autosorting. See DataModel.autosort for more information. Default is True.
-
+    include_count: boolean, optional
+        Name of the property containing the total number of results (regardless of limit) or None to disable.
+        Default is "count".
     Returns
     -------
     Response
@@ -64,8 +67,9 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
         matchStr = request.args["match"].lower()
         fields = set(request.args["fields"].split(",")) if "fields" in request.args else None
         query = Model.automatch(query, request.args["match"], fields)
+    count = query.count() if include_count else None
     if result == "query":
-        return query, limit, offset
+        return query, limit, offset, count
     query = query.limit(limit).offset(offset)
     objects = query.all()
     if order is None and "sort" not in request.args and automatch and "match" in request.args:
@@ -74,9 +78,13 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
         objects = [so[1] for so in sorted(scored, key=lambda entry: entry[0])]
     if result == "list":
         return objects
+    data = [obj.todict(verbosity) for obj in objects]
     if result == "data":
-        return [obj.todict(verbosity) for obj in objects]
-    return jsonify(data=[obj.todict(verbosity) for obj in objects])
+        return data
+    resp = dict(data=data)
+    if include_count:
+        resp[include_count] = count
+    return jsonify(resp)
 
 
 def defaultDetailQuery(Model, ID, errName, filters=()):

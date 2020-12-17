@@ -31,10 +31,10 @@ if DB is not None:
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["GET"])
 @secure(requireDB=True)
-def getUser(domainID):
+def getUsers(domainID):
     checkPermissions(DomainAdminPermission(domainID))
     verbosity = int(request.args.get("verbosity", 0))
-    query, limit, offset = defaultListHandler(Users, filters=(Users.domainID == domainID,), result="query")
+    query, limit, offset, count = defaultListHandler(Users, filters=(Users.domainID == domainID,), result="query")
     sorts = request.args.getlist("sort")
     for s in sorts:
         sprop, sorder = s.split(",", 1) if "," in s else (s, "asc")
@@ -51,7 +51,7 @@ def getUser(domainID):
         properties = UserProperties.query.filter(UserProperties.userID.in_(usermap.keys()), UserProperties.tag.in_(tags)).all()
         for prop in properties:
             usermap[prop.userID]["properties"].append(prop.ref())
-    return jsonify(data=data)
+    return jsonify(count=count, data=data)
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["POST"])
