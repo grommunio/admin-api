@@ -53,8 +53,12 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
     Response
         Flask response containing the list data.
     """
-    limit = request.args.get("limit", 50)
-    offset = request.args.get("offset", 0)
+    limit = request.args.get("limit", "50")
+    if len(limit) == 0:
+        limit = None
+    offset = request.args.get("offset", "0")
+    if len(offset) == 0:
+        offset = None
     verbosity = request.args.get("level", 1)
     query = Model.optimized_query(verbosity).filter(*filters)
     if autosort:
