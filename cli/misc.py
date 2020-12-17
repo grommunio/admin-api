@@ -66,7 +66,7 @@ def cliTaginfo(args):
         except:
             ID = getattr(PropTags, tagid.upper(), None)
             if ID is None or type(ID) != int:
-                print(tagid+": not a valid number")
+                print("Unknown tag '{}'".format(tagid))
                 continue
         propname = PropTags.lookup(ID, "unknown")
         proptype = PropTypes.lookup(ID, "unknown")
