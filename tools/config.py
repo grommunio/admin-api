@@ -31,7 +31,8 @@ _defaultConfig_ = {"openapi": {
                    "security": {
                      "jwtPrivateKeyFile": "res/jwt-privkey.pem",
                      "jwtPublicKeyFile": "res/jwt-pubkey.pem"
-                   }
+                   },
+                   "ldap": {}
                    }
 
 

@@ -74,8 +74,8 @@ def setUserPassword(args):
         if user is None:
             logging.error("User '{}' not found.")
             return 1
-        if user.addressType != Users.NORMAL:
-            logging.error("Cannot set password of alias user")
+        if user.ldapImported:
+            logging.error("Cannot change password of LDAP user")
             return 2
     else:
         user = Users.query.filter(Users.ID == 0).first()

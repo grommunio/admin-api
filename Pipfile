@@ -12,8 +12,9 @@ jellyfish = "*"
 dbus-python = "*"
 psutil = "*"
 pygobject = "*"
-pyjwt = "*"
+pyjwt = "<2.0.0"
 alembic = "*"
+ldap3 = "*"
 
 [dev-packages]
 

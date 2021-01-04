@@ -6,6 +6,7 @@ from flask import request
 import time
 import jwt
 
+from tools import ldap
 from tools.config import Config
 
 try:
@@ -140,7 +141,13 @@ def refreshToken():
 def loginUser(username, password):
     from orm.users import Users
     user: Users = Users.query.filter(Users.username == username).first()
-    if user is None or not user.chkPw(password):
+    if user is None:
+        return False, "Invalid username or password"
+    if user.ldapImported:
+        success, error = ldap.authUser(username, password)
+        if not success:
+            return False, error
+    elif not user.chkPw(password):
         return False, "Invalid username or password"
     if not userLoginAllowed(user):
         return False, "Access denied"

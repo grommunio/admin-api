@@ -117,3 +117,35 @@ properties:
       licenseFile:
         type: string
         description: Location of the license certificate. Must be writable by the server.
+  ldap:
+    type: object
+    properties:
+      connection:
+        type: object
+        properties:
+          server:
+            type: string
+            description: Address of the LDAP server to connect to
+          bindUser:
+            type: string
+            description: DN of the user to perform initial bind with
+          bindPass:
+            type: string
+            description: Password for bindUser
+      baseDn:
+        type: string
+        description: Base DN to use for user search
+      users:
+        type: object
+        description: Configuration for user search
+        properties:
+          login:
+            type: string
+            description: Name of the attribute to use as login username
+            default: uid
+          filters:
+            type: array
+            description: List of additional filter expressions to use for user search
+            items:
+              type: string
+              example: 'objectclass=person'

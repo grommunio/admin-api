@@ -198,6 +198,17 @@ class Users(DataModel, DB.Model):
     def password(self, pw):
         self._password = crypt.crypt(pw, crypt.mksalt(crypt.METHOD_MD5))
 
+    @property
+    def ldapImported(self):
+        return self._password == "ldap imported"
+
+    @ldapImported.setter
+    def ldapImported(self, val):
+        if val:
+            self._password = "ldap imported"
+        elif self.ldapImported:
+            self._password = ""
+
     def chkPw(self, pw):
         return crypt.crypt(pw, self.password) == self.password
 
