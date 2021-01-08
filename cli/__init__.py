@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020 grammm GmbH
 
+import argcomplete
 from argparse import ArgumentParser
 
 class Cli:
@@ -19,6 +20,7 @@ class Cli:
         args : list of strings, optional
             Command line arguments to execute. The default is None.
         """
+        argcomplete.autocomplete(cls.parser)
         dispatch = cls.parser.parse_args(args)
         if hasattr(dispatch, "_handle"):
             return dispatch._handle(dispatch) or 0

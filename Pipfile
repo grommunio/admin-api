@@ -13,8 +13,8 @@ dbus-python = "*"
 psutil = "*"
 pygobject = "*"
 pyjwt = "<2.0.0"
-alembic = "*"
 ldap3 = "*"
+argcomplete = "*"
 
 [dev-packages]
 
