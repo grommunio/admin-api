@@ -139,13 +139,29 @@ def refreshToken():
 
 
 def loginUser(username, password):
+    """Try to authenticate user.
+
+    Parameters
+    ----------
+    username : str
+        User e-mail address
+    password : str
+        Password to check
+
+    Returns
+    -------
+    bool
+        Whether authentication was successful
+    str
+        JWT if successful, error message otherwise.
+    """
     from orm.users import Users
     user: Users = Users.query.filter(Users.username == username).first()
     if user is None:
         return False, "Invalid username or password"
     if user.ldapImported:
-        success, error = ldap.authUser(username, password)
-        if not success:
+        error = ldap.authUser(user.externalID, password)
+        if error:
             return False, error
     elif not user.chkPw(password):
         return False, "Invalid username or password"

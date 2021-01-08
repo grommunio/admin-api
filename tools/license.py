@@ -63,7 +63,6 @@ def _processCertificate(data):
 
 def loadCertificate():
     try:
-        logging.info("load")
         with open(Config["options"]["licenseFile"], "rb") as file:
             data = file.read()
         success, val = _processCertificate(data)

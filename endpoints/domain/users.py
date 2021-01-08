@@ -97,6 +97,8 @@ def patchUser(domainID, userID):
     data = request.get_json(silent=True, cache=True)
     if data is None:
         return jsonify(message="Could not update: no valid JSON data"), 400
+    if user.ldapImported and not data.get("ldapImported") == False:
+        return jsonify(message="Cannot modify LDAP imported user"), 400
     updateSize = False  # user and data and "maxSize" in data and data["maxSize"] != user.maxSize
     try:
         user.fromdict(data)
@@ -161,6 +163,8 @@ def setUserPassword(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
+    if user.ldapImported:
+        return jsonify(message="Cannot modify LDAP imported user"), 400
     data = request.get_json(silent=True)
     if data is None or "new" not in data:
         return jsonify(message="Incomplete data"), 400

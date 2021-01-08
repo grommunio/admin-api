@@ -52,6 +52,8 @@ def getProfile():
 @secure(authLevel="user")
 def updatePassword():
     user = request.auth["user"]
+    if user.ldapImported:
+        return jsonify(message="Cannot modify LDAP imported user"), 400
     data = request.get_json(silent=True)
     if data is None or "new" not in data or "old" not in data:
         return jsonify(message="Incomplete data"), 400

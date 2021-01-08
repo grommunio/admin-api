@@ -122,6 +122,7 @@ properties:
     properties:
       connection:
         type: object
+        required: [server]
         properties:
           server:
             type: string
@@ -135,13 +136,20 @@ properties:
       baseDn:
         type: string
         description: Base DN to use for user search
+      starttls:
+        type: boolean
+        description: Whether to initiate a StartTLS connection
+      objectID:
+        type: string
+        description: Name of an attribute that uniquely idetifies an LDAP object
       users:
         type: object
+        required: [username, searchAttributes]
         description: Configuration for user search
         properties:
-          login:
+          username:
             type: string
-            description: Name of the attribute to use as login username
+            description: Name of the attribute that corresponds to the username (e-mail address)
             default: uid
           filters:
             type: array
@@ -149,3 +157,24 @@ properties:
             items:
               type: string
               example: 'objectclass=person'
+          templates:
+            type: array
+            description: List of mapping templates to use
+            items:
+              type: string
+              description: Name of a template defined in res/ldapTemplates.yaml
+          attributes:
+            type: object
+            description: LDAP attribute -> PropTag mapping to used for LDAP import. Any mappings specified take precendence over active templates
+            additionalProperties:
+              type: string
+              description: Name of the PropTag the atribute maps to
+          defaultQuota:
+            type: integer
+            description: Storage quota of imported users if no mapping exists
+          searchAttributes:
+            type: array
+            description: List of attributes to use for searching
+            items:
+              type: string
+              description: LDAP attribute name

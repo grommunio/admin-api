@@ -1,0 +1,35 @@
+common:
+  telephoneNumber: businesstelephonenumber
+  otherTelephone: business2telephonenumber
+  otherFacsimileTelephoneNumber: businessfaxnumber
+  mobile: mobiletelephonenumber
+  homePhone: hometelephonenumber
+  otherHomePhone: home2telephonenumber
+  facsimileTelephoneNumber: primaryfaxnumber
+  pager: pagertelephonenumber
+  description: comment
+  physicalDeliveryOfficeName: officelocation
+  givenName: givenname
+  sn: surname
+  o: childrensnames
+  l: locality
+  title: title
+  userCertificate: usercertificate
+  initials: initials
+  preferredLanguage: language
+  employeeNumber: organizationalidnumber
+  postalAddress: postaladdress
+  company: companyname
+  co: country
+  st: stateorprovince
+  streetAddress: streetaddress
+  postalCode: postalcode
+  postOfficeBox: postofficebox
+  assistant: assistant
+  wWWHomePage: businesshomepage
+  jpegPhoto: thumbnailphoto
+  userCertificate;binary: addressbookx509certificate
+ADS:
+  department: departmentname
+OpenLDAP:
+  departmentNumber: departmentname

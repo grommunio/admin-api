@@ -72,6 +72,7 @@ class Users(DataModel, DB.Model):
     addressStatus = DB.Column("address_status", TINYINT, nullable=False, server_default="0")
     privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     _deprecated_maxSize = DB.Column("max_size", INTEGER(10), nullable=False, default=0)
+    externalID = DB.Column("externalid", DB.VARBINARY(64))
 
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True)
@@ -87,14 +88,13 @@ class Users(DataModel, DB.Model):
                       BoolP("smtp", flags="patch"),
                       BoolP("changePassword", flags="patch"),
                       BoolP("publicAddress", flags="patch"),
-                      BoolP("netDisk", flags="patch")),
+                      BoolP("ldapImported", flags="patch")),
                      ({"attr": "password", "flags": "init, hidden"},))
 
     POP3_IMAP = 1 << 0
     SMTP = 1 << 1
     CHGPASSWD = 1 << 2
     PUBADDR = 1 << 3
-    NETDISK = 1 << 4
 
     MAILUSER = 0x0
     DISTLIST = 0x1
@@ -117,10 +117,16 @@ class Users(DataModel, DB.Model):
         from tools.license import getLicense
         if Users.query.count() >= getLicense().users:
             return "License user limit exceeded"
-        domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
-        if not domain:
+        if "domainID" in data:
+            domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
+        elif "@" in data["username"]:
+            domain = Domains.query.filter(Domains.domainname == data["username"].split("@")[1]).first()
+        else:
+            domain = None
+        if domain is None:
             return "Invalid domain"
         data["domain"] = domain
+        data["domainID"] = domain.ID
         domainUsers = Users.query.with_entities(func.count().label("count")).filter(Users.domainID == domain.ID).first()
         if domain.maxUser <= domainUsers.count:
             return "Maximum number of domain users reached"
@@ -198,16 +204,20 @@ class Users(DataModel, DB.Model):
     def password(self, pw):
         self._password = crypt.crypt(pw, crypt.mksalt(crypt.METHOD_MD5))
 
-    @property
+    @hybrid_property
     def ldapImported(self):
-        return self._password == "ldap imported"
+        return self.externalID is not None if isinstance(self, Users) else self.externalID
 
     @ldapImported.setter
     def ldapImported(self, val):
-        if val:
-            self._password = "ldap imported"
-        elif self.ldapImported:
-            self._password = ""
+        if not self.ldapImported and val == True:
+            raise ValueError("Cannot set user to imported without associating an LDAP object")
+        if self.ldapImported and val == False:
+            self.externalID = None
+
+    @ldapImported.expression
+    def ldapImported(cls):
+        return cls.externalID != None
 
     def chkPw(self, pw):
         return crypt.crypt(pw, self.password) == self.password
@@ -271,18 +281,6 @@ class Users(DataModel, DB.Model):
     @publicAddress.expression
     def publicAddress(cls):
         return cls.privilegeBits.op("&")(cls.PUBADDR)
-
-    @hybrid_property
-    def netDisk(self):
-        return self._getPB(self.NETDISK)
-
-    @netDisk.setter
-    def netDisk(self, val):
-        self._setPB(self.NETDISK, val)
-
-    @netDisk.expression
-    def netDisk(cls):
-        return cls.privilegeBits.op("&")(cls.NETDISK)
 
 
 class UserProperties(DataModel, DB.Model):

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.14.0
+  version: 0.14.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -842,6 +842,40 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/{domainID}/users/{userID}/downsync:
+    put:
+      summary: Update user from LDAP
+      tags:
+        - Domain Admin/Users
+        - LDAP
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/userID'
+        - name: ID
+          in: query
+          required: false
+          description: Optional LDAP object ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Synchronization successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+
   /domains/{domainID}/users/{userID}/roles:
     patch:
       summary: Update user roles
@@ -1214,6 +1248,95 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /ldap/search:
+    get:
+      summary: Perform LDAP user search
+      tags:
+        - LDAP
+      security:
+        - JWTCookie: []
+      parameters:
+        - name: query
+          in: query
+          description: Search term
+          required: true
+          schema:
+            type: string
+            minLength: 3
+      responses:
+        '200':
+          description: List of users returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ID:
+                          type: string
+                          description: LDAP object ID of the person
+                        name:
+                          type: string
+                          description: Display name of the person
+                        email:
+                          type: string
+                          description: E-mail address of the person
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /ldap/importUser:
+    post:
+      summary: Import user from ldap
+      tags:
+        - LDAP
+      security:
+        - JWTCookie: []
+      parameters:
+        - name: ID
+          in: query
+          required: true
+          description: LDAP object ID of the person to import
+          schema:
+            type: string
+        - name: force
+          in: query
+          required: false
+          description: Force update existing users that are not associated with the LDAP object
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: An existing user was updated with LDAP data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+        '201':
+          description: A new user was created from LDAP data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The user already exists but is not associated with the LDAP object
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
 components:
   securitySchemes:
     JWTCookie:
@@ -1373,9 +1496,9 @@ components:
         publicAddress:
           type: boolean
           description: Public address privilege
-        netDisk:
+        ldapImported:
           type: boolean
-          description: Network disk privilege
+          description: Whether the user is bound to an LDAP object
     userInit:
       type: object
       additionalProperties: false
@@ -1420,9 +1543,6 @@ components:
         publicAddress:
           type: boolean
           description: Public address privilege
-        netDisk:
-          type: boolean
-          description: Network disk privilege
     userUpdate:
       type: object
       additionalProperties: false
@@ -1461,9 +1581,10 @@ components:
         publicAddress:
           type: boolean
           description: Public address privilege
-        netDisk:
+        ldapImported:
           type: boolean
-          description: Network disk privilege
+          description: Detach imported user from LDAP object
+          enum: [false]
     publicFolder:
       type: object
       properties:
@@ -1621,6 +1742,16 @@ components:
               message:
                 type: string
                 description: Description of the error
+    ServiceUnavailable:
+      description: One of the required external services is unavailable
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Description of the error
     NotFound:
       description: The requested resource could not be found
       content:
@@ -1646,5 +1777,7 @@ tags:
     description: Endpoints for group/department management
   - name: Domain Admin/Users
     description: Endpoints for user management
+  - name: LDAP
+    description: Endpoints for LDAP operations
   - name: Misc
     description: Miscellaneous and organizational endpoints

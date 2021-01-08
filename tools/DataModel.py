@@ -622,6 +622,7 @@ def Bool(attr, **kwargs):
 
 def BoolP(attr, **kwargs):
     """Create a bool property."""
+    _addFlags(kwargs, "sort")
     return DataModel.Prop(attr, arg_tf=_str2bool, **kwargs)
 
 
