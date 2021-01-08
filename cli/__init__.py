@@ -68,4 +68,4 @@ class Cli:
         return inner
 
 
-from . import dbtools, misc
+from . import dbtools, ldap, misc

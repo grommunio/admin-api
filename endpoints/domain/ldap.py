@@ -56,16 +56,16 @@ def downloadLdapUser():
         API.logger.error(request.args["ID"]+": "+err.args[0])
         return jsonify(message="Invalid ID"), 400
     force = request.args.get("force")
-    email = ldap.getUserEmail(ID)
-    if email is None:
+    userinfo = ldap.getUserInfo(ID)
+    if userinfo.email is None:
         return jsonify(message="User not found"), 404
-    domain = Domains.query.filter(Domains.domainname == email.split("@")[1]).with_entities(Domains.ID).first()
+    domain = Domains.query.filter(Domains.domainname == userinfo.email.split("@")[1]).with_entities(Domains.ID).first()
     if domain is None:
         jsonify(message="Cannot import user: Domain not found"), 400
     if not DomainAdminPermission(domain.ID) in request.auth["user"].permissions():
         return jsonify(message="User not found"), 404
     user = Users.query.filter(Users.externalID == ID).first() or\
-           Users.query.filter(Users.username == email).first()
+           Users.query.filter(Users.username == userinfo.email).first()
     if user is not None:
         if user.externalID != ID and not force == "true":
             return jsonify(message="Cannot import user: User exists "+

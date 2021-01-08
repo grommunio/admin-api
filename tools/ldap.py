@@ -116,7 +116,6 @@ def _searchFilters(query, domains=None):
     filterexpr = "".join("("+f+")" for f in ldapconf["users"].get("filters", ()))
     searchexpr = "(|{})".format("".join(("("+sattr+"=*"+query+"*)" for sattr in ldapconf["users"]["searchAttributes"])))
     domainexpr = "(|{})".format("".join("({}=*@{})".format(username, d) for d in domains)) if domains is not None else ""
-    logging.info(domainexpr)
     return "(&{}{}{})".format(filterexpr, searchexpr, domainexpr)
 
 
@@ -164,7 +163,7 @@ def authUser(ID, password):
         return "Invalid username or Password"
 
 
-def getUserEmail(ID):
+def getUserInfo(ID):
     """Get e-mail address of an ldap user.
 
     Parameters
@@ -178,10 +177,15 @@ def getUserEmail(ID):
     """
     if not LDAP_available:
         return None
-    LDAPConn.search(_searchBase(), _matchFilters(ID), attributes=ldapconf["users"]["username"])
+    users = ldapconf["users"]
+    username, name, email = users["username"], users["display"]["name"], users["display"]["email"]
+    LDAPConn.search(_searchBase(), _matchFilters(ID), attributes=[username, name, email, ldapconf["objectID"]])
     if len(LDAPConn.response) != 1:
         return None
-    return LDAPConn.entries[0][ldapconf["users"]["username"]].value
+    return GenericObject(ID=LDAPConn.entries[0][ldapconf["objectID"]].raw_values[0],
+                         username=LDAPConn.entries[0][username].value,
+                         name=LDAPConn.entries[0][name].value,
+                         email=LDAPConn.entries[0][email].value)
 
 
 def downsyncUser(ID, props=_defaultProps):
@@ -266,8 +270,10 @@ def _checkConfig():
            "objectID" in ldapconf and\
            "users" in ldapconf and\
            "username" in ldapconf["users"] and\
-           "searchAttributes" in ldapconf["users"]
-
+           "searchAttributes" in ldapconf["users"] and\
+           "display" in ldapconf["users"] and\
+           "name" in ldapconf["users"]["display"] and\
+           "email" in ldapconf["users"]["display"]
 
 
 if _checkConfig():
