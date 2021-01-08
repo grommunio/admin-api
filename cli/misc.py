@@ -27,6 +27,7 @@ def _versionParserSetup(subp: ArgumentParser):
     components.add_argument("--backend", "-b", action="store_true", help="Print Backend version")
     components.add_argument("--combined", "-c", action="store_true", help="Print combined version")
 
+
 @Cli.command("version", _versionParserSetup)
 def cliVersion(args):
     from api import backendVersion, apiVersion
@@ -41,6 +42,7 @@ def cliVersion(args):
     else:
         print(apiVersion)
 
+
 @Cli.command("chkconfig")
 def cliChkConfig(args):
     from tools.config import validate
@@ -52,9 +54,26 @@ def cliChkConfig(args):
         print("Error: "+result)
         return 1
 
+def _cliTaginfoCompleter(prefix, **kwargs):
+    from tools.constants import PropTags
+    PropTags.lookup(None)
+    c = []
+    if prefix == "" or prefix[0].islower():
+        c += [tag.lower() for value, tag in PropTags._lookup.items() if isinstance(value, int)]
+    if prefix == "" or prefix[0].isupper():
+        c += [tag.upper() for value, tag in PropTags._lookup.items() if isinstance(value, int)]
+    if prefix == "" or prefix[0] == "0" and (len(prefix) <= 2 or not prefix[2:].isupper()):
+        c += ["0x{:08x}".format(value) for value in PropTags._lookup.keys() if isinstance(value, int)]
+    if prefix == "" or prefix[0] == "0" and (len(prefix) <= 2 or not prefix[2:].islower()):
+        c += ["0x{:08X}".format(value) for value in PropTags._lookup.keys() if isinstance(value, int)]
+    if prefix == "" or prefix.isnumeric():
+        c += [str(value) for value in PropTags._lookup.keys() if isinstance(value, int)]
+    return c
+
 
 def _setupTaginfo(subp: ArgumentParser):
-    subp.add_argument("tagID", nargs="+", help="Numeric tag ID in decimal or hexadecimal or tag name")
+    tagID = subp.add_argument("tagID", nargs="+", help="Numeric tag ID in decimal or hexadecimal or tag name")
+    tagID.completer = _cliTaginfoCompleter
 
 
 @Cli.command("taginfo", _setupTaginfo)
