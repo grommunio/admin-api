@@ -18,3 +18,7 @@ if __name__ == '__main__':
 else:
     from api.core import API
     from endpoints import *
+    from tools import config
+    error = config.validate()
+    if error:
+        raise TypeError("Invalid configuration found - aborting ({})".format(error))

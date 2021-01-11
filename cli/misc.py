@@ -9,10 +9,17 @@ def _runParserSetup(subp: ArgumentParser):
     subp.add_argument("--ip", "-i", default="0.0.0.0", type=str, help="Host address to bind to")
     subp.add_argument("--port", "-p", default=5001, type=int, help="Host port to bind to")
     subp.add_argument("--debug", "-d", action="store_true", help="Run in debug mode")
+    subp.add_argument("--no-config-check", action="store_true", help="Skip configuration check")
 
 
 @Cli.command("run", _runParserSetup)
 def cliRun(args):
+    if not args.no_config_check:
+        from tools import config
+        error = config.validate()
+        if error:
+            print("Invalid configuration found: "+error)
+            return 1
     from api.core import API
     import endpoints
     import importlib

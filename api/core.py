@@ -21,7 +21,7 @@ else:
 from . import apiSpec
 
 
-API = Flask("MI-API")  # Core API object
+API = Flask("grammm Admin API")  # Core API object
 API.config["JSON_SORT_KEYS"] = False  # Do not sort response fields. Crashes when returning lists...
 requestValidator, responseValidator = RequestValidator(apiSpec), ResponseValidator(apiSpec)
 
