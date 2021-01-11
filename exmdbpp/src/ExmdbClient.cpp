@@ -6,6 +6,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netdb.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 
@@ -20,19 +21,13 @@ namespace exmdbpp
 using namespace requests;
 using namespace constants;
 
-/**
- * @brief      Initialize connection
- *
- * Creates a socket, but does not connect to any service yet.
- *
- * @throws     std::runtime_error Socket creation failed
- */
-ExmdbClient::Connection::Connection()
-{
-    sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(sock == -1)
-        throw std::runtime_error("Socket initialization failed: "+std::string(strerror(errno)));
-}
+static const addrinfo aiHint = {
+    0, //ai_flags
+    AF_UNSPEC, //ai_family
+    SOCK_STREAM, //ai_socktype
+    0, //ai_protocol
+    0, nullptr, nullptr, nullptr
+};
 
 /**
  * @brief      Destructor
@@ -60,20 +55,32 @@ void ExmdbClient::Connection::close()
  * Establishes a TCP connection to the specified server.
  *
  * @param      host  Server address
- * @param      port  Server port
+ * @param      port  Server port or service
  *
  * @throws     std::runtime_error Connection could not be established
  */
-void ExmdbClient::Connection::connect(const std::string& host, uint16_t port)
+void ExmdbClient::Connection::connect(const std::string& host, const std::string& port)
 {
+    if(sock != -1)
+    {
+
+    }
+    addrinfo* addrs;
+    int error;
+    if((error = getaddrinfo(host.c_str(), port.c_str(), &aiHint, &addrs)))
+        throw std::runtime_error("Could not resolve address: "+std::string(gai_strerror(error)));
+    for(addrinfo* addr = addrs; addr != nullptr; addr = addr->ai_next)
+    {
+        if((sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol))  == -1)
+            continue;
+        if(::connect(sock, addr->ai_addr, addr->ai_addrlen) == 0)
+            break;
+        error = errno;
+        ::close(sock);
+        sock = -1;
+    }
     if(sock == -1)
-        return;
-    sockaddr_in server;
-    server.sin_addr.s_addr = inet_addr(host.c_str());
-    server.sin_family = AF_INET;
-    server.sin_port = htons(port);
-    if(::connect(sock, reinterpret_cast<sockaddr*>(&server), sizeof(server)))
-        throw std::runtime_error("Connect failed: "+std::string(strerror(errno)));
+        throw std::runtime_error("Connect failed: "+std::string(strerror(error)));
 }
 
 /**
@@ -101,8 +108,6 @@ void ExmdbClient::Connection::send(IOBuffer& buff)
     if(bytes < 5)
         throw std::runtime_error("Connection closed unexpectedly");
     uint32_t length = buff.pop<uint32_t>();
-    if(status != ResponseCode::SUCCESS)
-        throw std::runtime_error("Call failed with response code "+std::to_string(int(status)));
     buff.reset();
     buff.resize(length);
     for(uint32_t offset = 0;offset < length;offset += bytes)
@@ -125,7 +130,7 @@ void ExmdbClient::Connection::send(IOBuffer& buff)
  * @param      prefix     Data area prefix (passed to ConnectRecquest)
  * @param      isPrivate  Whether to access private or public data (passed to ConnectRequest)
  */
-ExmdbClient::ExmdbClient(const std::string& host, uint16_t port, const std::string& prefix, bool isPrivate)
+ExmdbClient::ExmdbClient(const std::string& host, const std::string& port, const std::string& prefix, bool isPrivate)
 {connect(host, port, prefix, isPrivate);}
 
 /**
@@ -136,7 +141,7 @@ ExmdbClient::ExmdbClient(const std::string& host, uint16_t port, const std::stri
  * @param      prefix     Data area prefix (passed to ConnectRecquest)
  * @param      isPrivate  Whether to access private or public data (passed to ConnectRequest)
  */
-void ExmdbClient::connect(const std::string& host, uint16_t port, const std::string& prefix, bool isPrivate)
+void ExmdbClient::connect(const std::string& host, const std::string& port, const std::string& prefix, bool isPrivate)
 {
     connection.connect(host, port);
     send(ConnectRequest(prefix, isPrivate));

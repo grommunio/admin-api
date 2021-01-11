@@ -162,7 +162,7 @@ struct FolderOwnerListResponse
 class ExmdbQueries
 {
 public:
-    ExmdbQueries(const std::string& host, uint16_t port, const std::string& prefix, bool isPrivate) throw (std::runtime_error);
+    ExmdbQueries(const std::string& host, const std::string& port, const std::string& prefix, bool isPrivate) throw (std::runtime_error);
 
     requests::Response<requests::QueryTableRequest> getFolderList(const std::string& homedir) throw (std::runtime_error, std::out_of_range);
     requests::Response<requests::CreateFolderByPropertiesRequest> createPublicFolder(const std::string& homedir, uint32_t domainID, const std::string& folderName, const std::string& container, const std::string& comment) throw (std::runtime_error, std::out_of_range);

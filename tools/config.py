@@ -20,6 +20,8 @@ _defaultConfig_ = {"openapi": {
                      "domainStoreRatio": 10,
                      "domainPrefix": "/d-data/",
                      "userPrefix": "/u-data/",
+                     "exmdbHost": "::1",
+                     "exmdbPort": "5000",
                      "domainStorageLevels": 1,
                      "userStorageLevels": 2,
                      "domainAcceleratedStorage": None,

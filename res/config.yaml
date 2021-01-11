@@ -76,6 +76,14 @@ properties:
         type: string
         description: Path to store user home directories in
         default: /u-data/
+      exmdbHost:
+        type: string
+        description: Name or IP address of the exmdb probvider
+        default: '::1'
+      exmdbPort:
+        type: string
+        description: Port or service name of the exmdb probvider
+        default: '5000'
       domainStorageLevels:
         type: integer
         description: Number of sub-directory levels to use for domain storage

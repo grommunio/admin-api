@@ -21,10 +21,10 @@ class ExmdbClient
     class Connection
     {
     public:
-        Connection();
+        Connection() = default;
         ~Connection();
 
-        void connect(const std::string&, uint16_t);
+        void connect(const std::string&, const std::string&);
         void close();
         void send(IOBuffer&);
 
@@ -37,9 +37,9 @@ public:
     using Response_t = typename requests::response_map<Request>::type; ///< Type of the response returned by a request
 
     ExmdbClient() = default;
-    ExmdbClient(const std::string&, uint16_t, const std::string&, bool);
+    ExmdbClient(const std::string&, const std::string&, const std::string&, bool);
 
-    void connect(const std::string&, uint16_t, const std::string&, bool);
+    void connect(const std::string&, const std::string&, const std::string&, bool);
 
     template<class Request>
     Response_t<Request> send(const Request&);

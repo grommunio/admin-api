@@ -110,7 +110,8 @@ def patchUser(domainID, userID):
         DB.session.rollback()
         return jsonify(message="Could not update: invalid data", error=err.orig.args[1]), 400
     if updateSize:
-        client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["userPrefix"], True)
+        options = Config["options"]
+        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
         propvals = (pyexmdb.TaggedPropval_u64(PropTags.PROHIBITRECEIVEQUOTA, data["maxSize"]*1024),
                     pyexmdb.TaggedPropval_u64(PropTags.PROHIBITSENDQUOTA, data["maxSize"]*1024))
         status = client.setStoreProperties(user.maildir, 0, propvals)
@@ -145,7 +146,8 @@ def deleteUser(user):
     except:
         return jsonify(message="Cannot delete user: Database commit failed."), 500
     try:
-        client = pyexmdb.ExmdbQueries("127.0.0.1", 5000, Config["options"]["userPrefix"], True)
+        options = Config["options"]
+        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["domainPrefix"], True)
         client.unloadStore(maildir)
     except RuntimeError as err:
         API.logger.error("Could not unload exmdb store: "+err.args[0])
