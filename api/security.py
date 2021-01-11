@@ -160,7 +160,7 @@ def loginUser(username, password):
     if user is None:
         return False, "Invalid username or password"
     if user.ldapImported:
-        error = ldap.authUser(user.externalID, password)
+        error = ldap.authUser(user.externID, password)
         if error:
             return False, error
     elif not user.chkPw(password):

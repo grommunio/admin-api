@@ -77,23 +77,23 @@ def cliLdapDownsync(args):
     domain = Domains.query.filter(Domains.domainname == candidate.email.split("@")[1]).with_entities(Domains.ID).first()
     if domain is None:
         print(message="Cannot import user: Domain not found")
-    user = Users.query.filter(Users.externalID == candidate.ID).first() or\
+    user = Users.query.filter(Users.externID == candidate.ID).first() or\
         Users.query.filter(Users.username == candidate.email).first()
     if user is not None:
-        if user.externalID != candidate.ID and not args.force:
+        if user.externID != candidate.ID and not args.force:
             if args.auto:
                 print("Cannot import user: User exists " +
-                      ("locally" if user.externalID is None else "and is associated with another LDAP object"))
+                      ("locally" if user.externID is None else "and is associated with another LDAP object"))
                 return 7
             else:
-                if not _confirm("Force update "+("local only user" if user.externalID is None else
+                if not _confirm("Force update "+("local only user" if user.externID is None else
                                                  "user linked to different LDAP object")+"? [y/N]: "):
                     print("Aborted")
                     return 8
         userdata = ldap.downsyncUser(candidate.ID, user.propmap)
         try:
             user.fromdict(userdata)
-            user.externalID = candidate.ID
+            user.externID = candidate.ID
             DB.session.commit()
             print("User updated.")
             return 0
@@ -111,7 +111,7 @@ def cliLdapDownsync(args):
         print("Cannot import user: "+error)
         return 10
     user = Users(userdata)
-    user.externalID = candidate.ID
+    user.externID = candidate.ID
     DB.session.add(user)
     DB.session.commit()
     print("User '{}' created with ID {}.".format(user.username, user.ID))

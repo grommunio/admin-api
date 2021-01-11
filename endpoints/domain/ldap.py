@@ -64,16 +64,16 @@ def downloadLdapUser():
         jsonify(message="Cannot import user: Domain not found"), 400
     if not DomainAdminPermission(domain.ID) in request.auth["user"].permissions():
         return jsonify(message="User not found"), 404
-    user = Users.query.filter(Users.externalID == ID).first() or\
+    user = Users.query.filter(Users.externID == ID).first() or\
            Users.query.filter(Users.username == userinfo.email).first()
     if user is not None:
-        if user.externalID != ID and not force == "true":
+        if user.externID != ID and not force == "true":
             return jsonify(message="Cannot import user: User exists "+
-                           ("locally" if user.externalID is None else "and is associated with another LDAP object")), 409
+                           ("locally" if user.externID is None else "and is associated with another LDAP object")), 409
         userdata = ldap.downsyncUser(ID, user.propmap)
         try:
             user.fromdict(userdata)
-            user.externalID = ID
+            user.externID = ID
             DB.session.commit()
             return jsonify(user.fulldesc()), 200
         except (InvalidAttributeError, MismatchROError, ValueError) as err:
@@ -84,7 +84,7 @@ def downloadLdapUser():
     if error is not None:
         return jsonify(message="Cannot import user: "+error), 400
     user = Users(userdata)
-    user.externalID = ID
+    user.externID = ID
     DB.session.add(user)
     DB.session.commit()
     return jsonify(user.fulldesc()), 201
@@ -99,13 +99,13 @@ def updateLdapUser(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
-    ldapID = b64decode(request.args["ID"], ".-") if "ID" in request.args else user.externalID
+    ldapID = b64decode(request.args["ID"], ".-") if "ID" in request.args else user.externID
     if ldapID is None:
         return jsonify(message="Cannot synchronize user: Could not determine LDAP object"), 400
     userdata = ldap.downsyncUser(ldapID, user.propmap)
     if userdata is None:
         return jsonify(message="Cannot synchronize user: LDAP object not found"), 404
     user.fromdict(userdata)
-    user.externalID = ldapID
+    user.externID = ldapID
     DB.session.commit()
     return jsonify(user.fulldesc())

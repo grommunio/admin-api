@@ -72,7 +72,7 @@ class Users(DataModel, DB.Model):
     addressStatus = DB.Column("address_status", TINYINT, nullable=False, server_default="0")
     privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     _deprecated_maxSize = DB.Column("max_size", INTEGER(10), nullable=False, default=0)
-    externalID = DB.Column("externalid", DB.VARBINARY(64))
+    externID = DB.Column("externid", DB.VARBINARY(64))
 
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True)
@@ -206,18 +206,18 @@ class Users(DataModel, DB.Model):
 
     @hybrid_property
     def ldapImported(self):
-        return self.externalID is not None if isinstance(self, Users) else self.externalID
+        return self.externID is not None if isinstance(self, Users) else self.externID
 
     @ldapImported.setter
     def ldapImported(self, val):
         if not self.ldapImported and val == True:
             raise ValueError("Cannot set user to imported without associating an LDAP object")
         if self.ldapImported and val == False:
-            self.externalID = None
+            self.externID = None
 
     @ldapImported.expression
     def ldapImported(cls):
-        return cls.externalID != None
+        return cls.externID != None
 
     def chkPw(self, pw):
         return crypt.crypt(pw, self.password) == self.password
