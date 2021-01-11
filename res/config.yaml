@@ -78,11 +78,11 @@ properties:
         default: /u-data/
       exmdbHost:
         type: string
-        description: Name or IP address of the exmdb probvider
+        description: Name or IP address of the exmdb service provider
         default: '::1'
       exmdbPort:
         type: string
-        description: Port or service name of the exmdb probvider
+        description: Port or service name of the exmdb service provider
         default: '5000'
       domainStorageLevels:
         type: integer
@@ -141,12 +141,12 @@ properties:
           bindPass:
             type: string
             description: Password for bindUser
+          starttls:
+            type: boolean
+            description: Whether to initiate a StartTLS connection
       baseDn:
         type: string
         description: Base DN to use for user search
-      starttls:
-        type: boolean
-        description: Whether to initiate a StartTLS connection
       objectID:
         type: string
         description: Name of an attribute that uniquely idetifies an LDAP object

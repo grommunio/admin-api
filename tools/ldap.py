@@ -178,14 +178,14 @@ def getUserInfo(ID):
     if not LDAP_available:
         return None
     users = ldapconf["users"]
-    username, name, email = users["username"], users["display"]["name"], users["display"]["email"]
-    LDAPConn.search(_searchBase(), _matchFilters(ID), attributes=[username, name, email, ldapconf["objectID"]])
+    username, name= users["username"], users["displayName"]
+    LDAPConn.search(_searchBase(), _matchFilters(ID), attributes=[username, name, ldapconf["objectID"]])
     if len(LDAPConn.response) != 1:
         return None
     return GenericObject(ID=LDAPConn.entries[0][ldapconf["objectID"]].raw_values[0],
                          username=LDAPConn.entries[0][username].value,
                          name=LDAPConn.entries[0][name].value,
-                         email=LDAPConn.entries[0][email].value)
+                         email=LDAPConn.entries[0][username].value)
 
 
 def downsyncUser(ID, props=_defaultProps):
@@ -243,20 +243,20 @@ def searchUsers(query, domains=None):
     if not LDAP_available:
         return []
     IDattr = ldapconf["objectID"]
-    attrs = ldapconf["users"]["display"]
+    name, email = ldapconf["users"]["displayName"], ldapconf["users"]["username"]
     LDAPConn.search(_searchBase(),
                     _searchFilters(query, domains),
-                    attributes=[IDattr, attrs["name"], attrs["email"]],
+                    attributes=[IDattr, name, email],
                     paged_size=25)
     return [GenericObject(ID=result[IDattr].raw_values[0],
-                          email=result[attrs["email"]].value,
-                          name=result[attrs["name"]].value)
+                          email=result[email].value,
+                          name=result[name].value)
             for result in LDAPConn.entries]
 
 
 def _createConnection(*args, **kwargs):
     conn = ldap3.Connection(*args, **kwargs)
-    if ldapconf.get("starttls", False):
+    if ldapconf["connection"].get("starttls", False):
         if not conn.start_tls():
             logging.error("Failed to initiate StartTLS LDAP connection")
     if not conn.bind():
@@ -271,9 +271,7 @@ def _checkConfig():
            "users" in ldapconf and\
            "username" in ldapconf["users"] and\
            "searchAttributes" in ldapconf["users"] and\
-           "display" in ldapconf["users"] and\
-           "name" in ldapconf["users"]["display"] and\
-           "email" in ldapconf["users"]["display"]
+           "displayName" in ldapconf["users"]
 
 
 if _checkConfig():
