@@ -188,7 +188,7 @@ def getUserInfo(ID):
                          email=LDAPConn.entries[0][username].value)
 
 
-def downsyncUser(ID, props=_defaultProps):
+def downsyncUser(ID, props=None):
     """Create dictionary representation of the user from LDAP data.
 
     The dictionary can be used to create or update a orm.users.Users object.
@@ -219,9 +219,8 @@ def downsyncUser(ID, props=_defaultProps):
         raise RuntimeError("Multiple entries found - aborting")
     ldapuser = LDAPConn.entries[0]
     userdata = dict(username=ldapuser[ldapconf["users"]["username"]].value)
-    props = props.copy()
-    props.update({prop: ldapuser[attr].value for attr, prop in _userAttributes.items() if attr in ldapuser})
-    userdata["properties"] = _flattenProps(props)
+    userdata["properties"] = props or _defaultProps.copy()
+    userdata["properties"].update({prop: ldapuser[attr].value for attr, prop in _userAttributes.items() if attr in ldapuser})
     return userdata
 
 

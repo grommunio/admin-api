@@ -33,7 +33,7 @@ if DB is not None:
 @secure(requireDB=True)
 def getUsers(domainID):
     checkPermissions(DomainAdminPermission(domainID))
-    verbosity = int(request.args.get("verbosity", 0))
+    verbosity = int(request.args.get("level", 1))
     query, limit, offset, count = defaultListHandler(Users, filters=(Users.domainID == domainID,), result="query")
     sorts = request.args.getlist("sort")
     for s in sorts:
@@ -46,11 +46,11 @@ def getUsers(domainID):
     if verbosity < 2 and "properties" in request.args:
         tags = [getattr(PropTags, prop.upper(), None) for prop in request.args["properties"].split(",")]
         for user in data:
-            user["properties"] = []
+            user["properties"] = {}
         usermap = createMapping(data, lambda x: x["ID"])
         properties = UserProperties.query.filter(UserProperties.userID.in_(usermap.keys()), UserProperties.tag.in_(tags)).all()
         for prop in properties:
-            usermap[prop.userID]["properties"].append(prop.ref())
+            usermap[prop.userID]["properties"][prop.name] = prop.val
     return jsonify(count=count, data=data)
 
 

@@ -12,6 +12,7 @@ from sqlalchemy import func, ForeignKey
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, selectinload
+from sqlalchemy.orm.collections import attribute_mapped_collection
 
 import crypt
 import re
@@ -75,14 +76,15 @@ class Users(DataModel, DB.Model):
     externID = DB.Column("externid", DB.VARBINARY(64))
 
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
-    properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True)
+    properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True,
+                              collection_class=attribute_mapped_collection("name"))
     aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True)
 
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("domainID", flags="init"),
                       Id("groupID", flags="patch")),
                      (RefProp("roles", qopt=selectinload),
-                      RefProp("properties", flags="patch, managed", link="name", qopt=selectinload),
+                      RefProp("properties", flags="patch, managed", link="name", flat="val", qopt=selectinload),
                       RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
                       BoolP("pop3_imap", flags="patch"),
                       BoolP("smtp", flags="patch"),
@@ -143,19 +145,15 @@ class Users(DataModel, DB.Model):
         data["domainStatus"] = domain.domainStatus
         if "properties" not in data:
             return "Missing required attribute 'properties'"
-        propmap = createMapping(data["properties"], lambda x: x["name"], lambda x: x)
-        if "storagequotalimit" not in propmap:
+        properties = data["properties"]
+        if "storagequotalimit" not in properties:
             return "Missing required property 'storagequotalimit'"
         for prop in ("prohibitreceivequota", "prohibitsendquota"):
-            if prop not in propmap:
-                data["properties"].append({"name": prop, "val": propmap["storagequotalimit"]["val"]})
-        if "creationtime" not in propmap:
-            data["properties"].append({"name": "creationtime", "val": datetime.now()})
-        else:
-            propmap["creationtime"]["val"] = datetime.now()
-        if "displaytypeex" not in propmap:
-            data["properties"].append({"name": "displaytypeex", "val": 0})
-
+            if prop not in properties:
+                properties[prop] = properties["storagequotalimit"]
+        properties["creationtime"] = datetime.now()
+        if "displaytypeex" not in properties:
+            properties["displaytypeex"] = 0
 
     def __init__(self, props, *args, **kwargs):
         self._permissions = None
@@ -164,7 +162,6 @@ class Users(DataModel, DB.Model):
         status = props.pop("groupStatus", 0) << 2 | props.pop("domainStatus") << 4
         self.fromdict(props, *args, **kwargs)
         self.addressStatus = (self.addressStatus or 0) | status
-        self.addressType = 0
 
     def fromdict(self, patches, *args, **kwargs):
         if "username" in patches:
@@ -223,10 +220,8 @@ class Users(DataModel, DB.Model):
         return crypt.crypt(pw, self.password) == self.password
 
     @property
-    def propmap(self, refresh=False):
-        if refresh or not hasattr(self, "_propmap"):
-            self._propmap = createMapping(self.properties, lambda x: x.name, lambda x: x.val)
-        return self._propmap
+    def propmap(self):
+        return {k: v.val for k, v in self.properties.items()}
 
     def _setPB(self, bit, val):
         self.privilegeBits = (self.privilegeBits or 0) | bit if val else (self.privilegeBits or 0) & ~bit
@@ -295,7 +290,7 @@ class UserProperties(DataModel, DB.Model):
 
     user = relationship(Users)
 
-    _dictmapping_ = (({"attr": "name", "flags": "init"},{ "attr": "val", "flags": "patch"}), (Int("userID"),))
+    _dictmapping_ = (({"attr": "name", "flags": "init"}, {"attr": "val", "flags": "patch"}), (Int("userID"),))
 
     def __init__(self, props, user, *args, **kwargs):
         self.user = user
@@ -373,3 +368,6 @@ class Aliases(DataModel, DB.Model):
             raise ValueError("'{}' is not a valid email address".format(aliasname))
         self.aliasname = aliasname
         self.main = main
+
+
+from . import roles

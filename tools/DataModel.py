@@ -167,7 +167,8 @@ class DataModel:
             elif transform == "targetval":
                 return getattr(self.value(base, "raw"), self.target, None)
             if "ref" in self.flags:
-                val = [self.deref(v) for v in val] if _isCollection(val) else self.deref(val)
+                val = {k: self.deref(v) for k, v in val.items()} if isinstance(val, dict) else\
+                      [self.deref(v) for v in val] if _isCollection(val) else self.deref(val)
             elif self.func is not None:
                 val = self.func(val, *self.args, **self.kwargs)
             elif "call" in self.flags:
@@ -427,6 +428,13 @@ class DataModel:
                 Element = inspecc(getattr(type(self), prop.attr)).property.mapper.entity
                 if prop.mask is not None and "managed" not in prop.flags:
                     setattr(self, prop.mask, value)
+                elif isinstance(attr, dict) and isinstance(value, dict):
+                    elements = {k: Element({prop.link: k, **(value[k] if prop.flat is None else {prop.flat: value[k]})},
+                                           self, *args, **kwargs)
+                                for k, v in value.items() if k not in attr}  # New elements
+                    elements.update({k: a.fromdict(value[k] if prop.flat is None else {prop.flat: value[k]})
+                                     for k, a in attr.items() if k in value})  # Updated elements
+                    setattr(self, prop.attr, elements)
                 elif _isCollection(attr) and _isCollection(value):
                     if "managed" in prop.flags:
                         current = {getattr(val, prop.link) for val in attr}
