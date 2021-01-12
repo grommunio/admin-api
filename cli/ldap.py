@@ -113,6 +113,13 @@ def cliLdapDownsync(args):
     user = Users(userdata)
     user.externID = candidate.ID
     DB.session.add(user)
+    DB.session.flush()
+    from tools.storage import UserSetup
+    with UserSetup(user) as us:
+        us.run()
+    if not us.success:
+        print("Error during user setup: ", us.error), us.errorCode
+        return 11
     DB.session.commit()
     print("User '{}' created with ID {}.".format(user.username, user.ID))
 

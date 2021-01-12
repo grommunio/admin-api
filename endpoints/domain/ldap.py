@@ -12,6 +12,7 @@ from api.security import checkPermissions
 from tools import ldap
 from tools.DataModel import InvalidAttributeError, MismatchROError
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
+from tools.storage import UserSetup
 
 from orm import DB
 if DB is not None:
@@ -86,6 +87,11 @@ def downloadLdapUser():
     user = Users(userdata)
     user.externID = ID
     DB.session.add(user)
+    DB.session.flush()
+    with UserSetup(user) as us:
+        us.run()
+    if not us.success:
+        return jsonify(message="Error during user setup", error=us.error), us.errorCode
     DB.session.commit()
     return jsonify(user.fulldesc()), 201
 
