@@ -12,7 +12,7 @@ in combination with a WSGI server using the API object as callable
 if __name__ == '__main__':
     import os
     import sys
-    os.chdir(os.path.dirname(__file__))
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
     from cli import Cli
     sys.exit(Cli.execute())
 else:
