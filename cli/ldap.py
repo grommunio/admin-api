@@ -18,6 +18,7 @@ def cliLdapInfo(args):
     from tools import ldap
     if not ldap.LDAP_available:
         print("LDAP is not available.")
+        return 1
     print("Successfully connected to {} as {}".format(ldap.ldapconf["connection"]["server"],
                                                       ldap.ldapconf["connection"].get("bindUser") or "anonymous"))
 
