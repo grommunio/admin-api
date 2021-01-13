@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: AGPL-3.0-or-later
- * SPDX-FileCopyrightText: 2020 grammm GmbH
+ * SPDX-FileCopyrightText: 2020-2021 grammm GmbH
  */
 #include <cstring>
 
@@ -544,7 +544,7 @@ void PermissionData::serialize(IOBuffer& buff) const
  * @param      buff     Buffer to read data from
  */
 PropertyProblem::PropertyProblem(IOBuffer& buff)
-    : index(buff.pop<uint16_t>()), proptag(buff.pop<uint32_t>()), err(buff.pop<uint8_t>())
+    : index(buff.pop<uint16_t>()), proptag(buff.pop<uint32_t>()), err(buff.pop<uint32_t>())
 {}
 
 }

@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: AGPL-3.0-or-later
- * SPDX-FileCopyrightText: 2020 grammm GmbH
+ * SPDX-FileCopyrightText: 2020-2021 grammm GmbH
  */
 %module pyexmdb
 
@@ -30,6 +30,14 @@
 
 namespace exmdbpp
 {
+
+class ExmdbError : public std::runtime_error
+{
+public:
+    ExmdbError(const std::string&, uint8_t);
+
+    const uint8_t code;
+};
 
 namespace structures
 {
@@ -162,16 +170,16 @@ struct FolderOwnerListResponse
 class ExmdbQueries
 {
 public:
-    ExmdbQueries(const std::string& host, const std::string& port, const std::string& prefix, bool isPrivate) throw (std::runtime_error);
+    ExmdbQueries(const std::string& host, const std::string& port, const std::string& prefix, bool isPrivate) throw (ExmdbError, std::runtime_error);
 
-    requests::Response<requests::QueryTableRequest> getFolderList(const std::string& homedir) throw (std::runtime_error, std::out_of_range);
-    requests::Response<requests::CreateFolderByPropertiesRequest> createPublicFolder(const std::string& homedir, uint32_t domainID, const std::string& folderName, const std::string& container, const std::string& comment) throw (std::runtime_error, std::out_of_range);
-    requests::SuccessResponse deletePublicFolder(const std::string& homedir, uint64_t folderID) throw (std::runtime_error, std::out_of_range);
-    requests::Response<requests::QueryTableRequest> getPublicFolderOwnerList(const std::string& homedir, uint64_t folderID) throw (std::runtime_error, std::out_of_range);
-    requests::NullResponse addFolderOwner(const std::string& homedir, uint64_t folderID, const std::string& username) throw (std::runtime_error, std::out_of_range);
-    requests::NullResponse deleteFolderOwner(const std::string& homedir, uint64_t folderID, uint64_t memberID) throw (std::runtime_error, std::out_of_range);
-    requests::Response<requests::SetStorePropertiesRequest> setStoreProperties(const std::string& homedir, uint32_t cpid, const std::vector<structures::TaggedPropval>& propvals);
-    requests::NullResponse unloadStore(const std::string& homedir);
+    requests::Response<requests::QueryTableRequest> getFolderList(const std::string& homedir) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::Response<requests::CreateFolderByPropertiesRequest> createPublicFolder(const std::string& homedir, uint32_t domainID, const std::string& folderName, const std::string& container, const std::string& comment) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::SuccessResponse deletePublicFolder(const std::string& homedir, uint64_t folderID) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::Response<requests::QueryTableRequest> getPublicFolderOwnerList(const std::string& homedir, uint64_t folderID) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::NullResponse addFolderOwner(const std::string& homedir, uint64_t folderID, const std::string& username) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::NullResponse deleteFolderOwner(const std::string& homedir, uint64_t folderID, uint64_t memberID) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::Response<requests::SetStorePropertiesRequest> setStoreProperties(const std::string& homedir, uint32_t cpid, const std::vector<structures::TaggedPropval>& propvals) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::NullResponse unloadStore(const std::string& homedir) throw (ExmdbError, std::runtime_error, std::out_of_range);
 };
 
 }

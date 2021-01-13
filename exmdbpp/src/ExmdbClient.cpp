@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: AGPL-3.0-or-later
- * SPDX-FileCopyrightText: 2020 grammm GmbH
+ * SPDX-FileCopyrightText: 2020-2021 grammm GmbH
  */
 #include "ExmdbClient.h"
 
@@ -20,6 +20,18 @@ namespace exmdbpp
 
 using namespace requests;
 using namespace constants;
+
+/**
+ * @brief      Constructor
+ *
+ * @param      message  Error message
+ * @param      code     Exmdb response code
+ */
+ExmdbError::ExmdbError(const std::string& message, uint8_t code) : std::runtime_error(message), code(code)
+{}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 static const addrinfo aiHint = {
     0, //ai_flags
@@ -104,7 +116,7 @@ void ExmdbClient::Connection::send(IOBuffer& buff)
         throw std::runtime_error("Receive failed: "+std::string(strerror(errno)));
     uint8_t status = buff.pop<uint8_t>();
     if(status != ResponseCode::SUCCESS)
-        throw std::runtime_error("Call failed with response code "+std::to_string(int(status)));
+        throw ExmdbError("Server returned non-zero response code", status);
     if(bytes < 5)
         throw std::runtime_error("Connection closed unexpectedly");
     uint32_t length = buff.pop<uint32_t>();
@@ -146,7 +158,5 @@ void ExmdbClient::connect(const std::string& host, const std::string& port, cons
     connection.connect(host, port);
     send(ConnectRequest(prefix, isPrivate));
 }
-
-
 
 }

@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <exception>
 
 #include "IOBuffer.h"
 #include "requests.h"
@@ -12,6 +13,17 @@
  */
 namespace exmdbpp
 {
+
+/**
+ * @brief   Exception thrown when exmdb server returns an error code
+ */
+class ExmdbError : public std::runtime_error
+{
+public:
+    ExmdbError(const std::string&, uint8_t);
+
+    const uint8_t code; ///< Response code returned by the server
+};
 
 /**
  * @brief   Client managing communication with the exmdb server
@@ -97,6 +109,7 @@ inline ExmdbClient::Response_t<Request> ExmdbClient::send(const Args&... args)
     connection.send(buffer);
     return ExmdbClient::Response_t<Request>(buffer);
 }
+
 
 }
 

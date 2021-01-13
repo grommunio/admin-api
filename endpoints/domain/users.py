@@ -16,7 +16,7 @@ from tools.misc import AutoClean, createMapping
 from tools.storage import UserSetup
 from tools.pyexmdb import pyexmdb
 from tools.config import Config
-from tools.constants import PropTags, PropTypes
+from tools.constants import PropTags, PropTypes, ExchangeErrors, ExmdbCodes
 from tools.DataModel import InvalidAttributeError, MismatchROError
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
 
@@ -118,11 +118,17 @@ def patchUser(domainID, userID):
         try:
             client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
             status = client.setStoreProperties(user.maildir, 0, propvals)
+        except pyexmdb.ExmdbError as err:
+            DB.session.rollback()
+            return jsonify(message="Failed to update store properties: exmdb error "
+                           + ExmdbCodes.lookup(err.code, hex(err.code))), 500
         except RuntimeError as err:
             DB.session.rollback()
             return jsonify(message="Failed to update store properties: "+err.args[0]), 500
         if len(status.problems):
-            problems = ",\n".join("\t{}: {} - {}".format(problem.index, problem.proptag, problem.err)
+            problems = ",\n".join("\t{}: {} - {}".format(problem.index,
+                                                         PropTags.lookup(problem.proptag, hex(problem.proptag)),
+                                                         ExchangeErrors.lookup(problem.err, hex(problem.err)))
                                   for problem in status.problems)
             API.logger.error("Failed to adjust user quota:\n"+problems)
             DB.session.rollback()
@@ -157,6 +163,8 @@ def deleteUser(user):
         options = Config["options"]
         client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["domainPrefix"], True)
         client.unloadStore(maildir)
+    except pyexmdb.ExmdbError as err:
+        API.logger.error("Could not unload exmdb store: "+ExmdbCodes.lookup(err.code, hex(err.code)))
     except RuntimeError as err:
         API.logger.error("Could not unload exmdb store: "+err.args[0])
     if request.args.get("deleteFiles") == "true":

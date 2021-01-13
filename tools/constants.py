@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2020-2021 grammm GmbH
 
 SERIAL_ENDIAN = "little"  # Endianess used for binary serialization
 
@@ -53,6 +53,74 @@ class PropTypes(_ReverseLookup):
     def pyType(cls, value):
         value = value & 0xFFFF
         return int if value in cls.intTypes else float if value in cls.floatTypes else str
+
+
+class ExchangeErrors(_ReverseLookup):
+    ecSuccess = 0
+    ecUnknownUser = 0x000003EB
+    ecServerOOM = 0x000003F0
+    ecLoginPerm = 0x000003F2
+    ecNotSearchFolder = 0x00000461
+    ecNoReceiveFolder = 0x00000463
+    ecWrongServer = 0x00000478
+    ecBufferTooSmall = 0x0000047D
+    ecSearchFolderScopeViolation = 0x00000490
+    ecRpcFormat = 0x000004B6
+    ecNullObject = 0x000004B9
+    ecQuotaExceeded = 0x000004D9
+    ecMaxAttachmentExceeded = 0x000004DB
+    ecNotExpanded = 0x000004F7
+    ecNotCollapsed = 0x000004F8
+    ecDstNullObject = 0x00000503
+    ecMsgCycle = 0x00000504
+    ecTooManyRecips = 0x00000505
+    RPC_X_BAD_STUB_DATA = 0x000006F7
+    ecRejected = 0x000007EE
+    ecWarnWithErrors = 0x00040380
+    SYNC_W_CLIENT_CHANGE_NEWER = 0x00040821
+    ecError = 0x80004005
+    STG_E_ACCESSDENIED = 0x80030005
+    StreamSeekError = 0x80030019
+    ecNotSupported = 0x80040102
+    ecInvalidObject = 0x80040108
+    ecObjectModified = 0x80040109
+    ecNotFound = 0x8004010F
+    ecLoginFailure = 0x80040111
+    ecUnableToAbort = 0x80040114
+    ecRpcFailed = 0x80040115
+    ecTooComplex = 0x80040117
+    MAPI_E_UNKNOWN_CPID = 0x8004011E
+    MAPI_E_UNKNOWN_LCID = 0x8004011F
+    ecTooBig = 0x80040305
+    MAPI_E_DECLINE_COPY = 0x80040306
+    ecTableTooBig = 0x80040403
+    ecInvalidBookmark = 0x80040405
+    ecNotInQueue = 0x80040601
+    ecDuplicateName = 0x80040604
+    ecNotInitialized = 0x80040605
+    MAPI_E_FOLDER_CYCLE = 0x8004060B
+    EC_EXCEEDED_SIZE = 0x80040610
+    ecAmbiguousRecip = 0x80040700
+    SYNC_E_IGNORE = 0x80040801
+    SYNC_E_CONFLICT = 0x80040802
+    SYNC_E_NO_PARENT = 0x80040803
+    NotImplemented = 0x80040FFF
+    ecAccessDenied = 0x80070005
+    ecMAPIOOM = 0x8007000E
+    ecInvalidParam = 0x80070057
+
+
+class ExmdbCodes(_ReverseLookup):
+    SUCCESS = 0x00
+    ACCESS_DENY = 0x01
+    MAX_REACHED = 0x02
+    LACK_MEMORY = 0x03
+    MISCONFIG_PREFIX = 0x04
+    MISCONFIG_MODE = 0x05
+    CONNECT_INCOMPLETE = 0x06
+    PULL_ERROR = 0x07
+    DISPATCH_ERROR = 0x08
+    PUSH_ERROR = 0x09
 
 
 class PropTags(_ReverseLookup):
