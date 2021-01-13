@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2020-2021 grammm GmbH
 
 import api
 from api.core import API, secure
@@ -16,7 +16,7 @@ from tools.misc import AutoClean, createMapping
 from tools.storage import UserSetup
 from tools.pyexmdb import pyexmdb
 from tools.config import Config
-from tools.constants import PropTags
+from tools.constants import PropTags, PropTypes
 from tools.DataModel import InvalidAttributeError, MismatchROError
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
 
@@ -99,27 +99,35 @@ def patchUser(domainID, userID):
         return jsonify(message="Could not update: no valid JSON data"), 400
     if user.ldapImported and not data.get("ldapImported") == False:
         return jsonify(message="Cannot modify LDAP imported user"), 400
-    updateSize = False  # user and data and "maxSize" in data and data["maxSize"] != user.maxSize
+    props = data.get("properties")
+    storeprops = ("storagequotalimit", "prohibitreceivequota", "prohibitsendquota")
+    updateStore = props is not None and any(prop in props and props[prop] != user.getProp(prop) for prop in storeprops)
     try:
         user.fromdict(data)
-        DB.session.commit()
+        DB.session.flush()
     except (InvalidAttributeError, MismatchROError, ValueError) as err:
         DB.session.rollback()
         return jsonify(message=err.args[0]), 400
     except IntegrityError as err:
         DB.session.rollback()
         return jsonify(message="Could not update: invalid data", error=err.orig.args[1]), 400
-    if updateSize:
+    if updateStore:
         options = Config["options"]
-        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
-        propvals = (pyexmdb.TaggedPropval_u64(PropTags.PROHIBITRECEIVEQUOTA, data["maxSize"]*1024),
-                    pyexmdb.TaggedPropval_u64(PropTags.PROHIBITSENDQUOTA, data["maxSize"]*1024))
-        status = client.setStoreProperties(user.maildir, 0, propvals)
+        propvals = [pyexmdb.TaggedPropval_u64(user.properties[prop].tag, user.properties[prop].val)
+                    for prop in storeprops if prop in user.properties and user.properties[prop].type in PropTypes.intTypes]
+        try:
+            client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
+            status = client.setStoreProperties(user.maildir, 0, propvals)
+        except RuntimeError as err:
+            DB.session.rollback()
+            return jsonify(message="Failed to update store properties: "+err.args[0]), 500
         if len(status.problems):
-            problems = ",\n".join("\t{}: {} - {}".format(problem.index, PropTags.lookup(problem.proptag), problem.err)
+            problems = ",\n".join("\t{}: {} - {}".format(problem.index, problem.proptag, problem.err)
                                   for problem in status.problems)
             API.logger.error("Failed to adjust user quota:\n"+problems)
+            DB.session.rollback()
             return jsonify(message="Failed to set user quota"), 500
+    DB.session.commit()
     return jsonify(user.fulldesc())
 
 

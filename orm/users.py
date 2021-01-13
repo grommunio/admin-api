@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2020-2021 grammm GmbH
 
 from . import DB
 from tools.constants import PropTags, PropTypes
@@ -192,6 +192,9 @@ class Users(DataModel, DB.Model):
             perms = ARPR.query.filter(AURR.userID == self.ID).join(AR).join(AURR).all()
             self._permissions = Permissions.fromDB(perms)
         return self._permissions
+
+    def getProp(self, name):
+        return self.properties[name].val if name in self.properties else None
 
     @property
     def password(self):
