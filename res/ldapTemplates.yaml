@@ -29,6 +29,7 @@ common:
   wWWHomePage: businesshomepage
   jpegPhoto: thumbnailphoto
   userCertificate;binary: addressbookx509certificate
+  displayname: displayname
 ADS:
   department: departmentname
 OpenLDAP:
