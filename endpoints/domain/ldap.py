@@ -62,7 +62,7 @@ def downloadLdapUser():
         return jsonify(message="User not found"), 404
     domain = Domains.query.filter(Domains.domainname == userinfo.email.split("@")[1]).with_entities(Domains.ID).first()
     if domain is None:
-        jsonify(message="Cannot import user: Domain not found"), 400
+        return jsonify(message="Cannot import user: Domain not found"), 400
     if not DomainAdminPermission(domain.ID) in request.auth["user"].permissions():
         return jsonify(message="User not found"), 404
     user = Users.query.filter(Users.externID == ID).first() or\
