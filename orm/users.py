@@ -72,8 +72,10 @@ class Users(DataModel, DB.Model):
     maildir = DB.Column("maildir", DB.VARCHAR(128), nullable=False, server_default="")
     addressStatus = DB.Column("address_status", TINYINT, nullable=False, server_default="0")
     privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
-    _deprecated_maxSize = DB.Column("max_size", INTEGER(10), nullable=False, default=0)
     externID = DB.Column("externid", DB.VARBINARY(64))
+    _deprecated_maxSize = DB.Column("max_size", INTEGER(10), nullable=False, default=0)
+    _deprecated_addressType = DB.Column("address_type", TINYINT, nullable=False, server_default="0")
+    _deprecated_subType = DB.Column("sub_type", TINYINT, nullable=False, server_default="0")
 
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True,
@@ -175,6 +177,22 @@ class Users(DataModel, DB.Model):
             else:
                 self.username = username+"@"+domain.domainname
         DataModel.fromdict(self, patches, args, kwargs)
+        displaytype = self.propmap.get("displaytypeex", 0)
+        if displaytype in (0, 1, 7, 8):
+            self._deprecated_addressType, self._deprecated_subType = self._decodeDisplayType(displaytype)
+
+    @staticmethod
+    def _decodeDisplayType(displaytype):
+        if displaytype == 0:
+            return 0, 0
+        elif displaytype == 1:
+            return 2, 0
+        elif displaytype == 7:
+            return 0, 1
+        elif displaytype == 8:
+            return 0, 2
+        raise ValueError("Unknown display type "+str(displaytype))
+
 
     def baseName(self):
         return self.username.rsplit("@", 1)[0]
