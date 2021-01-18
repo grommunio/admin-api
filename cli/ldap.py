@@ -28,6 +28,7 @@ def cliLdapDownsync(args):
     from base64 import b64decode
     if not ldap.LDAP_available:
         print("LDAP is not available.")
+        return 12
     try:
         candidate = ldap.getUserInfo(b64decode(args.user))
     except:
@@ -129,6 +130,7 @@ def cliLdapSearch(args):
     from tools import ldap
     if not ldap.LDAP_available:
         print("LDAP is not available.")
+        return 2
     matches = ldap.searchUsers(args.query)
     if len(matches) == 0:
         print("No matches")
@@ -136,6 +138,61 @@ def cliLdapSearch(args):
     from base64 import b64encode
     for match in matches:
         print("{}: {} ({})".format(b64encode(match.ID).decode("ascii"), match.name, match.email))
+
+
+def cliLdapCheck(args):
+    from tools import ldap
+    if not ldap.LDAP_available:
+        print("LDAP is not available.")
+        return 2
+    from time import time
+    from orm import DB
+    from orm.users import Users
+    users = Users.query.filter(Users.externID != None).with_entities(Users.ID, Users.username, Users.externID, Users.maildir)\
+                       .all()
+    if len(users) == 0:
+        print("No LDAP users found")
+        return
+    print("Checking {} user{}...".format(len(users), "" if len(users) == 1 else "s"))
+    count, last = 0, time()
+    orphaned = []
+    for user in users:
+        if ldap.getUserInfo(user.externID) is None:
+            orphaned.append(user)
+        count += 1
+        if time()-last > 1:
+            last = time()
+            print("\t{}/{} checked, {} orphaned".format(count, len(users), len(orphaned)))
+    if len(orphaned) == 0:
+        print("Everything is ok")
+        return
+    print("LDAP entries of the following users could not be found:")
+    for user in orphaned:
+        print("\t"+user.username)
+    if args.remove:
+        if args.yes or _confirm("Delete all orphaned users? [y/N]: "):
+            from tools.config import Config
+            from tools.constants import ExmdbCodes
+            from tools.pyexmdb import pyexmdb
+            print("Unloading exmdb stores...")
+            try:
+                options = Config["options"]
+                client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
+                for user in orphaned:
+                    client.unloadStore(user.maildir)
+            except pyexmdb.ExmdbError as err:
+                print("WARNING: Could not unload exmdb store: "+ExmdbCodes.lookup(err.code, hex(err.code)))
+            except RuntimeError as err:
+                print("WARNING: Could not unload exmdb store: "+err.args[0])
+            if args.remove_maildirs:
+                import shutil
+                print("Removing mail directories...")
+                for user in orphaned:
+                    shutil.rmtree(user.maildir, ignore_errors=True)
+            deleted = Users.query.filter(Users.ID.in_(user.ID for user in orphaned)).delete(synchronize_session=False)
+            DB.session.commit()
+            print("Deleted {} user{}".format(deleted, "" if deleted == 1 else "s"))
+    return 1
 
 
 def _cliLdapParserSetup(subp: ArgumentParser):
@@ -151,6 +208,12 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     search = sub.add_parser("search")
     search.set_defaults(_handle=cliLdapSearch)
     search.add_argument("query")
+    check = sub.add_parser("check")
+    check.set_defaults(_handle=cliLdapCheck)
+    check.add_argument("-r", "--remove", action="store_true", help="Prompt for user deletion if orphaned users exist")
+    check.add_argument("-y", "--yes", action="store_true", help="Do not prompt for user deletion (-d is required)")
+    check.add_argument("-m", "--remove-maildirs", action="store_true", help="When deleting users, also remove their mail\
+                                                                             directories from disk")
 
 
 @Cli.command("ldap", _cliLdapParserSetup)

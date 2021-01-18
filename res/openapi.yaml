@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.14.4
+  version: 0.14.5
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1344,6 +1344,76 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           description: The user already exists but is not associated with the LDAP object
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /ldap/check:
+    get:
+      summary: Check status of ldap imported users
+      tags:
+        - LDAP
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: A list of orphaned users is returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orphaned:
+                    description: List of users whose externID could not be found in LDAP
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ID:
+                          $ref: '#/components/schemas/ID'
+                        username:
+                          type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      summary: Check status of ldap import users and delete orphaned
+      tags:
+        - LDAP
+      security:
+        - JWTCookie: []
+      parameters:
+        - name: deleteFiles
+          description: Delete user files on disk
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Orphaned users were deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    description: List of users that were deleted
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ID:
+                          $ref: '#/components/schemas/ID'
+                        username:
+                          type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
         '503':

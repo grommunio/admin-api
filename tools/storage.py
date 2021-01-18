@@ -156,6 +156,9 @@ class DomainSetup(SetupContext):
             self.createHomedir()
             self.createExmdb()
             self.success = True
+        except PermissionError as err:
+            logging.error(traceback.format_exc())
+            self.error = "Could not create home directory ({})".format(err.args[1])
         except:
             logging.error(traceback.format_exc())
             self.error = "Unknown error"
@@ -263,6 +266,9 @@ class UserSetup(SetupContext):
             self.createExmdb()
             self.createMidb()
             self.success = True
+        except PermissionError as err:
+            logging.error(traceback.format_exc())
+            self.error = "Could not create home directory ({})".format(err.args[1])
         except:
             logging.error(traceback.format_exc())
             self.error = "Unknown error"

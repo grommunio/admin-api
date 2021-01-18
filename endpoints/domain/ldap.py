@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020 grammm GmbH
 
+import shutil
+
 from base64 import b64decode, b64encode
 from flask import jsonify, request
 
@@ -10,8 +12,11 @@ from api.core import API, secure
 from api.security import checkPermissions
 
 from tools import ldap
+from tools.config import Config
+from tools.constants import ExmdbCodes
 from tools.DataModel import InvalidAttributeError, MismatchROError
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
+from tools.pyexmdb import pyexmdb
 from tools.storage import UserSetup
 
 from orm import DB
@@ -71,6 +76,7 @@ def downloadLdapUser():
         if user.externID != ID and not force == "true":
             return jsonify(message="Cannot import user: User exists "+
                            ("locally" if user.externID is None else "and is associated with another LDAP object")), 409
+        checkPermissions(DomainAdminPermission(user.domainID))
         userdata = ldap.downsyncUser(ID, user.propmap)
         try:
             user.fromdict(userdata)
@@ -86,6 +92,7 @@ def downloadLdapUser():
         return jsonify(message="Cannot import user: "+error), 400
     user = Users(userdata)
     user.externID = ID
+    checkPermissions(DomainAdminPermission(user.domainID))
     DB.session.add(user)
     DB.session.flush()
     with UserSetup(user) as us:
@@ -115,3 +122,44 @@ def updateLdapUser(domainID, userID):
     user.externID = ldapID
     DB.session.commit()
     return jsonify(user.fulldesc())
+
+
+@API.route(api.BaseRoute+"/ldap/check", methods=["GET", "DELETE"])
+@secure(requireDB=True, authLevel="user")
+def checkLdapUsers():
+    checkPermissions(DomainAdminPermission("*"))
+    if not ldap.LDAP_available:
+        return jsonify(message="LDAP is not available"), 503
+    permissions = request.auth["user"].permissions()
+    if SystemAdminPermission in permissions:
+        domainFilter = ()
+    else:
+        domainIDs = {permission.domainID for permission in permissions if isinstance(permission, DomainAdminPermission)}
+        domainFilter = (Users.domainID == domainID for domainID in domainIDs)
+    users = Users.query.filter(Users.externID != None, *domainFilter)\
+                       .with_entities(Users.ID, Users.username, Users.externID, Users.maildir)\
+                       .all()
+    if len(users) == 0:
+        return jsonify(message="No LDAP users found", **{"orphaned" if request.method == "GET" else "deleted": []})
+    orphaned = [user for user in users if ldap.getUserInfo(user.externID) is None]
+    if len(orphaned) == 0:
+        return jsonify(message="All LDAP users are valid", **{"orphaned" if request.method == "GET" else "deleted": []})
+    orphanedData = [{"ID": user.ID, "username": user.username} for user in orphaned]
+    if request.method == "GET":
+        return jsonify(orphaned=orphanedData)
+    deleteMaildirs = request.args.get("deleteFiles") == "true"
+    try:
+        options = Config["options"]
+        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["domainPrefix"], True)
+        for user in orphaned:
+            client.unloadStore(user.maildir)
+    except pyexmdb.ExmdbError as err:
+        API.logger.error("Could not unload exmdb store: "+ExmdbCodes.lookup(err.code, hex(err.code)))
+    except RuntimeError as err:
+        API.logger.error("Could not unload exmdb store: "+err.args[0])
+    if deleteMaildirs:
+        for user in orphaned:
+            shutil.rmtree(user.maildir, ignore_errors=True)
+    Users.query.filter(Users.ID.in_(user.ID for user in orphaned)).delete(synchronize_session=False)
+    DB.session.commit()
+    return jsonify(deleted=orphanedData)
