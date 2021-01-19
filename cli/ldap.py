@@ -46,7 +46,7 @@ def _getCandidate(expr, auto):
     if candidate is None:
         matches = ldap.searchUsers(expr)
         if len(matches) == 0:
-            print("No user found")
+            print("Could not find user matching '{}'".format(expr))
             return ERR_NO_USER
         if len(matches) == 1:
             candidate = matches[0]
@@ -71,6 +71,16 @@ def _getCandidate(expr, auto):
                 except ValueError:
                     continue
     return candidate
+
+
+def _getCandidates(expr):
+    from base64 import b64decode
+    from tools import ldap
+    try:
+        candidate = ldap.getUserInfo(b64decode(expr))
+    except:
+        candidate = None
+    return [candidate] if candidate is not None else ldap.searchUsers(expr)
 
 
 def _downsyncUser(candidate, yes, auto, force):
@@ -208,11 +218,11 @@ def cliLdapSearch(args):
     from tools import ldap
     if not ldap.LDAP_available:
         print("LDAP is not available.")
-        return 2
+        return ERR_NO_LDAP
     matches = ldap.searchUsers(args.query)
     if len(matches) == 0:
         print("No matches")
-        return 1
+        return ERR_NO_USER
     from base64 import b64encode
     for match in matches:
         print("{}: {} ({})".format(b64encode(match.ID).decode("ascii"), match.name, match.email))
@@ -222,7 +232,7 @@ def cliLdapCheck(args):
     from tools import ldap
     if not ldap.LDAP_available:
         print("LDAP is not available.")
-        return 2
+        return ERR_NO_LDAP
     from time import time
     from orm import DB
     from orm.users import Users
@@ -273,6 +283,18 @@ def cliLdapCheck(args):
     return ERR_NO_USER
 
 
+def cliLdapDump(args):
+    from tools import ldap
+    from base64 import b64encode
+    if not ldap.LDAP_available:
+        print("LDAP is not available.")
+        return ERR_NO_LDAP
+    for expr in args.user:
+        for candidate in _getCandidates(expr):
+            print("ID: "+b64encode(candidate.ID).decode("ascii"))
+            print(str(ldap.dumpUser(candidate.ID)))
+
+
 def _cliLdapParserSetup(subp: ArgumentParser):
     sub = subp.add_subparsers()
     info = sub.add_parser("info")
@@ -294,6 +316,9 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     check.add_argument("-r", "--remove", action="store_true", help="Prompt for user deletion if orphaned users exist")
     check.add_argument("-m", "--remove-maildirs", action="store_true", help="When deleting users, also remove their mail "\
                                                                              "directories from disk")
+    dump = sub.add_parser("dump")
+    dump.set_defaults(_handle=cliLdapDump)
+    dump.add_argument("user", nargs="+", help="User ID or search query string")
 
 
 @Cli.command("ldap", _cliLdapParserSetup)

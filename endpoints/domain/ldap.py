@@ -96,7 +96,6 @@ def downloadLdapUser():
     try:
         ID = b64decode(request.args["ID"], b".-")
     except BaseException as err:
-        API.logger.error(request.args["ID"]+": "+err.args[0])
         return jsonify(message="Invalid ID"), 400
     force = request.args.get("force")
     userinfo = ldap.getUserInfo(ID)
@@ -200,3 +199,19 @@ def checkLdapUsers():
     Users.query.filter(Users.ID.in_(user.ID for user in orphaned)).delete(synchronize_session=False)
     DB.session.commit()
     return jsonify(deleted=orphanedData)
+
+
+@API.route(api.BaseRoute+"/ldap/dump", methods=["GET"])
+@secure(requireDB=True, authLevel="user")
+def dumpLdapUsers():
+    checkPermissions(DomainAdminPermission("*"))
+    if not ldap.LDAP_available:
+        return jsonify(message="LDAP is not available"), 503
+    try:
+        ID = b64decode(request.args["ID"], b".-")
+    except BaseException as err:
+        return jsonify(message="Invalid ID"), 400
+    ldapuser = ldap.dumpUser(ID)
+    if ldapuser is None:
+        return jsonify(message="User not found"), 404
+    return jsonify(data=str(ldapuser))

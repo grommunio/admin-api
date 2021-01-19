@@ -305,6 +305,23 @@ def searchUsers(query, domains=None):
             for result in LDAPConn.entries]
 
 
+def dumpUser(ID):
+    """Download complete user description.
+
+    Parameters
+    ----------
+    ID : str ot bytes
+        LDAP object ID of the user
+
+    Returns
+    -------
+    ldap3.abstract.entry.Entry
+        LDAP object or None if not found or ambiguous
+    """
+    LDAPConn.search(_searchBase(), _matchFilters(ID), attributes=["*", ldapconf["objectID"]])
+    return LDAPConn.entries[0] if len(LDAPConn.entries) == 1 else None
+
+
 def _createConnection(*args, **kwargs):
     conn = ldap3.Connection(*args, **kwargs)
     if ldapconf["connection"].get("starttls", False):
