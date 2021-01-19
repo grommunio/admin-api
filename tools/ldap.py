@@ -85,13 +85,35 @@ def _matchFilters(ID):
     Returns
     -------
     str
-        A string including all search filters.
+        A string containing LDAP match filter expression.
     """
     ldapconf = Config["ldap"]
     filters = ")(".join(f for f in ldapconf.get("users", {}).get("filters", ()))
     return "(&({}={}){})".format(ldapconf["objectID"],
                                  escape_filter_chars(ID),
                                  ("("+filters+")") if len(filters) else "")
+
+
+def _matchFiltersMulti(IDs):
+    """Generate match filters string for multiple IDs.
+
+    Includes a filter for each entry in ldap.users.filters and adds ID filters.
+
+    Parameters
+    ----------
+    IDs : list of bytes or str
+        List of IDs to match
+
+    Returns
+    -------
+    str
+        A string containing LDAP match filter expression.
+    """
+    ldapconf = Config["ldap"]
+    filters = ")(".join(f for f in ldapconf.get("users", {}).get("filters", ()))
+    IDfilters = "(|{})".format("".join("({}={})".format(ldapconf["objectID"], escape_filter_chars(ID)) for ID in IDs))
+    return "(&({}){})".format(filters, IDfilters)
+
 
 def _searchFilters(query, domains=None):
     """Generate search filters string.
@@ -111,11 +133,14 @@ def _searchFilters(query, domains=None):
         A string including all search filters.
     """
     ldapconf = Config["ldap"]
-    query = escape_filter_chars(query)
     username = ldapconf["users"]["username"]
     filterexpr = "".join("("+f+")" for f in ldapconf["users"].get("filters", ()))
-    searchexpr = "(|{})".format("".join(("("+sattr+"=*"+query+"*)" for sattr in ldapconf["users"]["searchAttributes"])))
     domainexpr = "(|{})".format("".join("({}=*@{})".format(username, d) for d in domains)) if domains is not None else ""
+    if query is not None:
+        query = escape_filter_chars(query)
+        searchexpr = "(|{})".format("".join(("("+sattr+"=*"+query+"*)" for sattr in ldapconf["users"]["searchAttributes"])))
+    else:
+        searchexpr = ""
     return "(&{}{}{})".format(filterexpr, searchexpr, domainexpr)
 
 
@@ -172,13 +197,13 @@ def getUserInfo(ID):
         Object ID of the LDAP user
     Returns
     -------
-    str
-        User e-mail
+    GenericObject
+        Object containing LDAP ID, username and display name of the user
     """
     if not LDAP_available:
         return None
     users = ldapconf["users"]
-    username, name= users["username"], users["displayName"]
+    username, name = users["username"], users["displayName"]
     LDAPConn.search(_searchBase(), _matchFilters(ID), attributes=[username, name, ldapconf["objectID"]])
     if len(LDAPConn.response) != 1:
         return None
@@ -186,6 +211,33 @@ def getUserInfo(ID):
                          username=LDAPConn.entries[0][username].value,
                          name=LDAPConn.entries[0][name].value,
                          email=LDAPConn.entries[0][username].value)
+
+
+def getAll(IDs):
+    """Get user information for each ID.
+
+    Queries the same information as getUserInfo.
+
+    Parameters
+    ----------
+    IDs : list of bytes or str
+        IDs o search
+
+    Returns
+    -------
+    list
+        List of GenericObjects with information about found users
+    """
+    if not LDAP_available:
+        return []
+    users = ldapconf["users"]
+    username, name= users["username"], users["displayName"]
+    LDAPConn.search(_searchBase(), _matchFiltersMulti(IDs), attributes=[username, name, ldapconf["objectID"]])
+    return [GenericObject(ID=entry[ldapconf["objectID"]].raw_values[0],
+                          username=entry[username].value,
+                          name=entry[name].value,
+                          email=entry[username].value)
+            for entry in LDAPConn.entries]
 
 
 def downsyncUser(ID, props=None):

@@ -6,45 +6,55 @@ from argparse import ArgumentParser
 
 from . import Cli
 
+SUCCESS = 0
+ERR_NO_LDAP = 1  # LDAP not available
+ERR_GENERIC = 2  # Something went wrong
+ERR_USR_ABRT = 3  # User aborted
+ERR_DECLINE = 4  # User declined prompt
+ERR_NO_USER = 5  # LDAP User not found
+ERR_AMBIG = 6  # Request was ambiguous
+ERR_DB = 7  # Error occured when communicating with the database
+ERR_CONFLICT = 8  # Target DB user is associated with another LDAP object
+ERR_COMMIT = 9  # Error during database commit
+ERR_INVALID_DATA = 10  # User data check failed
+ERR_SETUP = 11  # Error during user setup
+
 
 def _confirm(prompt=""):
     try:
-        return input(prompt).lower() == "y"
+        return SUCCESS if input(prompt).lower() == "y" else ERR_DECLINE
     except:
-        return False
+        return ERR_USR_ABRT
 
 
 def cliLdapInfo(args):
     from tools import ldap
     if not ldap.LDAP_available:
         print("LDAP is not available.")
-        return 1
+        return ERR_NO_LDAP
     print("Successfully connected to {} as {}".format(ldap.ldapconf["connection"]["server"],
                                                       ldap.ldapconf["connection"].get("bindUser") or "anonymous"))
 
 
-def cliLdapDownsync(args):
+def _getCandidate(expr, auto):
     from tools import ldap
     from base64 import b64decode
-    if not ldap.LDAP_available:
-        print("LDAP is not available.")
-        return 12
     try:
-        candidate = ldap.getUserInfo(b64decode(args.user))
+        candidate = ldap.getUserInfo(b64decode(expr))
     except:
         candidate = None
     if candidate is None:
-        matches = ldap.searchUsers(args.user)
+        matches = ldap.searchUsers(expr)
         if len(matches) == 0:
             print("No user found")
-            return 1
+            return ERR_NO_USER
         if len(matches) == 1:
             candidate = matches[0]
         else:
-            if args.auto:
-                print("Multiple candidates for '{}' found - aborting".format(args.user))
-                return 2
-            print("Found {} users matching '{}':".format(len(matches), args.user))
+            if auto:
+                print("Multiple candidates for '{}' found - aborting".format(expr))
+                return ERR_AMBIG
+            print("Found {} users matching '{}':".format(len(matches), expr))
             for i in range(len(matches)):
                 print("{: 2d}: {} ({})".format(i+1, matches[i].name, matches[i].email))
             candidate = None
@@ -57,20 +67,29 @@ def cliLdapDownsync(args):
                     candidate = matches[index]
                 except (EOFError, KeyboardInterrupt):
                     print("k bye.")
-                    return 3
+                    return ERR_USR_ABRT
                 except ValueError:
                     continue
-    if args.yes or args.auto:
+    return candidate
+
+
+def _downsyncUser(candidate, yes, auto, force):
+    from tools import ldap
+    from base64 import b64decode
+
+    if yes or auto:
         print("Synchronizing user '{}' ({})".format(candidate.name, candidate.email))
     else:
-        if not _confirm("Synchronize user '{}' ({})? [y/N]: ".format(candidate.name, candidate.email)):
-            print("Aborted.")
-            return 4
+        result = _confirm("Synchronize user '{}' ({})? [y/N]: ".format(candidate.name, candidate.email))
+        if result != SUCCESS:
+            if result == ERR_USR_ABRT:
+                print("\nAborted.")
+            return result
 
     from orm import DB
     if DB is None:
         print("Database not configured")
-        return 6
+        return ERR_DB
     from orm.domains import Domains
     from orm.users import Users
     from orm import roles
@@ -82,48 +101,107 @@ def cliLdapDownsync(args):
     user = Users.query.filter(Users.externID == candidate.ID).first() or\
         Users.query.filter(Users.username == candidate.email).first()
     if user is not None:
-        if user.externID != candidate.ID and not args.force:
-            if args.auto:
+        if user.externID != candidate.ID and not force:
+            if auto:
                 print("Cannot import user: User exists " +
                       ("locally" if user.externID is None else "and is associated with another LDAP object"))
-                return 7
+                return ERR_CONFLICT
             else:
-                if not _confirm("Force update "+("local only user" if user.externID is None else
-                                                 "user linked to different LDAP object")+"? [y/N]: "):
-                    print("Aborted")
-                    return 8
+                result = _confirm("Force update "+("local only user" if user.externID is None else
+                                                   "user linked to different LDAP object")+"? [y/N]: ")
+                if result != SUCCESS:
+                    if result == ERR_USR_ABRT:
+                        print("Aborted")
+                    return result
         userdata = ldap.downsyncUser(candidate.ID, user.propmap)
         try:
             user.fromdict(userdata)
             user.externID = candidate.ID
             DB.session.commit()
             print("User updated.")
-            return 0
+            return SUCCESS
         except (InvalidAttributeError, MismatchROError, ValueError) as err:
             DB.session.rollback()
-            return print("Failed to update user: "+err.args)
-        return 9
+            print("Failed to update user: "+err.args[0])
+            return ERR_COMMIT
 
     userdata = ldap.downsyncUser(candidate.ID)
     if userdata is None:
         print("Error retrieving user")
-        return 9
+        return ERR_NO_USER
     error = Users.checkCreateParams(userdata)
     if error is not None:
         print("Cannot import user: "+error)
-        return 10
-    user = Users(userdata)
-    user.externID = candidate.ID
-    DB.session.add(user)
-    DB.session.flush()
+        return ERR_INVALID_DATA
+    try:
+        user = Users(userdata)
+        user.externID = candidate.ID
+        DB.session.add(user)
+        DB.session.flush()
+    except (InvalidAttributeError, MismatchROError, ValueError) as err:
+        DB.session.rollback()
+        print("Failed to update user: "+err.args[0])
+        return ERR_COMMIT
     from tools.storage import UserSetup
     with UserSetup(user) as us:
         us.run()
     if not us.success:
         print("Error during user setup: ", us.error), us.errorCode
-        return 11
+        return ERR_SETUP
     DB.session.commit()
     print("User '{}' created with ID {}.".format(user.username, user.ID))
+    return SUCCESS
+
+
+def cliLdapDownsync(args):
+    from tools import ldap
+    if not ldap.LDAP_available:
+        print("LDAP is not available.")
+        return ERR_NO_LDAP
+    error = False
+    if args.user is not None and len(args.user) != 0:
+        for expr in args.user:
+            candidate = _getCandidate(expr, args.auto)
+            if isinstance(candidate, int):
+                error = True
+                if candidate == ERR_USR_ABRT:
+                    break
+                continue
+            result = _downsyncUser(candidate, args.yes, args.auto, args.force)
+            if result == ERR_USR_ABRT:
+                break
+            error = error or result != SUCCESS
+        return ERR_GENERIC if error else SUCCESS
+    elif args.complete:
+        from time import time
+        candidates = ldap.searchUsers(None)
+        if len(candidates) == 0:
+            print("No LDAP users found.")
+            return SUCCESS
+        print("Synchronizing {} user{}...".format(len(candidates), "" if len(candidates) == 1 else "s"))
+        error = False
+        for candidate in candidates:
+            result = _downsyncUser(candidate, args.yes, args.auto, args.force)
+            error = error or result != SUCCESS
+            if result == ERR_USR_ABRT:
+                break
+        return ERR_GENERIC if error else SUCCESS
+    from orm.users import Users
+    users = Users.query.filter(Users.externID != None).with_entities(Users.externID).all()
+    if len(users) == 0:
+        print("No imported users found")
+        return SUCCESS
+    candidates = ldap.getAll(user.externID for user in users)
+    if len(candidates) != len(users):
+        print("Some ldap references seem to be broken - please run ldap check")
+    error = False
+    print("Synchronizing {} user{}...".format(len(candidates), "" if len(candidates) == 1 else "s"))
+    for candidate in candidates:
+        result = _downsyncUser(candidate, args.yes, args.auto, args.force)
+        error = error or result != SUCCESS
+        if result == ERR_USR_ABRT:
+            break
+    return ERR_GENERIC if error else SUCCESS
 
 
 def cliLdapSearch(args):
@@ -170,7 +248,7 @@ def cliLdapCheck(args):
     for user in orphaned:
         print("\t"+user.username)
     if args.remove:
-        if args.yes or _confirm("Delete all orphaned users? [y/N]: "):
+        if args.yes or _confirm("Delete all orphaned users? [y/N]: ") == SUCCESS:
             from tools.config import Config
             from tools.constants import ExmdbCodes
             from tools.pyexmdb import pyexmdb
@@ -192,7 +270,7 @@ def cliLdapCheck(args):
             deleted = Users.query.filter(Users.ID.in_(user.ID for user in orphaned)).delete(synchronize_session=False)
             DB.session.commit()
             print("Deleted {} user{}".format(deleted, "" if deleted == 1 else "s"))
-    return 1
+    return ERR_NO_USER
 
 
 def _cliLdapParserSetup(subp: ArgumentParser):
@@ -201,19 +279,21 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     info.set_defaults(_handle=cliLdapInfo)
     downsync = sub.add_parser("downsync")
     downsync.set_defaults(_handle=cliLdapDownsync)
-    downsync.add_argument("user", help="LDAP ID or user search query string")
+    downsync.add_argument("user", nargs="*", help="LDAP ID or user search query string. If omitted, all users linked to an "\
+                                                  "LDAP object are updated.")
+    downsync.add_argument("-a", "--auto", action="store_true", help="Do not prompt, exit with error instead. Implies -y.")
+    downsync.add_argument("-c", "--complete", action="store_true", help="Import/update all users in the ldap tree")
     downsync.add_argument("-f", "--force", action="store_true", help="Force synchronization of unassociated users")
     downsync.add_argument("-y", "--yes", action="store_true", help="Proceed automatically if target is unambiguous")
-    downsync.add_argument("-a", "--auto", action="store_true", help="Do not prompt, exit with error instead. Implies -y")
     search = sub.add_parser("search")
     search.set_defaults(_handle=cliLdapSearch)
     search.add_argument("query")
     check = sub.add_parser("check")
     check.set_defaults(_handle=cliLdapCheck)
+    check.add_argument("-y", "--yes", action="store_true", help="Do not prompt for user deletion (only with -r)")
     check.add_argument("-r", "--remove", action="store_true", help="Prompt for user deletion if orphaned users exist")
-    check.add_argument("-y", "--yes", action="store_true", help="Do not prompt for user deletion (-d is required)")
-    check.add_argument("-m", "--remove-maildirs", action="store_true", help="When deleting users, also remove their mail\
-                                                                             directories from disk")
+    check.add_argument("-m", "--remove-maildirs", action="store_true", help="When deleting users, also remove their mail "\
+                                                                             "directories from disk")
 
 
 @Cli.command("ldap", _cliLdapParserSetup)

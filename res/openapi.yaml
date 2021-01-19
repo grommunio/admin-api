@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.14.5
+  version: 0.14.6
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1418,6 +1418,46 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+
+  /ldap/downsync:
+    post:
+      summary: Update all LDAP imported users
+      tags:
+        - LDAP
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Update process successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    description: List of updated users
+                    items:
+                      type: object
+                      properties:
+                        ID:
+                          $ref: '#/components/schemas/ID'
+                        username:
+                          type: string
+                        code:
+                          type: integer
+                          description: HTTP-like status code of the user update
+                          enum: [200, 404, 500, 503]
+                        message:
+                          type: string
+                          description: Update message
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
 
 components:
   securitySchemes:

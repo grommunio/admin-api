@@ -14,7 +14,6 @@ common:
   o: childrensnames
   l: locality
   title: title
-  userCertificate: usercertificate
   initials: initials
   preferredLanguage: language
   employeeNumber: organizationalidnumber
@@ -27,8 +26,6 @@ common:
   postOfficeBox: postofficebox
   assistant: assistant
   wWWHomePage: businesshomepage
-  jpegPhoto: thumbnailphoto
-  userCertificate;binary: addressbookx509certificate
   displayname: displayname
 ADS:
   department: departmentname

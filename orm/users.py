@@ -119,7 +119,7 @@ class Users(DataModel, DB.Model):
     def checkCreateParams(data):
         from orm.domains import Domains
         from tools.license import getLicense
-        if Users.query.count() >= getLicense().users:
+        if Users.query.filter(Users.ID != 0).count() >= getLicense().users:
             return "License user limit exceeded"
         if "domainID" in data:
             domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
@@ -302,7 +302,7 @@ class Users(DataModel, DB.Model):
 class UserProperties(DataModel, DB.Model):
     __tablename__ = "user_properties"
 
-    supportedTypes = PropTypes.intTypes | PropTypes.floatTypes | {PropTypes.STRING, PropTypes.WSTRING, PropTypes.BINARY}
+    supportedTypes = PropTypes.intTypes | PropTypes.floatTypes | {PropTypes.STRING, PropTypes.WSTRING}
 
     userID = DB.Column("user_id", INTEGER(unsigned=True), ForeignKey(Users.ID), primary_key=True)
     tag = DB.Column("proptag", INTEGER(unsigned=True), primary_key=True, index=True)
@@ -332,7 +332,7 @@ class UserProperties(DataModel, DB.Model):
         if tag is None:
             raise ValueError("Unknown PropTag '{}'".format(value))
         if tag & 0xFFFF not in self.supportedTypes:
-            raise ValueError("This tag type is not supported")
+            raise ValueError("{}: Tag type {} is not supported".format(PropTags.lookup(tag), PropTypes.lookup(tag)))
         self.tag = tag
 
     @property
@@ -357,7 +357,8 @@ class UserProperties(DataModel, DB.Model):
                     raise ValueError("Invalid date '{}'".format(value))
             value = ntTime(time.mktime(value.timetuple()))
         if type(value) != PropTypes.pyType(self.type):
-            raise ValueError("Value type does not match tag type")
+            raise ValueError("Type of value {} does not match type of tag {} ({})".format(value, self.name,
+                                                                                          PropTypes.lookup(self.tag)))
         if self.type == PropTypes.BINARY:
             self._propvalbin = value
         else:

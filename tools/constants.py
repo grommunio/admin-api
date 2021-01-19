@@ -52,7 +52,7 @@ class PropTypes(_ReverseLookup):
     @classmethod
     def pyType(cls, value):
         value = value & 0xFFFF
-        return int if value in cls.intTypes else float if value in cls.floatTypes else str
+        return int if value in cls.intTypes else float if value in cls.floatTypes else bytes if value == cls.BINARY else str
 
 
 class ExchangeErrors(_ReverseLookup):

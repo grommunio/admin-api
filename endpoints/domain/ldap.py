@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2020 grammm GmbH
 
 import shutil
+import traceback
 
 from base64 import b64decode, b64encode
 from flask import jsonify, request
@@ -46,6 +47,42 @@ def searchLdap():
         if len(domainFilters) else None
     ldapusers = ldap.searchUsers(request.args["query"], domainNames)
     return jsonify(data=[{"ID": b64encode(u.ID, b".-").decode("ascii"), "name": u.name, "email": u.email} for u in ldapusers])
+
+
+@API.route(api.BaseRoute+"/ldap/downsync", methods=["POST"])
+@secure(requireDB=True, authLevel="user")
+def ldapDownsyncAll():
+    checkPermissions(DomainAdminPermission("*"))
+    if not ldap.LDAP_available:
+        return jsonify(message="LDAP is not available"), 503
+    permissions = request.auth["user"].permissions()
+    if SystemAdminPermission() in permissions:
+        domainFilters = ()
+    else:
+        domainIDs = {permission.domainID for permission in permissions if isinstance(permission, DomainAdminPermission)}
+        if len(domainIDs) == 0:
+            return jsonify(data=[])
+        domainFilters = () if "*" in domainIDs else (Domains.ID.in_(domainIDs),)
+    users = Users.optimized_query(2).filter(Users.externID != None, *domainFilters).all()
+    syncStatus = []
+    for user in users:
+        userdata = ldap.downsyncUser(user.externID)
+        if userdata is None:
+            syncStatus.append({"ID": user.ID, "username": user.username, "code": 404, "message": "LDAP object not found"})
+            continue
+        try:
+            user.fromdict(userdata)
+            syncStatus.append({"ID": user.ID, "username": user.username, "code": 200, "message": "Synchronization successful"})
+            DB.session.commit()
+        except (MismatchROError, InvalidAttributeError, ValueError):
+            API.logger.error(traceback.format_exc())
+            syncStatus.append({"ID": user.ID, "username": user.username, "code": 500, "message": "Synchronization error"})
+            DB.session.rollback()
+        except BaseException as err:
+            API.logger.error(traceback.format_exc())
+            syncStatus.append({"ID": user.ID, "username": user.username, "code": 503, "message": "Database error"})
+            DB.session.rollback()
+    return jsonify(data=syncStatus)
 
 
 @API.route(api.BaseRoute+"/ldap/importUser", methods=["POST"])
