@@ -29,25 +29,24 @@ def cliRun(args):
 
 
 def _versionParserSetup(subp: ArgumentParser):
-    components = subp.add_mutually_exclusive_group()
-    components.add_argument("--api", "-a", action="store_true", help="Print API version")
-    components.add_argument("--backend", "-b", action="store_true", help="Print Backend version")
-    components.add_argument("--combined", "-c", action="store_true", help="Print combined version")
+    subp.add_argument("--api", "-a", action="store_true", help="Print API version")
+    subp.add_argument("--backend", "-b", action="store_true", help="Print Backend version")
+    subp.add_argument("--combined", "-c", action="store_true", help="Print combined version")
 
 
 @Cli.command("version", _versionParserSetup)
 def cliVersion(args):
     from api import backendVersion, apiVersion
+    if args.api:
+        print(apiVersion)
     if args.backend:
         print(backendVersion)
-    elif args.combined:
+    if args.combined or not any((args.api, args.backend, args.combined)):
         vdiff = int(backendVersion.rsplit(".", 1)[1])-int(apiVersion.rsplit(".", 1)[1])
         if vdiff == 0:
             print(apiVersion)
         else:
             print("{}{:+}".format(apiVersion, vdiff))
-    else:
-        print(apiVersion)
 
 
 @Cli.command("chkconfig")
@@ -97,3 +96,31 @@ def cliTaginfo(args):
         propname = PropTags.lookup(ID, "unknown")
         proptype = PropTypes.lookup(ID, "unknown")
         print("0x{:x} ({}): {}, type {}".format(ID, ID, propname, proptype))
+
+
+def _setupCliBatchMode(subp: ArgumentParser):
+    subp.description = "Start batch mode to process multiple CLI calls in a single session"
+
+
+@Cli.command("batch")
+def cliBatchMode(args):
+    import shlex
+    import sys
+    interactive = sys.stdin.isatty()
+    if interactive:
+        print("grammm-admin batch mode. Type exit or press CTRL+D to exit.")
+    try:
+        while True:
+            command = input("grammm-admin> " if interactive else "").strip()
+            if command == "":
+                continue
+            elif command == "exit":
+                break
+            try:
+                Cli.execute(shlex.split(command))
+            except SystemExit:
+                pass
+    except KeyboardInterrupt:
+        print("Received interrupt - exiting")
+    except EOFError:
+        print()

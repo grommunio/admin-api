@@ -66,35 +66,34 @@ def _passwdParserSetup(subp: ArgumentParser):
 
 @Cli.command("passwd", _passwdParserSetup)
 def setUserPassword(args):
-    import logging
     from orm.users import DB, Users
     import orm.roles
     if args.user is not None:
         user = Users.query.filter(Users.username == args.user).first()
         if user is None:
-            logging.error("User '{}' not found.")
+            print("User '{}' not found.")
             return 1
         if user.externID is not None:
-            logging.error("Cannot change password of LDAP user")
+            print("Cannot change password of LDAP user")
             return 2
     else:
         user = Users.query.filter(Users.ID == 0).first()
         if user is None:
-            logging.info("System admin user not found, creating...")
+            print("System admin user not found, creating...")
             DB.session.execute("SET sql_mode='NO_AUTO_VALUE_ON_ZERO';")
             user, _ = createAdmin()
             DB.session.add(user)
-    logging.info("Setting password for user '{}'".format(user.username))
+    print("Setting password for user '{}'".format(user.username))
     if args.auto:
         password = mkPasswd(args.length)
-        logging.info("New password is "+password)
+        print("New password is "+password)
     elif args.password is not None:
         password = args.password
     else:
         password = getpass("Password: ")
         if getpass("Retype password: ") != password:
-            logging.error("Passwords do not match, aborting.")
+            print("Passwords do not match, aborting.")
             return 3
     user.password = password
     DB.session.commit()
-    logging.info("Password updated")
+    print("Password updated")
