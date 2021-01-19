@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.14.7
+  version: 0.14.8
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1646,9 +1646,14 @@ components:
         publicAddress:
           type: boolean
           description: Public address privilege
-        ldapImported:
-          type: boolean
-          description: Whether the user is bound to an LDAP object
+        ldapID:
+          type: string
+          nullable: true
+          description: Base64 encoded LDAP object ID
+        ldapIDRaw:
+          type: string
+          nullable: true
+          description: LDAP escaped LDAP object ID
     userInit:
       type: object
       additionalProperties: false
@@ -1723,10 +1728,11 @@ components:
         publicAddress:
           type: boolean
           description: Public address privilege
-        ldapImported:
-          type: boolean
+        ldapID:
+          type: string
           description: Detach imported user from LDAP object
-          enum: [false]
+          nullable: true
+          enum: [null]
     publicFolder:
       type: object
       properties:

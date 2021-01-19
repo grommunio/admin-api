@@ -74,7 +74,7 @@ def setUserPassword(args):
         if user is None:
             logging.error("User '{}' not found.")
             return 1
-        if user.ldapImported:
+        if user.externID is not None:
             logging.error("Cannot change password of LDAP user")
             return 2
     else:

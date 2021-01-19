@@ -159,7 +159,7 @@ def loginUser(username, password):
     user: Users = Users.query.filter(Users.username == username).first()
     if user is None:
         return False, "Invalid username or password"
-    if user.ldapImported:
+    if user.externID is not None:
         error = ldap.authUser(user.externID, password)
         if error:
             return False, error

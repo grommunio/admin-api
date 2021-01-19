@@ -17,7 +17,9 @@ from sqlalchemy.orm.collections import attribute_mapped_collection
 import crypt
 import re
 import time
+from base64 import b64decode, b64encode
 from datetime import datetime
+from ldap3.utils.conv import escape_filter_chars
 
 
 class Groups(DataModel, DB.Model):
@@ -84,15 +86,16 @@ class Users(DataModel, DB.Model):
 
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("domainID", flags="init"),
-                      Id("groupID", flags="patch")),
+                      Id("groupID", flags="patch"),
+                      {"attr": "ldapID", "flags": "patch"},
+                      "ldapIDRaw"),
                      (RefProp("roles", qopt=selectinload),
                       RefProp("properties", flags="patch, managed", link="name", flat="val", qopt=selectinload),
                       RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
                       BoolP("pop3_imap", flags="patch"),
                       BoolP("smtp", flags="patch"),
                       BoolP("changePassword", flags="patch"),
-                      BoolP("publicAddress", flags="patch"),
-                      BoolP("ldapImported", flags="patch")),
+                      BoolP("publicAddress", flags="patch")),
                      ({"attr": "password", "flags": "init, hidden"},))
 
     POP3_IMAP = 1 << 0
@@ -222,21 +225,6 @@ class Users(DataModel, DB.Model):
     def password(self, pw):
         self._password = crypt.crypt(pw, crypt.mksalt(crypt.METHOD_MD5))
 
-    @hybrid_property
-    def ldapImported(self):
-        return self.externID is not None if isinstance(self, Users) else self.externID
-
-    @ldapImported.setter
-    def ldapImported(self, val):
-        if not self.ldapImported and val == True:
-            raise ValueError("Cannot set user to imported without associating an LDAP object")
-        if self.ldapImported and val == False:
-            self.externID = None
-
-    @ldapImported.expression
-    def ldapImported(cls):
-        return cls.externID != None
-
     def chkPw(self, pw):
         return crypt.crypt(pw, self.password) == self.password
 
@@ -297,6 +285,18 @@ class Users(DataModel, DB.Model):
     @publicAddress.expression
     def publicAddress(cls):
         return cls.privilegeBits.op("&")(cls.PUBADDR)
+
+    @property
+    def ldapID(self):
+        return None if self.externID is None else b64encode(self.externID, b".-").decode("ascii")
+
+    @ldapID.setter
+    def ldapID(self, value):
+        self.externID = None if value is None else b64decode(value, b".-")
+
+    @property
+    def ldapIDRaw(self):
+        return None if self.externID is None else escape_filter_chars(self.externID)
 
 
 class UserProperties(DataModel, DB.Model):
