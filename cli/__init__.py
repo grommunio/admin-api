@@ -8,6 +8,8 @@ from argparse import ArgumentParser
 class Cli:
     parser = ArgumentParser(description="Grammm admin backend")
     subparsers = parser.add_subparsers()
+    interactive = False
+    rlAvail = False
 
     @classmethod
     def execute(cls, args=None):

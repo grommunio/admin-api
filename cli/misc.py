@@ -102,21 +102,39 @@ def _setupCliBatchMode(subp: ArgumentParser):
     subp.description = "Start batch mode to process multiple CLI calls in a single session"
 
 
-@Cli.command("batch")
+@Cli.command("shell")
 def cliBatchMode(args):
+    def rlEnable(state):
+        if Cli.rlAvail:
+            readline.set_completer(completer.rl_complete if state else lambda *args: None)
+            readline.set_auto_history(state)
+
     import shlex
     import sys
-    interactive = sys.stdin.isatty()
-    if interactive:
+    Cli.interactive = sys.stdin.isatty()
+    if Cli.interactive:
         print("grammm-admin batch mode. Type exit or press CTRL+D to exit.")
+        try:
+            import readline
+            import argcomplete
+            completer = argcomplete.CompletionFinder(Cli.parser)
+            readline.set_completer_delims("")
+            readline.set_completer(completer.rl_complete)
+            readline.parse_and_bind("tab: complete")
+            readline.set_history_length(100)
+            Cli.rlAvail = True
+        except:
+            print("Install readline module to enable autocompletion")
     try:
         while True:
-            command = input("grammm-admin> " if interactive else "").strip()
+            rlEnable(True)
+            command = input("grammm-admin> " if Cli.interactive else "").strip()
             if command == "":
                 continue
             elif command == "exit":
                 break
             try:
+                rlEnable(False)
                 Cli.execute(shlex.split(command))
             except SystemExit:
                 pass
