@@ -113,7 +113,7 @@ def cliBatchMode(args):
     import sys
     Cli.interactive = sys.stdin.isatty()
     if Cli.interactive:
-        print("grammm-admin batch mode. Type exit or press CTRL+D to exit.")
+        print("grammm-admin shell. Type exit or press CTRL+D to exit.")
         try:
             import readline
             import argcomplete

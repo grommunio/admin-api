@@ -38,9 +38,8 @@ def cliLdapInfo(args):
 
 def _getCandidate(expr, auto):
     from tools import ldap
-    from base64 import b64decode
     try:
-        candidate = ldap.getUserInfo(b64decode(expr))
+        candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
     except:
         candidate = None
     if candidate is None:
@@ -74,10 +73,9 @@ def _getCandidate(expr, auto):
 
 
 def _getCandidates(expr):
-    from base64 import b64decode
     from tools import ldap
     try:
-        candidate = ldap.getUserInfo(b64decode(expr))
+        candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
     except:
         candidate = None
     return [candidate] if candidate is not None else ldap.searchUsers(expr)
@@ -85,8 +83,6 @@ def _getCandidates(expr):
 
 def _downsyncUser(candidate, yes, auto, force):
     from tools import ldap
-    from base64 import b64decode
-
     if yes or auto:
         print("Synchronizing user '{}' ({})".format(candidate.name, candidate.email))
     else:
@@ -223,9 +219,8 @@ def cliLdapSearch(args):
     if len(matches) == 0:
         print("No matches")
         return ERR_NO_USER
-    from base64 import b64encode
     for match in matches:
-        print("{}: {} ({})".format(b64encode(match.ID).decode("ascii"), match.name, match.email))
+        print("{}: {} ({})".format(ldap.escape_filter_chars(match.ID), match.name, match.email))
 
 
 def cliLdapCheck(args):
@@ -285,13 +280,12 @@ def cliLdapCheck(args):
 
 def cliLdapDump(args):
     from tools import ldap
-    from base64 import b64encode
     if not ldap.LDAP_available:
         print("LDAP is not available.")
         return ERR_NO_LDAP
     for expr in args.user:
         for candidate in _getCandidates(expr):
-            print("ID: "+b64encode(candidate.ID).decode("ascii"))
+            print("ID: "+ldap.escape_filter_chars(candidate.ID))
             print(str(ldap.dumpUser(candidate.ID)))
 
 

@@ -87,8 +87,7 @@ class Users(DataModel, DB.Model):
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("domainID", flags="init"),
                       Id("groupID", flags="patch"),
-                      {"attr": "ldapID", "flags": "patch"},
-                      "ldapIDRaw"),
+                      {"attr": "ldapID", "flags": "patch"}),
                      (RefProp("roles", qopt=selectinload),
                       RefProp("properties", flags="patch, managed", link="name", flat="val", qopt=selectinload),
                       RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
@@ -288,15 +287,13 @@ class Users(DataModel, DB.Model):
 
     @property
     def ldapID(self):
-        return None if self.externID is None else b64encode(self.externID, b".-").decode("ascii")
+        from tools.ldap import escape_filter_chars
+        return None if self.externID is None else escape_filter_chars(self.externID)
 
     @ldapID.setter
     def ldapID(self, value):
-        self.externID = None if value is None else b64decode(value, b".-")
-
-    @property
-    def ldapIDRaw(self):
-        return None if self.externID is None else escape_filter_chars(self.externID)
+        from tools.ldap import unescapeFilterChars
+        self.externID = None if value is None else unescapeFilterChars(value)
 
 
 class UserProperties(DataModel, DB.Model):

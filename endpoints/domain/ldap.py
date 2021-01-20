@@ -5,7 +5,6 @@
 import shutil
 import traceback
 
-from base64 import b64decode, b64encode
 from flask import jsonify, request
 
 import api
@@ -46,7 +45,7 @@ def searchLdap():
     domainNames = [d[0] for d in Domains.query.filter(*domainFilters).with_entities(Domains.domainname).all()]\
         if len(domainFilters) else None
     ldapusers = ldap.searchUsers(request.args["query"], domainNames)
-    return jsonify(data=[{"ID": b64encode(u.ID, b".-").decode("ascii"), "name": u.name, "email": u.email} for u in ldapusers])
+    return jsonify(data=[{"ID": ldap.escape_filter_chars(u.ID), "name": u.name, "email": u.email} for u in ldapusers])
 
 
 @API.route(api.BaseRoute+"/ldap/downsync", methods=["POST"])
@@ -94,12 +93,12 @@ def downloadLdapUser():
     if "ID" not in request.args:
         return jsonify(message="Missing ID"), 400
     try:
-        ID = b64decode(request.args["ID"], b".-")
+        ID = ldap.unescapeFilterChars(request.args["ID"])
     except BaseException as err:
         return jsonify(message="Invalid ID"), 400
     force = request.args.get("force")
     userinfo = ldap.getUserInfo(ID)
-    if userinfo.email is None:
+    if userinfo is None:
         return jsonify(message="User not found"), 404
     domain = Domains.query.filter(Domains.domainname == userinfo.email.split("@")[1]).with_entities(Domains.ID).first()
     if domain is None:
@@ -148,7 +147,7 @@ def updateLdapUser(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
-    ldapID = b64decode(request.args["ID"], ".-") if "ID" in request.args else user.externID
+    ldapID = ldap.unescapeFilterChars(request.args["ID"]) if "ID" in request.args else user.externID
     if ldapID is None:
         return jsonify(message="Cannot synchronize user: Could not determine LDAP object"), 400
     userdata = ldap.downsyncUser(ldapID, user.propmap)
@@ -208,7 +207,7 @@ def dumpLdapUsers():
     if not ldap.LDAP_available:
         return jsonify(message="LDAP is not available"), 503
     try:
-        ID = b64decode(request.args["ID"], b".-")
+        ID = ldap.unescapeFilterChars(request.args["ID"])
     except BaseException as err:
         return jsonify(message="Invalid ID"), 400
     ldapuser = ldap.dumpUser(ID)

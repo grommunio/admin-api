@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.14.8
+  version: 0.14.9
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1650,10 +1650,6 @@ components:
           type: string
           nullable: true
           description: Base64 encoded LDAP object ID
-        ldapIDRaw:
-          type: string
-          nullable: true
-          description: LDAP escaped LDAP object ID
     userInit:
       type: object
       additionalProperties: false
