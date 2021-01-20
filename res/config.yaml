@@ -125,6 +125,18 @@ properties:
       licenseFile:
         type: string
         description: Location of the license certificate. Must be writable by the server.
+      fileUid:
+        oneOf:
+          - type: string
+            description: Change ownership of created files to this user (name)
+          - type: integer
+            description: Change ownership of created files to this user (ID)
+      fileGid:
+        oneOf:
+          - type: string
+            description: Change ownership of created files to this group (name)
+          - type: integer
+            description: Change ownership of created files to this group (ID)
   ldap:
     type: object
     properties:

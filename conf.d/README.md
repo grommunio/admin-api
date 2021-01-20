@@ -68,3 +68,5 @@ Further parameters can be set in the `options` object:
 - `userPrefix` (`string`, default: `/u-data/`): Prefix used for user exmdb connections
 - `exmdbHost` (`string`, default: `::1`): Hostname of the exmdb service provider
 - `exmdbPort` (`string`, default: `5000`): Port of the exmdb service provider
+- `fileUid` (`string` or `int`): If set, change ownership of created files to this user
+- `fileGid` (`string` or `int`): If set, change ownership of created files to this group

@@ -103,7 +103,7 @@ def _downsyncUser(candidate, yes, auto, force):
 
     domain = Domains.query.filter(Domains.domainname == candidate.email.split("@")[1]).with_entities(Domains.ID).first()
     if domain is None:
-        print(message="Cannot import user: Domain not found")
+        print("Cannot import user: Domain not found")
     user = Users.query.filter(Users.externID == candidate.ID).first() or\
         Users.query.filter(Users.username == candidate.email).first()
     if user is not None:
