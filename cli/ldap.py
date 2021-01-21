@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2021 grammm GmbH
 
 from argparse import ArgumentParser
 
@@ -25,6 +25,43 @@ def _confirm(prompt=""):
         return SUCCESS if input(prompt).lower() == "y" else ERR_DECLINE
     except:
         return ERR_USR_ABRT
+
+
+def _getv(prompt="", default="", secret=False):
+    from getpass import getpass
+    v = (getpass if secret else input)("{} [{}]: ".format(prompt, default or ""))
+    return default if v == "" else v
+
+
+def _geti(prompt="", default=0):
+    res = None
+    while res is None:
+        res = _getv(prompt, default)
+        try:
+            res = int(res)
+        except:
+            res = None
+    return res
+
+
+def _getc(prompt="", default="", choices=(), getter=_getv):
+    res = None
+    while res is None:
+        res = getter(prompt, default)
+        if res in choices:
+            return res
+
+
+def _getl(prompt="", defaults=[]):
+    print(prompt+", press CTRL+D when done:")
+    values = []
+    defiter = (d for d in defaults)
+    try:
+        while True:
+            values.append(_getv("", next(defiter, "")))
+    except EOFError:
+        print("[Done]")
+    return values
 
 
 def cliLdapInfo(args):
@@ -289,6 +326,55 @@ def cliLdapDump(args):
             print(str(ldap.dumpUser(candidate.ID)))
 
 
+def _getConf(old):
+    conf = {"connection": {}, "users": {"filters": [], "searchAttributes": []}}
+    conf["connection"]["server"] = _getv("URL of the LDAP server", old.get("connection", {}).get("server", ""))
+    conf["connection"]["bindUser"] = _getv("Username for access", old.get("connection", {}).get("bindUser"), )
+    conf["connection"]["bindPass"] = _getv("Password for access", None, True) or old.get("connection", {}).get("bindPass")
+    conf["connection"]["starttls"] = _getc("Use StartTLS connection",
+                                           "y" if old.get("connection", {}).get("starttls") else "n", ("y", "n")) == "y"
+    conf["baseDn"] = _getv("DN for user lookup/searches", old.get("baseDn", ""))
+    conf["objectID"] = _getv("Attribute containing unique object ID", old.get("objectID"))
+    users = old.get("users", {})
+    conf["users"]["username"] = _getv("Attribute containing e-mail address of a user", users.get("username", ""))
+    conf["users"]["displayName"] = _getv("Attribute containing name of a user", users.get("displayName", ""))
+    conf["users"]["defaultQuota"] = _geti("Default storage quota for imported users", users.get("defaultQuota", 0))
+    conf["users"]["filters"] = _getl("Enter filter expressions for user search (one per line)", users.get("filters", []))
+    conf["users"]["searchAttributes"] = _getl("Enter attributes used for searching (one per line)",
+                                              users.get("searchAttributes", []))
+    oldtempl = users.get("templates", ())
+    res = _getc("Choose a mapping template for user import:\n 0: No template\n 1: ActiveDirectory\n 2: OpenLDAP\n",
+                1 if "ActiveDirectory" in oldtempl else 2 if "OpenLDAP" in oldtempl else 0, range(2), _geti)
+    conf["users"]["templates"] = [] if res == 0 else ["common", "ActiveDirectory" if res == 1 else "OpenLDAP"]
+    return conf
+
+
+def _cliLdapConfigure(args):
+    try:
+        from tools import mconf, ldap
+        old = mconf.LDAP
+        while True:
+            new = _getConf(old)
+            print("Checking new configuration...")
+            error = ldap.reloadConfig(new)
+            if error is None:
+                print("Configuration successful.")
+                break
+            print(error)
+            action = _getc("Restart configuration? (r=Restart, a=Amend, s=Save anyway, q=quit)", "a", ("y", "a", "s", "q"))
+            if action == "s":
+                mconf.dumpLdap(new)
+            if action in "sq":
+                break
+            if action == "a":
+                old = new
+            if action == "r":
+                old = mconf.LDAP
+    except (KeyboardInterrupt, EOFError):
+        print("\nAborted.")
+        return 1
+
+
 def _cliLdapParserSetup(subp: ArgumentParser):
     sub = subp.add_subparsers()
     info = sub.add_parser("info")
@@ -313,6 +399,8 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     dump = sub.add_parser("dump")
     dump.set_defaults(_handle=cliLdapDump)
     dump.add_argument("user", nargs="+", help="User ID or search query string")
+    configure = sub.add_parser("configure")
+    configure.set_defaults(_handle=_cliLdapConfigure)
 
 
 @Cli.command("ldap", _cliLdapParserSetup)
