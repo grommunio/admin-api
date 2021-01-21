@@ -10,7 +10,7 @@ from ldap3.utils.conv import escape_filter_chars
 import logging
 import yaml
 
-from .config import Config
+from . import mconf
 from .misc import GenericObject
 
 
@@ -49,10 +49,8 @@ class LDAPGuard:
             self.__obj = self.__base(*self.__args, **self.__kwargs)
             return True
         except exc.LDAPBindError as err:
-            logging.error("Could not connect to ldap server: "+err.args[0])
             self.error = err
         except exc.LDAPSocketOpenError as err:
-            logging.error("Could not connect to ldap server: " + err.args[0])
             self.error = err
         return False
 
@@ -60,8 +58,13 @@ class LDAPGuard:
         return repr(self.__obj)
 
 
-_defaultProps = {"storagequotalimit": Config["ldap"].get("users", {}).get("defaultQuota", 42)}
+_defaultProps = {"storagequotalimit": mconf.LDAP.get("users", {}).get("defaultQuota", 42)}
 _unescapeRe = re.compile(rb"\\(?P<value>[a-fA-F0-9]{2})")
+_userAttributes = None
+LDAPConn = None
+LDAP_available = False
+ldapconf = {}
+
 
 try:
     with open("res/ldapTemplates.yaml") as file:
@@ -89,7 +92,6 @@ def _matchFilters(ID):
     str
         A string containing LDAP match filter expression.
     """
-    ldapconf = Config["ldap"]
     filters = ")(".join(f for f in ldapconf.get("users", {}).get("filters", ()))
     return "(&({}={}){})".format(ldapconf["objectID"],
                                  escape_filter_chars(ID),
@@ -111,7 +113,6 @@ def _matchFiltersMulti(IDs):
     str
         A string containing LDAP match filter expression.
     """
-    ldapconf = Config["ldap"]
     filters = ")(".join(f for f in ldapconf.get("users", {}).get("filters", ()))
     IDfilters = "(|{})".format("".join("({}={})".format(ldapconf["objectID"], escape_filter_chars(ID)) for ID in IDs))
     return "(&({}){})".format(filters, IDfilters)
@@ -134,7 +135,6 @@ def _searchFilters(query, domains=None):
     str
         A string including all search filters.
     """
-    ldapconf = Config["ldap"]
     username = ldapconf["users"]["username"]
     filterexpr = "".join("("+f+")" for f in ldapconf["users"].get("filters", ()))
     domainexpr = "(|{})".format("".join("({}=*@{})".format(username, d) for d in domains)) if domains is not None else ""
@@ -354,9 +354,9 @@ def dumpUser(ID):
     return LDAPConn.entries[0] if len(LDAPConn.entries) == 1 else None
 
 
-def _createConnection(*args, **kwargs):
-    conn = ldap3.Connection(*args, **kwargs)
-    if ldapconf["connection"].get("starttls", False):
+def _createConnection(server, bindUser, bindPass, starttls):
+    conn = ldap3.Connection(server, user=bindUser, password=bindPass)
+    if starttls:
         if not conn.start_tls():
             logging.error("Failed to initiate StartTLS LDAP connection")
     if not conn.bind():
@@ -364,32 +364,72 @@ def _createConnection(*args, **kwargs):
         return None
     return conn
 
-def _checkConfig():
-    ldapconf = Config["ldap"]
-    return "baseDn" in ldapconf and\
-           "objectID" in ldapconf and\
-           "users" in ldapconf and\
-           "username" in ldapconf["users"] and\
-           "searchAttributes" in ldapconf["users"] and\
-           "displayName" in ldapconf["users"]
+
+def _testConfig(ldapconf):
+    for required in ("baseDn", "objectID", "users", "connection"):
+        if required not in ldapconf or ldapconf[required] is None:
+            raise KeyError("Missing required config value '{}'".format(required))
+    if "server" not in ldapconf["connection"] or ldapconf["connection"]["server"] is None:
+        raise KeyError("Missing required config value 'connection.server'")
+    for required in ("username", "searchAttributes", "displayName"):
+        if required not in ldapconf["users"] or ldapconf["users"][required] is None:
+            raise KeyError("Missing required config value 'users.{}'".format(required))
+    _templatesEnabled = ldapconf["users"].get("templates", [])
+    _userAttributes = {}
+    for _template in _templatesEnabled:
+        if _template not in _templates:
+            raise ValueError("Unknown template '{}'".format(_template))
+        _userAttributes.update(_templates.get(_template, {}))
+    _userAttributes.update(ldapconf["users"].get("attributes", {}))
+    LDAPConn = LDAPGuard(_createConnection,
+                         ldapconf["connection"].get("server"),
+                         ldapconf["connection"].get("bindUser"),
+                         ldapconf["connection"].get("bindPass"),
+                         ldapconf["connection"].get("starttls", False))
+    if LDAPConn.error is not None:
+        raise LDAPConn.error
+    return LDAPConn, _userAttributes
 
 
-if _checkConfig():
-    ldapconf = Config["ldap"]
+def reloadConfig(conf=None):
+    """Reload LDAP configuration.
+
+    Parameters
+    ----------
+    conf : dict
+        New configuration
+
+    Returns
+    -------
+    str
+        Error message or None if successful
+    """
+    conf = conf or mconf.LDAP
+    global LDAPConn, ldapconf, _userAttributes, LDAP_available
     try:
-        LDAPConn = LDAPGuard(_createConnection,
-                             ldapconf["connection"].get("server"),
-                             user=ldapconf["connection"].get("bindUser"),
-                             password=ldapconf["connection"].get("bindPass"))
-        _templatesEnabled = ldapconf["users"].get("templates", [])
-        _userAttributes = {}
-        for _template in _templatesEnabled:
-            _userAttributes.update(_templates.get(_template, {}))
-        _userAttributes.update(ldapconf["users"].get("attributes", {}))
-        LDAP_available = LDAPConn.error is None
-    except BaseException as err:
-        logging.error("LDAP initialization failed: "+err.args[0])
-        LDAP_available = False
-else:
-    logging.warn("Incomplete LDAP configuration found - service disabled")
+        LDAPConn, _userAttributes = _testConfig(conf)
+        ldapconf = conf
+        LDAP_available = True
+        return
+    except KeyError as err:
+        return "Incomplete LDAP configuration: "+err.args[0]
+    except ValueError as err:
+        return "Invalid LDAP configuration: "+err.args[0]
+    except Exception as err:
+        return "Could not connect to LDAP server: "+" - ".join(str(v) for v in err.args)
+
+
+def disable():
+    """Disable LDAP service."""
+    global LDAPConn, LDAP_available
+    LDAPConn = None
     LDAP_available = False
+
+
+def _init():
+    err = reloadConfig(mconf.LDAP)
+    if err is not None:
+        logging.warn("Could not initialize LDAP: "+err+". Service disabled.")
+
+
+_init()

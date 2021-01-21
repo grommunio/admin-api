@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.14.9
+  version: 0.14.10
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1491,6 +1491,65 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
+  /mconf/ldap:
+    get:
+      summary: Get the current LDAP configuration
+      tags:
+        - LDAP
+        - MConf
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: LDAP configuration returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ldapConfig'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      summary: Set new LDAP configuration
+      tags:
+        - LDAP
+        - MConf
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ldapConfig'
+      responses:
+        '200':
+          description: LDAP configuration updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      summary: Remove LDAP configuration and disable service
+      tags:
+        - LDAP
+        - MConf
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: LDAP deactivated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
 components:
   securitySchemes:
     JWTCookie:
@@ -1851,6 +1910,65 @@ components:
           type: string
           nullable: true
           description: Download link for the certificate
+    ldapConfig:
+      type: object
+      properties:
+        connection:
+          type: object
+          properties:
+            server:
+              type: string
+              description: Address of the LDAP server to connect to
+            bindUser:
+              type: string
+              description: DN of the user to perform initial bind with
+            bindPass:
+              type: string
+              description: Password for bindUser
+            starttls:
+              type: boolean
+              description: Whether to initiate a StartTLS connection
+        baseDn:
+          type: string
+          description: Base DN to use for user search
+        objectID:
+          type: string
+          description: Name of an attribute that uniquely idetifies an LDAP object
+        users:
+          type: object
+          description: Configuration for user search
+          properties:
+            username:
+              type: string
+              description: Name of the attribute that corresponds to the username (e-mail address)
+              default: uid
+            filters:
+              type: array
+              description: List of additional filter expressions to use for user search
+              items:
+                type: string
+                example: 'objectclass=person'
+            templates:
+              type: array
+              description: List of mapping templates to use
+              items:
+                type: string
+                description: Name of a template defined in res/ldapTemplates.yaml
+            attributes:
+              type: object
+              description: LDAP attribute -> PropTag mapping to used for LDAP import. Any mappings specified take precendence over active templates
+              additionalProperties:
+                type: string
+                description: Name of the PropTag the atribute maps to
+            defaultQuota:
+              type: integer
+              description: Storage quota of imported users if no mapping exists
+            searchAttributes:
+              type: array
+              description: List of attributes to use for searching
+              items:
+                type: string
+                description: LDAP attribute name
   responses:
     ServerError:
       description: An error occured while processing the request
@@ -1923,5 +2041,7 @@ tags:
     description: Endpoints for user management
   - name: LDAP
     description: Endpoints for LDAP operations
+  - name: MConf
+    description: Endpoints for accessing managed configurations
   - name: Misc
     description: Miscellaneous and organizational endpoints

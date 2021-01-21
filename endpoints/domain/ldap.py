@@ -11,7 +11,7 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
-from tools import ldap
+from tools import ldap, mconf
 from tools.config import Config
 from tools.constants import ExmdbCodes
 from tools.DataModel import InvalidAttributeError, MismatchROError

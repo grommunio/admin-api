@@ -39,24 +39,10 @@ Possible parameters are:
 - `jwtPrivateKeyFile` (`string`, default: `res/jwt-privkey.pem`): Path to the private RSA key file
 - `jwtPublicKeyFile` (`string`, default: `res/jwt-pubkey.pem`): Path to the public RSA key file
 
-### LDAP ###
-A connection to an LDAP system can be configured to enable user import.
-Possible parameters are:
-- `connection` (`object`, required): Contains the connection configuration, parameters:
-    + `server` (`string`, required): URL of the LDAP server
-    + `bindUser` (`string`, default: `null`): DN of the user to bind with
-    + `bindPass` (`string`, default: `null`): Passwort of the user to bind with
-    + `starttls` (`boolean`, default: `false`): Setup a StartTLS connection
-- `baseDn` (`string`, required): DN of the subtree to perform searches in
-- `objectID` (`string`, required): Name of a attribute uniquely identifying an LDAP object, e.g. `entryUUID` (OpenLDAP) or `objectGUID` (Active Directory)
-- `users` (`object`, required): Contains parameters for user import:
-    + `username` (`string`, required): Name of the attribute that corresponds to the username (e-mail address)
-    + `displayName` (`string`, required): Name of the attribute that corresponds to the name of the user
-    + `filters` (`list of strings`, default: `[]`): List of LDAP filter expressions to use for user search, e.g `objectclass=person`
-    + `templates` (`list of strings`, default: `[]`): List of mapping templates to use for importing. Currently the templates `common`, `OpenLDAP` and `ActiveDirectory` are supported.
-    + `attributes` (`object`): Further mappings in the form of `LDAPAttribute: UserProperty` to amend the templates
-    + `defaultQuota` (`integer`, default: `0`): Default sotrage quota in kiB for imported Users, if no curresponding LDAP attribute is defined
-    + `searchAttributes` (`list of strings`, required): List of LDAP attributes to match against when searching for users
+### Managed Configurations ###
+Some configurations can be managed by grammm-admin. Parameters can be configured by the `mconf` object.
+Possible parameters:
+- `ldapPath` (`string`): Path to the LDAP configuration file
 
 ### Options ###
 Further parameters can be set in the `options` object:

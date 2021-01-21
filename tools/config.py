@@ -34,7 +34,7 @@ _defaultConfig_ = {"openapi": {
                      "jwtPrivateKeyFile": "res/jwt-privkey.pem",
                      "jwtPublicKeyFile": "res/jwt-pubkey.pem"
                    },
-                   "ldap": {}
+                   "mconf": {}
                    }
 
 

@@ -137,64 +137,10 @@ properties:
             description: Change ownership of created files to this group (name)
           - type: integer
             description: Change ownership of created files to this group (ID)
-  ldap:
+  mconf:
+    description: Options for managed configurations
     type: object
     properties:
-      connection:
-        type: object
-        required: [server]
-        properties:
-          server:
-            type: string
-            description: Address of the LDAP server to connect to
-          bindUser:
-            type: string
-            description: DN of the user to perform initial bind with
-          bindPass:
-            type: string
-            description: Password for bindUser
-          starttls:
-            type: boolean
-            description: Whether to initiate a StartTLS connection
-      baseDn:
+      ldapPath:
         type: string
-        description: Base DN to use for user search
-      objectID:
-        type: string
-        description: Name of an attribute that uniquely idetifies an LDAP object
-      users:
-        type: object
-        required: [username, searchAttributes]
-        description: Configuration for user search
-        properties:
-          username:
-            type: string
-            description: Name of the attribute that corresponds to the username (e-mail address)
-            default: uid
-          filters:
-            type: array
-            description: List of additional filter expressions to use for user search
-            items:
-              type: string
-              example: 'objectclass=person'
-          templates:
-            type: array
-            description: List of mapping templates to use
-            items:
-              type: string
-              description: Name of a template defined in res/ldapTemplates.yaml
-          attributes:
-            type: object
-            description: LDAP attribute -> PropTag mapping to used for LDAP import. Any mappings specified take precendence over active templates
-            additionalProperties:
-              type: string
-              description: Name of the PropTag the atribute maps to
-          defaultQuota:
-            type: integer
-            description: Storage quota of imported users if no mapping exists
-          searchAttributes:
-            type: array
-            description: List of attributes to use for searching
-            items:
-              type: string
-              description: LDAP attribute name
+        description: Path to the ldap configuration file

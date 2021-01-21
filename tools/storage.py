@@ -5,6 +5,7 @@
 from math import ceil
 import os
 import shutil
+from .misc import setDirectoryOwner
 from .structures import XID, GUID
 
 from tools.exmdb import midb
@@ -20,27 +21,6 @@ from tools.rop import ntTime
 
 import logging
 import traceback
-
-
-def setDirectoryOwner(path, uid=None, gid=None):
-    """Recursively set directory ownership of path.
-
-    If neither uid nor gid is set, the function return immediatly without touching any files.
-
-    Parameters
-    ----------
-    path : str
-        Name of the target directory or file
-    uid : str or in, optional
-        uid of the new owner
-    gid : str or int, optional
-    """
-    if uid is None and gid is None:
-        return
-    for path, subdirs, files in os.walk(path):
-        shutil.chown(path, uid, gid)
-        for entry in subdirs+files:
-            shutil.chown(os.path.join(path, entry), uid, gid)
 
 
 def genPath(index: int, depth: int):
