@@ -27,7 +27,7 @@ common:
   assistant: assistant
   wWWHomePage: businesshomepage
   displayname: displayname
-ADS:
+ActiveDirectory:
   department: departmentname
 OpenLDAP:
   departmentNumber: departmentname

@@ -49,8 +49,7 @@ def cliVersion(args):
             print("{}{:+}".format(apiVersion, vdiff))
 
 
-@Cli.command("chkconfig")
-def cliChkConfig(args):
+def _cliConfigCheck(args):
     from tools.config import validate
     result = validate()
     if result is None:
@@ -59,6 +58,26 @@ def cliChkConfig(args):
     else:
         print("Error: "+result)
         return 1
+
+
+def _cliConfigDump(args):
+    from tools.config import Config
+    import yaml
+    print(yaml.dump(Config))
+
+
+def _setupCliConfigParser(subp: ArgumentParser):
+    sub = subp.add_subparsers()
+    check = sub.add_parser("check")
+    check.set_defaults(_handle=_cliConfigCheck)
+    dump = sub.add_parser("dump")
+    dump.set_defaults(_handle=_cliConfigDump)
+
+
+@Cli.command("config", _setupCliConfigParser)
+def cliConfigStub(args):
+    pass
+
 
 def _cliTaginfoCompleter(prefix, **kwargs):
     from tools.constants import PropTags
@@ -103,7 +122,7 @@ def _setupCliBatchMode(subp: ArgumentParser):
 
 
 @Cli.command("shell")
-def cliBatchMode(args):
+def cliShell(args):
     def rlEnable(state):
         if Cli.rlAvail:
             readline.set_completer(completer.rl_complete if state else lambda *args: None)
@@ -136,7 +155,7 @@ def cliBatchMode(args):
             try:
                 rlEnable(False)
                 Cli.execute(shlex.split(command))
-            except SystemExit:
+            except (SystemExit, AttributeError):
                 pass
     except KeyboardInterrupt:
         print("Received interrupt - exiting")

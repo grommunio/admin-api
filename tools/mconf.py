@@ -57,6 +57,9 @@ def _transformLdap(conf):
     _addIfDef(LDAP["users"], "displayName", conf, "ldap_user_displayname")
     _addIfDef(LDAP["users"], "defaultQuota", conf, "ldap_user_default_quota", type=int)
     _addIfDef(LDAP["users"], "templates", conf, "ldap_user_templates", all=True)
+    if "ldap_user_attributes" in conf:
+        LDAP["users"]["attributes"] = {entry.split(" ", 1)[0]: entry.split(" ", 1)[1]
+                                       for entry in conf.getall("ldap_user_attributes") if " " in entry}
     return LDAP
 
 
@@ -76,6 +79,8 @@ def _flattenLdap(conf):
         _addIfDef(LDAP, "ldap_user_search_attrs", conf["users"], "searchAttributes")
         _addIfDef(LDAP, "ldap_user_default_quota", conf["users"], "defaultQuota")
         _addIfDef(LDAP, "ldap_user_templates", conf["users"], "templates")
+        if "attributes" in conf["users"]:
+            LDAP["ldap_user_attributes"] = ["{} {}".format(key, value) for key, value in conf["users"]["attributes"].items()]
     return LDAP
 
 

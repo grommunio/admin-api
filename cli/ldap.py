@@ -359,11 +359,14 @@ def _cliLdapConfigure(args):
             error = ldap.reloadConfig(new)
             if error is None:
                 print("Configuration successful.")
+                error = mconf.dumpLdap(new)
+                print("Configuration saved" if error is None else ("Failed to save configuration: "+error))
                 break
             print(error)
             action = _getc("Restart configuration? (r=Restart, a=Amend, s=Save anyway, q=quit)", "a", ("y", "a", "s", "q"))
             if action == "s":
-                mconf.dumpLdap(new)
+                error = mconf.dumpLdap(new)
+                print("Configuration saved" if error is None else ("Failed to save configuration: "+error))
             if action in "sq":
                 break
             if action == "a":
@@ -373,6 +376,13 @@ def _cliLdapConfigure(args):
     except (KeyboardInterrupt, EOFError):
         print("\nAborted.")
         return 1
+
+
+def cliLdapReload(args):
+    from tools import ldap
+    error = ldap.reloadConfig()
+    print("Reload successful" if error is None else error)
+    return 0 if error is None else 1
 
 
 def _cliLdapParserSetup(subp: ArgumentParser):
@@ -401,6 +411,8 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     dump.add_argument("user", nargs="+", help="User ID or search query string")
     configure = sub.add_parser("configure")
     configure.set_defaults(_handle=_cliLdapConfigure)
+    reload = sub.add_parser("reload")
+    reload.set_defaults(_handle=cliLdapReload)
 
 
 @Cli.command("ldap", _cliLdapParserSetup)

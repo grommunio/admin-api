@@ -72,4 +72,4 @@ class Cli:
         return inner
 
 
-from . import dbtools, ldap, misc
+from . import dbtools, ldap, mconf, misc
