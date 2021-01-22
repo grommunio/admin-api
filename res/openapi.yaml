@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.14.11
+  version: 0.14.12
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1919,6 +1919,10 @@ components:
     ldapConfig:
       type: object
       properties:
+        disabled:
+          type: boolean
+          description: Disable LDAP service
+          default: False
         connection:
           type: object
           properties:

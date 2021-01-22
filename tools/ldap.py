@@ -381,6 +381,8 @@ def _testConfig(ldapconf):
             raise ValueError("Unknown template '{}'".format(_template))
         _userAttributes.update(_templates.get(_template, {}))
     _userAttributes.update(ldapconf["users"].get("attributes", {}))
+    if ldapconf.get("disabled", False):
+        return None, _userAttributes
     LDAPConn = LDAPGuard(_createConnection,
                          ldapconf["connection"].get("server"),
                          ldapconf["connection"].get("bindUser"),
@@ -409,7 +411,7 @@ def reloadConfig(conf=None):
     try:
         LDAPConn, _userAttributes = _testConfig(conf)
         ldapconf = conf
-        LDAP_available = True
+        LDAP_available = LDAPConn is not None
         return
     except KeyError as err:
         return "Incomplete LDAP configuration: "+err.args[0]

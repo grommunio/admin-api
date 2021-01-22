@@ -45,6 +45,7 @@ def _addIfDef(dc, d, sc, s, all=False, type=None):
 
 def _transformLdap(conf):
     LDAP = {"connection": {}, "users": {}}
+    _addIfDef(LDAP, "disabled", conf, "ldap_disabled", type=lambda x: x.lower() in ("true", "yes", "1"))
     _addIfDef(LDAP["connection"], "server", conf, "ldap_host")
     _addIfDef(LDAP["connection"], "bindUser", conf, "ldap_bind_user")
     _addIfDef(LDAP["connection"], "bindPass", conf, "ldap_bind_pass")
@@ -65,6 +66,7 @@ def _transformLdap(conf):
 
 def _flattenLdap(conf):
     LDAP = {}
+    _addIfDef(LDAP, "ldap_disabled", conf, "disabled")
     if "connection" in conf:
         _addIfDef(LDAP, "ldap_host", conf["connection"], "server")
         _addIfDef(LDAP, "ldap_bind_user", conf["connection"], "bindUser")
