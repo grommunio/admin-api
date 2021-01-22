@@ -20,7 +20,7 @@ def getLdapConfig():
         ldap.disable()
         mconf.dumpLdap({})
         return jsonify(message="LDAP deactivated")
-    return jsonify(mconf.LDAP)
+    return jsonify(ldapAvailable=ldap.LDAP_available, data=mconf.LDAP)
 
 
 

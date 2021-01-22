@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.14.10
+  version: 0.14.11
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1505,7 +1505,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ldapConfig'
+                type: object
+                properties:
+                  ldapAvailable:
+                    type: boolean
+                    description: Whether ldap is currently active
+                  data:
+                    $ref: '#/components/schemas/ldapConfig'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '500':
@@ -1941,7 +1947,9 @@ components:
             username:
               type: string
               description: Name of the attribute that corresponds to the username (e-mail address)
-              default: uid
+            displayName:
+              type: string
+              description: Name of the attribute that contains the name
             filters:
               type: array
               description: List of additional filter expressions to use for user search
