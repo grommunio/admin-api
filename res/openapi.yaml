@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.14.12
+  version: 0.14.13
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -120,8 +120,13 @@ paths:
       summary: Change current users password
       tags:
         - Misc
-      security:
-        - JWTCookie: []
+      parameters:
+        - name: user
+          in: query
+          required: false
+          description: Set password for a specific user (use inline authentication)
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -131,7 +136,7 @@ paths:
               properties:
                 new:
                   type: string
-                  description: THe new password
+                  description: The new password
                 old:
                   type: string
                   description: The old password
@@ -140,6 +145,8 @@ paths:
           description: Password updated
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '401':
+          description: Authentication failed
         '403':
           description: Incorrect old password
         '500':

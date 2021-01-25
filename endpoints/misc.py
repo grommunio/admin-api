@@ -6,7 +6,7 @@ from flask import jsonify, request
 
 import api
 from api.core import API, secure
-from api.security import loginUser, refreshToken
+from api.security import loginUser, refreshToken, getSecurityContext
 from orm import DB
 
 
@@ -48,15 +48,38 @@ def getProfile():
     return jsonify(user=user.fulldesc(), capabilities=capabilities)
 
 
-@API.route(api.BaseRoute+"/passwd", methods=["PUT"])
-@secure(authLevel="user")
-def updatePassword():
-    user = request.auth["user"]
+def updatePasswordUnauth(data):
+    from orm.users import Users
+    from tools import ldap
+    user = Users.query.filter(Users.ID != 0, Users.username == request.args["user"]).first()
+    if user is None:
+        return jsonify(message="Invalid username or password"), 401
     if user.externID is not None:
+        error = ldap.authUser(user.externID, data["old"])
+        if error is not None:
+            return jsonify(message=error), 401
         return jsonify(message="Cannot modify LDAP imported user"), 400
+    if not user.chkPw(data["old"]):
+        return jsonify(message="Invalid username or password"), 401
+    user.password = data["new"]
+    DB.session.commit()
+    return jsonify(message="Password updated for user '{}'".format(request.args["user"]))
+
+
+@API.route(api.BaseRoute+"/passwd", methods=["PUT"])
+@secure(requireAuth=False)
+def updatePassword():
     data = request.get_json(silent=True)
     if data is None or "new" not in data or "old" not in data:
         return jsonify(message="Incomplete data"), 400
+    if "user" in request.args:
+        return updatePasswordUnauth(data)
+    error = getSecurityContext("user")
+    if error:
+        return jsonify(message=error), 401
+    user = request.auth["user"]
+    if user.externID is not None:
+        return jsonify(message="Cannot modify LDAP imported user"), 400
     if not user.chkPw(data["old"]):
         return jsonify(message="Old password does not match"), 403
     user.password = data["new"]
