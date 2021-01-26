@@ -92,10 +92,11 @@ def _matchFilters(ID):
     str
         A string containing LDAP match filter expression.
     """
-    filters = ")(".join(f for f in ldapconf.get("users", {}).get("filters", ()))
-    return "(&({}={}){})".format(ldapconf["objectID"],
+    filters = ")(".join(f for f in ldapconf["users"].get("filters", ()))
+    return "(&({}={}){}{})".format(ldapconf["objectID"],
                                  escape_filter_chars(ID),
-                                 ("("+filters+")") if len(filters) else "")
+                                 ("("+filters+")") if len(filters) else "",
+                                 ldapconf["users"].get("filter", ""))
 
 
 def _matchFiltersMulti(IDs):
@@ -113,9 +114,9 @@ def _matchFiltersMulti(IDs):
     str
         A string containing LDAP match filter expression.
     """
-    filters = ")(".join(f for f in ldapconf.get("users", {}).get("filters", ()))
+    filters = ")(".join(f for f in ldapconf["users"].get("filters", ()))
     IDfilters = "(|{})".format("".join("({}={})".format(ldapconf["objectID"], escape_filter_chars(ID)) for ID in IDs))
-    return "(&({}){})".format(filters, IDfilters)
+    return "(&({}){}{})".format(filters, IDfilters, ldapconf["users"].get("filter", ""))
 
 
 def _searchFilters(query, domains=None):
@@ -143,7 +144,7 @@ def _searchFilters(query, domains=None):
         searchexpr = "(|{})".format("".join(("("+sattr+"=*"+query+"*)" for sattr in ldapconf["users"]["searchAttributes"])))
     else:
         searchexpr = ""
-    return "(&{}{}{})".format(filterexpr, searchexpr, domainexpr)
+    return "(&{}{}{}{})".format(filterexpr, searchexpr, domainexpr, ldapconf["users"].get("filter", ""))
 
 
 def _searchBase():

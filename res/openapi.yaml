@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.14.13
+  version: 0.14.14
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1967,6 +1967,10 @@ components:
               items:
                 type: string
                 example: 'objectclass=person'
+            filter:
+              type: string
+              description: LDAP search filter to apply to user lookup
+              example: '(&(objectclass=person)(mailPrimaryAddress=*))'
             templates:
               type: array
               description: List of mapping templates to use

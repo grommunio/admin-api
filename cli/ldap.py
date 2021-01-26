@@ -339,7 +339,7 @@ def _getConf(old):
     conf["users"]["username"] = _getv("Attribute containing e-mail address of a user", users.get("username", ""))
     conf["users"]["displayName"] = _getv("Attribute containing name of a user", users.get("displayName", ""))
     conf["users"]["defaultQuota"] = _geti("Default storage quota for imported users", users.get("defaultQuota", 0))
-    conf["users"]["filters"] = _getl("Enter filter expressions for user search (one per line)", users.get("filters", []))
+    conf["users"]["filter"] = _getl("Enter filter expression for user search", users.get("filter", ""))
     conf["users"]["searchAttributes"] = _getl("Enter attributes used for searching (one per line)",
                                               users.get("searchAttributes", []))
     oldtempl = users.get("templates", ())
