@@ -7,7 +7,7 @@ from .users import Users
 from tools.DataModel import DataModel, Id, Int, RefProp, Text
 
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
-from sqlalchemy.orm import relationship, selectinload
+from sqlalchemy.orm import relationship, selectinload, validates
 
 
 class Associations(DataModel, DB.Model):
@@ -34,6 +34,9 @@ class Specifieds(DataModel, DB.Model):
     _dictmapping_ = ((Id(),  Text("username", flags="patch")),
                      (Id("listID", flags="patch"),))
 
+    def __init__(self, username, *args, **kwargs):
+        self.username = username
+
 
 class MLists(DataModel, DB.Model):
     __tablename__ = "mlists"
@@ -48,11 +51,12 @@ class MLists(DataModel, DB.Model):
                      (Id("domainID", flags="init"),
                       Int("listType", flags="init"),
                       Int("listPrivilege", flags="patch")),
-                     (RefProp("associations", flags="patch, managed", link="listID", flat="username", qopt=selectinload),))
+                     (RefProp("associations", flags="patch, managed", link="listID", flat="username", qopt=selectinload),
+                      RefProp("specifieds", flags="patch, managed", link="listID", flat="username", qopt=selectinload),))
 
-    user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname)
-    associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID)
-    specifieds = relationship(Specifieds, primaryjoin=ID == Specifieds.listID, foreign_keys=Specifieds.listID)
+    user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname, cascade="all, delete-orphan", single_parent=True)
+    associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID, cascade="all, delete-orphan")
+    specifieds = relationship(Specifieds, primaryjoin=ID == Specifieds.listID, foreign_keys=Specifieds.listID, cascade="all, delete-orphan")
 
     TYPE_NORMAL = 0
     TYPE_GROUP = 1
@@ -119,3 +123,27 @@ class MLists(DataModel, DB.Model):
                            "domainStatus": domain.domainStatus,
                            "properties": {"displaytypeex": 1, "displayname": "Mailing List "+self.listname}})
         self.user.maildir = ""
+
+    @validates("associations")
+    def validateAssociations(self, key, assoc, *args):
+        if self.listType != self.TYPE_NORMAL:
+            raise ValueError("Direct user association is only possible for normal mailing lists")
+        return assoc
+
+    @validates("specifieds")
+    def validateSpecifieds(self, key, spec, *args):
+        if self.listPrivilege != self.PRIV_SPECIFIED:
+            raise ValueError("Privilege specification requires 'specific' list privilege")
+        return spec
+
+    @validates("listType")
+    def validateListType(self, key, type):
+        if type not in range(4):
+            raise ValueError("Invalid list type")
+        return type
+
+    @validates("listPrivilege")
+    def validateListType(self, key, priv):
+        if priv not in range(5):
+            raise ValueError("Invalid list privilege")
+        return priv

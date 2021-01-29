@@ -133,6 +133,7 @@ def cliShell(args):
     import sys
     Cli.interactive = sys.stdin.isatty()
     if Cli.interactive:
+        print("\x1b]2;grammm-admin\x07", end="")
         print("grammm-admin shell. Type exit or press CTRL+D to exit.")
         try:
             import readline
@@ -166,3 +167,14 @@ def cliShell(args):
         print("Received interrupt - exiting")
     except EOFError:
         print()
+
+
+@Cli.command("moo")
+def cliMoo(args):
+    print('                 (__)\n'
+          '                 (oo)\n'
+          '           /------\\/\n'
+          '          / |    ||\\\n'
+          '         *  /\\---/\\\n'
+          '            ~~   ~~\n'
+          '..."Have you mooed today?"...')

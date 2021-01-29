@@ -59,7 +59,6 @@ def _dumpUser(user, indent=0):
     print(" "*indent+"properties:"+(" (none)" if len(user.properties) == 0 else ""))
     for key, value in user.propmap.items():
         print("{}  {}: {}".format(" "*indent, key, value))
-    DB.session.rollback()
 
 
 def _cliUserShow(args):
@@ -154,7 +153,7 @@ def _setupCliUser(subp: ArgumentParser):
     show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
     list = sub.add_parser("list")
     list.set_defaults(_handle=_cliUserList)
-    list.add_argument("userspec", nargs="?", help="userspecession to match username against")
+    list.add_argument("userspec", nargs="?", help="User ID or substring to match username against")
     list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
     list.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
     delete = sub.add_parser("delete")
