@@ -519,7 +519,7 @@ class DataModel:
         return query
 
     @classmethod
-    def autosort(cls, query, args):
+    def autosort(cls, query, sorts):
         """Apply valid sort expressions to query.
 
         Valid sorts are determined by the `_sortables_` class property. Uses values stored in the "sort" key from args.
@@ -533,8 +533,8 @@ class DataModel:
             Class inheriting from DataModel
         query : Query
             SQLAlchemy Query
-        args : MultiDict
-            Flask MultiDict containing sorts
+        sorts : list
+            List of sort expressions
 
         Returns
         -------
@@ -542,7 +542,6 @@ class DataModel:
             Query with applied order by expresions
         """
         cls._init()
-        sorts = args.getlist("sort")
         for s in sorts:
             column, order = s.split(",", 1) if "," in s else (s, "asc")
             prop = cls._meta.lookup.get(column)

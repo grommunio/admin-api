@@ -71,10 +71,10 @@ def setUserPassword(args):
     if args.user is not None:
         user = Users.query.filter(Users.username == args.user).first()
         if user is None:
-            print("User '{}' not found.")
+            print(Cli.col("User '{}' not found.", "yellow"))
             return 1
         if user.externID is not None:
-            print("Cannot change password of LDAP user")
+            print(Cli.col("Cannot change password of LDAP user", "yellow"))
             return 2
     else:
         user = Users.query.filter(Users.ID == 0).first()
@@ -86,13 +86,13 @@ def setUserPassword(args):
     print("Setting password for user '{}'".format(user.username))
     if args.auto:
         password = mkPasswd(args.length)
-        print("New password is "+password)
+        print("New password is "+Cli.col(password, attrs=["bold"]))
     elif args.password is not None:
         password = args.password
     else:
         password = getpass("Password: ")
         if getpass("Retype password: ") != password:
-            print("Passwords do not match, aborting.")
+            print(Cli.col("Passwords do not match, aborting."), "yellow")
             return 3
     user.password = password
     DB.session.commit()

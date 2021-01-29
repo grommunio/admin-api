@@ -19,12 +19,22 @@ def _getConfig(name):
         return mconf.LDAP
 
 
-def _cliMconfDump(args):
+def _cliMconfPrint(args):
     import yaml
     config = _getConfig(args.config)
     if config is None:
         return 1
     print(yaml.dump(config))
+
+
+def _cliMconfDump(args):
+    import sys
+    from tools import mconf
+    if args.config == "ldap":
+        mconf.dumpLdap(file=sys.stdout)
+    else:
+        print("Invalid config")
+        return 1
 
 
 def _getValue(args):
@@ -105,8 +115,13 @@ def _setupCliMconfAddValue(parser: ArgumentParser):
 
 def _setupCliMconf(subp: ArgumentParser):
     sub = subp.add_subparsers()
+    printConf = sub.add_parser("print")
+    printConf.set_defaults(_handle=_cliMconfPrint)
+    printConf.help = "Print current configuration"
+    printConf.add_argument("config", choices=_configs)
     dump = sub.add_parser("dump")
     dump.set_defaults(_handle=_cliMconfDump)
+    dump.help = "Dump configuration file to stdout"
     dump.add_argument("config", choices=_configs)
     modify = sub.add_parser("modify")
     modify.set_defaults(_handle=_cliMconfModify)

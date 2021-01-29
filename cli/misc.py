@@ -117,11 +117,12 @@ def cliTaginfo(args):
         print("0x{:x} ({}): {}, type {}".format(ID, ID, propname, proptype))
 
 
-def _setupCliBatchMode(subp: ArgumentParser):
-    subp.description = "Start batch mode to process multiple CLI calls in a single session"
+def _setupCliShell(subp: ArgumentParser):
+    subp.description = "Start shell to process multiple CLI calls in a single session"
+    subp.add_argument("-x", "--exit", action="store_true", help="Exit on error")
 
 
-@Cli.command("shell")
+@Cli.command("shell", _setupCliShell)
 def cliShell(args):
     def rlEnable(state):
         if Cli.rlAvail:
@@ -147,16 +148,20 @@ def cliShell(args):
     try:
         while True:
             rlEnable(True)
-            command = input("grammm-admin> " if Cli.interactive else "").strip()
+            command = input(Cli.col("grammm-admin", "cyan", attrs=["dark", "bold"])+"> " if Cli.interactive else "").strip()
             if command == "":
                 continue
             elif command == "exit":
                 break
             try:
                 rlEnable(False)
-                Cli.execute(shlex.split(command))
-            except (SystemExit, AttributeError):
+                result = Cli.execute(shlex.split(command)) or 0
+                if result != 0 and args.exit:
+                    return result
+            except SystemExit:
                 pass
+            except AttributeError as err:
+                print(Cli.col("Caught AttributeError: "+"-".join(str(arg) for arg in err.args), "blue", attrs=["dark"]))
     except KeyboardInterrupt:
         print("Received interrupt - exiting")
     except EOFError:

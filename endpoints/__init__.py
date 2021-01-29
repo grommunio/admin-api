@@ -62,7 +62,7 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
     verbosity = request.args.get("level", 1)
     query = Model.optimized_query(verbosity).filter(*filters)
     if autosort:
-        query = Model.autosort(query, request.args)
+        query = Model.autosort(query, request.args.getlist("sort"))
     if order is not None:
         query = query.order_by(*(order if type(order) in (list, tuple) else (order,)))
     if autofilter:

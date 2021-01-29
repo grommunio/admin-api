@@ -20,13 +20,6 @@ ERR_INVALID_DATA = 10  # User data check failed
 ERR_SETUP = 11  # Error during user setup
 
 
-def _confirm(prompt=""):
-    try:
-        return SUCCESS if input(prompt).lower() == "y" else ERR_DECLINE
-    except:
-        return ERR_USR_ABRT
-
-
 def _getv(prompt="", default="", secret=False):
     from getpass import getpass
     v = (getpass if secret else input)("{} [{}]: ".format(prompt, default or ""))
@@ -67,7 +60,7 @@ def _getl(prompt="", defaults=[]):
 def cliLdapInfo(args):
     from tools import ldap
     if not ldap.LDAP_available:
-        print("LDAP is not available.")
+        print(Cli.col("LDAP is not available.", "red"))
         return ERR_NO_LDAP
     print("Successfully connected to {} as {}".format(ldap.ldapconf["connection"]["server"],
                                                       ldap.ldapconf["connection"].get("bindUser") or "anonymous"))
@@ -88,7 +81,7 @@ def _getCandidate(expr, auto):
             candidate = matches[0]
         else:
             if auto:
-                print("Multiple candidates for '{}' found - aborting".format(expr))
+                print(Cli.col("Multiple candidates for '{}' found - aborting".format(expr), "red"))
                 return ERR_AMBIG
             print("Found {} users matching '{}':".format(len(matches), expr))
             for i in range(len(matches)):
@@ -123,9 +116,9 @@ def _downsyncUser(candidate, yes, auto, force):
     if yes or auto:
         print("Synchronizing user '{}' ({})".format(candidate.name, candidate.email))
     else:
-        result = _confirm("Synchronize user '{}' ({})? [y/N]: ".format(candidate.name, candidate.email))
-        if result != SUCCESS:
-            if result == ERR_USR_ABRT:
+        result = Cli.confirm("Synchronize user '{}' ({})? [y/N]: ".format(candidate.name, candidate.email))
+        if result != Cli.SUCCESS:
+            if result == Cli.ERR_USR_ABRT:
                 print("\nAborted.")
             return result
 
@@ -141,6 +134,7 @@ def _downsyncUser(candidate, yes, auto, force):
     domain = Domains.query.filter(Domains.domainname == candidate.email.split("@")[1]).with_entities(Domains.ID).first()
     if domain is None:
         print("Cannot import user: Domain not found")
+        return ERR_INVALID_DATA
     user = Users.query.filter(Users.externID == candidate.ID).first() or\
         Users.query.filter(Users.username == candidate.email).first()
     if user is not None:
@@ -150,10 +144,10 @@ def _downsyncUser(candidate, yes, auto, force):
                       ("locally" if user.externID is None else "and is associated with another LDAP object"))
                 return ERR_CONFLICT
             else:
-                result = _confirm("Force update "+("local only user" if user.externID is None else
-                                                   "user linked to different LDAP object")+"? [y/N]: ")
-                if result != SUCCESS:
-                    if result == ERR_USR_ABRT:
+                result = Cli.confirm("Force update "+("local only user" if user.externID is None else
+                                                      "user linked to different LDAP object")+"? [y/N]: ")
+                if result != Cli.SUCCESS:
+                    if result == Cli.ERR_USR_ABRT:
                         print("Aborted")
                     return result
         userdata = ldap.downsyncUser(candidate.ID, user.propmap)
@@ -199,7 +193,7 @@ def _downsyncUser(candidate, yes, auto, force):
 def cliLdapDownsync(args):
     from tools import ldap
     if not ldap.LDAP_available:
-        print("LDAP is not available.")
+        print(Cli.col("LDAP is not available.", "red"))
         return ERR_NO_LDAP
     error = False
     if args.user is not None and len(args.user) != 0:
@@ -250,7 +244,7 @@ def cliLdapDownsync(args):
 def cliLdapSearch(args):
     from tools import ldap
     if not ldap.LDAP_available:
-        print("LDAP is not available.")
+        print(Cli.col("LDAP is not available.", "red"))
         return ERR_NO_LDAP
     matches = ldap.searchUsers(args.query)
     if len(matches) == 0:
@@ -263,7 +257,7 @@ def cliLdapSearch(args):
 def cliLdapCheck(args):
     from tools import ldap
     if not ldap.LDAP_available:
-        print("LDAP is not available.")
+        print(Cli.col("LDAP is not available.", "red"))
         return ERR_NO_LDAP
     from time import time
     from orm import DB
@@ -290,7 +284,7 @@ def cliLdapCheck(args):
     for user in orphaned:
         print("\t"+user.username)
     if args.remove:
-        if args.yes or _confirm("Delete all orphaned users? [y/N]: ") == SUCCESS:
+        if args.yes or Cli.confirm("Delete all orphaned users? [y/N]: ") == Cli.SUCCESS:
             from tools.config import Config
             from tools.constants import ExmdbCodes
             from tools.pyexmdb import pyexmdb
@@ -318,11 +312,11 @@ def cliLdapCheck(args):
 def cliLdapDump(args):
     from tools import ldap
     if not ldap.LDAP_available:
-        print("LDAP is not available.")
+        print(Cli.col("LDAP is not available.", "red"))
         return ERR_NO_LDAP
     for expr in args.user:
         for candidate in _getCandidates(expr):
-            print("ID: "+ldap.escape_filter_chars(candidate.ID))
+            print(Cli.col("ID: "+ldap.escape_filter_chars(candidate.ID), attrs=["bold"]))
             print(str(ldap.dumpUser(candidate.ID)))
 
 
@@ -381,7 +375,7 @@ def _cliLdapConfigure(args):
 def cliLdapReload(args):
     from tools import ldap
     error = ldap.reloadConfig()
-    print("Reload successful" if error is None else error)
+    print("Reload successful" if error is None else Cli.col(error, "red"))
     return 0 if error is None else 1
 
 
@@ -405,7 +399,7 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     check.add_argument("-y", "--yes", action="store_true", help="Do not prompt for user deletion (only with -r)")
     check.add_argument("-r", "--remove", action="store_true", help="Prompt for user deletion if orphaned users exist")
     check.add_argument("-m", "--remove-maildirs", action="store_true", help="When deleting users, also remove their mail "\
-                                                                             "directories from disk")
+                                                                            "directories from disk")
     dump = sub.add_parser("dump")
     dump.set_defaults(_handle=cliLdapDump)
     dump.add_argument("user", nargs="+", help="User ID or search query string")

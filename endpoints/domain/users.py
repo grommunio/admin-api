@@ -151,10 +151,7 @@ def deleteUser(user):
     if user.ID == 0:
         return jsonify(message="Cannot delete superuser"), 400
     maildir = user.maildir
-    Forwards.query.filter(Forwards.username == user.username).delete(synchronize_session=False)
-    Members.query.filter(Members.username == user.username).delete(synchronize_session=False)
-    Associations.query.filter(Associations.username == user.username).delete(synchronize_session=False)
-    DB.session.delete(user)
+    user.delete()
     try:
         DB.session.commit()
     except:

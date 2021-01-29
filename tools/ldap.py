@@ -114,9 +114,10 @@ def _matchFiltersMulti(IDs):
     str
         A string containing LDAP match filter expression.
     """
-    filters = ")(".join(f for f in ldapconf["users"].get("filters", ()))
+    filters = ldapconf["users"].get("filters", ())
+    filters = ("("+")(".join(filters) + ")") if len(filters) > 0 else ""
     IDfilters = "(|{})".format("".join("({}={})".format(ldapconf["objectID"], escape_filter_chars(ID)) for ID in IDs))
-    return "(&({}){}{})".format(filters, IDfilters, ldapconf["users"].get("filter", ""))
+    return "(&{}{}{})".format(filters, IDfilters, ldapconf["users"].get("filter", ""))
 
 
 def _searchFilters(query, domains=None):

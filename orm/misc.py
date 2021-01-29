@@ -3,7 +3,8 @@
 # SPDX-FileCopyrightText: 2020 grammm GmbH
 
 from . import DB
-from tools.DataModel import DataModel, Id, Text, Int, Date
+
+from tools.DataModel import DataModel, Id, Text
 
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 
@@ -19,34 +20,6 @@ class Forwards(DataModel, DB.Model):
     _dictmapping_ = ((Id(), Text("username", flags="patch")),
                      (Text("forwardType", flags="patch"),
                       Text("destination", flags="patch")))
-
-
-class MLists(DataModel, DB.Model):
-    __tablename__ = "mlists"
-
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    listname = DB.Column("listname", DB.VARCHAR(128), nullable=False, unique=True)
-    domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), index=True)
-    listType = DB.Column("list_type", TINYINT, nullable=False)
-    listPrivilege = DB.Column("list_privilege", TINYINT, nullable=False, server_default="0")
-
-    _dictmapping_ = ((Id(), Text("listname", flags="patch")),
-                     (Id("domainID", flags="patch"),
-                      Int("listType", flags="patch"),
-                      Int("listPrivilege", flags="patch")))
-
-
-class Associations(DataModel, DB.Model):
-    __tablename__ = "associations"
-
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    username = DB.Column("username", DB.VARCHAR(128), nullable=False, unique=True)
-    listID = DB.Column("list_id", INTEGER(10), nullable=False, index=True)
-
-    _dictmapping_ = ((Id(), Text("username", flags="patch"), Id("listID", flags="patch")))
-
-
-DB.Index("uq_list_id_username", Associations.listID, Associations.username, unique=True)
 
 
 class Classes(DataModel, DB.Model):
@@ -94,18 +67,3 @@ class Members(DataModel, DB.Model):
                       Id("classID", flags="patch"),
                       Id("domainID", flags="patch"),
                       Id("groupID", flags="patch")),)
-
-
-DB.Index("uq_class_id_username", Members.classID, Members.username, unique=True)
-
-
-class Specifieds(DataModel, DB.Model):
-    __tablename__ = "specifieds"
-
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    username = DB.Column("username", DB.VARCHAR(128), nullable=False)
-    listID = DB.Column("list_id", INTEGER(10), nullable=False, index=True)
-
-    _dictmapping_ = ((Id(),
-                      Text("username", flags="patch"),
-                      Id("listID", flags="patch")),)

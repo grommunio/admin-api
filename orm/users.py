@@ -121,7 +121,7 @@ class Users(DataModel, DB.Model):
     def checkCreateParams(data):
         from orm.domains import Domains
         from tools.license import getLicense
-        if Users.query.filter(Users.ID != 0).count() >= getLicense().users:
+        if Users.count() >= getLicense().users:
             return "License user limit exceeded"
         if "domainID" in data:
             domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
@@ -133,8 +133,8 @@ class Users(DataModel, DB.Model):
             return "Invalid domain"
         data["domain"] = domain
         data["domainID"] = domain.ID
-        domainUsers = Users.query.with_entities(func.count().label("count")).filter(Users.domainID == domain.ID).first()
-        if domain.maxUser <= domainUsers.count:
+        domainUsers = Users.count(Users.domainID == domain.ID)
+        if domain.maxUser <= domainUsers:
             return "Maximum number of domain users reached"
         if data.get("groupID"):
             group = Groups.query.filter(Groups.ID == data.get("groupID"), Groups.domainID == domain.ID).first()
@@ -148,10 +148,10 @@ class Users(DataModel, DB.Model):
             data["groupID"] = 0
         data["domainStatus"] = domain.domainStatus
         if "properties" not in data:
-            return "Missing required attribute 'properties'"
+            data["properties"] = {}
         properties = data["properties"]
         if "storagequotalimit" not in properties:
-            return "Missing required property 'storagequotalimit'"
+            data["properties"]["storagequotalimit"] = 0
         for prop in ("prohibitreceivequota", "prohibitsendquota"):
             if prop not in properties:
                 properties[prop] = properties["storagequotalimit"]
@@ -294,6 +294,46 @@ class Users(DataModel, DB.Model):
     def ldapID(self, value):
         from tools.ldap import unescapeFilterChars
         self.externID = None if value is None else unescapeFilterChars(value)
+
+    @staticmethod
+    def count(*filters):
+        """Count users.
+
+        Applies filters to only count real users (DISPLAYTYPEEX == 0) and ignore the admin user (ID == 0).
+
+        Parameters
+        ----------
+        filters : iterable, optional
+            Additional filter expressions to use. The default is ().
+
+        Returns
+        -------
+        int
+            Number of users
+        """
+        return Users.query.with_entities(Users.ID)\
+                          .join(UserProperties, (UserProperties.userID == Users.ID) & (UserProperties.tag == 0x39050003))\
+                          .filter(Users.ID != 0, UserProperties._propvalstr == "0", *filters)\
+                          .count()
+
+    def delete(self):
+        """Delete user from database.
+
+        Also cleans up entries in forwards, members and associations tables.
+
+        Returns
+        -------
+        str
+            Error message or None if successful.
+        """
+        from .mlists import Associations
+        from .misc import Forwards, Members
+        if self.ID == 0:
+            return "Cannot delete superuser"
+        Forwards.query.filter(Forwards.username == self.username).delete(synchronize_session=False)
+        Members.query.filter(Members.username == self.username).delete(synchronize_session=False)
+        Associations.query.filter(Associations.username == self.username).delete(synchronize_session=False)
+        DB.session.delete(self)
 
 
 class UserProperties(DataModel, DB.Model):

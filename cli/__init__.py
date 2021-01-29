@@ -10,6 +10,7 @@ class Cli:
     subparsers = parser.add_subparsers()
     interactive = False
     rlAvail = False
+    col = lambda text, *args, **kwargs: text
 
     @classmethod
     def execute(cls, args=None):
@@ -23,6 +24,7 @@ class Cli:
             Command line arguments to execute. The default is None.
         """
         argcomplete.autocomplete(cls.parser)
+        cls.enableColor()
         dispatch = cls.parser.parse_args(args)
         if hasattr(dispatch, "_handle"):
             return dispatch._handle(dispatch) or 0
@@ -71,5 +73,38 @@ class Cli:
             return func
         return inner
 
+    @classmethod
+    def enableColor(cls):
+        try:
+            import termcolor
+            from sys import stdout
+            if stdout.isatty():
+                cls.col = lambda *args, **kwargs: termcolor.colored(*args, **kwargs)
+        except:
+            pass
 
-from . import dbtools, ldap, mconf, misc
+    SUCCESS = 0
+    ERR_DECLINE = 1
+    ERR_USR_ABRT = 2
+
+    @staticmethod
+    def confirm(prompt=""):
+        """Display confirmation dialogue.
+
+        Parameters
+        ----------
+        prompt : string, optional
+            Prompt to display. The default is "".
+
+        Returns
+        -------
+        int
+            SUCCESS if user input was "y", ERR_USR_ABRT if user aborted, ERR_DECLINE otherwise
+        """
+        try:
+            return Cli.SUCCESS if input(prompt).lower() == "y" else Cli.ERR_DECLINE
+        except:
+            return Cli.ERR_USR_ABRT
+
+
+from . import dbtools, ldap, mconf, misc, user
