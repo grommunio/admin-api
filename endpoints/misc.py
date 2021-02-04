@@ -9,14 +9,17 @@ from api.core import API, secure
 from api.security import loginUser, refreshToken, getSecurityContext
 from orm import DB
 
+from tools import ldap
+
 
 @API.route(api.BaseRoute+"/status", methods=["GET"])
 @secure(requireAuth=False)
 def chkState():
     """Check status of the API."""
-    if DB is None:
-        return jsonify(message="Online, but database is not configured")
-    return jsonify(message="API is operational")
+    return jsonify(message="API is operational",
+                   database=DB is not None,
+                   ldap=ldap.LDAP_available)
+
 
 
 @API.route(api.BaseRoute+"/about", methods=["GET"])
