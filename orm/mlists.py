@@ -20,8 +20,9 @@ class Associations(DataModel, DB.Model):
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("listID", flags="init"),))
 
-    def __init__(self, username, *args, **kwargs):
+    def fromdict(self, username, *args, **kwargs):
         self.username = username
+        return self
 
 
 class Specifieds(DataModel, DB.Model):
@@ -34,8 +35,9 @@ class Specifieds(DataModel, DB.Model):
     _dictmapping_ = ((Id(),  Text("username", flags="patch")),
                      (Id("listID", flags="patch"),))
 
-    def __init__(self, username, *args, **kwargs):
+    def fromdict(self, username, *args, **kwargs):
         self.username = username
+        return self
 
 
 class MLists(DataModel, DB.Model):
@@ -47,16 +49,15 @@ class MLists(DataModel, DB.Model):
     listType = DB.Column("list_type", TINYINT, nullable=False)
     listPrivilege = DB.Column("list_privilege", TINYINT, nullable=False, server_default="0")
 
-    _dictmapping_ = ((Id(), Text("listname", flags="init")),
+    _dictmapping_ = ((Id(), Text("listname", flags="init"), Int("listType", flags="init")),
                      (Id("domainID", flags="init"),
-                      Int("listType", flags="init"),
                       Int("listPrivilege", flags="patch")),
-                     (RefProp("associations", flags="patch, managed", link="listID", flat="username", qopt=selectinload),
-                      RefProp("specifieds", flags="patch, managed", link="listID", flat="username", qopt=selectinload),))
+                     (RefProp("associations", flags="patch, managed", link="username", flat="username", qopt=selectinload),
+                      RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload),))
 
     user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname, cascade="all, delete-orphan", single_parent=True)
-    associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID, cascade="all, delete-orphan")
-    specifieds = relationship(Specifieds, primaryjoin=ID == Specifieds.listID, foreign_keys=Specifieds.listID, cascade="all, delete-orphan")
+    associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID, cascade="all, delete-orphan", single_parent=True)
+    specifieds = relationship(Specifieds, primaryjoin=ID == Specifieds.listID, foreign_keys=Specifieds.listID, cascade="all, delete-orphan", single_parent=True)
 
     TYPE_NORMAL = 0
     TYPE_GROUP = 1
@@ -112,17 +113,27 @@ class MLists(DataModel, DB.Model):
 
     def __init__(self, props, *args, **kwargs):
         from .users import Users
-        domain = props.pop("domain")
-        groupID = props.pop("groupID", 0)
+        self.domain = props.pop("domain")
+        self.groupID = props.pop("groupID", 0)
+        self.listType = props.pop("listType", 0)
+        self.listPrivilege = props.pop("listPrivilege", 0)
         self.fromdict(props, *args, **kwargs)
         self.user = Users({"username": self.listname,
-                           "domainID": domain.ID,
-                           "groupID": groupID,
-                           "domain": domain,
+                           "domainID": self.domain.ID,
+                           "groupID": self.groupID,
+                           "domain": self.domain,
                            "groupStatus": props.pop("groupStatus", 0),
-                           "domainStatus": domain.domainStatus,
+                           "domainStatus": self.domain.domainStatus,
                            "properties": {"displaytypeex": 1, "displayname": "Mailing List "+self.listname}})
         self.user.maildir = ""
+
+    def delete(self):
+        if self.user:
+            self.user.delete()
+        if self.listType == self.TYPE_CLASS:
+            from .classes import Classes
+            Classes.query.filter(Classes.listname == self.listname).update({Classes.listname: None}, synchronize_session=False)
+        DB.session.delete(self)
 
     @validates("associations")
     def validateAssociations(self, key, assoc, *args):

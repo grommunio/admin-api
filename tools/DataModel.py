@@ -439,8 +439,10 @@ class DataModel:
                     if "managed" in prop.flags:
                         current = {getattr(val, prop.link) for val in attr}
                         fID = prop.link
-                        patch = {val[fID]: val for val in value if fID in val and val[fID] in current}
-                        new = (val for val in value if fID not in val or val[fID] not in current)
+                        patch = {val[fID]: val for val in value if fID in val and val[fID] in current} if prop.flat is None else\
+                                {val: val for val in value if val in current}
+                        new = (val for val in value if fID not in val or val[fID] not in current) if prop.flat is None else\
+                              (val for val in value if val not in current)
                         setattr(self, prop.attr,
                                 [val.fromdict(patch[getattr(val, fID)], *args, **kwargs)
                                  for val in attr if getattr(val, fID) in patch] +

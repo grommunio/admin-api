@@ -327,7 +327,8 @@ class Users(DataModel, DB.Model):
             Error message or None if successful.
         """
         from .mlists import Associations
-        from .misc import Forwards, Members
+        from .misc import Forwards
+        from .classes import Members
         if self.ID == 0:
             return "Cannot delete superuser"
         Forwards.query.filter(Forwards.username == self.username).delete(synchronize_session=False)
@@ -423,10 +424,15 @@ class Aliases(DataModel, DB.Model):
     def __init__(self, aliasname, main, *args, **kwargs):
         if main.ID == 0:
             raise ValueError("Cannot alias superuser")
+        self.main = main
+        self.fromdict(aliasname)
+
+    def fromdict(self, aliasname, *args, **kwargs):
         if not self.emailRe.match(aliasname):
             raise ValueError("'{}' is not a valid email address".format(aliasname))
         self.aliasname = aliasname
-        self.main = main
+        return self
+
 
 
 from . import roles

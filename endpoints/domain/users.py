@@ -25,7 +25,6 @@ import shutil
 from orm import DB
 if DB is not None:
     from orm.users import Users, Groups, UserProperties
-    from orm.misc import Associations, Forwards, Members
     from orm.roles import AdminUserRoleRelation, AdminRoles
 
 

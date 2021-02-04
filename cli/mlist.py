@@ -143,7 +143,7 @@ def cliMlistDelete(args):
             return 3
     else:
         print("Deleting mlist '{}' ({})".format(mlist.listname, mlist.ID))
-    DB.session.delete(mlist)
+    mlist.delete()
     DB.session.commit()
     print("Done.")
 

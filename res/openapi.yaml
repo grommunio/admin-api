@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.14.14
+  version: 0.15.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1070,6 +1070,139 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/{domainID}/mlists:
+    get:
+      summary: Get list of mailing lists
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      tags:
+        - Domain Admin/MLists
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: List of MLists returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/mlist'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Create new mailing list
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      tags:
+       - Domain Admin/MLists
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mlist'
+      responses:
+        '201':
+          description: Mailing list created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mlist'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/mlists/{ID}:
+    get:
+      summary: Get information about a mailing list
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/ID'
+      tags:
+        - Domain Admin/MLists
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Mailing list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mlist'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    patch:
+      summary: Update mailing list
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/ID'
+      tags:
+        - Domain Admin/MLists
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mlist'
+      responses:
+        '200':
+          description: Mailing list updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mlist'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete mailing list
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/ID'
+      tags:
+        - Domain Admin/MLists
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Mailing list deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
   /domains/{domainID}/folders:
     get:
       summary: Get list of public folders
@@ -1992,6 +2125,34 @@ components:
               items:
                 type: string
                 description: LDAP attribute name
+    mlist:
+      type: object
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        listname:
+          type: string
+          description: Name or e-mail address of the list
+        listType:
+          type: integer
+          enum: [0, 1, 2]
+          description: Type of mailing list (0=Normal, 1=Group, 2=Domain)
+        listPrivilege:
+          type: integer
+          enum: [0, 1, 2, 3, 4]
+          description: Sender privilege of list (0=All, 1=Internal, 2=Domain, 3=Specific, 4=Outgoing)
+        associations:
+          type: array
+          description: Recipients, only available if listType=0
+          items:
+            type: string
+            description: E-Mail address of recipient
+        specifieds:
+          type: array
+          description: Senders, only available if listPrivilege=3
+          items:
+            type: string
+            description: E-Mail address of sender
   responses:
     ServerError:
       description: An error occured while processing the request
@@ -2060,6 +2221,8 @@ tags:
     description: Endpoints for public folder management
   - name: Domain Admin/Groups
     description: Endpoints for group/department management
+  - name: Domain Admin/MLists
+    description: Endpoints for mailing list management
   - name: Domain Admin/Users
     description: Endpoints for user management
   - name: LDAP
