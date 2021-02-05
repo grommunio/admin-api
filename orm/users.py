@@ -44,8 +44,6 @@ class Groups(DataModel, DB.Model):
         domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
         if domain is None:
             return "Invalid domain"
-        if domain.domainType != Domains.NORMAL:
-            return "Domain cannot be alias"
         if "groupname" not in data:
             return "Missing required property 'groupname'"
         if "@" in data["groupname"] and data["groupname"].split("@")[1] != domain.domainname:
