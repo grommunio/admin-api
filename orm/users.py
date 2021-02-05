@@ -31,9 +31,8 @@ class Groups(DataModel, DB.Model):
     title = DB.Column("title", DB.VARCHAR(128), nullable=False)
 
     _dictmapping_ = ((Id(), Text("title", flags="patch"), Text("groupname", flags="init")),
-                     (Id("domainID", flags="init"),),
+                     (Id("domainID", flags="init, hidden"),),
                      ())
-
 
     NORMAL = 0
     SUSPEND = 1
