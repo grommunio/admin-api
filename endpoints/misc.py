@@ -54,7 +54,7 @@ def getProfile():
 def updatePasswordUnauth(data):
     from orm.users import Users
     from tools import ldap
-    user = Users.query.filter(Users.ID != 0, Users.username == request.args["user"]).first()
+    user = Users.query.filter(Users.ID != 0, Users.username == data["user"]).first()
     if user is None:
         return jsonify(message="Invalid username or password"), 401
     if user.externID is not None:
@@ -66,7 +66,7 @@ def updatePasswordUnauth(data):
         return jsonify(message="Invalid username or password"), 401
     user.password = data["new"]
     DB.session.commit()
-    return jsonify(message="Password updated for user '{}'".format(request.args["user"]))
+    return jsonify(message="Password updated for user '{}'".format(data["user"]))
 
 
 @API.route(api.BaseRoute+"/passwd", methods=["PUT"])
@@ -75,7 +75,7 @@ def updatePassword():
     data = request.get_json(silent=True)
     if data is None or "new" not in data or "old" not in data:
         return jsonify(message="Incomplete data"), 400
-    if "user" in request.args:
+    if "user" in data:
         return updatePasswordUnauth(data)
     error = getSecurityContext("user")
     if error:

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.15.3
+  version: 0.15.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -126,13 +126,6 @@ paths:
       summary: Change current users password
       tags:
         - Misc
-      parameters:
-        - name: user
-          in: query
-          required: false
-          description: Set password for a specific user (use inline authentication)
-          schema:
-            type: string
       requestBody:
         content:
           application/json:
@@ -146,6 +139,9 @@ paths:
                 old:
                   type: string
                   description: The old password
+                user:
+                  type: string
+                  description: Set password for a specific user (use inline authentication)
       responses:
         '200':
           description: Password updated
