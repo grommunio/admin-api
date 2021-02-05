@@ -81,9 +81,6 @@ def updateDomain(domainID):
         Users.query.filter(Users.domainID == domainID)\
                    .update({Users.addressStatus: Users.addressStatus.op("&")(0xF)+(domain.domainStatus << 4)},
                            synchronize_session=False)
-        Groups.query.filter(Groups.domainID == domain.ID)\
-                    .update({Groups.groupStatus: Groups.groupStatus.op("&")(0x3) + (domain.domainStatus << 2)},
-                            synchronize_session=False)
     data.pop("ID", None)
     data.pop("domainname", None)
     try:
@@ -105,8 +102,5 @@ def deleteDomain(domainID):
     Users.query.filter(Users.domainID == domainID)\
                .update({Users.addressStatus: Users.addressStatus.op("&")(0xF) + (Domains.DELETED << 4)},
                        synchronize_session=False)
-    Groups.query.filter(Groups.domainID == domain.ID)\
-                .update({Groups.groupStatus: Groups.groupStatus.op("&")(0x3) + (Domains.DELETED << 2)},
-                        synchronize_session=False)
     DB.session.commit()
     return jsonify(message="k.")

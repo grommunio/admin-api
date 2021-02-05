@@ -256,16 +256,11 @@ def getGroup(domainID, ID):
 def updateGroup(domainID, ID):
     checkPermissions(DomainAdminPermission(domainID))
     group = Groups.query.filter(Groups.domainID == domainID, Groups.ID == ID).first()
-    oldStatus = group.groupStatus
     if group is None:
         return jsonify(message="Group not found"), 404
     patched = defaultPatch(Groups, ID, "Group", group, filters=(Groups.domainID == domainID,), result="precommit")
     if not patched == group:
         return patched
-    if group.groupStatus != oldStatus:
-        Users.query.filter(Users.groupID == ID)\
-                   .update({Users.addressStatus: Users.addressStatus.op("&")(0x33)+(group.domainStatus & 0x3 << 2)},
-                           synchronize_session=False)
     try:
         DB.session.commit()
     except IntegrityError as err:

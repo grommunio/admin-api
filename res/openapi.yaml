@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.15.1
+  version: 0.15.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2028,19 +2028,12 @@ components:
         groupname:
           type: string
           description: Name of the group. Domain suffix is automatically added if not present
-        maxUser:
-          type: integer
-          description: Maximum number of users
         title:
           type: string
           description: Title (display name) of the group
-        createDay:
-          $ref: '#/components/schemas/date'
-        groupStatus:
+        domainID:
           type: integer
-          description: Status of the group (0=Normal, 1=Suspended)
           readOnly: true
-          enum: [0, 1]
     license:
       type: object
       properties:

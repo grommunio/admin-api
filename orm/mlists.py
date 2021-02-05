@@ -95,10 +95,9 @@ class MLists(DataModel, DB.Model):
         if Users.query.filter(Users.username == data["listname"]).count() > 0:
             return "User exists"
         if data["listType"] == cls.TYPE_GROUP:
-            group = Groups.query.filter_by(Groups.ID == data.get("groupID", 0)).with_entities(Groups.groupStatus).first()
+            group = Groups.query.filter(Groups.ID == data.get("groupID", 0)).with_entities(Groups.ID).first()
             if group is None:
                 return "Invalid group"
-            data["groupStatus"] = group.groupStatus
         elif data["listType"] in (cls.TYPE_NORMAL, cls.TYPE_DOMAIN):
             pass
         else:
@@ -122,7 +121,6 @@ class MLists(DataModel, DB.Model):
                            "domainID": self.domain.ID,
                            "groupID": self.groupID,
                            "domain": self.domain,
-                           "groupStatus": props.pop("groupStatus", 0),
                            "domainStatus": self.domain.domainStatus,
                            "properties": {"displaytypeex": 1, "displayname": "Mailing List "+self.listname}})
         self.user.maildir = ""

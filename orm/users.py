@@ -28,17 +28,11 @@ class Groups(DataModel, DB.Model):
     ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
     groupname = DB.Column("groupname", DB.VARCHAR(128), nullable=False, unique=True)
     domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
-    maxUser = DB.Column("max_user", INTEGER(10, unsigned=True), nullable=False)
     title = DB.Column("title", DB.VARCHAR(128), nullable=False)
-    createDay = DB.Column("create_day", DB.DATE, nullable=False)
-    groupStatus = DB.Column("group_status", TINYINT, nullable=False, server_default="0")
 
     _dictmapping_ = ((Id(), Text("title", flags="patch"), Text("groupname", flags="init")),
-                     (Id("domainID", flags="init"),
-                      Int("maxSize", flags="patch"),
-                      Int("maxUser", flags="patch"),
-                      Date("createDay", flags="init")),
-                     (Int("groupStatus", flags="init"),))
+                     (Id("domainID", flags="init"),),
+                     ())
 
 
     NORMAL = 0
@@ -56,11 +50,6 @@ class Groups(DataModel, DB.Model):
             return "Missing required property 'groupname'"
         if "@" in data["groupname"] and data["groupname"].split("@")[1] != domain.domainname:
             return "Domain specifications mismatch."
-        data["groupStatus"] = data.get("groupStatus", 0) + (domain.domainStatus << 2)
-        data["createDay"] = datetime.now()
-
-    def __init__(self, props, *args, **kwargs):
-        self.fromdict(props)
 
 
 class Users(DataModel, DB.Model):
@@ -140,10 +129,6 @@ class Users(DataModel, DB.Model):
             group = Groups.query.filter(Groups.ID == data.get("groupID"), Groups.domainID == domain.ID).first()
             if group is None:
                 return "Invalid group"
-            groupUsers = Users.query.with_entities(func.count().label("count")).filter(Users.groupID == group.ID).first()
-            if group.maxUser <= groupUsers.count:
-                return "Maximum number of group users reached"
-            data["groupStatus"] =  group.groupStatus
         else:
             data["groupID"] = 0
         data["domainStatus"] = domain.domainStatus
@@ -163,7 +148,7 @@ class Users(DataModel, DB.Model):
         self._permissions = None
         if props is None:
             return
-        status = props.pop("groupStatus", 0) << 2 | props.pop("domainStatus") << 4
+        status = props.pop("domainStatus") << 4
         self.fromdict(props, *args, **kwargs)
         self.addressStatus = (self.addressStatus or 0) | status
 
@@ -401,10 +386,6 @@ class UserProperties(DataModel, DB.Model):
             self._propvalbin = value
         else:
             self._propvalstr = str(value)
-
-
-DB.Index("uq_domain_id_username", Users.domainID, Users.username, unique=True)
-DB.Index("uq_group_id_username", Users.groupID, Users.username, unique=True)
 
 
 class Aliases(DataModel, DB.Model):
