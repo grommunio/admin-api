@@ -53,11 +53,13 @@ class MLists(DataModel, DB.Model):
                      (Id("domainID", flags="init"),
                       Int("listPrivilege", flags="patch")),
                      (RefProp("associations", flags="patch, managed", link="username", flat="username", qopt=selectinload),
-                      RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload),))
+                      RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload),
+                      RefProp("class_", alias="class")))
 
     user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname, cascade="all, delete-orphan", single_parent=True)
     associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID, cascade="all, delete-orphan", single_parent=True)
     specifieds = relationship(Specifieds, primaryjoin=ID == Specifieds.listID, foreign_keys=Specifieds.listID, cascade="all, delete-orphan", single_parent=True)
+    class_ = relationship("Classes", primaryjoin="MLists.listname == Classes.listname", foreign_keys="Classes.listname", uselist=False)
 
     TYPE_NORMAL = 0
     TYPE_GROUP = 1
@@ -74,6 +76,7 @@ class MLists(DataModel, DB.Model):
     def checkCreateParams(cls, data):
         from .domains import Domains
         from .users import Users, Groups
+        from .classes import Classes
         if "listname" not in data:
             return "Missing list name"
         if "domainID" in data:
@@ -98,9 +101,7 @@ class MLists(DataModel, DB.Model):
             group = Groups.query.filter(Groups.ID == data.get("groupID", 0)).with_entities(Groups.ID).first()
             if group is None:
                 return "Invalid group"
-        elif data["listType"] in (cls.TYPE_NORMAL, cls.TYPE_DOMAIN):
-            pass
-        else:
+        elif data["listType"] not in (cls.TYPE_NORMAL, cls.TYPE_DOMAIN,  cls.TYPE_CLASS):
             return "Unsupported list type"
         if data.get("listPrivilege", 0) not in (cls.PRIV_ALL,
                                                 cls.PRIV_INTERNAL,
@@ -124,6 +125,23 @@ class MLists(DataModel, DB.Model):
                            "domainStatus": self.domain.domainStatus,
                            "properties": {"displaytypeex": 1, "displayname": "Mailing List "+self.listname}})
         self.user.maildir = ""
+
+    def fromdict(self, data, *args, **kwargs):
+        classID = data.pop("class", None)
+        DataModel.fromdict(self, data, *args, **kwargs)
+        if classID is not None:
+            if self.listType != self.TYPE_CLASS:
+                raise ValueError("Cannot associat non-class mailing list with class")
+            from orm.classes import Classes
+            class_ = Classes.query.filter(Classes.ID == classID).first()
+            if class_ is None:
+                raise ValueError("Invalid class")
+            if class_.listname is not None and (self.class_ is None or self.class_.listname != class_.listname):
+                raise ValueError("{} is associated with another list ({})".format(class_.classname, class_.listname))
+            self.class_ = class_
+        elif self.listType == self.TYPE_CLASS and self.class_ is None:
+            raise ValueError("Missing class ID")
+        return self
 
     def delete(self):
         if self.user:

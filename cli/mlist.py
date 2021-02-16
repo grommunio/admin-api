@@ -5,7 +5,7 @@
 from . import Cli
 from argparse import ArgumentParser
 
-_typemap = {"normal": 0, "group": 1, "domain": 2}
+_typemap = {"normal": 0, "group": 1, "domain": 2, "class": 3}
 _typenames = tuple(_typemap.keys())
 _privmap = {"all": 0, "internal": 1, "domain": 2, "specific": 3, "outgoing": 4}
 _privnames = tuple(_privmap.keys())
@@ -30,7 +30,7 @@ def _getGroupFilter(gspec, dspec):
     return and_(or_(Groups.ID == ID, Groups.groupname.ilike("%"+gspec+"%")), _getDomainFilter(dspec))
 
 
-def _getMlistFilter(mspec, dspec):
+def _getMlistFilter(mspec, dspec, args=None):
     from orm.mlists import MLists
     from sqlalchemy import and_, or_
     if mspec is None:
@@ -39,6 +39,8 @@ def _getMlistFilter(mspec, dspec):
         ID = int(mspec, 0)
     except:
         ID = None
+    if args is not None and "id" in args and args.id is True:
+        return and_(MLists.ID == ID, _getDomainFilter(dspec))
     return and_(or_(MLists.ID == ID, MLists.listname.ilike("%"+mspec+"%")), _getDomainFilter(dspec))
 
 
@@ -62,24 +64,45 @@ def cliMlistCreate(args):
                 specifieds=args.sender)
     if args.group:
         from orm.users import Groups
-        groups = Groups.query.filter(_getGroupFilter(args.group, args.domain))
+        groups = Groups.query.filter(_getGroupFilter(args.group, args.domain)).all()
         if len(groups) == 0:
             print(Cli.col("No group matching '{}' found.", "yellow"))
             return 1
         if len(groups) > 1:
-            print(Cli.col("Group secification '{}' is ambiguous:"))
+            print(Cli.col("Group secification '{}' is ambiguous:", "yellow"))
             for group in groups:
                 print(Cli.col("  {}:\t{}".format(group.ID, group.groupname), "yellow"))
             return 2
-        data["groupID"] = group.groupID
+        data["groupID"] = groups[0].ID
+    if args.class_:
+        from orm.classes import Classes
+        from sqlalchemy import or_
+        try:
+            ID = int(args.class_, 0)
+        except:
+            ID = None
+        classes = Classes.query.filter(or_(Classes.ID == ID, Classes.classname.ilike("%"+args.class_+"%"))).all()
+        if len(classes) == 0:
+            print(Cli.col("No class matching '{}' found".format(args.class_), "yellow"))
+            return 1
+        if len(classes) > 1:
+            print(Cli.col("Class specification '{}' is ambiguous:", "yellow"))
+            for c in classes:
+                print(Cli.col("  {}:\t{}".format(c.ID, c.classname), "yellow"))
+            return 2
+        data["class"] = classes[0].ID
     error = MLists.checkCreateParams(data)
     if error is not None:
         print(Cli.col("Cannot create mlist: "+error, "red"))
         return 3
-    mlist = MLists(data)
-    DB.session.add(mlist)
-    DB.session.commit()
-    print("Mailing list '{}' created with ID {}.".format(mlist.listname, mlist.ID))
+    try:
+        mlist = MLists(data)
+        DB.session.add(mlist)
+        DB.session.commit()
+        print("Mailing list '{}' created with ID {}.".format(mlist.listname, mlist.ID))
+    except ValueError as err:
+        print(Cli.col("Cannot create mlist: "+err.args[0], "red"))
+        DB.session.rollback()
 
 
 def _dumpMlist(mlist, indent=0):
@@ -205,6 +228,7 @@ def _setupCliMlist(subp: ArgumentParser):
                         help="Users allowed to send to the list (only for privilege 'specific')")
     create.add_argument("-t", "--type", choices=_typenames, default="normal", help="Mailing list type")
     create.add_argument("-r", "--recipient", action="append", default=[], help="Users to associate with normal lists")
+    create.add_argument("-c", "--class", help="ID or name of the class to use for class lists", dest="class_")
     show = sub.add_parser("show")
     show.set_defaults(_handle=cliMlistShow)
     show.add_argument("mlistspec", help="Mlist ID or name").completer = _cliListspecCompleter
@@ -223,6 +247,7 @@ def _setupCliMlist(subp: ArgumentParser):
     delete.add_argument("-y", "--yes", action="store_true", help="Do not ask for confirmation")
     modify = sub.add_parser("modify")
     modify.set_defaults(_handle=cliMlistModify)
+    modify.add_argument("-i", "--id", action="store_true", help="Only match list by ID")
     modify.add_argument("mlistspec", help="Mlist ID or name").completer = _cliListspecCompleter
     modify.add_argument("command", choices=("add", "remove"), help="Modification to perform")
     modify.add_argument("attribute", choices=("recipient", "sender"), help="Attribute to modify")

@@ -92,7 +92,7 @@ def setUserPassword(args):
     else:
         password = getpass("Password: ")
         if getpass("Retype password: ") != password:
-            print(Cli.col("Passwords do not match, aborting."), "yellow")
+            print(Cli.col("Passwords do not match, aborting.", "yellow"))
             return 3
     user.password = password
     DB.session.commit()

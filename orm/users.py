@@ -45,7 +45,9 @@ class Groups(DataModel, DB.Model):
             return "Invalid domain"
         if "groupname" not in data:
             return "Missing required property 'groupname'"
-        if "@" in data["groupname"] and data["groupname"].split("@")[1] != domain.domainname:
+        if "@" not in "groupname":
+            data["groupname"] += "@"+domain.domainname
+        elif data["groupname"].split("@")[1] != domain.domainname:
             return "Domain specifications mismatch."
 
 
@@ -117,6 +119,8 @@ class Users(DataModel, DB.Model):
             domain = None
         if domain is None:
             return "Invalid domain"
+        if "@" in data["username"] and domain.domainname != data["user"].split("@", 1)[1]:
+            return "Domain specifications do not match"
         data["domain"] = domain
         data["domainID"] = domain.ID
         domainUsers = Users.count(Users.domainID == domain.ID)

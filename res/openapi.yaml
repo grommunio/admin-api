@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.15.4
+  version: 0.15.5
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1092,7 +1092,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/mlist'
+                      $ref: '#/components/schemas/mlistRead'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -1113,14 +1113,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/mlist'
+              $ref: '#/components/schemas/mlistWrite'
       responses:
         '201':
           description: Mailing list created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/mlist'
+                $ref: '#/components/schemas/mlistRead'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -1146,7 +1146,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/mlist'
+                $ref: '#/components/schemas/mlistRead'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -1168,14 +1168,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/mlist'
+              $ref: '#/components/schemas/mlistWrite'
       responses:
         '200':
           description: Mailing list updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/mlist'
+                $ref: '#/components/schemas/mlistRead'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -1196,6 +1196,155 @@ paths:
       responses:
         '200':
           description: Mailing list deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/classes:
+    get:
+      summary: Get list of classes
+      tags:
+        -  Domain Admin/Classes
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: List of classes returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/classRead'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Create new class
+      tags:
+        - Domain Admin/Classes
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/classWrite'
+      responses:
+        '201':
+          description: Class created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/classRead'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+
+  /domains/classes/tree:
+    get:
+      summary: Generate class hierarchy tree
+      tags:
+        - Domain Admin/Classes
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Class tree returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/classTreeElement'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/classes/{ID}:
+    get:
+      summary: Get information about class
+      tags:
+        - Domain Admin/Classes
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Class returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/classRead'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    patch:
+      summary: Modify class
+      tags:
+        - Domain Admin/Classes
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/classWrite'
+      responses:
+        '200':
+          description: Class updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/classWrite'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete class
+      tags:
+        - Domain Admin/Classes
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Class deleted
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -2117,7 +2266,7 @@ components:
               items:
                 type: string
                 description: LDAP attribute name
-    mlist:
+    mlistRead:
       type: object
       properties:
         ID:
@@ -2127,8 +2276,8 @@ components:
           description: Name or e-mail address of the list
         listType:
           type: integer
-          enum: [0, 1, 2]
-          description: Type of mailing list (0=Normal, 1=Group, 2=Domain)
+          enum: [0, 1, 2, 3]
+          description: Type of mailing list (0=Normal, 1=Group, 2=Domain, 3=Class)
         listPrivilege:
           type: integer
           enum: [0, 1, 2, 3, 4]
@@ -2145,6 +2294,123 @@ components:
           items:
             type: string
             description: E-Mail address of sender
+        class:
+          type: object
+          nullable: true
+          description: Associated class, only available if listType=3
+          properties:
+            ID:
+              $ref: '#/components/schemas/ID'
+            classname:
+              type: string
+    mlistWrite:
+      type: object
+      properties:
+        listname:
+          type: string
+          description: Name or e-mail address of the list
+        listType:
+          type: integer
+          enum: [0, 1, 2, 3]
+          description: Type of mailing list (0=Normal, 1=Group, 2=Domain, 3=Class)
+        listPrivilege:
+          type: integer
+          enum: [0, 1, 2, 3, 4]
+          description: Sender privilege of list (0=All, 1=Internal, 2=Domain, 3=Specific, 4=Outgoing)
+        associations:
+          type: array
+          description: Recipients, only available if listType=0
+          items:
+            type: string
+            description: E-Mail address of recipient
+        specifieds:
+          type: array
+          description: Senders, only available if listPrivilege=3
+          items:
+            type: string
+            description: E-Mail address of sender
+        class:
+          type: integer
+          description: ID of the associated class, only available if listType=3
+    classRead:
+      type: object
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        classname:
+          type: string
+        listname:
+          type: string
+          description: Name of the associated mlist
+        parentClasses:
+          type: array
+          description: List of parent classes
+          items:
+            type: object
+            properties:
+              ID:
+                $ref: '#/components/schemas/ID'
+              classname:
+                type: string
+        parentGroups:
+          type: array
+          description: List of parent groups
+          items:
+            type: object
+            properties:
+              ID:
+                $ref: '#/components/schemas/ID'
+              groupname:
+                type: string
+        children:
+          type: array
+          description: List of child classes
+          items:
+            type: object
+            properties:
+              ID:
+                $ref: '#/components/schemas/ID'
+              classname:
+                type: string
+        members:
+          type: array
+          description: List of class members
+          items:
+            type: string
+            description: E-Mail address of the class members
+    classWrite:
+      type: object
+      properties:
+        classname:
+          type: string
+        parentClasses:
+          type: array
+          description: List of parent class IDs
+          items:
+            type: integer
+        parentGroups:
+          type: array
+          description: List of parent group IDs
+          items:
+            type: integer
+        members:
+          type: array
+          description: List of class members
+          items:
+            type: string
+            description: E-Mail address of the class members
+    classTreeElement:
+      type: object
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        classname:
+          type: string
+        children:
+          type: array
+          items:
+            type: object
+
   responses:
     ServerError:
       description: An error occured while processing the request
@@ -2209,6 +2475,8 @@ tags:
     description: Endpoints for license management
   - name: System Admin/Roles
     description: Endpoints for user role and permission management
+  - name: Domain Admin/Classes
+    description: Endpoints for class and hierarchy management
   - name: Domain Admin/Folders
     description: Endpoints for public folder management
   - name: Domain Admin/Groups
