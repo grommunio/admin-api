@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.15.5
+  version: 0.15.6
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -83,7 +83,7 @@ paths:
                 properties:
                   grammmAuthJwt:
                     type: string
-                    description: API accesss token
+                    description: API access token
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -1255,6 +1255,41 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/classes/testFilter:
+    post:
+      summary: Test class filter specification
+      tags:
+        - Domain Admin/Classes
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/classFilters'
+      responses:
+        '200':
+          description: List of users matching the filter returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ID:
+                          $ref: '#/components/schemas/ID'
+                        username:
+                          type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
 
   /domains/classes/tree:
     get:
@@ -1325,7 +1360,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/classWrite'
+                $ref: '#/components/schemas/classRead'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -2341,6 +2376,7 @@ components:
           type: string
         listname:
           type: string
+          nullable: true
           description: Name of the associated mlist
         parentClasses:
           type: array
@@ -2378,6 +2414,8 @@ components:
           items:
             type: string
             description: E-Mail address of the class members
+        filters:
+          $ref: '#/components/schemas/classFilters'
     classWrite:
       type: object
       properties:
@@ -2399,6 +2437,8 @@ components:
           items:
             type: string
             description: E-Mail address of the class members
+        filters:
+          $ref: '#/components/schemas/classFilters'
     classTreeElement:
       type: object
       properties:
@@ -2410,7 +2450,31 @@ components:
           type: array
           items:
             type: object
-
+    classFilters:
+      type: array
+      description: List of filter lists, which are joined by logical `and` (CNF)
+      items:
+        type: array
+        description: list of filters, which are joined by logical `or`
+        items:
+          type: object
+          description: Filter specification. Exactly one of `c` and `p` must be specified
+          properties:
+            c:
+              description: Column to match
+              enum: [username]
+              type: string
+            p:
+              description: Name of the property to match
+              type: string
+            op:
+              type: string
+              description: Comparison operator
+              enum: [eq, ne, lt, le, gt, ge, li, nl, ex, nx]
+            val:
+              nullable: true
+              type: string
+              description: Value used for comparison (binary operators)
   responses:
     ServerError:
       description: An error occured while processing the request

@@ -119,7 +119,7 @@ class Users(DataModel, DB.Model):
             domain = None
         if domain is None:
             return "Invalid domain"
-        if "@" in data["username"] and domain.domainname != data["user"].split("@", 1)[1]:
+        if "@" in data["username"] and domain.domainname != data["username"].split("@", 1)[1]:
             return "Domain specifications do not match"
         data["domain"] = domain
         data["domainID"] = domain.ID
@@ -216,6 +216,10 @@ class Users(DataModel, DB.Model):
     @property
     def propmap(self):
         return {k: v.val for k, v in self.properties.items()}
+
+    @property
+    def propmap_id(self):
+        return {p.tag: p.val for p in self.properties.values()}
 
     def _setPB(self, bit, val):
         self.privilegeBits = (self.privilegeBits or 0) | bit if val else (self.privilegeBits or 0) & ~bit

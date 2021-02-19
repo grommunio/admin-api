@@ -4,14 +4,16 @@
 
 from . import DB
 from .users import Groups
-from .domains import Domains
 from .mlists import MLists
 
+from tools.classfilters import ClassFilter
+from tools.constants import PropTags
 from tools.DataModel import DataModel, Id, RefProp, Text
 
-from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.mysql import INTEGER
 from sqlalchemy.orm import relationship, validates
+
+import json
 
 
 class Hierarchy(DataModel, DB.Model):
@@ -50,8 +52,6 @@ class Members(DataModel, DB.Model):
     ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
     username = DB.Column("username", DB.VARCHAR(128), nullable=False, index=True)
     classID = DB.Column("class_id", INTEGER(10, unsigned=True), nullable=False, index=True)
-    domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
-    groupID = DB.Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
 
     _dictmapping_ = ((Id(),
                       Text("username", flags="patch"),
@@ -71,6 +71,7 @@ class Classes(DataModel, DB.Model):
     ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
     classname = DB.Column("classname", DB.VARCHAR(128), nullable=False)
     listname = DB.Column("listname", DB.VARCHAR(128), nullable=False, index=True)
+    _filters = DB.Column("filters", DB.TEXT)
 
     cParents = relationship(Hierarchy,
                             primaryjoin=(ID == Hierarchy.childID) & (Hierarchy.classID != 0),
@@ -82,7 +83,8 @@ class Classes(DataModel, DB.Model):
                             primaryjoin=(ID == Hierarchy.classID),
                             foreign_keys=Hierarchy.classID)
 
-    members = relationship(Members, primaryjoin=ID == Members.classID, foreign_keys=Members.classID, cascade="all, delete-orphan", single_parent=True)
+    members = relationship(Members, primaryjoin=ID == Members.classID, foreign_keys=Members.classID,
+                           cascade="all, delete-orphan", single_parent=True, lazy="selectin")
     mlist = relationship(MLists, primaryjoin=listname == MLists.listname, foreign_keys=listname, cascade="all, delete-orphan", single_parent=True)
 
     _dictmapping_ = ((Id(), Text("classname", flags="patch")),
@@ -90,7 +92,8 @@ class Classes(DataModel, DB.Model):
                      (RefProp("cParents", alias="parentClasses", link="classID", flat="cParent"),
                       RefProp("gParents", alias="parentGroups", link="groupID", flat="gParent"),
                       RefProp("members", flags="patch, managed", link="classID", flat="username"),
-                      RefProp("children", flat="child")))
+                      RefProp("children", flat="child"),
+                      {"attr": "filters", "flags": "patch"}))
 
 
     def _updateCParents(self, requested):
@@ -152,3 +155,35 @@ class Classes(DataModel, DB.Model):
             classMap[h.classID]["children"].append(classMap[h.childID])
             toplevel.pop(h.childID, None)
         return list(toplevel.values())
+
+    @validates("members")
+    def validateMembers(self, key, member, *args):
+        if self._filters is not None:
+            raise ValueError("Cannot explicitely add member to filter defined class")
+        return member
+
+    @property
+    def filters(self):
+        try:
+            data = json.loads(self._filters)
+        except:
+            return []
+        for disj in data:
+            for expr in disj:
+                if "p" in expr:
+                    expr["p"] = PropTags.lookup(expr["p"], hex(expr["p"])).lower()
+        return data
+
+    @filters.setter
+    def filters(self, data):
+        if data is None or len(data) == 0:
+            self._filters = None
+            return
+        if len(self.members) != 0:
+            raise ValueError("Cannot specify filter and members at the same time")
+        for disj in data:
+            for expr in disj:
+                if "p" in expr:
+                    expr["p"] = getattr(PropTags, expr["p"].upper(), None)
+        ClassFilter(data)
+        self._filters = json.dumps(data, separators=(",", ":"))
