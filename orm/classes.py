@@ -93,6 +93,7 @@ class Classes(DataModel, DB.Model):
                       RefProp("children", flat="child"),
                       {"attr": "filters", "flags": "patch"}))
 
+    filterColumns = {"username"}
 
     def _updateCParents(self, requested):
         cIDs = {parent.classID for parent in self.cParents}
@@ -183,7 +184,12 @@ class Classes(DataModel, DB.Model):
             raise ValueError("Cannot specify filter and members at the same time")
         for disj in data:
             for expr in disj:
-                if "p" in expr:
-                    expr["p"] = getattr(PropTags, expr["p"].upper(), None)
+                if expr["prop"] not in self.filterColumns:
+                    try:
+                        expr["prop"] = getattr(PropTags, expr["prop"].upper())
+                    except AttributeError:
+                        raise ValueError("Invalid property '{}'".format(expr["prop"]))
+
+
         ClassFilter(data)
         self._filters = json.dumps(data, separators=(",", ":"))

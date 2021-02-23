@@ -57,9 +57,12 @@ def testClassFilter(domainID):
         return jsonify(message="No filter provided"), 400
     try:
         for disj in data:
-                for expr in disj:
-                    if "p" in expr:
-                        expr["p"] = getattr(PropTags, expr["p"].upper())
+            for expr in disj:
+                if expr["prop"] not in Classes.filterColumns:
+                    try:
+                        expr["prop"] = getattr(PropTags, expr["prop"].upper())
+                    except AttributeError:
+                        raise ValueError("Invalid property '{}'".format(expr["prop"]))
     except AttributeError:
         return jsonify(message="'{}' is not a valid property".format(expr["p"])), 400
     try:

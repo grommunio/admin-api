@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.15.8
+  version: 0.15.9
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2455,15 +2455,12 @@ components:
         description: list of filters, which are joined by logical `or`
         items:
           type: object
+          required: [prop, op]
           description: Filter specification. Exactly one of `c` and `p` must be specified
           properties:
-            c:
-              description: Column to match
-              enum: [username]
+            prop:
               type: string
-            p:
-              description: Name of the property to match
-              type: string
+              description: Column name or property to test
             op:
               type: string
               description: Comparison operator

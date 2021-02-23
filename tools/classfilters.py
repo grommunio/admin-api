@@ -19,14 +19,21 @@ class ClassFilter:
         columns = {"username"}
 
         def __init__(self, data):
-            if "p" in data and "c" in data:
-                raise ValueError("Filter cannot be column and property filter at the same time")
-            self.type = "p" if "p" in data else "c" if "c" in data else None
+            if "prop" not in data:
+                raise ValueError("Missing property")
+            self.type = "c" if data["prop"] in self.columns else "p"
             if self.type is None:
                 raise ValueError("Cannot deduct type (missing 'c' or 'p' property)")
             self.op = data.get("op")
-            self.target = data[self.type]
-            self.value = None if self.op in self.unary else data.get("val")
+            self.target = data["prop"]
+            if self.type == "p" and type(self.target) != int:
+                raise ValueError("Invalid property")
+            if self.op not in self.unary:
+                if "val" not in data or data["val"] is None:
+                    raise ValueError("Missing target value")
+                self.value = data["val"]
+            if self.op is None:
+                raise ValueError("Missing operator".format(self.op))
             if self.op not in self.sqlops:
                 raise ValueError("Invalid operator '{}'".format(self.op))
             if self.type == "c" and self.target not in self.columns:
