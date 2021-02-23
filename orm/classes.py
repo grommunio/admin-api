@@ -10,6 +10,7 @@ from tools.classfilters import ClassFilter
 from tools.constants import PropTags
 from tools.DataModel import DataModel, Id, RefProp, Text
 
+from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.mysql import INTEGER
 from sqlalchemy.orm import relationship, validates
 
@@ -71,13 +72,11 @@ class Classes(DataModel, DB.Model):
     ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
     classname = DB.Column("classname", DB.VARCHAR(128), nullable=False)
     listname = DB.Column("listname", DB.VARCHAR(128), nullable=False, index=True)
+    domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), ForeignKey("domains.id"), nullable=False)
     _filters = DB.Column("filters", DB.TEXT)
 
     cParents = relationship(Hierarchy,
                             primaryjoin=(ID == Hierarchy.childID) & (Hierarchy.classID != 0),
-                            foreign_keys=Hierarchy.childID)
-    gParents = relationship(Hierarchy,
-                            primaryjoin=(ID == Hierarchy.childID) & (Hierarchy.classID == 0) & (Hierarchy.groupID != 0),
                             foreign_keys=Hierarchy.childID)
     children = relationship(Hierarchy,
                             primaryjoin=(ID == Hierarchy.classID),
@@ -90,7 +89,6 @@ class Classes(DataModel, DB.Model):
     _dictmapping_ = ((Id(), Text("classname", flags="patch")),
                      (Text("listname"),),
                      (RefProp("cParents", alias="parentClasses", link="classID", flat="cParent"),
-                      RefProp("gParents", alias="parentGroups", link="groupID", flat="gParent"),
                       RefProp("members", flags="patch, managed", link="classID", flat="username"),
                       RefProp("children", flat="child"),
                       {"attr": "filters", "flags": "patch"}))
@@ -101,17 +99,22 @@ class Classes(DataModel, DB.Model):
         self.cParents = [parent for parent in self.cParents if parent.classID in requested] +\
                         [Hierarchy("class", ID, self) for ID in requested if ID not in cIDs]
 
-    def _updateGParents(self, requested):
-        cIDs = {parent.groupID for parent in self.gParents}
-        self.gParents = [parent for parent in self.gParents if parent.groupID in requested] +\
-                        [Hierarchy("group", ID, self) for ID in requested if ID not in cIDs]
+    def __init__(self, props, *args, **kwargs):
+        self.domainID = props.pop("domainID")
+        self.fromdict(props, *args, **kwargs)
 
     def fromdict(self, patches, *args, **kwargs):
         if "parentClasses" in patches:
             self._updateCParents(patches.pop("parentClasses"))
-        if "parentGroups" in patches:
-            self._updateGParents(patches.pop("parentGroups"))
         return DataModel.fromdict(self, patches, *args, **kwargs)
+
+    @staticmethod
+    def checkCreateParams(data):
+        if "domainID" not in data:
+            return "Missing domain ID"
+        from .domains import Domains
+        if Domains.query.filter(Domains.ID == data["domainID"]).count() == 0:
+            return "Invalid domain ID"
 
     @staticmethod
     def checkCycle(base, targetID):
@@ -131,24 +134,21 @@ class Classes(DataModel, DB.Model):
 
     @validates("cParents")
     def validateParentClass(self, key, h, *args):
-        parent = Classes.query.filter(Classes.ID == h.classID).with_entities(Classes.ID).first()
+        parent = Classes.query.filter(Classes.ID == h.classID).with_entities(Classes.domainID).first()
         if parent is None:
             raise ValueError("Parent class does not exist")
+        if parent.domainID != self.domainID:
+            raise ValueError("Parent class must belong to the same domain")
         if self.checkCycle(self, h.classID):
             raise ValueError("Adding class #{} as parent would create a cycle".format(h.classID))
         return h
 
-    @validates("gParents")
-    def validateParentGroup(self, key, h, *args):
-        parent = Groups.query.filter(Groups.ID == h.groupID).with_entities(Classes.ID).first()
-        if parent is None:
-            raise ValueError("Parent group does not exist")
-        return h
-
     @staticmethod
-    def refTree():
-        hierarchy = Hierarchy.query.filter(Hierarchy.classID != 0).with_entities(Hierarchy.classID, Hierarchy.childID).all()
-        classes = Classes.query.with_entities(Classes.ID, Classes.classname).all()
+    def refTree(domainID):
+        hierarchy = Hierarchy.query.join(Classes, Hierarchy.classID == Classes.ID)\
+                                   .filter(Hierarchy.classID != 0, Classes.domainID == domainID)\
+                                   .with_entities(Hierarchy.classID, Hierarchy.childID).all()
+        classes = Classes.query.filter(Classes.domainID == domainID).with_entities(Classes.ID, Classes.classname).all()
         classMap = {c.ID: {"ID": c.ID, "classname": c.classname, "children": []} for c in classes}
         toplevel = dict(classMap)
         for h in hierarchy:

@@ -164,7 +164,7 @@ def cliShell(args):
             except AttributeError as err:
                 print(Cli.col("Caught AttributeError: "+"-".join(str(arg) for arg in err.args), "blue", attrs=["dark"]))
     except KeyboardInterrupt:
-        print("Received interrupt - exiting")
+        print("\nReceived interrupt - exiting")
     except EOFError:
         print()
 

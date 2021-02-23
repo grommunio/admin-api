@@ -18,34 +18,40 @@ from .. import defaultListHandler, defaultObjectHandler
 from orm import DB
 if DB is not None:
     from orm.classes import Classes
+    from orm.users import Users
 
 
-@API.route(api.BaseRoute+"/domains/classes", methods=["GET", "POST"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/classes", methods=["GET", "POST"])
 @secure()
-def classListEndpoint():
-    checkPermissions(DomainAdminPermission("*"))
-    return defaultListHandler(Classes)
+def classListEndpoint(domainID):
+    checkPermissions(DomainAdminPermission(domainID))
+    if request.method == "POST":
+        data = request.get_json(silent=True, cache=True) or {}
+        data["domainID"] = domainID
+    return defaultListHandler(Classes, filters=(Classes.domainID == domainID,))
 
 
-@API.route(api.BaseRoute+"/domains/classes/<int:ID>", methods=["GET", "PATCH", "DELETE"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/classes/<int:ID>", methods=["GET", "PATCH", "DELETE"])
 @secure()
-def classObjectEndpoint(ID):
-    checkPermissions(DomainAdminPermission("*"))
-    return defaultObjectHandler(Classes, ID, "Class")
+def classObjectEndpoint(domainID, ID):
+    checkPermissions(DomainAdminPermission(domainID))
+    return defaultObjectHandler(Classes, ID, "Class", filters=(Classes.domainID == domainID,))
 
 
-@API.route(api.BaseRoute+"/domains/classes/tree", methods=["GET"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/classes/tree", methods=["GET"])
 @secure()
-def classTreeEndpoint():
+def classTreeEndpoint(domainID):
+    checkPermissions(DomainAdminPermission(domainID))
     try:
-        return jsonify(data=Classes.refTree())
+        return jsonify(data=Classes.refTree(domainID))
     except ValueError as err:
         return jsonify(message="Failed to create tree: "+err.args[0]), 500
 
 
-@API.route(api.BaseRoute+"/domains/classes/testFilter", methods=["POST"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/classes/testFilter", methods=["POST"])
 @secure()
-def testClassFilter():
+def testClassFilter(domainID):
+    checkPermissions(DomainAdminPermission(domainID))
     data = request.get_json(silent=True)
     if data is None:
         return jsonify(message="No filter provided"), 400
@@ -60,5 +66,8 @@ def testClassFilter():
         cf = ClassFilter(data)
     except ValueError as err:
         return jsonify(message="Invalid filter: "+err.args[0]), 400
-    res = DB.session.execute(cf.sql("id, username")).fetchall()
+    query = "SELECT uf.id AS id, uf.username AS username FROM (" +\
+            cf.sql("id, username, domain_id") +\
+            ") AS uf WHERE uf.domain_id = :domainID"
+    res = DB.session.execute(query, params={"domainID": domainID}).fetchall()
     return jsonify(data=[{"ID": u.id, "username": u.username} for u in res])

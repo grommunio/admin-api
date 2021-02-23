@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.15.6
+  version: 0.15.7
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1205,13 +1205,15 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/classes:
+  /domains/{domainID}/classes:
     get:
       summary: Get list of classes
       tags:
         -  Domain Admin/Classes
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
       responses:
         '200':
           description: List of classes returned
@@ -1236,6 +1238,8 @@ paths:
         - Domain Admin/Classes
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
       requestBody:
         content:
           application/json:
@@ -1255,13 +1259,15 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/classes/testFilter:
+  /domains/{domainID}/classes/testFilter:
     post:
       summary: Test class filter specification
       tags:
         - Domain Admin/Classes
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
       requestBody:
         content:
           application/json:
@@ -1291,13 +1297,15 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/classes/tree:
+  /domains/{domainID}/classes/tree:
     get:
       summary: Generate class hierarchy tree
       tags:
         - Domain Admin/Classes
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
       responses:
         '200':
           description: Class tree returned
@@ -1317,7 +1325,7 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/classes/{ID}:
+  /domains/{domainID}/classes/{ID}:
     get:
       summary: Get information about class
       tags:
@@ -1325,6 +1333,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
       responses:
         '200':
@@ -1348,6 +1357,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
       requestBody:
         content:
@@ -1376,6 +1386,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
       responses:
         '200':
@@ -2388,16 +2399,6 @@ components:
                 $ref: '#/components/schemas/ID'
               classname:
                 type: string
-        parentGroups:
-          type: array
-          description: List of parent groups
-          items:
-            type: object
-            properties:
-              ID:
-                $ref: '#/components/schemas/ID'
-              groupname:
-                type: string
         children:
           type: array
           description: List of child classes
@@ -2424,11 +2425,6 @@ components:
         parentClasses:
           type: array
           description: List of parent class IDs
-          items:
-            type: integer
-        parentGroups:
-          type: array
-          description: List of parent group IDs
           items:
             type: integer
         members:

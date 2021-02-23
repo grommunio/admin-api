@@ -174,3 +174,6 @@ class MLists(DataModel, DB.Model):
         if priv not in range(5):
             raise ValueError("Invalid list privilege")
         return priv
+
+
+from . import classes
