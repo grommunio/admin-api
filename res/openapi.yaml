@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.15.7
+  version: 0.15.8
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2448,6 +2448,7 @@ components:
             type: object
     classFilters:
       type: array
+      nullable: true
       description: List of filter lists, which are joined by logical `and` (CNF)
       items:
         type: array

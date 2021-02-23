@@ -167,7 +167,7 @@ class Classes(DataModel, DB.Model):
         try:
             data = json.loads(self._filters)
         except:
-            return []
+            return None
         for disj in data:
             for expr in disj:
                 if "p" in expr:
