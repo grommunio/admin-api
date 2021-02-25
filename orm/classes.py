@@ -77,7 +77,7 @@ class Classes(DataModel, DB.Model):
 
     cParents = relationship(Hierarchy,
                             primaryjoin=(ID == Hierarchy.childID) & (Hierarchy.classID != 0),
-                            foreign_keys=Hierarchy.childID)
+                            foreign_keys=Hierarchy.childID, cascade="all, delete-orphan", single_parent=True)
     children = relationship(Hierarchy,
                             primaryjoin=(ID == Hierarchy.classID),
                             foreign_keys=Hierarchy.classID)
