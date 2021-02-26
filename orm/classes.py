@@ -89,7 +89,7 @@ class Classes(DataModel, DB.Model):
     _dictmapping_ = ((Id(), Text("classname", flags="patch")),
                      (Text("listname"),),
                      (RefProp("cParents", alias="parentClasses", link="classID", flat="cParent"),
-                      RefProp("members", flags="patch, managed", link="classID", flat="username"),
+                      RefProp("members", flags="patch, managed", link="username", flat="username"),
                       RefProp("children", flat="child"),
                       {"attr": "filters", "flags": "patch"}))
 
