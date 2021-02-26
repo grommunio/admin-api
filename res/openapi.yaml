@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.15.10
+  version: 0.15.11
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -389,6 +389,27 @@ paths:
           $ref: '#/components/responses/DatabaseError'
 
   /system/domains/{domainID}:
+    get:
+      summary: Get detailed info about domain
+      tags:
+        - System Admin/Domains
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: Domain returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update domain
       tags:
