@@ -150,7 +150,7 @@ class Classes(DataModel, DB.Model):
                                    .filter(Hierarchy.classID != 0, Classes.domainID == domainID)\
                                    .with_entities(Hierarchy.classID, Hierarchy.childID).all()
         classes = Classes.query.filter(Classes.domainID == domainID).with_entities(Classes.ID, Classes.classname).all()
-        classMap = {c.ID: {"ID": c.ID, "classname": c.classname, "children": []} for c in classes}
+        classMap = {c.ID: {"ID": c.ID, "name": c.classname, "children": []} for c in classes}
         toplevel = dict(classMap)
         for h in hierarchy:
             classMap[h.classID]["children"].append(classMap[h.childID])
