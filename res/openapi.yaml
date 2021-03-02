@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.15.11
+  version: 0.16.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -337,6 +337,205 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
+
+  /system/dbconf:
+    get:
+      summary: Get list of services
+      tags:
+        - System Admin/DBConf
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: List of services returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /system/dbconf/{service}:
+    get:
+      summary: Get list of configuration files for service
+      tags:
+        - System Admin/DBConf
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/dbConfService'
+      responses:
+        '200':
+          description: List of files returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    patch:
+      summary: Rename or merge service
+      tags:
+        - System Admin/DBConf
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/dbConfService'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: New service name. If a service with this name exists, configurations are merged
+      responses:
+        '200':
+          description: Service renamed
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete service configurations
+      tags:
+        - System Admin/DBConf
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/dbConfService'
+      responses:
+        '200':
+          description: Service removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /system/dbconf/{service}/{file}:
+    get:
+      summary: Get configuration file
+      tags:
+        - System Admin/DBConf
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/dbConfService'
+        - $ref: '#/components/parameters/dbConfFile'
+      responses:
+        '200':
+          description: Configuration file returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/dbConfFile'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    put:
+      summary: Upload configuration file. If the file exists it is overwritten
+      tags:
+        - System Admin/DBConf
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/dbConfService'
+        - $ref: '#/components/parameters/dbConfFile'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#/components/schemas/dbConfFile'
+      responses:
+        '200':
+          description: File created/updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    patch:
+      summary: Update or rename configuration file
+      tags:
+        - System Admin/DBConf
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/dbConfService'
+        - $ref: '#/components/parameters/dbConfFile'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: New file name
+                data:
+                  $ref: '#/components/schemas/dbConfFile'
+      responses:
+        '200':
+          description: File created/updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete configuration file
+      tags:
+        - System Admin/DBConf
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/dbConfService'
+        - $ref: '#/components/parameters/dbConfFile'
+      responses:
+        '200':
+          description: File deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
 
   /system/domains:
     get:
@@ -1618,7 +1817,7 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /ldap/search:
+  /domains/ldap/search:
     get:
       summary: Perform LDAP user search
       tags:
@@ -1662,7 +1861,7 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
-  /ldap/importUser:
+  /domains/ldap/importUser:
     post:
       summary: Import user from ldap
       tags:
@@ -1707,7 +1906,7 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
-  /ldap/check:
+  /domains/ldap/check:
     get:
       summary: Check status of ldap imported users
       tags:
@@ -1777,7 +1976,7 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
-  /ldap/downsync:
+  /domains/ldap/downsync:
     post:
       summary: Update all LDAP imported users
       tags:
@@ -1816,7 +2015,7 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
-  /ldap/dump:
+  /domains/ldap/dump:
     get:
       summary: Dump LDAP object
       tags:
@@ -1849,12 +2048,12 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
-  /mconf/ldap:
+  /system/mconf/ldap:
     get:
       summary: Get the current LDAP configuration
       tags:
         - LDAP
-        - MConf
+        - System Admin/MConf
       security:
         - JWTCookie: []
       responses:
@@ -1880,7 +2079,7 @@ paths:
       summary: Set new LDAP configuration
       tags:
         - LDAP
-        - MConf
+        - System Admin/MConf
       security:
         - JWTCookie: []
       requestBody:
@@ -1901,7 +2100,7 @@ paths:
       summary: Remove LDAP configuration and disable service
       tags:
         - LDAP
-        - MConf
+        - System Admin/MConf
       security:
         - JWTCookie: []
       responses:
@@ -1959,6 +2158,20 @@ components:
     systemdUnit:
       name: unit
       description: Name of the unit to signal
+      in: path
+      required: true
+      schema:
+        type: string
+    dbConfService:
+      name: service
+      description: Name of the service to configure
+      in: path
+      required: true
+      schema:
+        type: string
+    dbConfFile:
+      name: file
+      description: Name of the configuration file
       in: path
       required: true
       schema:
@@ -2490,6 +2703,10 @@ components:
               nullable: true
               type: string
               description: Value used for comparison (binary operators)
+    dbConfFile:
+      type: object
+      additionalProperties:
+        type: string
   responses:
     ServerError:
       description: An error occured while processing the request
@@ -2548,10 +2765,14 @@ components:
 tags:
   - name: System Admin/Dashboard
     description: Endpoints for the system admin dashboard
+  - name: System Admin/DBConf
+    description: Endpoints for database stored configuration management
   - name: System Admin/Domains
     description: Endpoints for domain management
   - name: System Admin/License
     description: Endpoints for license management
+  - name: System Admin/MConf
+    description: Endpoints for accessing managed configurations
   - name: System Admin/Roles
     description: Endpoints for user role and permission management
   - name: Domain Admin/Classes
@@ -2566,7 +2787,5 @@ tags:
     description: Endpoints for user management
   - name: LDAP
     description: Endpoints for LDAP operations
-  - name: MConf
-    description: Endpoints for accessing managed configurations
   - name: Misc
     description: Miscellaneous and organizational endpoints

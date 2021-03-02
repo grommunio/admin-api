@@ -20,3 +20,13 @@ class Forwards(DataModel, DB.Model):
     _dictmapping_ = ((Id(), Text("username", flags="patch")),
                      (Text("forwardType", flags="patch"),
                       Text("destination", flags="patch")))
+
+
+class DBConf(DB.Model):
+    __tablename__ = "configs"
+
+    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
+    service = DB.Column("service", DB.VARCHAR(200), nullable=False, index=True)
+    file = DB.Column("file", DB.VARCHAR(200), nullable=False, index=True)
+    key = DB.Column("key", DB.VARCHAR(200), nullable=False)
+    value = DB.Column("value", DB.VARCHAR(200), nullable=True)

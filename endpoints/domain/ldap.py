@@ -26,7 +26,7 @@ if DB is not None:
     import orm.roles
 
 
-@API.route(api.BaseRoute+"/ldap/search", methods=["GET"])
+@API.route(api.BaseRoute+"/domains/ldap/search", methods=["GET"])
 @secure(requireDB=True, authLevel="user")
 def searchLdap():
     checkPermissions(DomainAdminPermission("*"))
@@ -48,7 +48,7 @@ def searchLdap():
     return jsonify(data=[{"ID": ldap.escape_filter_chars(u.ID), "name": u.name, "email": u.email} for u in ldapusers])
 
 
-@API.route(api.BaseRoute+"/ldap/downsync", methods=["POST"])
+@API.route(api.BaseRoute+"/domains/ldap/downsync", methods=["POST"])
 @secure(requireDB=True, authLevel="user")
 def ldapDownsyncAll():
     checkPermissions(DomainAdminPermission("*"))
@@ -84,7 +84,7 @@ def ldapDownsyncAll():
     return jsonify(data=syncStatus)
 
 
-@API.route(api.BaseRoute+"/ldap/importUser", methods=["POST"])
+@API.route(api.BaseRoute+"/domains/ldap/importUser", methods=["POST"])
 @secure(requireDB=True, authLevel="user")
 def downloadLdapUser():
     checkPermissions(DomainAdminPermission("*"))
@@ -159,7 +159,7 @@ def updateLdapUser(domainID, userID):
     return jsonify(user.fulldesc())
 
 
-@API.route(api.BaseRoute+"/ldap/check", methods=["GET", "DELETE"])
+@API.route(api.BaseRoute+"/domains/ldap/check", methods=["GET", "DELETE"])
 @secure(requireDB=True, authLevel="user")
 def checkLdapUsers():
     checkPermissions(DomainAdminPermission("*"))
@@ -200,7 +200,7 @@ def checkLdapUsers():
     return jsonify(deleted=orphanedData)
 
 
-@API.route(api.BaseRoute+"/ldap/dump", methods=["GET"])
+@API.route(api.BaseRoute+"/domains/ldap/dump", methods=["GET"])
 @secure(requireDB=True, authLevel="user")
 def dumpLdapUsers():
     checkPermissions(DomainAdminPermission("*"))
