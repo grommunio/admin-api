@@ -6,6 +6,7 @@ __all__ = ["domains", "misc", "users", "ext"]
 
 from api.core import API
 from flask_sqlalchemy import SQLAlchemy
+from urllib.parse import quote_plus
 
 from tools.config import Config
 
@@ -34,12 +35,12 @@ def _loadDBConfig():
     if "host" not in DBconf and "port" not in DBconf:
         API.logger.info("Database connection not specified. Using default '127.0.0.1:3306'")
     host = DBconf.get("host", "127.0.0.1")
-    port = DBconf.get("port", "3306")
-    return "mysql+mysqldb://{user}:{password}@{host}:{port}/{db}".format(user=DBconf["user"],
-                                                                         password=DBconf["pass"],
-                                                                         host=host,
+    port = DBconf.get("port", 3306)
+    return "mysql+mysqldb://{user}:{password}@{host}:{port}/{db}".format(user=quote_plus(DBconf["user"]),
+                                                                         password=quote_plus(DBconf["pass"]),
+                                                                         host=quote_plus(host),
                                                                          port=port,
-                                                                         db=DBconf["database"])
+                                                                         db=quote_plus(DBconf["database"]))
 
 
 if Config["options"]["disableDB"]:

@@ -8,7 +8,7 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
-from tools import ldap, mconf
+from tools import dbconf
 from tools.permissions import SystemAdminPermission
 
 from orm import DB
@@ -16,7 +16,7 @@ if DB is not None:
     from orm.misc import DBConf
 
 
-@API.route(api.BaseRoute+"/system/dbconf", methods=["GET"])
+@API.route(api.BaseRoute+"/system/dbconf/", methods=["GET"])
 @secure(requireDB=True)
 def getDbconfServices():
     checkPermissions(SystemAdminPermission())
@@ -24,7 +24,7 @@ def getDbconfServices():
     return jsonify(data=data)
 
 
-@API.route(api.BaseRoute+"/system/dbconf/<service>", methods=["GET"])
+@API.route(api.BaseRoute+"/system/dbconf/<service>/", methods=["GET"])
 @secure(requireDB=True)
 def getDbconfFiles(service):
     checkPermissions(SystemAdminPermission())
@@ -32,7 +32,7 @@ def getDbconfFiles(service):
     return jsonify(data=data)
 
 
-@API.route(api.BaseRoute+"/system/dbconf/<service>", methods=["PATCH"])
+@API.route(api.BaseRoute+"/system/dbconf/<service>/", methods=["PATCH"])
 @secure(requireDB=True)
 def renameDbconfService(service):
     checkPermissions(SystemAdminPermission())
@@ -47,7 +47,7 @@ def renameDbconfService(service):
     return jsonify(message="Success.")
 
 
-@API.route(api.BaseRoute+"/system/dbconf/<service>", methods=["DELETE"])
+@API.route(api.BaseRoute+"/system/dbconf/<service>/", methods=["DELETE"])
 @secure(requireDB=True)
 def deleteDbconfService(service):
     checkPermissions(SystemAdminPermission())
@@ -59,7 +59,7 @@ def deleteDbconfService(service):
     return jsonify(message="Service deleted")
 
 
-@API.route(api.BaseRoute+"/system/dbconf/<service>/<file>", methods=["PUT", "PATCH"])
+@API.route(api.BaseRoute+"/system/dbconf/<service>/<file>/", methods=["PUT", "PATCH"])
 @secure(requireDB=True)
 def updateDbconfFile(service, file):
     checkPermissions(SystemAdminPermission())
@@ -81,10 +81,13 @@ def updateDbconfFile(service, file):
             DB.session.rollback()
             return jsonify(message="File not found"), 404
     DB.session.commit()
-    return jsonify(message="Success.")
+    error = dbconf.commit(service, file)
+    if error is None:
+        return jsonify(message="Success.")
+    return jsonify(message="Configuration updated but commit failed ({})".format(error))
 
 
-@API.route(api.BaseRoute+"/system/dbconf/<service>/<file>", methods=["DELETE"])
+@API.route(api.BaseRoute+"/system/dbconf/<service>/<file>/", methods=["DELETE"])
 @secure(requireDB=True)
 def deleteDbconfFile(service, file):
     checkPermissions(SystemAdminPermission())
@@ -95,9 +98,16 @@ def deleteDbconfFile(service, file):
     return jsonify(message="File deleted")
 
 
-@API.route(api.BaseRoute+"/system/dbconf/<service>/<file>", methods=["GET"])
+@API.route(api.BaseRoute+"/system/dbconf/<service>/<file>/", methods=["GET"])
 @secure(requireDB=True)
 def getDbconfFile(service, file):
     checkPermissions(SystemAdminPermission())
     data = {entry.key: entry.value for entry in DBConf.query.filter(DBConf.service == service, DBConf.file == file)}
     return jsonify(data=data)
+
+
+@API.route(api.BaseRoute+"/system/dbconf/commands", methods=["GET"])
+@secure()
+def getDbconfCommands():
+    checkPermissions(SystemAdminPermission())
+    return jsonify(key=list(dbconf.keyCommits), file=list(dbconf.fileCommits), service=list(dbconf.serviceCommits))

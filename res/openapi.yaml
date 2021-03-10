@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.16.0
+  version: 0.16.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -338,7 +338,7 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  /system/dbconf:
+  /system/dbconf/:
     get:
       summary: Get list of services
       tags:
@@ -364,7 +364,39 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /system/dbconf/{service}:
+  /system/dbconf/commands:
+    get:
+      summary: Get lists of allowed commit commands
+      tags:
+        - System Admin/DBConf
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Commands returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: array
+                    description: List of commands allowed for key commits
+                    items:
+                      type: string
+                  file:
+                    type: array
+                    description: List of commands allowed for file commits
+                    items:
+                      type: string
+                  service:
+                    type: array
+                    description: List of commands allowed for service commits
+                    items:
+                      type: string
+
+
+  /system/dbconf/{service}/:
     get:
       summary: Get list of configuration files for service
       tags:
@@ -437,7 +469,7 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /system/dbconf/{service}/{file}:
+  /system/dbconf/{service}/{file}/:
     get:
       summary: Get configuration file
       tags:

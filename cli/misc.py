@@ -138,7 +138,7 @@ def cliShell(args):
         try:
             import readline
             import argcomplete
-            completer = argcomplete.CompletionFinder(Cli.parser)
+            completer = argcomplete.CompletionFinder(Cli.parser, always_complete_options=False)
             readline.set_completer_delims("")
             readline.set_completer(completer.rl_complete)
             readline.parse_and_bind("tab: complete")

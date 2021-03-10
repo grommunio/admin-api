@@ -52,6 +52,14 @@ def cliDbconfSet(args):
         entry.value = args.value
     DB.session.commit()
     print("{}={}".format(entry.key, entry.value or ""))
+    if not args.batch:
+        from tools import dbconf
+        print("Committing change...")
+        error = dbconf.commit(args.service, args.file, args.key)
+        if error is not None:
+            print("Commit failed: "+error)
+            return 2
+        print("Success.")
 
 
 def cliDbconfGet(args):
@@ -112,6 +120,7 @@ def _setupCliDbconf(subp: ArgumentParser):
     set.add_argument("file", help="File or section").completer = _autocompFile
     set.add_argument("key", help="Configuration entry").completer = _autocompKey
     set.add_argument("value", nargs="?", help="Value to set. If omitted, create an empty entry")
+    set.add_argument("-b", "--batch", action="store_true", help="Do not autocommit changes")
     set.add_argument("-i", "--init", action="store_true", help="Only set if value configuration does not exist")
     get = sub.add_parser("get")
     get.set_defaults(_handle=cliDbconfGet)
