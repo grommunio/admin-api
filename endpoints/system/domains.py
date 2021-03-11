@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2021 grammm GmbH
 
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
@@ -72,7 +72,6 @@ def updateDomain(domainID):
     domain: Domains = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    data = request.get_json(silent=True, cache=True)
     oldStatus = domain.domainStatus
     patched = defaultPatch(Domains, domainID, "Domain", obj=domain, result="precommit")
     if isinstance(patched, tuple):  # Return value is not the domain, but an error response
@@ -81,8 +80,6 @@ def updateDomain(domainID):
         Users.query.filter(Users.domainID == domainID)\
                    .update({Users.addressStatus: Users.addressStatus.op("&")(0xF)+(domain.domainStatus << 4)},
                            synchronize_session=False)
-    data.pop("ID", None)
-    data.pop("domainname", None)
     try:
         DB.session.commit()
     except IntegrityError as err:
@@ -98,9 +95,6 @@ def deleteDomain(domainID):
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    domain.domainStatus = Domains.DELETED
-    Users.query.filter(Users.domainID == domainID)\
-               .update({Users.addressStatus: Users.addressStatus.op("&")(0xF) + (Domains.DELETED << 4)},
-                       synchronize_session=False)
+    domain.delete()
     DB.session.commit()
-    return jsonify(message="k.")
+    return jsonify(message="Domain marked as deleted")

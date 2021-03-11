@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2021 grammm GmbH
 
 from . import Cli, ArgumentParser
 
@@ -149,7 +149,11 @@ def cliShell(args):
     try:
         while True:
             rlEnable(True)
-            command = input(Cli.col("grammm-admin", "cyan", attrs=["dark", "bold"])+"> " if Cli.interactive else "").strip()
+            try:
+                command = input(Cli.col("grammm-admin", "cyan", attrs=["dark", "bold"])+"> " if Cli.interactive else "").strip()
+            except KeyboardInterrupt:
+                print("^C")
+                continue
             if command == "":
                 continue
             elif command == "exit":
@@ -163,8 +167,9 @@ def cliShell(args):
                 pass
             except AttributeError as err:
                 print(Cli.col("Caught AttributeError: "+"-".join(str(arg) for arg in err.args), "blue", attrs=["dark"]))
-    except KeyboardInterrupt:
-        print("\nReceived interrupt - exiting")
+            except BaseException as err:
+                print(Cli.col("An exception occured ({}): {}".format(sys.last_type, "-".join(str(arg) for arg in err.args)),
+                              "red"))
     except EOFError:
         print()
 

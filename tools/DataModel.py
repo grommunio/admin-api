@@ -607,7 +607,7 @@ def RefProp(attr, mask=None, target=None, **kwargs):
 
 def Id(name="ID", **kwargs):
     """Create an ID property."""
-    _addFlags(kwargs, "init")
+    _addFlags(kwargs, "init,sort")
     return DataModel.Prop(name, filter="set", **kwargs)
 
 

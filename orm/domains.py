@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2021 grammm GmbH
 
 from . import DB
 from tools.DataModel import DataModel, Id, Text, Int, Date, BoolP
@@ -59,3 +59,48 @@ class Domains(DataModel, DB.Model):
     def checkCreateParams(data):
         if "maxUser" not in data:
             return "Missing required property maxUser"
+
+    def delete(self):
+        from .users import Users
+        self.domainStatus = self.DELETED
+        Users.query.filter(Users.domainID == self.ID)\
+                   .update({Users.addressStatus: Users.addressStatus.op("&")(0xF) + (self.DELETED << 4)},
+                           synchronize_session=False)
+
+    def recover(self):
+        from .users import Users
+        self.domainStatus = self.NORMAL
+        Users.query.filter(Users.domainID == self.ID)\
+                   .update({Users.addressStatus: Users.addressStatus.op("&")(0xF) + (self.NORMAL << 4)},
+                           synchronize_session=False)
+
+
+    def purge(self, deleteFiles=False, printStatus=False):
+        from .classes import Classes, Hierarchy, Members
+        from .mlists import MLists, Associations, Specifieds
+        from .users import Users, Aliases
+        users = Users.query.filter(Users.domainID == self.ID)
+        if deleteFiles:
+            from shutil import rmtree
+            us = users.with_entities(Users.maildir).all()
+            if printStatus:
+                print("Deleting user directories...", end="")
+            for user in us:
+                if user.maildir != "":
+                    rmtree(user.maildir, True)
+            if printStatus:
+                print("Done.\nDeleting domain directory...", end="")
+            rmtree(self.homedir, True)
+            print("Done.")
+        nosync = {"synchronize_session": False}
+        classes = Classes.query.filter(Classes.domainID == self.ID).with_entities(Classes.ID)
+        Hierarchy.query.filter(Hierarchy.childID.in_(classes) | Hierarchy.classID.in_(classes)).delete(**nosync)
+        Members.query.filter(Members.classID.in_(classes)).delete(**nosync)
+        classes.delete(**nosync)
+        mlists = MLists.query.filter(MLists.domainID == self.ID)
+        Specifieds.query.filter(Specifieds.listID.in_(mlists.with_entities(MLists.ID))).delete(**nosync)
+        Associations.query.filter(Associations.listID.in_(mlists.with_entities(MLists.ID))).delete(**nosync)
+        mlists.delete(**nosync)
+        Aliases.query.filter(Aliases.mainname.in_(users.with_entities(Users.username))).delete(**nosync)
+        users.delete(**nosync)
+        DB.session.delete(self)

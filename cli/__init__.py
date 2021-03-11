@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2021 grammm GmbH
 
 import argcomplete
 from argparse import ArgumentParser
@@ -107,4 +107,4 @@ class Cli:
             return Cli.ERR_USR_ABRT
 
 
-from . import dbconf, dbtools, ldap, mconf, misc, mlist, user
+from . import dbconf, dbtools, domain, ldap, mconf, misc, mlist
