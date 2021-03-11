@@ -5,10 +5,9 @@
 from . import DB
 from tools.constants import PropTags, PropTypes
 from tools.rop import ntTime, nxTime
-from tools.DataModel import DataModel, Id, Text, Int, Date, BoolP, RefProp
-from tools.misc import createMapping
+from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp
 
-from sqlalchemy import func, ForeignKey
+from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, selectinload
@@ -17,38 +16,7 @@ from sqlalchemy.orm.collections import attribute_mapped_collection
 import crypt
 import re
 import time
-from base64 import b64decode, b64encode
 from datetime import datetime
-from ldap3.utils.conv import escape_filter_chars
-
-
-class Groups(DataModel, DB.Model):
-    __tablename__ = "groups"
-
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
-    groupname = DB.Column("groupname", DB.VARCHAR(128), nullable=False, unique=True)
-    domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
-    title = DB.Column("title", DB.VARCHAR(128), nullable=False)
-
-    _dictmapping_ = ((Id(), Text("title", flags="patch"), Text("groupname", flags="init")),
-                     (Id("domainID", flags="init, hidden"),),
-                     ())
-
-    NORMAL = 0
-    SUSPEND = 1
-
-    @staticmethod
-    def checkCreateParams(data):
-        from orm.domains import Domains
-        domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
-        if domain is None:
-            return "Invalid domain"
-        if "groupname" not in data:
-            return "Missing required property 'groupname'"
-        if "@" not in "groupname":
-            data["groupname"] += "@"+domain.domainname
-        elif data["groupname"].split("@")[1] != domain.domainname:
-            return "Domain specifications mismatch."
 
 
 class Users(DataModel, DB.Model):
@@ -57,7 +25,6 @@ class Users(DataModel, DB.Model):
     ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
     username = DB.Column("username", DB.VARCHAR(128), nullable=False, unique=True)
     _password = DB.Column("password", DB.VARCHAR(40), nullable=False, server_default="")
-    groupID = DB.Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
     domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     maildir = DB.Column("maildir", DB.VARCHAR(128), nullable=False, server_default="")
     addressStatus = DB.Column("address_status", TINYINT, nullable=False, server_default="0")
@@ -66,6 +33,7 @@ class Users(DataModel, DB.Model):
     _deprecated_maxSize = DB.Column("max_size", INTEGER(10), nullable=False, default=0)
     _deprecated_addressType = DB.Column("address_type", TINYINT, nullable=False, server_default="0")
     _deprecated_subType = DB.Column("sub_type", TINYINT, nullable=False, server_default="0")
+    _deprecated_groupID = DB.Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
 
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True,
@@ -74,7 +42,6 @@ class Users(DataModel, DB.Model):
 
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("domainID", flags="init"),
-                      Id("groupID", flags="patch"),
                       {"attr": "ldapID", "flags": "patch"}),
                      (RefProp("roles", qopt=selectinload),
                       RefProp("properties", flags="patch, managed", link="name", flat="val", qopt=selectinload),
@@ -126,12 +93,6 @@ class Users(DataModel, DB.Model):
         domainUsers = Users.count(Users.domainID == domain.ID)
         if domain.maxUser <= domainUsers:
             return "Maximum number of domain users reached"
-        if data.get("groupID"):
-            group = Groups.query.filter(Groups.ID == data.get("groupID"), Groups.domainID == domain.ID).first()
-            if group is None:
-                return "Invalid group"
-        else:
-            data["groupID"] = 0
         data["domainStatus"] = domain.domainStatus
         if "properties" not in data:
             data["properties"] = {}

@@ -24,7 +24,7 @@ import shutil
 
 from orm import DB
 if DB is not None:
-    from orm.users import Users, Groups, UserProperties
+    from orm.users import Users, UserProperties
     from orm.roles import AdminUserRoleRelation, AdminRoles
 
 
@@ -208,62 +208,3 @@ def updateUserRoles(domainID, userID):
         return jsonify(message="Invalid data", error=err.orig.args[1]), 400
     roles = AdminRoles.query.join(AdminUserRoleRelation).filter(AdminUserRoleRelation.userID == userID).all()
     return jsonify(data=[role.ref() for role in roles])
-
-
-##############################################################################################################################
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/groups", methods=["GET"])
-@secure(requireDB=True)
-def getGroups(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
-    return defaultListHandler(Groups, filters=(Groups.domainID == domainID,))
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/groups", methods=["POST"])
-@secure(requireDB=True)
-def createGroup(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
-    data = request.get_json(silent=True, cache=True) or {}
-    data["domainID"] = domainID
-    return defaultListHandler(Groups)
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/groups/<int:ID>", methods=["DELETE"])
-@secure(requireDB=True)
-def deleteGroup(domainID, ID):
-    checkPermissions(DomainAdminPermission(domainID))
-    group = Groups.query.filter(Groups.domainID == domainID, Groups.ID == ID).first()
-    if group is None:
-        return jsonify(message="Group not found"), 404
-    Users.query.filter(Users.groupID == ID).update({Users.groupID: 0,
-                                                    Users.addressStatus: Users.addressStatus.op("&")(0x33)},
-                                                   synchronize_session=False)
-    DB.session.delete(group)
-    DB.session.commit()
-    return jsonify(message="Group deleted")
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/groups/<int:ID>", methods=["GET"])
-@secure(requireDB=True)
-def getGroup(domainID, ID):
-    checkPermissions(DomainAdminPermission(domainID))
-    return defaultObjectHandler(Groups, ID, "Group", filters=(Groups.domainID == domainID,))
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/groups/<int:ID>", methods=["PATCH"])
-@secure(requireDB=True)
-def updateGroup(domainID, ID):
-    checkPermissions(DomainAdminPermission(domainID))
-    group = Groups.query.filter(Groups.domainID == domainID, Groups.ID == ID).first()
-    if group is None:
-        return jsonify(message="Group not found"), 404
-    patched = defaultPatch(Groups, ID, "Group", group, filters=(Groups.domainID == domainID,), result="precommit")
-    if not patched == group:
-        return patched
-    try:
-        DB.session.commit()
-    except IntegrityError as err:
-        DB.session.rollback()
-        return jsonify(message="Domain update failed", error=err.orig.args[1])
-    return jsonify(group.fulldesc())

@@ -46,7 +46,7 @@ def _mkUserQuery(args):
 def _dumpUser(user, indent=0):
     from ldap3.utils.conv import escape_filter_chars
     from orm import DB
-    for attr in ("ID", "username", "groupID", "domainID", "maildir", "addressStatus", "privilegeBits"):
+    for attr in ("ID", "username", "domainID", "maildir", "addressStatus", "privilegeBits"):
         v = getattr(user, attr, None)
         print("{}{}: {}".format(" "*indent, attr, v if v is not None else ""))
     print(" "*indent+"externID: "+escape_filter_chars(user.externID))

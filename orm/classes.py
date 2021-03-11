@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2021 grammm GmbH
 
 from . import DB
-from .users import Groups
 from .mlists import MLists
 
 from tools.classfilters import ClassFilter
@@ -23,16 +22,15 @@ class Hierarchy(DataModel, DB.Model):
     ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
     childID = DB.Column("child_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     classID = DB.Column("class_id", INTEGER(10, unsigned=True), nullable=False, index=True)
-    groupID = DB.Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True)
+    _deprecated_groupID = DB.Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
 
     cParent = relationship("Classes", foreign_keys=classID, primaryjoin="Hierarchy.classID == Classes.ID")
-    gParent = relationship(Groups, foreign_keys=groupID, primaryjoin=groupID == Groups.ID)
     child = relationship("Classes", foreign_keys=childID, primaryjoin="Hierarchy.childID == Classes.ID")
 
-    _dictmapping_ = ((RefProp("cParent", "classID"), RefProp("gParent", "groupID"), RefProp("child")),)
+    _dictmapping_ = ((RefProp("cParent", "classID"), RefProp("child")),)
 
     def __init__(self, type, ID, childclass, *args, **kwargs):
-        self.classID = self.groupID = 0
+        self.classID = 0
         if type == "child":
             self.childID = ID
             self.cParent = childclass
@@ -40,8 +38,6 @@ class Hierarchy(DataModel, DB.Model):
         self.child = childclass
         if type == "class":
             self.classID = ID
-        elif type == "group":
-            self.groupID = ID
 
     def fromdict(self, *args, **kwargs):
         return self

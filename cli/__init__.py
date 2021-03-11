@@ -107,4 +107,4 @@ class Cli:
             return Cli.ERR_USR_ABRT
 
 
-from . import dbconf, dbtools, domain, ldap, mconf, misc, mlist
+from . import dbconf, dbtools, domain, ldap, mconf, misc, mlist, user

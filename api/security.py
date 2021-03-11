@@ -122,7 +122,7 @@ def userLoginAllowed(user):
 def refreshToken():
     """Refresh user token.
 
-    Check if the current token is valid and if the current user is still in the authorized group.
+    Check if the current token is valid and if the current user still is allowed to login.
     """
     from orm.users import Users
     if "grammmAuthJwt" not in request.cookies:

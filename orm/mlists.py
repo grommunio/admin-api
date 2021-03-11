@@ -62,7 +62,6 @@ class MLists(DataModel, DB.Model):
     class_ = relationship("Classes", primaryjoin="MLists.listname == Classes.listname", foreign_keys="Classes.listname", uselist=False)
 
     TYPE_NORMAL = 0
-    TYPE_GROUP = 1
     TYPE_DOMAIN = 2
     TYPE_CLASS = 3
 
@@ -75,8 +74,7 @@ class MLists(DataModel, DB.Model):
     @classmethod
     def checkCreateParams(cls, data):
         from .domains import Domains
-        from .users import Users, Groups
-        from .classes import Classes
+        from .users import Users
         if "listname" not in data:
             return "Missing list name"
         if "domainID" in data:
@@ -97,10 +95,6 @@ class MLists(DataModel, DB.Model):
             return "Missing list type"
         if Users.query.filter(Users.username == data["listname"]).count() > 0:
             return "User exists"
-        if data["listType"] == cls.TYPE_GROUP:
-            group = Groups.query.filter(Groups.ID == data.get("groupID", 0)).with_entities(Groups.ID).first()
-            if group is None:
-                return "Invalid group"
         elif data["listType"] not in (cls.TYPE_NORMAL, cls.TYPE_DOMAIN,  cls.TYPE_CLASS):
             return "Unsupported list type"
         if data.get("listPrivilege", 0) not in (cls.PRIV_ALL,
@@ -114,13 +108,11 @@ class MLists(DataModel, DB.Model):
     def __init__(self, props, *args, **kwargs):
         from .users import Users
         self.domain = props.pop("domain")
-        self.groupID = props.pop("groupID", 0)
         self.listType = props.pop("listType", 0)
         self.listPrivilege = props.pop("listPrivilege", 0)
         self.fromdict(props, *args, **kwargs)
         self.user = Users({"username": self.listname,
                            "domainID": self.domain.ID,
-                           "groupID": self.groupID,
                            "domain": self.domain,
                            "domainStatus": self.domain.domainStatus,
                            "properties": {"displaytypeex": 1, "displayname": "Mailing List "+self.listname}})
@@ -170,7 +162,7 @@ class MLists(DataModel, DB.Model):
         return type
 
     @validates("listPrivilege")
-    def validateListType(self, key, priv):
+    def validateListPrivilege(self, key, priv):
         if priv not in range(5):
             raise ValueError("Invalid list privilege")
         return priv

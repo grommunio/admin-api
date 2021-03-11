@@ -18,7 +18,7 @@ from tools.permissions import SystemAdminPermission
 from orm import DB
 if DB is not None:
     from orm.domains import Domains
-    from orm.users import Users, Groups
+    from orm.users import Users
     from orm.roles import AdminRoles
 
 

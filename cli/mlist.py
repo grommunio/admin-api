@@ -5,7 +5,7 @@
 from . import Cli
 from argparse import ArgumentParser
 
-_typemap = {"normal": 0, "group": 1, "domain": 2, "class": 3}
+_typemap = {"normal": 0, "domain": 2, "class": 3}
 _typenames = tuple(_typemap.keys())
 _privmap = {"all": 0, "internal": 1, "domain": 2, "specific": 3, "outgoing": 4}
 _privnames = tuple(_privmap.keys())
@@ -16,18 +16,6 @@ def _getDomainFilter(spec):
         return True
     from orm.domains import Domains
     from orm.users import Users
-
-
-def _getGroupFilter(gspec, dspec):
-    from orm.users import Groups
-    from sqlalchemy import and_, or_
-    if gspec is None:
-        return _getDomainFilter(dspec)
-    try:
-        ID = int(gspec, 0)
-    except:
-        ID = None
-    return and_(or_(Groups.ID == ID, Groups.groupname.ilike("%"+gspec+"%")), _getDomainFilter(dspec))
 
 
 def _getMlistFilter(mspec, dspec, args=None):
@@ -62,18 +50,6 @@ def cliMlistCreate(args):
                 listPrivilege= _privmap.get(args.privilege, 0),
                 associations=args.recipient,
                 specifieds=args.sender)
-    if args.group:
-        from orm.users import Groups
-        groups = Groups.query.filter(_getGroupFilter(args.group, args.domain)).all()
-        if len(groups) == 0:
-            print(Cli.col("No group matching '{}' found.", "yellow"))
-            return 1
-        if len(groups) > 1:
-            print(Cli.col("Group secification '{}' is ambiguous:", "yellow"))
-            for group in groups:
-                print(Cli.col("  {}:\t{}".format(group.ID, group.groupname), "yellow"))
-            return 2
-        data["groupID"] = groups[0].ID
     if args.class_:
         from orm.classes import Classes
         from sqlalchemy import or_
@@ -222,7 +198,6 @@ def _setupCliMlist(subp: ArgumentParser):
     create = sub.add_parser("create")
     create.set_defaults(_handle=cliMlistCreate)
     create.add_argument("name", help="Name of the mailing list")
-    create.add_argument("-g", "--group", help="ID or name of the group to use for group lists")
     create.add_argument("-p", "--privilege", choices=_privnames, default="all", help="List privilege type")
     create.add_argument("-s", "--sender", action="append", default=[],
                         help="Users allowed to send to the list (only for privilege 'specific')")
