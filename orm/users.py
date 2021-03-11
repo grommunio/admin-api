@@ -7,8 +7,8 @@ from tools.constants import PropTags, PropTypes
 from tools.rop import ntTime, nxTime
 from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp
 
-from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.mysql import INTEGER, TINYINT
+from sqlalchemy import Column, ForeignKey
+from sqlalchemy.dialects.mysql import INTEGER, TINYINT, VARBINARY, VARCHAR
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, selectinload
 from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -19,21 +19,21 @@ import time
 from datetime import datetime
 
 
-class Users(DataModel, DB.Model):
+class Users(DataModel, DB.Base):
     __tablename__ = "users"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
-    username = DB.Column("username", DB.VARCHAR(128), nullable=False, unique=True)
-    _password = DB.Column("password", DB.VARCHAR(40), nullable=False, server_default="")
-    domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
-    maildir = DB.Column("maildir", DB.VARCHAR(128), nullable=False, server_default="")
-    addressStatus = DB.Column("address_status", TINYINT, nullable=False, server_default="0")
-    privilegeBits = DB.Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
-    externID = DB.Column("externid", DB.VARBINARY(64))
-    _deprecated_maxSize = DB.Column("max_size", INTEGER(10), nullable=False, default=0)
-    _deprecated_addressType = DB.Column("address_type", TINYINT, nullable=False, server_default="0")
-    _deprecated_subType = DB.Column("sub_type", TINYINT, nullable=False, server_default="0")
-    _deprecated_groupID = DB.Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
+    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
+    username = Column("username", VARCHAR(128), nullable=False, unique=True)
+    _password = Column("password", VARCHAR(40), nullable=False, server_default="")
+    domainID = Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
+    maildir = Column("maildir", VARCHAR(128), nullable=False, server_default="")
+    addressStatus = Column("address_status", TINYINT, nullable=False, server_default="0")
+    privilegeBits = Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
+    externID = Column("externid", VARBINARY(64))
+    _deprecated_maxSize = Column("max_size", INTEGER(10), nullable=False, default=0)
+    _deprecated_addressType = Column("address_type", TINYINT, nullable=False, server_default="0")
+    _deprecated_subType = Column("sub_type", TINYINT, nullable=False, server_default="0")
+    _deprecated_groupID = Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
 
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True,
@@ -288,15 +288,15 @@ class Users(DataModel, DB.Model):
         DB.session.delete(self)
 
 
-class UserProperties(DataModel, DB.Model):
+class UserProperties(DataModel, DB.Base):
     __tablename__ = "user_properties"
 
     supportedTypes = PropTypes.intTypes | PropTypes.floatTypes | {PropTypes.STRING, PropTypes.WSTRING}
 
-    userID = DB.Column("user_id", INTEGER(unsigned=True), ForeignKey(Users.ID), primary_key=True)
-    tag = DB.Column("proptag", INTEGER(unsigned=True), primary_key=True, index=True)
-    _propvalbin = DB.Column("propval_bin", DB.VARBINARY(4096))
-    _propvalstr = DB.Column("propval_str", DB.VARCHAR(4096))
+    userID = Column("user_id", INTEGER(unsigned=True), ForeignKey(Users.ID), primary_key=True)
+    tag = Column("proptag", INTEGER(unsigned=True), primary_key=True, index=True)
+    _propvalbin = Column("propval_bin", VARBINARY(4096))
+    _propvalstr = Column("propval_str", VARCHAR(4096))
 
     user = relationship(Users)
 
@@ -354,14 +354,14 @@ class UserProperties(DataModel, DB.Model):
             self._propvalstr = str(value)
 
 
-class Aliases(DataModel, DB.Model):
+class Aliases(DataModel, DB.Base):
     __tablename__ = "aliases"
 
     emailRe = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
 
-    aliasname = DB.Column("aliasname", DB.VARCHAR(128), nullable=False, unique=True, primary_key=True)
-    mainname = DB.Column("mainname", DB.VARCHAR(128), ForeignKey(Users.username, ondelete="cascade", onupdate="cascade"),
-                         nullable=False, index=True)
+    aliasname = Column("aliasname", VARCHAR(128), nullable=False, unique=True, primary_key=True)
+    mainname = Column("mainname", VARCHAR(128), ForeignKey(Users.username, ondelete="cascade", onupdate="cascade"),
+                      nullable=False, index=True)
 
     main = relationship(Users)
 

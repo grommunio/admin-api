@@ -5,7 +5,6 @@ name = "pypi"
 
 [packages]
 Flask = "*"
-Flask-SQLAlchemy = "*"
 mysqlclient = "*"
 openapi-core = "~=0.13.7"
 jellyfish = "*"

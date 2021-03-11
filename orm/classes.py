@@ -9,20 +9,20 @@ from tools.classfilters import ClassFilter
 from tools.constants import PropTags
 from tools.DataModel import DataModel, Id, RefProp, Text
 
-from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.mysql import INTEGER
+from sqlalchemy import Column, ForeignKey
+from sqlalchemy.dialects.mysql import INTEGER, TEXT, VARCHAR
 from sqlalchemy.orm import relationship, validates
 
 import json
 
 
-class Hierarchy(DataModel, DB.Model):
+class Hierarchy(DataModel, DB.Base):
     __tablename__ = "hierarchy"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    childID = DB.Column("child_id", INTEGER(10, unsigned=True), nullable=False, index=True)
-    classID = DB.Column("class_id", INTEGER(10, unsigned=True), nullable=False, index=True)
-    _deprecated_groupID = DB.Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
+    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
+    childID = Column("child_id", INTEGER(10, unsigned=True), nullable=False, index=True)
+    classID = Column("class_id", INTEGER(10, unsigned=True), nullable=False, index=True)
+    _deprecated_groupID = Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
 
     cParent = relationship("Classes", foreign_keys=classID, primaryjoin="Hierarchy.classID == Classes.ID")
     child = relationship("Classes", foreign_keys=childID, primaryjoin="Hierarchy.childID == Classes.ID")
@@ -43,12 +43,12 @@ class Hierarchy(DataModel, DB.Model):
         return self
 
 
-class Members(DataModel, DB.Model):
+class Members(DataModel, DB.Base):
     __tablename__ = "members"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    username = DB.Column("username", DB.VARCHAR(128), nullable=False, index=True)
-    classID = DB.Column("class_id", INTEGER(10, unsigned=True), nullable=False, index=True)
+    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
+    username = Column("username", VARCHAR(128), nullable=False, index=True)
+    classID = Column("class_id", INTEGER(10, unsigned=True), nullable=False, index=True)
 
     _dictmapping_ = ((Id(),
                       Text("username", flags="patch"),
@@ -62,14 +62,14 @@ class Members(DataModel, DB.Model):
         return self
 
 
-class Classes(DataModel, DB.Model):
+class Classes(DataModel, DB.Base):
     __tablename__ = "classes"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    classname = DB.Column("classname", DB.VARCHAR(128), nullable=False)
-    listname = DB.Column("listname", DB.VARCHAR(128), nullable=False, index=True)
-    domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), ForeignKey("domains.id"), nullable=False)
-    _filters = DB.Column("filters", DB.TEXT)
+    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
+    classname = Column("classname", VARCHAR(128), nullable=False)
+    listname = Column("listname", VARCHAR(128), nullable=False, index=True)
+    domainID = Column("domain_id", INTEGER(10, unsigned=True), ForeignKey("domains.id"), nullable=False)
+    _filters = Column("filters", TEXT)
 
     cParents = relationship(Hierarchy,
                             primaryjoin=(ID == Hierarchy.childID) & (Hierarchy.classID != 0),

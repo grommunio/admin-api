@@ -6,16 +6,17 @@ from . import DB
 from .users import Users
 from tools.DataModel import DataModel, Id, Int, RefProp, Text
 
-from sqlalchemy.dialects.mysql import INTEGER, TINYINT
+from sqlalchemy import Column
+from sqlalchemy.dialects.mysql import INTEGER, TINYINT, VARCHAR
 from sqlalchemy.orm import relationship, selectinload, validates
 
 
-class Associations(DataModel, DB.Model):
+class Associations(DataModel, DB.Base):
     __tablename__ = "associations"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    username = DB.Column("username", DB.VARCHAR(128), nullable=False, unique=True)
-    listID = DB.Column("list_id", INTEGER(10), nullable=False, index=True)
+    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
+    username = Column("username", VARCHAR(128), nullable=False, unique=True)
+    listID = Column("list_id", INTEGER(10), nullable=False, index=True)
 
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("listID", flags="init"),))
@@ -25,12 +26,12 @@ class Associations(DataModel, DB.Model):
         return self
 
 
-class Specifieds(DataModel, DB.Model):
+class Specifieds(DataModel, DB.Base):
     __tablename__ = "specifieds"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    username = DB.Column("username", DB.VARCHAR(128), nullable=False)
-    listID = DB.Column("list_id", INTEGER(10), nullable=False, index=True)
+    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
+    username = Column("username", VARCHAR(128), nullable=False)
+    listID = Column("list_id", INTEGER(10), nullable=False, index=True)
 
     _dictmapping_ = ((Id(),  Text("username", flags="patch")),
                      (Id("listID", flags="patch"),))
@@ -40,14 +41,14 @@ class Specifieds(DataModel, DB.Model):
         return self
 
 
-class MLists(DataModel, DB.Model):
+class MLists(DataModel, DB.Base):
     __tablename__ = "mlists"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    listname = DB.Column("listname", DB.VARCHAR(128), nullable=False, unique=True)
-    domainID = DB.Column("domain_id", INTEGER(10, unsigned=True), index=True)
-    listType = DB.Column("list_type", TINYINT, nullable=False)
-    listPrivilege = DB.Column("list_privilege", TINYINT, nullable=False, server_default="0")
+    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
+    listname = Column("listname", VARCHAR(128), nullable=False, unique=True)
+    domainID = Column("domain_id", INTEGER(10, unsigned=True), index=True)
+    listType = Column("list_type", TINYINT, nullable=False)
+    listPrivilege = Column("list_privilege", TINYINT, nullable=False, server_default="0")
 
     _dictmapping_ = ((Id(), Text("listname", flags="init"), Int("listType", flags="init")),
                      (Id("domainID", flags="init"),

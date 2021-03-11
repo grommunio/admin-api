@@ -6,27 +6,28 @@ from . import DB
 
 from tools.DataModel import DataModel, Id, Text
 
-from sqlalchemy.dialects.mysql import INTEGER, TINYINT
+from sqlalchemy import Column
+from sqlalchemy.dialects.mysql import INTEGER, TINYINT, VARCHAR
 
 
-class Forwards(DataModel, DB.Model):
+class Forwards(DataModel, DB.Base):
     __tablename__ = "forwards"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    username = DB.Column("username", DB.VARCHAR(128), nullable=False, unique=True)
-    forwardType = DB.Column("forward_type", TINYINT, nullable=False)
-    destination = DB.Column("destination", DB.VARCHAR(128), nullable=False)
+    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
+    username = Column("username", VARCHAR(128), nullable=False, unique=True)
+    forwardType = Column("forward_type", TINYINT, nullable=False)
+    destination = Column("destination", VARCHAR(128), nullable=False)
 
     _dictmapping_ = ((Id(), Text("username", flags="patch")),
                      (Text("forwardType", flags="patch"),
                       Text("destination", flags="patch")))
 
 
-class DBConf(DB.Model):
+class DBConf(DB.Base):
     __tablename__ = "configs"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    service = DB.Column("service", DB.VARCHAR(200), nullable=False, index=True)
-    file = DB.Column("file", DB.VARCHAR(200), nullable=False, index=True)
-    key = DB.Column("key", DB.VARCHAR(200), nullable=False)
-    value = DB.Column("value", DB.VARCHAR(200), nullable=True)
+    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
+    service = Column("service", VARCHAR(200), nullable=False, index=True)
+    file = Column("file", VARCHAR(200), nullable=False, index=True)
+    key = Column("key", VARCHAR(200), nullable=False)
+    value = Column("value", VARCHAR(200), nullable=True)

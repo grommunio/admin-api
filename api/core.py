@@ -9,6 +9,7 @@ from sqlalchemy.exc import DatabaseError
 from functools import wraps
 import traceback
 
+from orm import DB
 from tools.config import Config
 
 import openapi_core
@@ -29,6 +30,8 @@ requestValidator, responseValidator = RequestValidator(apiSpec), ResponseValidat
 
 API = Flask("grammm Admin API")  # Core API object
 API.config["JSON_SORT_KEYS"] = False  # Do not sort response fields. Crashes when returning lists...
+if DB is not None:
+    DB.enableFlask(API)
 
 
 def validateRequest(flask_request):
@@ -99,7 +102,6 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic"):
                     API.logger.warn("Request validation failed: {}".format(errors))
 
             if requireDB:
-                from orm import DB
                 if DB is None:
                     return jsonify(message="Database not available."), 503
             try:

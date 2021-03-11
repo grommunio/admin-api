@@ -3,37 +3,35 @@
 # SPDX-FileCopyrightText: 2021 grammm GmbH
 
 from . import DB
-from tools.DataModel import DataModel, Id, Text, Int, Date, BoolP
+from tools.DataModel import DataModel, Id, Text, Int, Date
 
-from sqlalchemy.dialects.mysql import INTEGER, TINYINT
-
-import crypt
-from datetime import datetime
+from sqlalchemy import Column
+from sqlalchemy.dialects.mysql import DATE, INTEGER, TINYINT, VARCHAR
 
 
-class Orgs(DataModel, DB.Model):
+class Orgs(DataModel, DB.Base):
     __tablename__ = "orgs"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True, nullable=False)
-    memo = DB.Column("memo", DB.VARCHAR(128), nullable=False, server_default="")
+    ID = Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True, nullable=False)
+    memo = Column("memo", VARCHAR(128), nullable=False, server_default="")
 
     _dictmapping_ = ((Id(), Text("memo", flags="patch")),)
 
 
-class Domains(DataModel, DB.Model):
+class Domains(DataModel, DB.Base):
     __tablename__ = "domains"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True, nullable=False)
-    orgID = DB.Column("org_id", INTEGER(10, unsigned=True), nullable=False, server_default="0", index=True)
-    domainname = DB.Column("domainname", DB.VARCHAR(64), nullable=False)
-    homedir = DB.Column("homedir", DB.VARCHAR(128), nullable=False, server_default="")
-    maxUser = DB.Column("max_user", INTEGER(10, unsigned=True), nullable=False)
-    title = DB.Column("title", DB.VARCHAR(128), nullable=False, server_default="")
-    address = DB.Column("address", DB.VARCHAR(128), nullable=False, server_default="")
-    adminName = DB.Column("admin_name", DB.VARCHAR(32), nullable=False, server_default="")
-    tel = DB.Column("tel", DB.VARCHAR(64), nullable=False, server_default="")
-    endDay = DB.Column("end_day", DB.DATE, nullable=False, default="3333-03-03")
-    domainStatus = DB.Column("domain_status", TINYINT, nullable=False, server_default="0")
+    ID = Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True, nullable=False)
+    orgID = Column("org_id", INTEGER(10, unsigned=True), nullable=False, server_default="0", index=True)
+    domainname = Column("domainname", VARCHAR(64), nullable=False)
+    homedir = Column("homedir", VARCHAR(128), nullable=False, server_default="")
+    maxUser = Column("max_user", INTEGER(10, unsigned=True), nullable=False)
+    title = Column("title", VARCHAR(128), nullable=False, server_default="")
+    address = Column("address", VARCHAR(128), nullable=False, server_default="")
+    adminName = Column("admin_name", VARCHAR(32), nullable=False, server_default="")
+    tel = Column("tel", VARCHAR(64), nullable=False, server_default="")
+    endDay = Column("end_day", DATE, nullable=False, default="3333-03-03")
+    domainStatus = Column("domain_status", TINYINT, nullable=False, server_default="0")
 
     _dictmapping_ = ((Id(), Text("domainname", flags="init")),
                      (Id("orgID", flags="patch"),

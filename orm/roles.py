@@ -4,22 +4,22 @@
 
 import json
 
-from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.mysql import INTEGER
+from sqlalchemy import Column, ForeignKey
+from sqlalchemy.dialects.mysql import INTEGER, TEXT, VARCHAR
 from sqlalchemy.orm import relationship
 
-from tools.DataModel import DataModel, Id, Int, RefProp, Text, MissingRequiredAttributeError
+from tools.DataModel import DataModel, Id, Int, RefProp, Text
 
 from . import DB
 from .users import Users
 
 
-class AdminRoles(DataModel, DB.Model):
-    __tablename__  = "admin_roles"
+class AdminRoles(DataModel, DB.Base):
+    __tablename__ = "admin_roles"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True)
-    name = DB.Column("name", DB.VARCHAR(32), unique=True, nullable=False)
-    description = DB.Column("description", DB.VARCHAR(256))
+    ID = Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True)
+    name = Column("name", VARCHAR(32), unique=True, nullable=False)
+    description = Column("description", VARCHAR(256))
 
     permissions = relationship("AdminRolePermissionRelation", cascade="all, delete-orphan", single_parent=True)
     users = relationship("AdminUserRoleRelation", cascade="all, delete-orphan")
@@ -30,13 +30,13 @@ class AdminRoles(DataModel, DB.Model):
                       RefProp("users", link="userID", flat="user", flags="patch")))
 
 
-class AdminRolePermissionRelation(DataModel, DB.Model):
+class AdminRolePermissionRelation(DataModel, DB.Base):
     __tablename__ = "admin_role_permission_relation"
 
-    ID = DB.Column("id", INTEGER(10, unsigned=True), primary_key=True)
-    roleID = DB.Column("role_id", INTEGER(10, unsigned=True), ForeignKey(AdminRoles.ID), nullable=False)
-    permission = DB.Column("permission", DB.VARCHAR(64), nullable=False)
-    _params = DB.Column("parameters", DB.TEXT)
+    ID = Column("id", INTEGER(10, unsigned=True), primary_key=True)
+    roleID = Column("role_id", INTEGER(10, unsigned=True), ForeignKey(AdminRoles.ID), nullable=False)
+    permission = Column("permission", VARCHAR(64), nullable=False)
+    _params = Column("parameters", TEXT)
 
     role = relationship(AdminRoles)
 
@@ -64,11 +64,11 @@ class AdminRolePermissionRelation(DataModel, DB.Model):
         return DataModel.fromdict(self, patches, *args, **kwargs)
 
 
-class AdminUserRoleRelation(DataModel, DB.Model):
+class AdminUserRoleRelation(DataModel, DB.Base):
     __tablename__ = "admin_user_role_relation"
 
-    userID = DB.Column("user_id", INTEGER(10, unsigned=True), ForeignKey(Users.ID, ondelete="cascade"), primary_key=True)
-    roleID = DB.Column("role_id", INTEGER(10, unsigned=True), ForeignKey(AdminRoles.ID), primary_key=True)
+    userID = Column("user_id", INTEGER(10, unsigned=True), ForeignKey(Users.ID, ondelete="cascade"), primary_key=True)
+    roleID = Column("role_id", INTEGER(10, unsigned=True), ForeignKey(AdminRoles.ID), primary_key=True)
 
     user = relationship("Users")
     role = relationship(AdminRoles)

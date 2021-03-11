@@ -4,11 +4,32 @@
 
 __all__ = ["domains", "misc", "users", "ext"]
 
-from api.core import API
-from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import scoped_session, sessionmaker
 from urllib.parse import quote_plus
 
 from tools.config import Config
+
+import logging
+
+
+class DBConn:
+    def __init__(self, URI):
+        self.engine = create_engine(URI)
+        self.session = scoped_session(sessionmaker(self.engine))
+        outerself = self
+        class Model:
+            query = outerself.session.query_property()
+        self.Base = declarative_base(cls=Model)
+
+    def enableFlask(self, API):
+        from flask import _app_ctx_stack
+        self.session = scoped_session(sessionmaker(self.engine), _app_ctx_stack.__ident_func__)
+
+        @API.teardown_appcontext
+        def removeSession(*args, **kwargs):
+            self.session.remove()
 
 
 def _loadDBConfig():
@@ -23,17 +44,17 @@ def _loadDBConfig():
 
     """
     if "DB" not in Config:
-        API.logger.error("No database configuration found")
+        logging.error("No database configuration found")
         return None
     DBconf = Config["DB"]
     if "user" not in DBconf or "pass" not in DBconf:
-        API.logger.error("No user and password provided")
+        logging.error("Database user or password missing")
         return None
     if "database" not in DBconf:
-        API.logger.error("No database specified.")
+        logging.error("No database specified.")
         return None
     if "host" not in DBconf and "port" not in DBconf:
-        API.logger.info("Database connection not specified. Using default '127.0.0.1:3306'")
+        logging.info("Database connection not specified. Using default '127.0.0.1:3306'")
     host = DBconf.get("host", "127.0.0.1")
     port = DBconf.get("port", 3306)
     return "mysql+mysqldb://{user}:{password}@{host}:{port}/{db}".format(user=quote_plus(DBconf["user"]),
@@ -45,15 +66,12 @@ def _loadDBConfig():
 
 if Config["options"]["disableDB"]:
     DB = None
-    API.logger.warn("Database disabled in configuration")
+    logging.warn("Database disabled in configuration")
 else:
     DB_uri = _loadDBConfig()
     if DB_uri is not None:
-        API.config["SQLALCHEMY_DATABASE_URI"] = DB_uri
-        API.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-        DB = SQLAlchemy(API)
+        DB = DBConn(DB_uri)
     else:
-        API.logger.warn("Database configuration failed. No data will be available")
+        logging.warn("Database configuration failed. No data will be available")
         DB = None
-
     del DB_uri
