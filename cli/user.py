@@ -21,21 +21,10 @@ def _getDomainFilter(spec):
                               .with_entities(Domains.ID))
 
 
-def _getUserFilter(uspec, dspec):
-    from orm.users import Users
-    from sqlalchemy import and_, or_
-    if uspec is None:
-        return _getDomainFilter(dspec)
-    try:
-        ID = int(uspec, 0)
-    except:
-        ID = None
-    return and_(or_(Users.ID == ID, Users.username.ilike("%"+uspec+"%")), _getDomainFilter(dspec))
-
-
 def _mkUserQuery(args):
+    from .common import userFilter
     from orm.users import Users
-    query = Users.query.filter(_getUserFilter(args.userspec, args.domain))
+    query = Users.query.filter(userFilter(args.userspec, _getDomainFilter(args.domain)))
     if "filter" in args and args.filter is not None:
         query = Users.autofilter(query, {f.split("=", 1)[0]: f.split("=", 1)[1] for f in args.filter if "=" in f})
     if "sort" in args and args.sort is not None:

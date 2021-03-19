@@ -55,7 +55,7 @@ def createAdmin():
 
 
 def _passwdParserSetup(subp: ArgumentParser):
-    subp.add_argument("--user", "-u", action="store", type=str,
+    subp.add_argument("user", nargs="?", action="store", type=str,
                       help="User to change the password of. If omitted, set password of system administrator.")
     subp.add_argument("--auto", "-a", action="store_true", help="Automatically generate password.")
     subp.add_argument("--length", "-l", action="store", type=int, default=defaultPassLength,
@@ -69,10 +69,15 @@ def setUserPassword(args):
     from orm.users import DB, Users
     import orm.roles
     if args.user is not None:
-        user = Users.query.filter(Users.username == args.user).first()
-        if user is None:
-            print(Cli.col("User '{}' not found.", "yellow"))
+        from .common import userCandidates
+        users = userCandidates(args.user).all()
+        if len(users) == 0:
+            print(Cli.col("User '{}' not found.".format(args.user), "yellow"))
             return 1
+        if len(users) != 1:
+            print(Cli.col("'{}' is ambiguous.".format(args.user), "yellow"))
+            return 1
+        user = users[0]
         if user.externID is not None:
             print(Cli.col("Cannot change password of LDAP user", "yellow"))
             return 2
