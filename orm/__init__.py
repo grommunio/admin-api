@@ -7,7 +7,7 @@ __all__ = ["domains", "misc", "users", "ext"]
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker, class_mapper, Query
 from urllib.parse import quote_plus
 
 from tools.config import Config
@@ -20,8 +20,15 @@ class DBConn:
         self.engine = create_engine(URI)
         self.session = scoped_session(sessionmaker(self.engine))
         outerself = self
+
+        class QueryProperty:
+            def __get__(self, obj, type):
+                mapper = class_mapper(type)
+                return Query(mapper, session=outerself.session()) if mapper is not None else None
+
         class Model:
-            query = outerself.session.query_property()
+            query = QueryProperty()
+
         self.Base = declarative_base(cls=Model)
 
     def enableFlask(self, API):

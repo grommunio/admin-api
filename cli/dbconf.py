@@ -107,7 +107,7 @@ def cliDbconfList(args):
     print(header)
     entries = query.with_entities(target).all()
     if len(entries) == 0:
-        print(Cli.col("  (no entires)", "yellow"))
+        print(Cli.col("  (no entries)", "yellow"))
     for entry in entries:
         print("  "+entry[0])
 
