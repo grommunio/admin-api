@@ -66,6 +66,7 @@ def _passwdParserSetup(subp: ArgumentParser):
 
 @Cli.command("passwd", _passwdParserSetup)
 def setUserPassword(args):
+    Cli.require("DB")
     from orm.users import DB, Users
     import orm.roles
     if args.user is not None:

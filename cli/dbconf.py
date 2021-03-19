@@ -40,6 +40,7 @@ def _autocompKey(prefix, parsed_args, **kwargs):
 
 
 def cliDbconfSet(args):
+    Cli.require("DB")
     from orm.misc import DB, DBConf
     entry = DBConf.query.filter(DBConf.service == args.service, DBConf.file == args.file, DBConf.key == args.key).first()
     if entry is None:
@@ -63,6 +64,7 @@ def cliDbconfSet(args):
 
 
 def cliDbconfGet(args):
+    Cli.require("DB")
     from orm.misc import DB, DBConf
     DB.session.rollback()
     query = DBConf.query.filter(DBConf.service == args.service, DBConf.file == args.file)
@@ -74,6 +76,7 @@ def cliDbconfGet(args):
 
 
 def cliDbconfDelete(args):
+    Cli.require("DB")
     from orm.misc import DB, DBConf
     query = DBConf.query.filter(DBConf.service == args.service)
     if args.file is not None:
@@ -86,6 +89,7 @@ def cliDbconfDelete(args):
 
 
 def cliDbconfList(args):
+    Cli.require("DB")
     from orm.misc import DB, DBConf
     DB.session.rollback()
     query = DBConf.query

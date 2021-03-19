@@ -5,6 +5,9 @@
 import argcomplete
 from argparse import ArgumentParser
 
+class CliError(BaseException):
+    pass
+
 class Cli:
     parser = ArgumentParser(description="Grammm admin backend")
     subparsers = parser.add_subparsers()
@@ -27,7 +30,11 @@ class Cli:
         cls.enableColor()
         dispatch = cls.parser.parse_args(args)
         if hasattr(dispatch, "_handle"):
-            return dispatch._handle(dispatch) or 0
+            try:
+                return dispatch._handle(dispatch) or 0
+            except CliError as err:
+                print(cls.col(err.args[0], "red"))
+                return 1
         else:
             cls.parser.print_help()
             return 2
@@ -106,5 +113,28 @@ class Cli:
         except:
             return Cli.ERR_USR_ABRT
 
+    @staticmethod
+    def require(*args):
+        """Check component availability.
+
+        Each argument as a string containing the component name.
+        If a component is not available, a CliError is raised, which is automatically caught by the Cli.
+        Known components are:
+            - DB: The MySQL database
+            - LDAP: A connection to the LDAP server
+
+        Parameters
+        ----------
+        *args : string
+            Component names. Unknown components are ignored.
+        """
+        if "DB" in args:
+            from orm import DB
+            if DB is None:
+                raise CliError("Database not available")
+        if "LDAP" in args:
+            from tools.ldap import LDAP_available
+            if not LDAP_available:
+                raise CliError("LDAP not available")
 
 from . import dbconf, dbtools, domain, ldap, mconf, misc, mlist, user

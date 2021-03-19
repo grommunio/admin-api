@@ -43,6 +43,7 @@ def _mkMlistQuery(args):
 
 
 def cliMlistCreate(args):
+    Cli.require("DB")
     from orm import DB
     from orm.mlists import MLists
     data = dict(listname=args.name,
@@ -98,6 +99,7 @@ def _dumpMlist(mlist, indent=0):
 
 
 def cliMlistShow(args):
+    Cli.require("DB")
     from orm import DB
     if args.id:
         from orm.mlists import MLists
@@ -114,6 +116,7 @@ def cliMlistShow(args):
 
 
 def cliMlistList(args):
+    Cli.require("DB")
     from orm import DB
     from orm.mlists import MLists
     mlists = _mkMlistQuery(args).all()
@@ -126,6 +129,7 @@ def cliMlistList(args):
 
 
 def cliMlistDelete(args):
+    Cli.require("DB")
     from orm import DB
     mlists = _mkMlistQuery(args).all()
     if len(mlists) == 0:
@@ -148,6 +152,7 @@ def cliMlistDelete(args):
 
 
 def cliMlistModify(args):
+    Cli.require("DB")
     from orm import DB
     mlists = _mkMlistQuery(args).all()
     if len(mlists) == 0:

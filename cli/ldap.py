@@ -58,10 +58,8 @@ def _getl(prompt="", defaults=[]):
 
 
 def cliLdapInfo(args):
+    Cli.require("LDAP")
     from tools import ldap
-    if not ldap.LDAP_available:
-        print(Cli.col("LDAP is not available.", "red"))
-        return ERR_NO_LDAP
     print("Successfully connected to {} as {}".format(ldap.ldapconf["connection"]["server"],
                                                       ldap.ldapconf["connection"].get("bindUser") or "anonymous"))
 
@@ -191,10 +189,8 @@ def _downsyncUser(candidate, yes, auto, force):
 
 
 def cliLdapDownsync(args):
+    Cli.require("DB", "LDAP")
     from tools import ldap
-    if not ldap.LDAP_available:
-        print(Cli.col("LDAP is not available.", "red"))
-        return ERR_NO_LDAP
     error = False
     if args.user is not None and len(args.user) != 0:
         for expr in args.user:
@@ -242,10 +238,8 @@ def cliLdapDownsync(args):
 
 
 def cliLdapSearch(args):
+    Cli.require("LDAP")
     from tools import ldap
-    if not ldap.LDAP_available:
-        print(Cli.col("LDAP is not available.", "red"))
-        return ERR_NO_LDAP
     matches = ldap.searchUsers(args.query)
     if len(matches) == 0:
         print("No matches")
@@ -255,10 +249,8 @@ def cliLdapSearch(args):
 
 
 def cliLdapCheck(args):
+    Cli.require("DB", "LDAP")
     from tools import ldap
-    if not ldap.LDAP_available:
-        print(Cli.col("LDAP is not available.", "red"))
-        return ERR_NO_LDAP
     from time import time
     from orm import DB
     from orm.users import Users
@@ -310,10 +302,8 @@ def cliLdapCheck(args):
 
 
 def cliLdapDump(args):
+    Cli.require("LDAP")
     from tools import ldap
-    if not ldap.LDAP_available:
-        print(Cli.col("LDAP is not available.", "red"))
-        return ERR_NO_LDAP
     for expr in args.user:
         for candidate in _getCandidates(expr):
             print(Cli.col("ID: "+ldap.escape_filter_chars(candidate.ID), attrs=["bold"]))

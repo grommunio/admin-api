@@ -44,6 +44,7 @@ def _sanitizeData(data):
 
 
 def cliDomainList(args):
+    Cli.require("DB")
     from orm.domains import DB, Domains
     DB.session.rollback()
     domains = _domainQuery(args).with_entities(Domains.ID, Domains.domainname, Domains.domainStatus).all()
@@ -55,6 +56,7 @@ def cliDomainList(args):
 
 
 def cliDomainShow(args):
+    Cli.require("DB")
     from orm.domains import DB, Domains
     DB.session.rollback()
     domains = _domainQuery(args).all()
@@ -66,6 +68,7 @@ def cliDomainShow(args):
 
 
 def cliDomainCreate(args):
+    Cli.require("DB")
     from orm.domains import DB, Domains
     from tools.storage import DomainSetup
     data = _sanitizeData(args.__dict__)
@@ -86,6 +89,7 @@ def cliDomainCreate(args):
 
 
 def cliDomainDelete(args):
+    Cli.require("DB")
     from orm import DB
     from .common import domainCandidates
     domains = domainCandidates(args.domainspec).all()
@@ -102,6 +106,7 @@ def cliDomainDelete(args):
 
 
 def cliDomainRecover(args):
+    Cli.require("DB")
     from orm import DB
     from .common import domainCandidates
     domains = domainCandidates(args.domainspec).all()
@@ -118,6 +123,7 @@ def cliDomainRecover(args):
 
 
 def cliDomainPurge(args):
+    Cli.require("DB")
     from orm import DB
     from .common import domainCandidates
     domains = domainCandidates(args.domainspec).all()
@@ -140,6 +146,7 @@ def cliDomainPurge(args):
 
 
 def cliDomainModify(args):
+    Cli.require("DB")
     from orm import DB
     from .common import domainCandidates
     domains = domainCandidates(args.domainspec).all()

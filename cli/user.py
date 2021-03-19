@@ -50,7 +50,8 @@ def _dumpUser(user, indent=0):
         print("{}  {}: {}".format(" "*indent, key, value))
 
 
-def _cliUserShow(args):
+def cliUserShow(args):
+    Cli.require("DB")
     from orm import DB
     if args.id:
         from orm.users import Users
@@ -66,7 +67,8 @@ def _cliUserShow(args):
     DB.session.rollback()
 
 
-def _cliUserList(args):
+def cliUserList(args):
+    Cli.require("DB")
     from orm import DB
     users = _mkUserQuery(args).all()
     if len(users) == 0:
@@ -77,7 +79,8 @@ def _cliUserList(args):
     DB.session.rollback()
 
 
-def _cliUserDelete(args):
+def cliUserDelete(args):
+    Cli.require("DB")
     from orm import DB
     users = _mkUserQuery(args).all()
     if len(users) == 0:
@@ -135,18 +138,18 @@ def _setupCliUser(subp: ArgumentParser):
     subp.add_argument("-d", "--domain", help="Restrict operations to domain.")
     sub = subp.add_subparsers()
     show = sub.add_parser("show")
-    show.set_defaults(_handle=_cliUserShow)
+    show.set_defaults(_handle=cliUserShow)
     show.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter
     show.add_argument("-i", "--id", action="store_true", help="Only match user by ID")
     show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
     show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
     list = sub.add_parser("list")
-    list.set_defaults(_handle=_cliUserList)
+    list.set_defaults(_handle=cliUserList)
     list.add_argument("userspec", nargs="?", help="User ID or substring to match username against")
     list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
     list.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
     delete = sub.add_parser("delete")
-    delete.set_defaults(_handle=_cliUserDelete)
+    delete.set_defaults(_handle=cliUserDelete)
     delete.add_argument("userspec", help="User ID or name")
     delete.add_argument("-k", "--keep-files", action="store_true", help="Do not delete files on disk")
     delete.add_argument("-y", "--yes", action="store_true", help="Do not ask for confirmation")

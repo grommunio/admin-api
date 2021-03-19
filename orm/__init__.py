@@ -5,6 +5,7 @@
 __all__ = ["domains", "misc", "users", "ext"]
 
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 from urllib.parse import quote_plus
@@ -71,7 +72,12 @@ else:
     DB_uri = _loadDBConfig()
     if DB_uri is not None:
         DB = DBConn(DB_uri)
+        try:
+            DB.session.execute("SELECT 1 FROM DUAL")
+            DB.session.remove()
+        except OperationalError as err:
+            DB = None
+            logging.error("Database connection failed with error {}: {}".format(err.orig.args[0], err.orig.args[1]))
     else:
         logging.warn("Database configuration failed. No data will be available")
         DB = None
-    del DB_uri
