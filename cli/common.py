@@ -18,7 +18,7 @@ def domainCandidates(domainSpec, *filters):
 
 def userFilter(userSpec, *filters):
     from orm.users import Users
-    from sqlalachemy import and_
+    from sqlalchemy import and_
     return and_(True if userSpec is None else
                 Users.ID == userSpec if userSpec.isdigit() else
                 Users.username.ilike(userSpec+"%"), *filters)

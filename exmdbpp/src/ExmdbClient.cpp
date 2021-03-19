@@ -74,9 +74,7 @@ void ExmdbClient::Connection::close()
 void ExmdbClient::Connection::connect(const std::string& host, const std::string& port)
 {
     if(sock != -1)
-    {
-
-    }
+        close();
     addrinfo* addrs;
     int error;
     if((error = getaddrinfo(host.c_str(), port.c_str(), &aiHint, &addrs)))
@@ -91,6 +89,7 @@ void ExmdbClient::Connection::connect(const std::string& host, const std::string
         ::close(sock);
         sock = -1;
     }
+    freeaddrinfo(addrs);
     if(sock == -1)
         throw std::runtime_error("Connect failed: "+std::string(strerror(error)));
 }

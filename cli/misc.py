@@ -146,6 +146,9 @@ def cliShell(args):
             Cli.rlAvail = True
         except:
             print("Install readline module to enable autocompletion")
+    else:
+        print(Cli.col("WARNING: The CLI is still under development and subject to changes. Be careful when using scripts.\n",
+                      "yellow"), file=sys.stderr)
     try:
         while True:
             rlEnable(True)
@@ -167,19 +170,33 @@ def cliShell(args):
                 pass
             except AttributeError as err:
                 print(Cli.col("Caught AttributeError: "+"-".join(str(arg) for arg in err.args), "blue", attrs=["dark"]))
+            except KeyboardInterrupt:
+                print("^C")
+                continue
+            except EOFError:
+                raise
             except BaseException as err:
-                print(Cli.col("An exception occured ({}): {}".format(sys.last_type, "-".join(str(arg) for arg in err.args)),
+                print(Cli.col("An exception occured ({}): {}".format(type(err).__name__,
+                                                                     "-".join(str(arg) for arg in err.args)),
                               "red"))
     except EOFError:
         print()
 
 
-@Cli.command("moo")
-def cliMoo(args):
-    print('                 (__)\n'
-          '                 (oo)\n'
-          '           /------\\/\n'
-          '          / |    ||\\\n'
-          '         *  /\\---/\\\n'
-          '            ~~   ~~\n'
-          '..."Have you mooed today?"...')
+@Cli.command("shrek")
+def cliShrek(args):
+    print(Cli.col("⢀⡴⠑⡄⠀⠀⠀⠀⠀⠀⠀⣀⣀⣤⣤⣤⣀⡀\n"
+                  "⠸⡇⠀⠿⡀⠀⠀⠀⣀⡴⢿⣿⣿⣿⣿⣿⣿⣿⣷⣦⡀\n"
+                  "⠀⠀⠀⠀⠑⢄⣠⠾⠁⣀⣄⡈⠙⣿⣿⣿⣿⣿⣿⣿⣿⣆\n"
+                  "⠀⠀⠀⠀⢀⡀⠁⠀⠀⠈⠙⠛⠂⠈⣿⣿⣿⣿⣿⠿⡿⢿⣆\n"
+                  "⠀⠀⠀⢀⡾⣁⣀⠀⠴⠂⠙⣗⡀⠀⢻⣿⣿⠭⢤⣴⣦⣤⣹⠀⠀⠀⢀⢴⣶⣆\n"
+                  "⠀⠀⢀⣾⣿⣿⣿⣷⣮⣽⣾⣿⣥⣴⣿⣿⡿⢂⠔⢚⡿⢿⣿⣦⣴⣾⠁⠸⣼⡿\n"
+                  "⠀⢀⡞⠁⠙⠻⠿⠟⠉⠀⠛⢹⣿⣿⣿⣿⣿⣌⢤⣼⣿⣾⣿⡟⠉\n"
+                  "⠀⣾⣷⣶⠇⠀⠀⣤⣄⣀⡀⠈⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇\n"
+                  "⠀⠉⠈⠉⠀⠀⢦⡈⢻⣿⣿⣿⣶⣶⣶⣶⣤⣽⡹⣿⣿⣿⣿⡇\n"
+                  "⠀⠀⠀⠀⠀⠀⠀⠉⠲⣽⡻⢿⣿⣿⣿⣿⣿⣿⣷⣜⣿⣿⣿⡇\n"
+                  "⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣷⣶⣮⣭⣽⣿⣿⣿⣿⣿⣿⣿\n"
+                  "⠀⠀⠀⠀⠀⠀⣀⣀⣈⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇\n"
+                  "⠀⠀⠀⠀⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃\n"
+                  "⠀⠀⠀⠀⠀⠀⠀⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠁\n"
+                  "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⠻⠿⠿⠿⠿⠛⠉", "green"))
