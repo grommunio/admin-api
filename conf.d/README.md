@@ -56,3 +56,5 @@ Further parameters can be set in the `options` object:
 - `exmdbPort` (`string`, default: `5000`): Port of the exmdb service provider
 - `fileUid` (`string` or `int`): If set, change ownership of created files to this user
 - `fileGid` (`string` or `int`): If set, change ownership of created files to this group
+- `antispamUrl` (`string`, default: `http://127.0.0.1:11334`): URL of the grammm-antispam backend
+- `antispamEndpoints` (`list of strings`, default: `["stat", "graph", "errors"]`): List of allowed endpoints to proxy to grammm-antispam

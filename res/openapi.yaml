@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.17.0
+  version: 0.18.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -909,6 +909,28 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
+  /system/antispam/{path}:
+    get:
+      summary: Make call to grammm-antispam
+      description: Proxies any request including query parameters to the grammm-antispam backend
+      tags:
+        - System Admin/License
+      security:
+        - JWTCookie: []
+      parameters:
+        - name: path
+          in: path
+          description: grammm-antispam endpoint to query
+          required: true
+          schema:
+            type: string
+      responses:
+        '403':
+          description: Insufficient privileges or endpoint not allowed
+        '503':
+          description: Connection to grammm-antispam failed
+        default:
+          description: Response returned by the grammm-admin backend
 
   /domains:
     get:

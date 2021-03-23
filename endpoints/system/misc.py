@@ -13,6 +13,7 @@ from tools.systemd import Systemd
 
 import os
 import psutil
+import requests
 from datetime import datetime
 from dbus import DBusException
 from flask import jsonify, make_response, request
@@ -152,3 +153,18 @@ def updateLicense():
     if error:
         return jsonify(message=error), 400
     return dumpLicense()
+
+
+@API.route(api.BaseRoute+"/system/antispam/<path:path>", methods=["GET"])
+@secure()
+def rspamdProxy(path):
+    checkPermissions(SystemAdminPermission())
+    conf = Config["options"]
+    if path not in conf.get("antispamEndpoints", ("stat", "graph", "errors")):
+        return jsonify(message="Endpoint not allowed"), 403
+    try:
+        res = requests.get(conf.get("antispamUrl", "http://127.0.0.1:11334")+"/"+path, request.args, stream=True)
+    except BaseException as err:
+        API.logger.error(type(err).__name__+": "+" - ".join(str(arg) for arg in err.args))
+        return jsonify(message="Failed to connect to antispam"), 503
+    return res.raw.read(), res.status_code, res.headers.items()
