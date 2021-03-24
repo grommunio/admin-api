@@ -137,24 +137,24 @@ def _cliUserspecCompleter(prefix, **kwargs):
 def _setupCliUser(subp: ArgumentParser):
     subp.add_argument("-d", "--domain", help="Restrict operations to domain.")
     sub = subp.add_subparsers()
-    show = sub.add_parser("show")
+    delete = sub.add_parser("delete", help="Delete user")
+    delete.set_defaults(_handle=cliUserDelete)
+    delete.add_argument("userspec", help="User ID or name")
+    delete.add_argument("-k", "--keep-files", action="store_true", help="Do not delete files on disk")
+    delete.add_argument("-y", "--yes", action="store_true", help="Do not ask for confirmation")
+    list = sub.add_parser("list", help="List users")
+    list.set_defaults(_handle=cliUserList)
+    list.add_argument("userspec", nargs="?", help="User ID or substring to match username against")
+    list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
+    list.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
+    show = sub.add_parser("show", help="Show detailed information about user")
     show.set_defaults(_handle=cliUserShow)
     show.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter
     show.add_argument("-i", "--id", action="store_true", help="Only match user by ID")
     show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
     show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
-    list = sub.add_parser("list")
-    list.set_defaults(_handle=cliUserList)
-    list.add_argument("userspec", nargs="?", help="User ID or substring to match username against")
-    list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
-    list.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
-    delete = sub.add_parser("delete")
-    delete.set_defaults(_handle=cliUserDelete)
-    delete.add_argument("userspec", help="User ID or name")
-    delete.add_argument("-k", "--keep-files", action="store_true", help="Do not delete files on disk")
-    delete.add_argument("-y", "--yes", action="store_true", help="Do not ask for confirmation")
 
 
-@Cli.command("user", _setupCliUser)
+@Cli.command("user", _setupCliUser, help="User management")
 def cliUserStub(args):
     pass

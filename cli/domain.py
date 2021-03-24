@@ -220,6 +220,6 @@ def _setupCliDomain(subp : ArgumentParser):
     show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s domainname,desc")
     show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
 
-@Cli.command("domain", _setupCliDomain)
+@Cli.command("domain", _setupCliDomain, help="Domain management")
 def cliDomainStub(args):
     pass

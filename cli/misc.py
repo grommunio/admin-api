@@ -12,7 +12,7 @@ def _runParserSetup(subp: ArgumentParser):
     subp.add_argument("--no-config-check", action="store_true", help="Skip configuration check")
 
 
-@Cli.command("run", _runParserSetup)
+@Cli.command("run", _runParserSetup, help="Run the REST API")
 def cliRun(args):
     if not args.no_config_check:
         from tools import config
@@ -34,7 +34,7 @@ def _versionParserSetup(subp: ArgumentParser):
     subp.add_argument("--combined", "-c", action="store_true", help="Print combined version")
 
 
-@Cli.command("version", _versionParserSetup)
+@Cli.command("version", _versionParserSetup, help="Show version information")
 def cliVersion(args):
     from api import backendVersion, apiVersion
     if args.api:
@@ -68,13 +68,13 @@ def _cliConfigDump(args):
 
 def _setupCliConfigParser(subp: ArgumentParser):
     sub = subp.add_subparsers()
-    check = sub.add_parser("check")
+    check = sub.add_parser("check", help="Check if configuration is valid")
     check.set_defaults(_handle=_cliConfigCheck)
-    dump = sub.add_parser("dump")
+    dump = sub.add_parser("dump", help="Dump configuration to stdout")
     dump.set_defaults(_handle=_cliConfigDump)
 
 
-@Cli.command("config", _setupCliConfigParser)
+@Cli.command("config", _setupCliConfigParser, help="Show or check configuration")
 def cliConfigStub(args):
     pass
 
@@ -101,7 +101,7 @@ def _setupTaginfo(subp: ArgumentParser):
     tagID.completer = _cliTaginfoCompleter
 
 
-@Cli.command("taginfo", _setupTaginfo)
+@Cli.command("taginfo", _setupTaginfo, help="Print information about proptags")
 def cliTaginfo(args):
     from tools.constants import PropTags, PropTypes
     for tagid in args.tagID:
@@ -122,7 +122,7 @@ def _setupCliShell(subp: ArgumentParser):
     subp.add_argument("-x", "--exit", action="store_true", help="Exit on error")
 
 
-@Cli.command("shell", _setupCliShell)
+@Cli.command("shell", _setupCliShell, help="Start interactive shell")
 def cliShell(args):
     def rlEnable(state):
         if Cli.rlAvail:

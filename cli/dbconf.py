@@ -118,7 +118,27 @@ def cliDbConfCommit(args):
 
 def _setupCliDbconf(subp: ArgumentParser):
     sub = subp.add_subparsers()
-    set = sub.add_parser("set")
+    commit = sub.add_parser("commit", description=_commitHelp, help="Run commit function")
+    commit.set_defaults(_handle=cliDbConfCommit)
+    commit.add_argument("service", help="Service to update")
+    commit.add_argument("file", nargs="?", help="File to commit. If omittet, commit all files")
+    commit.add_argument("key", nargs="?", help="Key to commit. If omittet, commit all keys")
+    delete = sub.add_parser("delete", help="Delete service, file or key")
+    delete.set_defaults(_handle=cliDbconfDelete)
+    delete.add_argument("service", help="Service to delete from").completer = _autocompService
+    delete.add_argument("file", nargs="?", help="File to delete from. If omitted, delete all files").completer = _autocompFile
+    delete.add_argument("key", nargs="?", help="Configuration entry to delete. If omitted, delete all entries")\
+        .completer = _autocompKey
+    get = sub.add_parser("get", help="Print file or key")
+    get.set_defaults(_handle=cliDbconfGet)
+    get.add_argument("service", help="Service get configuration for").completer = _autocompService
+    get.add_argument("file", nargs="?", help="File or section. If omitted print all files").completer = _autocompFile
+    get.add_argument("key", nargs="?", help="Configuration entry. If omitted, print complete file").completer = _autocompKey
+    list = sub.add_parser("list", help="List services, files or keys")
+    list.set_defaults(_handle=cliDbconfList)
+    list.add_argument("service", nargs="?", help="Service to list files from").completer = _autocompService
+    list.add_argument("file", nargs="?", help="File to list keys from").completer = _autocompFile
+    set = sub.add_parser("set", help="Set configuration value")
     set.set_defaults(_handle=cliDbconfSet)
     set.add_argument("service", help="Service to configure").completer = _autocompService
     set.add_argument("file", help="File or section").completer = _autocompFile
@@ -126,28 +146,8 @@ def _setupCliDbconf(subp: ArgumentParser):
     set.add_argument("value", nargs="?", help="Value to set. If omitted, create an empty entry")
     set.add_argument("-b", "--batch", action="store_true", help="Do not autocommit changes")
     set.add_argument("-i", "--init", action="store_true", help="Only set if value configuration does not exist")
-    get = sub.add_parser("get")
-    get.set_defaults(_handle=cliDbconfGet)
-    get.add_argument("service", help="Service get configuration for").completer = _autocompService
-    get.add_argument("file", nargs="?", help="File or section. If omitted print all files").completer = _autocompFile
-    get.add_argument("key", nargs="?", help="Configuration entry. If omitted, print complete file").completer = _autocompKey
-    delete = sub.add_parser("delete")
-    delete.set_defaults(_handle=cliDbconfDelete)
-    delete.add_argument("service", help="Service to delete from").completer = _autocompService
-    delete.add_argument("file", nargs="?", help="File to delete from. If omitted, delete all files").completer = _autocompFile
-    delete.add_argument("key", nargs="?", help="Configuration entry to delete. If omitted, delete all entries")\
-        .completer = _autocompKey
-    list = sub.add_parser("list")
-    list.set_defaults(_handle=cliDbconfList)
-    list.add_argument("service", nargs="?", help="Service to list files from").completer = _autocompService
-    list.add_argument("file", nargs="?", help="File to list keys from").completer = _autocompFile
-    commit = sub.add_parser("commit", description=_commitHelp)
-    commit.set_defaults(_handle=cliDbConfCommit)
-    commit.add_argument("service", help="Service to update")
-    commit.add_argument("file", nargs="?", help="File to commit. If omittet, commit all files")
-    commit.add_argument("key", nargs="?", help="Key to commit. If omittet, commit all keys")
 
 
-@Cli.command("dbconf", _setupCliDbconf)
+@Cli.command("dbconf", _setupCliDbconf, help="Database-stored configuration management")
 def cliDbconfStub(args):
     pass

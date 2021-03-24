@@ -371,9 +371,15 @@ def cliLdapReload(args):
 
 def _cliLdapParserSetup(subp: ArgumentParser):
     sub = subp.add_subparsers()
-    info = sub.add_parser("info")
-    info.set_defaults(_handle=cliLdapInfo)
-    downsync = sub.add_parser("downsync")
+    check = sub.add_parser("check", help="Check LDAP objects of imported users still exist")
+    check.set_defaults(_handle=cliLdapCheck)
+    check.add_argument("-y", "--yes", action="store_true", help="Do not prompt for user deletion (only with -r)")
+    check.add_argument("-r", "--remove", action="store_true", help="Prompt for user deletion if orphaned users exist")
+    check.add_argument("-m", "--remove-maildirs", action="store_true", help="When deleting users, also remove their mail "\
+                                                                            "directories from disk")
+    configure = sub.add_parser("configure", help="Run interactive LDAP configuration")
+    configure.set_defaults(_handle=_cliLdapConfigure)
+    downsync = sub.add_parser("downsync", help="Import or update users from ldap")
     downsync.set_defaults(_handle=cliLdapDownsync)
     downsync.add_argument("user", nargs="*", help="LDAP ID or user search query string. If omitted, all users linked to an "\
                                                   "LDAP object are updated.")
@@ -381,25 +387,19 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     downsync.add_argument("-c", "--complete", action="store_true", help="Import/update all users in the ldap tree")
     downsync.add_argument("-f", "--force", action="store_true", help="Force synchronization of unassociated users")
     downsync.add_argument("-y", "--yes", action="store_true", help="Proceed automatically if target is unambiguous")
-    search = sub.add_parser("search")
-    search.set_defaults(_handle=cliLdapSearch)
-    search.add_argument("query")
-    check = sub.add_parser("check")
-    check.set_defaults(_handle=cliLdapCheck)
-    check.add_argument("-y", "--yes", action="store_true", help="Do not prompt for user deletion (only with -r)")
-    check.add_argument("-r", "--remove", action="store_true", help="Prompt for user deletion if orphaned users exist")
-    check.add_argument("-m", "--remove-maildirs", action="store_true", help="When deleting users, also remove their mail "\
-                                                                            "directories from disk")
-    dump = sub.add_parser("dump")
+    dump = sub.add_parser("dump", help="Dump LDAP object")
     dump.set_defaults(_handle=cliLdapDump)
     dump.add_argument("user", nargs="+", help="User ID or search query string")
-    configure = sub.add_parser("configure")
-    configure.set_defaults(_handle=_cliLdapConfigure)
-    reload = sub.add_parser("reload")
+    info = sub.add_parser("info", help="Check LDAP status")
+    info.set_defaults(_handle=cliLdapInfo)
+    reload = sub.add_parser("reload", help="Reload LDAP configuration")
     reload.set_defaults(_handle=cliLdapReload)
+    search = sub.add_parser("search", help="Search LDAP tree")
+    search.set_defaults(_handle=cliLdapSearch)
+    search.add_argument("query")
 
 
-@Cli.command("ldap", _cliLdapParserSetup)
+@Cli.command("ldap", _cliLdapParserSetup, help="LDAP configuration, diagnostics and synchronization")
 def cliLdap(args):
     if hasattr(args, "_handle") and args._handle != cliLdap:
         return args._handle(args) or 0

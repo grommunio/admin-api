@@ -200,7 +200,7 @@ def _cliListspecCompleter(prefix, **kwargs):
 def _setupCliMlist(subp: ArgumentParser):
     subp.add_argument("-d", "--domain", help="Restrict operations to domain.")
     sub = subp.add_subparsers()
-    create = sub.add_parser("create")
+    create = sub.add_parser("create", help="Create new list")
     create.set_defaults(_handle=cliMlistCreate)
     create.add_argument("name", help="Name of the mailing list")
     create.add_argument("-p", "--privilege", choices=_privnames, default="all", help="List privilege type")
@@ -209,31 +209,31 @@ def _setupCliMlist(subp: ArgumentParser):
     create.add_argument("-t", "--type", choices=_typenames, default="normal", help="Mailing list type")
     create.add_argument("-r", "--recipient", action="append", default=[], help="Users to associate with normal lists")
     create.add_argument("-c", "--class", help="ID or name of the class to use for class lists", dest="class_")
-    show = sub.add_parser("show")
-    show.set_defaults(_handle=cliMlistShow)
-    show.add_argument("mlistspec", help="Mlist ID or name").completer = _cliListspecCompleter
-    show.add_argument("-i", "--id", action="store_true", help="Only match list by ID")
-    show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s listname,desc")
-    show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
-    list = sub.add_parser("list")
-    list.set_defaults(_handle=cliMlistList)
-    list.add_argument("mlistspec", nargs="?", help="List ID or substring to match listname against")
-    list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s listname,desc")
-    list.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
-    delete = sub.add_parser("delete")
+    delete = sub.add_parser("delete", help="Delete list")
     delete.set_defaults(_handle=cliMlistDelete)
     delete.add_argument("mlistspec", help="Mlist ID or name").completer = _cliListspecCompleter
     delete.add_argument("-i", "--id", action="store_true", help="Only match list by ID")
     delete.add_argument("-y", "--yes", action="store_true", help="Do not ask for confirmation")
-    modify = sub.add_parser("modify")
+    list = sub.add_parser("list", help="List existing lists")
+    list.set_defaults(_handle=cliMlistList)
+    list.add_argument("mlistspec", nargs="?", help="List ID or substring to match listname against")
+    list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s listname,desc")
+    list.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
+    modify = sub.add_parser("modify", help="Modify list")
     modify.set_defaults(_handle=cliMlistModify)
     modify.add_argument("-i", "--id", action="store_true", help="Only match list by ID")
     modify.add_argument("mlistspec", help="Mlist ID or name").completer = _cliListspecCompleter
     modify.add_argument("command", choices=("add", "remove"), help="Modification to perform")
     modify.add_argument("attribute", choices=("recipient", "sender"), help="Attribute to modify")
     modify.add_argument("entry", help="Which entry to add/remove")
+    show = sub.add_parser("show", help="Show detailed information about list")
+    show.set_defaults(_handle=cliMlistShow)
+    show.add_argument("mlistspec", help="Mlist ID or name").completer = _cliListspecCompleter
+    show.add_argument("-i", "--id", action="store_true", help="Only match list by ID")
+    show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s listname,desc")
+    show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
 
 
-@Cli.command("mlist", _setupCliMlist)
+@Cli.command("mlist", _setupCliMlist, help="Mailing/distribution list management")
 def cliMlistStub():
     pass

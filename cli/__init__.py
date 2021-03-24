@@ -40,7 +40,7 @@ class Cli:
             return 2
 
     @classmethod
-    def register(cls, name, handler) -> ArgumentParser:
+    def register(cls, name, handler, **kwargs) -> ArgumentParser:
         """Register a new sub-command.
 
         The parsed arguments are passed to the handler function.
@@ -51,18 +51,20 @@ class Cli:
             Name of the sub-command
         handler : Callable
             Function that executes the sub-command.
+        kwargs : any
+            Arguments passed to the add_parser function
 
         Returns
         -------
         ArgumentParser
             Sub-parser that can be customized with sub-command specific arguments
         """
-        subp = cls.subparsers.add_parser(name)
+        subp = cls.subparsers.add_parser(name, **kwargs)
         subp.set_defaults(_handle=handler)
         return subp
 
     @classmethod
-    def command(cls, name, parserSetup=lambda subp: None):
+    def command(cls, name, parserSetup=lambda subp: None, **kwargs):
         """Decorator for sub-command handlers.
 
         Can be used instead of calling register().
@@ -72,10 +74,12 @@ class Cli:
         name : str
             Name of the subcommand
         parserSetup : Callable, optional
-            Function that sets up the sub-command parser. By default not further initialization is done.
+            Function that sets up the sub-command parser. By default no further initialization is done.
+        kwargs : any
+            Arguments passed to the add_parser function
         """
         def inner(func):
-            subp = cls.register(name, func)
+            subp = cls.register(name, func, **kwargs)
             parserSetup(subp)
             return func
         return inner

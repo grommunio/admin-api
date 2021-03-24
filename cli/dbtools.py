@@ -64,7 +64,7 @@ def _passwdParserSetup(subp: ArgumentParser):
                       help="New password. If neither -p nor -a are specified, the new password is set interactively.")
 
 
-@Cli.command("passwd", _passwdParserSetup)
+@Cli.command("passwd", _passwdParserSetup, help="User password management")
 def setUserPassword(args):
     Cli.require("DB")
     from orm.users import DB, Users

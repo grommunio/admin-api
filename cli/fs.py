@@ -76,7 +76,7 @@ def _clean(path, used, maxdepth, du=False, delete=True):
                 print("Removing "+Cli.col(dp, attrs=["bold"]))
                 if delete:
                     shutil.rmtree(dp, ignore_errors=True)
-        if len(dirnames)-removed <= 0:
+        if len(dirnames)-removed <= 0 and depth != 0:
             size += os.path.getsize(pathname)
             print("Removing empty directory "+Cli.col(pathname, attrs=["bold"]))
             if delete:
@@ -110,7 +110,7 @@ def cliFsClean(args):
 def _setupCliFsParser(subp: ArgumentParser):
     sub = subp.add_subparsers()
     clean = sub.add_parser("clean", help="Remove unused user and domain files")
-    clean.description = "Delete domain and user directories that may be left behind when removing a domain or user without"\
+    clean.description = "Delete domain and user directories that may be left behind when removing a domain or user without "\
                         "deleteFiles directive"
     clean.set_defaults(_handle=cliFsClean)
     clean.add_argument("partition", nargs="?", choices=("domain", "user"), help="Clean only specified partition")
@@ -121,7 +121,7 @@ def _setupCliFsParser(subp: ArgumentParser):
     du.add_argument("partition", nargs="?", choices=("domain", "user"), help="Partition to calculate disk usage for")
 
 
-@Cli.command("fs", _setupCliFsParser)
+@Cli.command("fs", _setupCliFsParser, help="Filesystem operations")
 def cliFsStub(args):
     pass
 
