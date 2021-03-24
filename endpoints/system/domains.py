@@ -95,6 +95,11 @@ def deleteDomain(domainID):
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    domain.delete()
+    if request.args.get("purge") == "true":
+        domain.purge(request.args.get("deleteFiles") == "true")
+        msg = "removed."
+    else:
+        domain.delete()
+        msg = "marked as deleted."
     DB.session.commit()
-    return jsonify(message="Domain marked as deleted")
+    return jsonify(message="Domain "+msg)

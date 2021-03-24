@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.18.0
+  version: 0.18.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -669,12 +669,27 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete domain
+      description: Removes domain (purge=true) or marks it as deleted (purge=false)
       tags:
         - System Admin/Domains
       security:
         - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
+        - name: purge
+          in: query
+          required: false
+          description: Permanently delete the domain
+          schema:
+            type: boolean
+            default: false
+        - name: deleteFiles
+          in: query
+          required: false
+          description: Delete files from disk when purging
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Domain deleted
@@ -914,7 +929,7 @@ paths:
       summary: Make call to grammm-antispam
       description: Proxies any request including query parameters to the grammm-antispam backend
       tags:
-        - System Admin/License
+        - Misc
       security:
         - JWTCookie: []
       parameters:
@@ -2604,7 +2619,6 @@ components:
               description: Comparison operator
               enum: [eq, ne, lt, le, gt, ge, li, nl, ex, nx]
             val:
-              nullable: true
               type: string
               description: Value used for comparison (binary operators)
     dbConfFile:

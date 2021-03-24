@@ -104,7 +104,7 @@ def cliUserDelete(args):
     if maildir == "":
         print("No user files to delete.")
         return 0
-    print("Unloading store...", end="")
+    print("Unloading store...", end="", flush=True)
     try:
         from tools.config import Config
         from tools.constants import ExmdbCodes
