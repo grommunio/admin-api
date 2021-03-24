@@ -137,4 +137,4 @@ class Cli:
             if not LDAP_available:
                 raise CliError("LDAP not available")
 
-from . import dbconf, dbtools, domain, ldap, mconf, misc, mlist, user
+from . import dbconf, dbtools, domain, fs, ldap, mconf, misc, mlist, user
