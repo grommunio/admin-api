@@ -20,7 +20,7 @@ if DB is not None:
 @secure(requireDB=True)
 def getDbconfServices():
     checkPermissions(SystemAdminPermission())
-    data = [entry[0] for entry in DBConf.query.with_entities(DBConf.service.distinct())]
+    data = [entry[0] for entry in DBConf.query.with_entities(DBConf.service.distinct()).order_by(DBConf.service)]
     return jsonify(data=data)
 
 
@@ -28,7 +28,9 @@ def getDbconfServices():
 @secure(requireDB=True)
 def getDbconfFiles(service):
     checkPermissions(SystemAdminPermission())
-    data = [entry[0] for entry in DBConf.query.filter(DBConf.service == service).with_entities(DBConf.file.distinct())]
+    data = [entry[0] for entry in DBConf.query.filter(DBConf.service == service)
+                                              .with_entities(DBConf.file.distinct())
+                                              .order_by(DBConf.file())]
     return jsonify(data=data)
 
 
