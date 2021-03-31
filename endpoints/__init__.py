@@ -237,7 +237,7 @@ def defaultDelete(Model, ID, name, filters=()):
         DB.session.delete(obj)
         DB.session.commit()
     except IntegrityError as err:
-        return jsonify(message="Das kannste so nicht machen.", error=err.args[0]), 400
+        return jsonify(message="Deletion violates database constraints.", error=err.args[0]), 400
     return jsonify(message="{} #{} deleted.".format(name, ID))
 
 

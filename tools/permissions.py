@@ -161,7 +161,7 @@ class PermissionBase:
     Implements `permits` method, automatically dispatching the correct, permission specific, `_permits` method.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """Default constructor."""
         pass
 
@@ -187,6 +187,24 @@ class PermissionBase:
             return permission_t._permits(self, permission)
         return False
 
+    def _permits(self, permission):
+        """Check if self contains requeusted permission.
+
+        Called by the default `permits` method if `permission` and self are of the same type.
+        By default, having the permission is sufficient, but it may be overridden to check permission parameters.
+
+        Parameters
+        ----------
+        permission : same as type(self)
+            Requested permission
+
+        Returns
+        -------
+        bool:
+            Whether permission matches
+        """
+        return True
+
     def capabilities(self):
         """Get a set of capabilities provided by this permission.
 
@@ -196,6 +214,19 @@ class PermissionBase:
             Empty set
         """
         return set()
+
+    def __repr__(self):
+        """String representation.
+
+        Generic implementation providing class name with appended braces.
+
+        Returns
+        -------
+        str
+            String representation
+        """
+        return type(self).__name__+"()"
+
 
 @Permissions.register("SystemAdmin")
 class SystemAdminPermission:
@@ -299,7 +330,7 @@ class DomainAdminPermission(PermissionBase):
         Returns
         -------
         set
-            Set containg "DomainAdmin" capability.
+            Set containing "DomainAdmin" capability.
         """
         return {"DomainAdmin"}
 
@@ -307,3 +338,105 @@ class DomainAdminPermission(PermissionBase):
     def domainID(self):
         """Return domain parameter."""
         return self.__domain
+
+
+@Permissions.register("OrgAdmin")
+class OrgAdminPermission(PermissionBase):
+    """Permission class representing admin permissions for an organization.
+
+    An organization admin automatically has DomainAdminPermission for each domain belonging to an organization.
+    Additionally, an organization admin can modify and delete domains.
+
+    Can represent permission for a specific organization, or organizations in general (when parameter is '*').
+
+    Note that the special parameter '*' is permissive in both directions:
+    Requesting a DomainAdminPermission with parameter '*' and
+    requesting DomainAdminPermission for a specific domain from a permission with parameter '*' will both return True.
+    """
+    def __init__(self, orgID):
+        """Initialize domain admin permission.
+
+        Parameters
+        ----------
+        orgID : int or '*'
+            Organization ID this permission is for, or '*' to match all domains
+
+        Raises
+        ------
+        ValueError
+            `orgID` is neither an integer nor special identifier '*'
+        """
+        if orgID != "*" and not isinstance(orgID, int):
+            raise ValueError("OrgAdminPermission parameter must be integer or '*'")
+        self.__org = orgID
+
+    def permits(self, permission):
+        """Check if `permission` is represented.
+
+
+        Returns
+        -------
+        bool
+            True if `permission` is represented by this object, False otherwise
+        """
+        if isinstance(permission, OrgAdminPermission):
+            return self._permits(permission)
+        if isinstance(permission, DomainAdminPermission):
+            if permission.domainID == "*" or self.__org == "*":
+                return True
+            from orm.domains import Domains
+            domainIDs = (d.ID for d in Domains.query.filter(Domains.orgID == self.__org).with_entities(Domains.ID).all())
+            return permission.domainID in domainIDs
+        return PermissionBase.permits(self, permission)
+
+    def _permits(self, permission):
+        """Check if permission is represented.
+
+        Parameters
+        ----------
+        permission : OrgAdminPermission
+            Permission to check for equality
+
+        Returns
+        -------
+        bool
+            True if domain IDs match or either is a wildcard organization, False otherwise
+        """
+        return "*" in (self.__org, permission.__org) or self.__org == permission.__org
+
+    def __repr__(self):
+        """Return string representation."""
+        return "OrgAdminPermission({})".format(repr(self.__org))
+
+    def capabilities(self):
+        """Get a set of capabilities provided by this permission.
+
+        Returns
+        -------
+        set
+            Set containing "DomainAdmin" and "OrgAdmin" capabilities.
+        """
+        return {"DomainAdmin", "OrgAdmin"}
+
+    @property
+    def orgID(self):
+        """Return domain parameter."""
+        return self.__org
+
+
+@Permissions.register("DomainPurge")
+class DomainPurgePermission(PermissionBase):
+    """Permission to purge domains.
+
+    Does not grant permission to delete a domain on its own an is only effective if combined with an OrgAdmin permission.
+    """
+
+    def capabilities(self):
+        """Get a set of capabilities provided by this permission.
+
+        Returns
+        -------
+        set
+            Set containing "DomainPurge" capability.
+        """
+        return {"DomainPurge"}

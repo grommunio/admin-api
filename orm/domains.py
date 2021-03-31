@@ -13,9 +13,10 @@ class Orgs(DataModel, DB.Base):
     __tablename__ = "orgs"
 
     ID = Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True, nullable=False)
-    memo = Column("memo", VARCHAR(128), nullable=False, server_default="")
+    name = Column("name", VARCHAR(32), nullable=False)
+    description = Column("description", VARCHAR(128))
 
-    _dictmapping_ = ((Id(), Text("memo", flags="patch")),)
+    _dictmapping_ = ((Id(), Text("name", flags="patch")), (Text("description", flags="patch"),))
 
 
 class Domains(DataModel, DB.Base):

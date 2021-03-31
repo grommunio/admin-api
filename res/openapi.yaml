@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.18.2
+  version: 0.19.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2049,6 +2049,134 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
+  /system/orgs:
+    get:
+      summary: Get a list of organizations
+      tags:
+        - System Admin/Organizations
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: List of organizations returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/org'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Create new organization
+      tags:
+        - System Admin/Organizations
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/org'
+      responses:
+        '201':
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/org'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /system/orgs/{ID}:
+    get:
+      summary: Get detailed information about an organization
+      tags:
+        - System Admin/Organizations
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: LDAP configuration returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/org'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    patch:
+      summary: Update organization
+      tags:
+        - System Admin/Organizations
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/org'
+      responses:
+        '200':
+          description: Organization updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/org'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete organization
+      description: Delete the organization. Associated domains are made organizationless (orgID=0)
+      tags:
+        - System Admin/Organizations
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Organization deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
 components:
   securitySchemes:
     JWTCookie:
@@ -2168,6 +2296,16 @@ components:
           type: integer
           description: Domain status (0=Normal, 1=Suspended, 2=Out Of Date, 3=Deleted)
           default: 0
+    org:
+      type: object
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
     user:
       type: object
       additionalProperties: false
@@ -2691,6 +2829,8 @@ tags:
     description: Endpoints for license management
   - name: System Admin/MConf
     description: Endpoints for accessing managed configurations
+  - name: System Admin/Organizations
+    description: Endpoints for organization management
   - name: System Admin/Roles
     description: Endpoints for user role and permission management
   - name: Domain Admin/Classes

@@ -7,9 +7,10 @@ from .. import defaultListHandler
 import api
 from api.core import API, secure
 
-from tools.permissions import SystemAdminPermission, DomainAdminPermission
+from tools.permissions import SystemAdminPermission, DomainAdminPermission, OrgAdminPermission
 
 from flask import request, jsonify
+from sqlalchemy import or_
 
 from orm import DB
 if DB is not None:
@@ -24,7 +25,8 @@ def getAvailableDomains():
         domainFilters = ()
     else:
         domainIDs = {permission.domainID for permission in permissions if isinstance(permission, DomainAdminPermission)}
-        if len(domainIDs) == 0:
-            return jsonify(data=[])
-        domainFilters = () if "*" in domainIDs else (Domains.ID.in_(domainIDs),)
+        orgIDs = {permission.orgID for permission in permissions if isinstance(permission, OrgAdminPermission)}
+        print(domainIDs, orgIDs)
+        domainFilters = () if "*" in domainIDs or "*" in orgIDs else \
+                        (or_(Domains.ID.in_(domainIDs), Domains.orgID.in_(orgIDs)),)
     return defaultListHandler(Domains, filters=domainFilters)
