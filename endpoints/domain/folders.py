@@ -36,7 +36,7 @@ def getPublicFoldersList(domainID):
         response = pyexmdb.FolderListResponse(client.getFolderList(domain.homedir))
     except pyexmdb.ExmdbError as err:
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
-    folders = [{"folderid": entry.folderId,
+    folders = [{"folderid": str(entry.folderId),
                 "displayname": entry.displayName,
                 "comment": entry.comment,
                 "creationtime": datetime.fromtimestamp(nxTime(entry.creationTime)).strftime("%Y-%m-%d %H:%M:%S")}
@@ -60,7 +60,7 @@ def createPublicFolder(domainID):
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
     if response.folderId == 0:
         return jsonify(message="Folder creation failed"), 500
-    return jsonify(folderid=response.folderId,
+    return jsonify(folderid=str(response.folderId),
                    displayname=data["displayname"],
                    comment=data["comment"],
                    creationtime=datetime.now().strftime("%Y-%m-%d %H:%M:%S")), 201
