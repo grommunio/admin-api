@@ -85,10 +85,6 @@ def _loadConfig_():
         pass
     if "logging" in config:
         logging.config.dictConfig(config["logging"])
-    if not config["openapi"]["validateRequest"]:
-        logging.warn("Request validation is disabled!")
-    if not config["openapi"]["validateResponse"]:
-        logging.warn("Response validation is disabled!")
     return config
 
 

@@ -104,6 +104,8 @@ def signalDashboardService(unit, action):
         command = Systemd.stopService
     elif action == "restart":
         command = Systemd.restartService
+    elif action == "reload":
+        command = Systemd.reloadService
     else:
         return jsonify(message="Invalid action"), 400
     if unit not in (service["unit"] for service in Config["options"]["dashboard"]["services"]):

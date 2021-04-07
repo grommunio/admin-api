@@ -40,7 +40,8 @@ def _dumpDomain(domain):
 
 
 def _sanitizeData(data):
-    return {key: value for key, value in data.items() if value is not None and key not in {"_handle", "domainspec"}}
+    cliargs = {"_handle", "domainspec", "skip_adaptor_reload"}
+    return {key: value for key, value in data.items() if value is not None and key not in cliargs}
 
 
 def cliDomainList(args):
@@ -83,6 +84,17 @@ def cliDomainCreate(args):
         with DomainSetup(domain) as ds:
             ds.run()
         DB.session.commit()
+        if not args.skip_adaptor_reload:
+            from tools.systemd import Systemd
+            from dbus import DBusException
+            try:
+                sysd = Systemd(system=True)
+                res = sysd.reloadService("gromox-adaptor.service")
+                if res != "done":
+                    print(Cli.col("Failed to reload gromox-adaptor: "+res, "yellow"))
+            except DBusException as err:
+                print(Cli.col("Failed to reload gromox-adaptor.service: "+" - ".join(str(arg) for arg in err.args), "yellow"))
+            Systemd.quitLoop()
         _dumpDomain(domain)
     except BaseException as err:
         print(Cli.col("Cannot create domain: "+" - ".join(str(arg) for arg in err.args), "red"))
@@ -189,6 +201,7 @@ def _setupCliDomain(subp : ArgumentParser):
     create = sub.add_parser("create", help="Create new domain")
     create.set_defaults(_handle=cliDomainCreate)
     create.add_argument("domainname", help="Name of the domain")
+    create.add_argument("--skip-adaptor-reload", action="store_true", help="Do not reload gromox-adaptor service")
     addProperties(create, True)
     delete = sub.add_parser("delete", help="Soft delete domain",
                             description="Set domain status to deleted and deactivate users")

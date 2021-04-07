@@ -14,13 +14,17 @@ class Cli:
         levelcolors = {"WARNING": "yellow", "ERROR": "red", "CRITICAL": "red"}
 
         def format(self, record):
-            record.msg = Cli.col(record.msg, self.levelcolors.get(record.levelname, "white"))
+            if Cli.colored:
+                record.msg = Cli.col(record.msg, self.levelcolors.get(record.levelname, "white"))
+            else:
+                record.msg = "[{}] {}".format(record.levelname, record.msg)
             return logging.Formatter.format(self, record)
 
     parser = ArgumentParser(description="Grammm admin backend")
     subparsers = parser.add_subparsers()
     interactive = False
     rlAvail = False
+    colored = False
     col = lambda text, *args, **kwargs: text
 
     @classmethod
@@ -33,6 +37,7 @@ class Cli:
         ----------
         args : list of strings, optional
             Command line arguments to execute. The default is None.
+
         """
         argcomplete.autocomplete(cls.parser)
         cls.init()
@@ -99,6 +104,7 @@ class Cli:
             from sys import stdout
             if stdout.isatty():
                 cls.col = lambda *args, **kwargs: termcolor.colored(*args, **kwargs)
+                cls.colored = True
         except:
             pass
         import tools.config

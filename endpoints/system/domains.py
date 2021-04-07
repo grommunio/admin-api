@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grammm GmbH
 
+from dbus import DBusException
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
 
@@ -11,9 +12,11 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
-from tools.misc import AutoClean, createMapping
-from tools.storage import DomainSetup
+
+from tools.misc import AutoClean
 from tools.permissions import SystemAdminPermission, DomainAdminPermission, OrgAdminPermission, DomainPurgePermission
+from tools.storage import DomainSetup
+from tools.systemd import Systemd
 
 from orm import DB
 if DB is not None:
@@ -72,6 +75,13 @@ def domainCreate():
             if not ds.success:
                 return jsonify(message="Error during domain setup", error=ds.error),  ds.errorCode
             DB.session.commit()
+        try:
+            systemd = Systemd(system=True)
+            result = systemd.reloadService("gromox-adaptor.service")
+            if result != "done":
+                API.logger.warn("Failed to reload gromox-adaptor.service: "+result)
+        except DBusException as err:
+            API.logger.warn("Failed to reload gromox-adaptor.service: "+" - ".join(str(arg) for arg in err.args))
         domainAdminRoleName = "Domain Admin ({})".format(domain.domainname)
         if AdminRoles.query.filter(AdminRoles.name == domainAdminRoleName).count() == 0:
             DB.session.add(AdminRoles({"name": domainAdminRoleName,

@@ -73,7 +73,7 @@ def _clean(path, used, maxdepth, du=False, delete=True):
                     f, s = _du(dp)
                     files += f
                     size += s
-                print("Removing "+Cli.col(dp, attrs=["bold"]))
+                print("Remov{} {}".format("ing" if delete else "e", Cli.col(dp, attrs=["bold"])))
                 if delete:
                     shutil.rmtree(dp, ignore_errors=True)
         if len(dirnames)-removed <= 0 and depth != 0:

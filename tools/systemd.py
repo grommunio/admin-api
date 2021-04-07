@@ -29,7 +29,7 @@ class Systemd:
     """Systemd DBus wrapper."""
 
     DBusSystemd = "org.freedesktop.systemd1"
-    eventThread = None
+    eventThread = eventLoop = None
     activeQueries = {}
     queryLock = threading.Lock()
     subscribed = False
@@ -196,3 +196,44 @@ class Systemd:
         """
         res = self._addQuery(self.manager.StartUnit(service, "replace"))
         return str(res.get())
+
+    def reloadService(self, service: str):
+        """Issue systemd service reload.
+
+        Parameters
+        ----------
+        service : str
+            Name of the unit
+
+        Raises
+        ------
+        dbus.DBusException
+            DBus communication failed.
+        """
+        res = self._addQuery(self.manager.ReloadUnit(service, "replace"))
+        return str(res.get())
+
+    @classmethod
+    def quitLoop(cls):
+        """Stop the DBus event loop.
+
+        If the event loop is not running, the call does nothing.
+        The event loop will be automatically restarted when a new Systemd object is created.
+
+        Blocks execution until the event loop is stopped.
+
+        Parameters
+        ----------
+        cls : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        if cls.eventLoop is not None:
+            cls.eventLoop.quit()
+        while cls.eventThread.is_alive():
+            pass
+        cls.eventLoop = cls.eventThread = None

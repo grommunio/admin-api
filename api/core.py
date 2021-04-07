@@ -33,6 +33,11 @@ API.config["JSON_SORT_KEYS"] = False  # Do not sort response fields. Crashes whe
 if DB is not None:
     DB.enableFlask(API)
 
+if not Config["openapi"]["validateRequest"]:
+    API.logger.warning("Request validation is disabled!")
+if not Config["openapi"]["validateResponse"]:
+    API.logger.warning("Response validation is disabled!")
+
 
 def validateRequest(flask_request):
     """Validate the request
