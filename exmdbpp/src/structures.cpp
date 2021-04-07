@@ -200,7 +200,7 @@ TaggedPropval::TaggedPropval(uint32_t tag, const IOBuffer& val, bool copy) : tag
 TaggedPropval::TaggedPropval(uint32_t tag, const std::string& val, bool copy) : tag(tag), type(tag&0xFFFF), owned(copy)
 {
     if(copy)
-        copyData(val.c_str(), val.size());
+        copyData(val.c_str(), val.size()+1);
     else
         value.str = const_cast<char*>(val.c_str());
 }
@@ -213,10 +213,7 @@ TaggedPropval::TaggedPropval(uint32_t tag, const std::string& val, bool copy) : 
 TaggedPropval::TaggedPropval(const TaggedPropval& tp) : tag(tp.tag), type(tp.type)
 {
     if((type == PropvalType::STRING || type == PropvalType::WSTRING) && tp.value.str != nullptr)
-    {
-        value.str = new char[strlen(tp.value.str)+1];
-        strcpy(value.str, tp.value.str);
-    }
+        copyStr(tp.value.str);
     else
         value = tp.value;
 }
@@ -242,10 +239,7 @@ TaggedPropval& TaggedPropval::operator=(const TaggedPropval& tp)
     tag = tp.tag;
     type = tp.type;
     if((type == PropvalType::STRING || type == PropvalType::WSTRING) && tp.value.str != nullptr)
-    {
-        value.str = new char[strlen(tp.value.str)+1];
-        strcpy(value.str, tp.value.str);
-    }
+        copyStr(tp.value.str);
     else
         value = tp.value;
     return *this;

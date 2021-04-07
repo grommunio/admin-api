@@ -48,8 +48,8 @@ public:
     std::string printValue() const;
     std::string toString() const;
 
-    uint32_t tag; ///< Tag identifier
-    uint16_t type; ///< Type of the tag (either derived from tag or explicitely specified if tag type is UNSPECIFIED)
+    uint32_t tag = 0; ///< Tag identifier
+    uint16_t type = 0; ///< Type of the tag (either derived from tag or explicitely specified if tag type is UNSPECIFIED)
 
     union Value
     {

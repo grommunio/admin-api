@@ -29,6 +29,7 @@ struct FolderListResponse
         std::string displayName;
         std::string comment;
         uint64_t creationTime = 0;
+        std::string container;
     };
 
     FolderListResponse(const requests::Response<requests::QueryTableRequest>&);
@@ -69,14 +70,17 @@ class ExmdbQueries final: public ExmdbClient
 public:
     using ExmdbClient::ExmdbClient;
 
-    requests::Response<requests::QueryTableRequest> getFolderList(const std::string&);
+    static const std::vector<uint32_t> defaultFolderProps;
+
+    requests::Response<requests::QueryTableRequest> getFolderList(const std::string&, const std::vector<uint32_t>& = defaultFolderProps);
     requests::Response<requests::CreateFolderByPropertiesRequest> createPublicFolder(const std::string&, uint32_t, const std::string&, const std::string&, const std::string&);
     requests::SuccessResponse deletePublicFolder(const std::string&, uint64_t);
     requests::Response<requests::QueryTableRequest> getPublicFolderOwnerList(const std::string&, uint64_t);
     requests::NullResponse addFolderOwner(const std::string&, uint64_t, const std::string&);
     requests::NullResponse deleteFolderOwner(const std::string&, uint64_t, uint64_t);
-    requests::Response<requests::SetStorePropertiesRequest> setStoreProperties(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
+    requests::ProblemsResponse setStoreProperties(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
     requests::NullResponse unloadStore(const std::string&);
+    requests::ProblemsResponse setFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<structures::TaggedPropval>&);
 };
 
 }

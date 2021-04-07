@@ -23,6 +23,21 @@ namespace exmdbpp::requests
 SuccessResponse::SuccessResponse(IOBuffer& buff) : success(buff.pop<uint8_t>())
 {}
 
+
+/**
+ * @brief      Deserialize problems response
+ *
+ * @param     buff      Buffer containing the response
+ */
+ProblemsResponse::ProblemsResponse(IOBuffer& buff)
+{
+    size_t count = buff.pop<uint16_t>();
+    problems.reserve(count);
+    for(size_t i = 0; i < count; ++i)
+        problems.emplace_back(buff);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 
 uint8_t ConnectRequest::SIDLEN = 15;
@@ -297,19 +312,6 @@ void SetStorePropertiesRequest::serialize(IOBuffer& buff, const std::string& hom
         propval.serialize(buff);
 }
 
-/**
- * @brief      Deserialize store update response
- *
- * @param     buff      Buffer containing the response
- */
-Response<SetStorePropertiesRequest>::Response(IOBuffer& buff)
-{
-    size_t count = buff.pop<uint16_t>();
-    problems.reserve(count);
-    for(size_t i = 0; i < count; ++i)
-        problems.emplace_back(buff);
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -325,5 +327,23 @@ UnloadStoreRequest::UnloadStoreRequest(const std::string& homedir) : homedir(hom
  */
 void UnloadStoreRequest::serialize(IOBuffer& buff, const std::string& homedir)
 {buff << CallId::UNLOAD_STORE << homedir;}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+SetFolderPropertiesRequest::SetFolderPropertiesRequest(const std::string& homedir, uint32_t cpid, uint64_t folderId,
+                                                       const std::vector<TaggedPropval>& propvals) :
+    homedir(homedir), cpid(cpid), folderId(folderId), propvals(propvals)
+{}
+
+void SetFolderPropertiesRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid, uint64_t folderId,
+                                           const std::vector<structures::TaggedPropval>& propvals)
+{
+    buff << CallId::SET_FOLDER_PROPERTIES << homedir << cpid << folderId << uint16_t(propvals.size());
+    for(auto& propval : propvals)
+        propval.serialize(buff);
+}
+
 
 }

@@ -13,6 +13,9 @@ using namespace exmdbpp::structures;
 namespace exmdbpp::queries
 {
 
+const std::vector<uint32_t> ExmdbQueries::defaultFolderProps =
+{PropTag::FOLDERID, PropTag::DISPLAYNAME, PropTag::COMMENT, PropTag::CREATIONTIME, PropTag::CONTAINERCLASS};
+
 /**
  * @brief      Interpret query table response as folder list
  *
@@ -36,6 +39,8 @@ FolderListResponse::FolderListResponse(const Response<QueryTableRequest>& respon
                 folder.comment = tp.value.str; break;
             case PropTag::CREATIONTIME:
                 folder.creationTime = tp.value.u64; break;
+            case PropTag::CONTAINERCLASS:
+                folder.container = tp.value.str; break;
             }
         }
         folders.emplace_back(std::move(folder));
@@ -75,16 +80,15 @@ FolderOwnerListResponse::FolderOwnerListResponse(const Response<QueryTableReques
  * Provides a higher level protocol implementation for retrieving
  * the public folders of a domain.
  *
- * @param      client   Client with active server connection
  * @param      homedir  Home directory path of the domain
+ * @param      proptags Tags to return
  *
  * @return     Response of the QueryTableRequest. Can be converted to FolderListResponse for easier access.
  */
-Response<QueryTableRequest> ExmdbQueries::getFolderList(const std::string& homedir)
+Response<QueryTableRequest> ExmdbQueries::getFolderList(const std::string& homedir, const std::vector<uint32_t>& proptags)
 {
     uint64_t folderId = util::makeEidEx(1, PublicFid::IPMSUBTREE);
     auto lhtResponse = send<LoadHierarchyTableRequest>(homedir, folderId, "", 0);
-    std::vector<uint32_t> proptags = {PropTag::FOLDERID, PropTag::DISPLAYNAME, PropTag::COMMENT, PropTag::CREATIONTIME};
     auto qtResponse = send<QueryTableRequest>(homedir, "", 0, lhtResponse.tableId, proptags, 0, lhtResponse.rowCount);
     send<UnloadTableRequest>(homedir, lhtResponse.tableId);
     return qtResponse;
@@ -93,7 +97,6 @@ Response<QueryTableRequest> ExmdbQueries::getFolderList(const std::string& homed
 /**
  * @brief      Create a public folder
  *
- * @param      client      Client with active server connection
  * @param      homedir     Home directory path of the domain
  * @param      domainId    Domain ID
  * @param      folderName  Name of the new folder
@@ -137,7 +140,6 @@ Response<CreateFolderByPropertiesRequest> ExmdbQueries::createPublicFolder(const
 /**
  * @brief      Delete public folder
  *
- * @param      client    Client with active server connection
  * @param      homedir   Home directory path of the domain
  * @param      folderId  Id of the folder to delete
  *
@@ -149,7 +151,6 @@ SuccessResponse ExmdbQueries::deletePublicFolder(const std::string& homedir, uin
 /**
  * @brief      Get list of public folder list owners
  *
- * @param      client    Client with active server connection
  * @param      homedir   Home directory path of the domain
  * @param      folderId  ID of the folder
  *
@@ -167,7 +168,6 @@ Response<QueryTableRequest> ExmdbQueries::getPublicFolderOwnerList(const std::st
 /**
  * @brief      Add user to public folder owner list
  *
- * @param      client    Client with active server connection
  * @param      homedir   Home directory path of the domain
  * @param      folderId  ID of the folder
  * @param      username  Username to add to list
@@ -189,7 +189,6 @@ NullResponse ExmdbQueries::addFolderOwner(const std::string& homedir, uint64_t f
 /**
  * @brief      Remove member from owner list
  *
- * @param      client    Client with active server connection
  * @param      homedir   Home directory path of the domain
  * @param      folderId  ID of the folder
  * @param      memberId  ID of the member to remove
@@ -207,14 +206,13 @@ NullResponse ExmdbQueries::deleteFolderOwner(const std::string& homedir, uint64_
 /**
  * @brief      Modify store properties
  *
- * @param      client    Client with active server connection
  * @param      homedir   Home directory path of the domain
  * @param      cpid      Unknown purpose
  * @param      propvals  PropertyValues to modify
  *
  * @return     Response containing a list of problems encountered
  */
-Response<SetStorePropertiesRequest> ExmdbQueries::setStoreProperties(const std::string& homedir, uint32_t cpid,
+ProblemsResponse ExmdbQueries::setStoreProperties(const std::string& homedir, uint32_t cpid,
                                                                      const std::vector<TaggedPropval>& propvals)
 {return send<SetStorePropertiesRequest>(homedir, cpid, propvals);}
 
@@ -228,5 +226,20 @@ Response<SetStorePropertiesRequest> ExmdbQueries::setStoreProperties(const std::
  */
 NullResponse ExmdbQueries::unloadStore(const std::string& homedir)
 {return send<UnloadStoreRequest>(homedir);}
+
+
+/**
+ * @brief      Modify folder properties
+ *
+ * @param      homedir   Home directory path of the domain
+ * @param      cpid      Unknown purpose
+ * @param      folderId  ID of the folder to modify
+ * @param      propvals  PropertyValues to modify
+ *
+ * @return     Response containing a list of problems encountered
+ */
+ProblemsResponse ExmdbQueries::setFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderID,
+                                                   const std::vector<TaggedPropval>& propvals)
+{return send<SetFolderPropertiesRequest>(homedir, cpid, folderID, propvals);}
 
 }

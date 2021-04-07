@@ -86,6 +86,19 @@ struct SuccessResponse
     bool success;
 };
 
+/**
+ * @brief       Generic response containing a list of problems
+ *
+ * Usually returned by requests that set properties.
+ */
+struct ProblemsResponse
+{
+    ProblemsResponse() = default;
+    ProblemsResponse(IOBuffer&);
+
+    std::vector<structures::PropertyProblem> problems; ///< List of problems that occured when setting store values
+};
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -419,16 +432,12 @@ inline void SetStorePropertiesRequest::serialize(IOBuffer& buff) const
 {serialize(buff, homedir, cpid, propvals);}
 
 /**
- * @brief      Response specialization for SetStorePropertiesRequest
+ * Response type override for set store properties request (-> ProblemsResponse)
  */
 template<>
-struct Response<SetStorePropertiesRequest>
-{
-    Response() = default;
-    Response(IOBuffer&);
+struct response_map<SetStorePropertiesRequest>
+{using type = ProblemsResponse;};
 
-    std::vector<structures::PropertyProblem> problems; ///< List of problems that occured when setting store values
-};
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -452,6 +461,39 @@ struct UnloadStoreRequest
  */
 inline void UnloadStoreRequest::serialize(IOBuffer& buff) const
 {serialize(buff, homedir);}
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief       Set folder properties
+ */
+struct SetFolderPropertiesRequest
+{
+    SetFolderPropertiesRequest(const std::string&, uint32_t, uint64_t, const std::vector<structures::TaggedPropval>&);
+
+    std::string homedir;
+    uint32_t cpid;
+    uint64_t folderId;
+    std::vector<structures::TaggedPropval> propvals;
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&, uint32_t, uint64_t, const std::vector<structures::TaggedPropval>&);
+};
+
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void SetFolderPropertiesRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir, cpid, folderId, propvals);}
+
+/**
+ * Response type override for set folder properties request (-> ProblemsResponse)
+ */
+template<>
+struct response_map<SetFolderPropertiesRequest>
+{using type = ProblemsResponse;};
 
 }
 

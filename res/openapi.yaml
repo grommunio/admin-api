@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.19.0
+  version: 0.19.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1627,6 +1627,42 @@ paths:
           $ref: '#/components/responses/DatabaseError'
 
   /domains/{domainID}/folders/{folderID}:
+    patch:
+      summary: Update public folder
+      tags:
+        - Domain Admin/Folders
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/folderID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                displayname:
+                  type: string
+                  description: Name of the folder
+                container:
+                  type: string
+                  description: Container class
+                  enum: [IPF.Note, IPF.Contact, IPF.Appointment, IPF.Stickynote, IPF.Task]
+                comment:
+                  type: string
+      responses:
+        '200':
+            description: Folder update successful
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete public folder
       tags:
@@ -2444,6 +2480,8 @@ components:
           type: string
         creationtime:
           $ref: '#/components/schemas/dateTime'
+        container:
+          type: string
     service:
       type: object
       properties:
