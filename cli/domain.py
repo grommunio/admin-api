@@ -85,7 +85,7 @@ def cliDomainCreate(args):
         DB.session.commit()
         _dumpDomain(domain)
     except BaseException as err:
-        print(Cli.col("Cannot create domain: "+" - ".join(str(arg) for arg in err.args)))
+        print(Cli.col("Cannot create domain: "+" - ".join(str(arg) for arg in err.args), "red"))
 
 
 def cliDomainDelete(args):

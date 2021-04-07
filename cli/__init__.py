@@ -3,12 +3,20 @@
 # SPDX-FileCopyrightText: 2021 grammm GmbH
 
 import argcomplete
+import logging
 from argparse import ArgumentParser
 
 class CliError(BaseException):
     pass
 
 class Cli:
+    class Formatter(logging.Formatter):
+        levelcolors = {"WARNING": "yellow", "ERROR": "red", "CRITICAL": "red"}
+
+        def format(self, record):
+            record.msg = Cli.col(record.msg, self.levelcolors.get(record.levelname, "white"))
+            return logging.Formatter.format(self, record)
+
     parser = ArgumentParser(description="Grammm admin backend")
     subparsers = parser.add_subparsers()
     interactive = False
@@ -27,7 +35,7 @@ class Cli:
             Command line arguments to execute. The default is None.
         """
         argcomplete.autocomplete(cls.parser)
-        cls.enableColor()
+        cls.init()
         dispatch = cls.parser.parse_args(args)
         if hasattr(dispatch, "_handle"):
             try:
@@ -85,7 +93,7 @@ class Cli:
         return inner
 
     @classmethod
-    def enableColor(cls):
+    def init(cls):
         try:
             import termcolor
             from sys import stdout
@@ -93,6 +101,10 @@ class Cli:
                 cls.col = lambda *args, **kwargs: termcolor.colored(*args, **kwargs)
         except:
             pass
+        import tools.config
+        handler = logging.StreamHandler()
+        handler.setFormatter(cls.Formatter("%(message)s"))
+        logging.root.handlers = [handler]
 
     SUCCESS = 0
     ERR_DECLINE = 1
