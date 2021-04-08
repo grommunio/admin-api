@@ -495,6 +495,44 @@ template<>
 struct response_map<SetFolderPropertiesRequest>
 {using type = ProblemsResponse;};
 
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief       Get folder properties
+ */
+struct GetFolderPropertiesRequest
+{
+    GetFolderPropertiesRequest(const std::string&, uint32_t, uint64_t, const std::vector<uint32_t>&);
+
+    std::string homedir;
+    uint32_t cpid;
+    uint64_t folderId;
+    std::vector<uint32_t> proptags;
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&, uint32_t, uint64_t, const std::vector<uint32_t>&);
+};
+
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void GetFolderPropertiesRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir, cpid, folderId, proptags);}
+
+/**
+ * @brief      Response specialization for GetFolderPropertiesRequest
+ */
+template<>
+struct Response<GetFolderPropertiesRequest>
+{
+    Response() = default;
+    Response(IOBuffer&);
+
+    std::vector<structures::TaggedPropval> propvals;
+};
+
 }
 
 }

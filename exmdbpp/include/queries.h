@@ -16,6 +16,24 @@ namespace queries
 {
 
 /**
+ * @brief   Convenience struct for public folder
+ */
+struct Folder
+{
+    Folder() = default;
+    Folder(const std::vector<structures::TaggedPropval>&);
+    Folder(const requests::Response<requests::GetFolderPropertiesRequest>&);
+
+    uint64_t folderId = 0;
+    std::string displayName;
+    std::string comment;
+    uint64_t creationTime = 0;
+    std::string container;
+private:
+    void init(const std::vector<structures::TaggedPropval>&);
+};
+
+/**
  * @brief      Response interpreter for ExmdbQueries::getFolderList
  *
  * Utility class providing a more structured access to data returned by
@@ -23,15 +41,6 @@ namespace queries
  */
 struct FolderListResponse
 {
-    struct Folder
-    {
-        uint64_t folderId = 0;
-        std::string displayName;
-        std::string comment;
-        uint64_t creationTime = 0;
-        std::string container;
-    };
-
     FolderListResponse(const requests::Response<requests::QueryTableRequest>&);
 
     std::vector<Folder> folders;
@@ -81,6 +90,7 @@ public:
     requests::ProblemsResponse setStoreProperties(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
     requests::NullResponse unloadStore(const std::string&);
     requests::ProblemsResponse setFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<structures::TaggedPropval>&);
+    requests::Response<requests::GetFolderPropertiesRequest> getFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<uint32_t>& = defaultFolderProps);
 };
 
 }

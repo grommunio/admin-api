@@ -68,6 +68,25 @@ def createPublicFolder(domainID):
                    container=data["container"]), 201
 
 
+@API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>", methods=["GET"])
+@secure(requireDB=True)
+def getPublicFolder(domainID, folderID):
+    checkPermissions(DomainAdminPermission(domainID))
+    options = Config["options"]
+    domain = Domains.query.filter(Domains.ID == domainID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    try:
+        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["domainPrefix"], False)
+        response = pyexmdb.Folder(client.getFolderProperties(domain.homedir, 0, folderID))
+    except pyexmdb.ExmdbError as err:
+        return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
+    return jsonify({"folderid": str(response.folderId),
+                    "displayname": response.displayName,
+                    "comment": response.comment,
+                    "creationtime": datetime.fromtimestamp(nxTime(response.creationTime)).strftime("%Y-%m-%d %H:%M:%S"),
+                    "container": response.container})
+
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>", methods=["PATCH"])
 @secure(requireDB=True)
 def updatePublicFolder(domainID, folderID):

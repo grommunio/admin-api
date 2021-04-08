@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.19.2
+  version: 0.19.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1627,6 +1627,30 @@ paths:
           $ref: '#/components/responses/DatabaseError'
 
   /domains/{domainID}/folders/{folderID}:
+    get:
+      summary: Get public folder
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/folderID'
+      tags:
+        - Domain Admin/Folders
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Public folder returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publicFolder'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update public folder
       tags:

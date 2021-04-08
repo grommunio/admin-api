@@ -17,6 +17,48 @@ const std::vector<uint32_t> ExmdbQueries::defaultFolderProps =
 {PropTag::FOLDERID, PropTag::DISPLAYNAME, PropTag::COMMENT, PropTag::CREATIONTIME, PropTag::CONTAINERCLASS};
 
 /**
+ * @brief      Load propvals into predefined fields
+ *
+ * @param      propvals     List of TaggedPropvals
+ */
+Folder::Folder(const std::vector<TaggedPropval>& propvals)
+{init(propvals);}
+
+
+/**
+ * @brief      Folder response into predefined fields
+ *
+ * @param      response     Response to convert
+ */
+Folder::Folder(const Response<GetFolderPropertiesRequest>& response)
+{init(response.propvals);}
+
+/**
+ * @brief     Initialize from tagged propval array
+ *
+ * @param      propvals     List of TaggedPropvals
+ */
+void Folder::init(const std::vector<structures::TaggedPropval>& propvals)
+{
+    for(const TaggedPropval& tp : propvals)
+    {
+        switch(tp.tag)
+        {
+        case PropTag::FOLDERID:
+            folderId = tp.value.u64; break;
+        case PropTag::DISPLAYNAME:
+            displayName = tp.value.str; break;
+        case PropTag::COMMENT:
+            comment = tp.value.str; break;
+        case PropTag::CREATIONTIME:
+            creationTime = tp.value.u64; break;
+        case PropTag::CONTAINERCLASS:
+            container = tp.value.str; break;
+        }
+    }
+}
+
+/**
  * @brief      Interpret query table response as folder list
  *
  * @param      response  Response to convert
@@ -25,26 +67,7 @@ FolderListResponse::FolderListResponse(const Response<QueryTableRequest>& respon
 {
     folders.reserve(response.entries.size());
     for(auto& entry : response.entries)
-    {
-        Folder folder;
-        for(const TaggedPropval& tp : entry)
-        {
-            switch(tp.tag)
-            {
-            case PropTag::FOLDERID:
-                folder.folderId = tp.value.u64; break;
-            case PropTag::DISPLAYNAME:
-                folder.displayName = tp.value.str; break;
-            case PropTag::COMMENT:
-                folder.comment = tp.value.str; break;
-            case PropTag::CREATIONTIME:
-                folder.creationTime = tp.value.u64; break;
-            case PropTag::CONTAINERCLASS:
-                folder.container = tp.value.str; break;
-            }
-        }
-        folders.emplace_back(std::move(folder));
-    }
+         folders.emplace_back(entry);
 }
 
 /**
@@ -238,8 +261,22 @@ NullResponse ExmdbQueries::unloadStore(const std::string& homedir)
  *
  * @return     Response containing a list of problems encountered
  */
-ProblemsResponse ExmdbQueries::setFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderID,
+ProblemsResponse ExmdbQueries::setFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderId,
                                                    const std::vector<TaggedPropval>& propvals)
-{return send<SetFolderPropertiesRequest>(homedir, cpid, folderID, propvals);}
+{return send<SetFolderPropertiesRequest>(homedir, cpid, folderId, propvals);}
+
+/**
+ * @brief      Modify folder properties
+ *
+ * @param      homedir   Home directory path of the domain
+ * @param      cpid      Unknown purpose
+ * @param      folderId  ID of the folder to modify
+ * @param      propvals  PropertyValues to modify
+ *
+ * @return     Response containing a list of problems encountered
+ */
+Response<GetFolderPropertiesRequest> ExmdbQueries::getFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderId,
+                                                                       const std::vector<uint32_t>& proptags)
+{return send<GetFolderPropertiesRequest>(homedir, cpid, folderId, proptags);}
 
 }

@@ -153,6 +153,8 @@ Response<QueryTableRequest>::Response(IOBuffer& buff)
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
 /**
  * @brief      Initialize unload table request
  */
@@ -321,9 +323,9 @@ UnloadStoreRequest::UnloadStoreRequest(const std::string& homedir) : homedir(hom
 {}
 
 /**
- * @brief      Deserialize store update response
+ * @brief      Write serialized request data to buffer
  *
- * @param     buff      Buffer containing the response
+ * @param      buff       Buffer to write to
  */
 void UnloadStoreRequest::serialize(IOBuffer& buff, const std::string& homedir)
 {buff << CallId::UNLOAD_STORE << homedir;}
@@ -332,11 +334,19 @@ void UnloadStoreRequest::serialize(IOBuffer& buff, const std::string& homedir)
 
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @brief      Initialize set folder properties request
+ */
 SetFolderPropertiesRequest::SetFolderPropertiesRequest(const std::string& homedir, uint32_t cpid, uint64_t folderId,
                                                        const std::vector<TaggedPropval>& propvals) :
     homedir(homedir), cpid(cpid), folderId(folderId), propvals(propvals)
 {}
 
+/**
+ * @brief      Write serialized request data to buffer
+ *
+ * @param      buff       Buffer to write to
+ */
 void SetFolderPropertiesRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid, uint64_t folderId,
                                            const std::vector<structures::TaggedPropval>& propvals)
 {
@@ -345,5 +355,40 @@ void SetFolderPropertiesRequest::serialize(IOBuffer& buff, const std::string& ho
         propval.serialize(buff);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief      Initialize get folder properties request
+ */
+GetFolderPropertiesRequest::GetFolderPropertiesRequest(const std::string& homedir, uint32_t cpid, uint64_t folderId,
+                                                       const std::vector<uint32_t>& proptags) :
+    homedir(homedir), cpid(cpid), folderId(folderId), proptags(proptags)
+{}
+
+/**
+ * @brief      Write serialized request data to buffer
+ *
+ * @param      buff       Buffer to write to
+ */
+void GetFolderPropertiesRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid, uint64_t folderId,
+                                           const std::vector<uint32_t>& proptags)
+{
+    buff << CallId::GET_FOLDER_PROPERTIES << homedir << cpid << folderId << uint16_t(proptags.size());
+    for(uint32_t proptag : proptags)
+        buff << proptag;
+}
+
+/**
+ * @brief      Deserialize get folder properties response
+ *
+ * @param      buff       Buffer to write to
+ */
+Response<GetFolderPropertiesRequest>::Response(IOBuffer& buff)
+{
+    uint16_t count = buff.pop<uint16_t>();
+    propvals.reserve(count);
+    for(uint16_t i = 0; i < count; ++i)
+        propvals.emplace_back(buff);
+}
 
 }
