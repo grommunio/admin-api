@@ -30,7 +30,7 @@ def getDbconfFiles(service):
     checkPermissions(SystemAdminPermission())
     data = [entry[0] for entry in DBConf.query.filter(DBConf.service == service)
                                               .with_entities(DBConf.file.distinct())
-                                              .order_by(DBConf.file())]
+                                              .order_by(DBConf.file)]
     return jsonify(data=data)
 
 
