@@ -50,9 +50,9 @@ class MLists(DataModel, DB.Base):
     listType = Column("list_type", TINYINT, nullable=False)
     listPrivilege = Column("list_privilege", TINYINT, nullable=False, server_default="0")
 
-    _dictmapping_ = ((Id(), Text("listname", flags="init"), Int("listType", flags="init")),
+    _dictmapping_ = ((Id(), Text("listname", flags="init"), Int("listType", flags="init", filter="set")),
                      (Id("domainID", flags="init"),
-                      Int("listPrivilege", flags="patch")),
+                      Int("listPrivilege", flags="patch", filter="set")),
                      (RefProp("associations", flags="patch, managed", link="username", flat="username", qopt=selectinload),
                       RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload),
                       RefProp("class_", alias="class")))

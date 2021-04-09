@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.19.3
+  version: 0.19.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -576,6 +576,62 @@ paths:
         - System Admin/Domains
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/verbosity'
+        - $ref: '#/components/parameters/queryLimit'
+        - $ref: '#/components/parameters/queryOffset'
+        - $ref: '#/components/parameters/match'
+        - $ref: '#/components/parameters/matchFields'
+        - name: sort
+          description: Sort by attribute. Can be given multiple times.
+          in: query
+          schema:
+            type: string
+            pattern: '^(ID|domainname|orgID|maxUser|title|address|adminName|tel|domainStatus)(,(a|de)sc)?$'
+        - $ref: '#/components/parameters/filterID'
+        - name: orgID
+          description: Filter by one or more organization IDs
+          in: query
+          explode: false
+          schema:
+            $ref: '#/components/schemas/intList'
+        - name: domainname
+          description: Filter by domainname
+          in: query
+          schema:
+            type: string
+        - name: maxUser
+          description: Filter by number of maximum users
+          in: query
+          explode: false
+          schema:
+            $ref: '#/components/schemas/intRange'
+        - name: title
+          description: Filter by domain title
+          in: query
+          schema:
+            type: string
+        - name: address
+          description: Filter by domain address property
+          in: query
+          schema:
+            type: string
+        - name: adminName
+          description: Filter by admin name
+          in: query
+          schema:
+            type: string
+        - name: tel
+          description: Filter by telephone number
+          in: query
+          schema:
+            type: string
+        - name: domainStatus
+          description: Filter by one or more domain status values
+          in: query
+          explode: false
+          schema:
+            $ref: '#/components/schemas/intList'
       responses:
         '200':
           description: Data returned
@@ -628,6 +684,7 @@ paths:
         - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/verbosity'
       responses:
         '200':
           description: Domain returned
@@ -756,6 +813,27 @@ paths:
         - System Admin/Roles
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/verbosity'
+        - $ref: '#/components/parameters/match'
+        - $ref: '#/components/parameters/matchFields'
+        - name: sort
+          in: query
+          description: Sort by attribute. Can be given multiple times.
+          schema:
+            type: string
+            pattern: '^(ID|name|description)(,(a|de)sc)?$'
+        - $ref: '#/components/parameters/filterID'
+        - name: name
+          description: Filter by name
+          in: query
+          schema:
+            type: string
+        - name: description
+          description: Filter by description
+          in: query
+          schema:
+            type: string
       responses:
         '200':
           description: List of roles returned
@@ -808,6 +886,7 @@ paths:
         - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/verbosity'
       responses:
         '200':
           description: List of roles returned
@@ -985,6 +1064,28 @@ paths:
         - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/verbosity'
+        - $ref: '#/components/parameters/queryLimit'
+        - $ref: '#/components/parameters/queryOffset'
+        - $ref: '#/components/parameters/match'
+        - $ref: '#/components/parameters/matchFields'
+        - name: sort
+          description: Sort by attribute. Can be given multiple times.
+          in: query
+          schema:
+            type: string
+            pattern: '^(ID|username|domainID|pop3_imap|smtp|changePassword|publicAddress)(,(a|de)sc)?$'
+        - $ref: '#/components/parameters/filterID'
+        - name: username
+          description: Filter by username
+          in: query
+          schema:
+            $ref: '#/components/schemas/intList'
+        - name: properties
+          description: Comma separated list of properties to return
+          in: query
+          schema:
+            type: string
       responses:
         '200':
           description: Data returned
@@ -1040,6 +1141,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/verbosity'
       responses:
         '200':
           description: User data returned
@@ -1233,6 +1335,33 @@ paths:
       summary: Get list of mailing lists
       parameters:
         - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/verbosity'
+        - $ref: '#/components/parameters/queryLimit'
+        - $ref: '#/components/parameters/queryOffset'
+        - $ref: '#/components/parameters/match'
+        - $ref: '#/components/parameters/matchFields'
+        - name: sort
+          description: Sort by attribute. Can be given multiple times.
+          in: query
+          schema:
+            type: string
+            pattern: '^(ID|listname|listType|domainID|listPrivilege)(,(a|de)sc)?$'
+        - $ref: '#/components/parameters/filterID'
+        - name: listname
+          description: Filter by list name
+          in: query
+          schema:
+            type: string
+        - name: listType
+          description: Filter by one or more list types
+          in: query
+          schema:
+            $ref: '#/components/schemas/intList'
+        - name: listPrivilege
+          description: Filter by one or more list privilege types
+          in: query
+          schema:
+            $ref: '#/components/schemas/intList'
       tags:
         - Domain Admin/MLists
       security:
@@ -1292,6 +1421,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/verbosity'
       tags:
         - Domain Admin/MLists
       security:
@@ -1370,6 +1500,28 @@ paths:
         - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/verbosity'
+        - $ref: '#/components/parameters/queryLimit'
+        - $ref: '#/components/parameters/queryOffset'
+        - $ref: '#/components/parameters/match'
+        - $ref: '#/components/parameters/matchFields'
+        - name: sort
+          description: Sort by attribute. Can be given multiple times.
+          in: query
+          schema:
+            type: string
+            pattern: '^(ID|classname|listname)(,(a|de)sc)?$'
+        - $ref: '#/components/parameters/filterID'
+        - name: classname
+          description: Filter by classname
+          in: query
+          schema:
+            type: string
+        - name: listname
+          description: Filter by listname
+          in: query
+          schema:
+            type: string
       responses:
         '200':
           description: List of classes returned
@@ -1491,6 +1643,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/verbosity'
       responses:
         '200':
           description: Class returned
@@ -2116,6 +2269,28 @@ paths:
         - System Admin/Organizations
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/verbosity'
+        - $ref: '#/components/parameters/queryLimit'
+        - $ref: '#/components/parameters/queryOffset'
+        - $ref: '#/components/parameters/match'
+        - $ref: '#/components/parameters/matchFields'
+        - name: sort
+          description: Sort by attribute. Can be given multiple times.
+          in: query
+          schema:
+            type: string
+            pattern: '^(ID|name|description)(,(a|de)sc)?$'
+        - name: name
+          description: Filter by name
+          in: query
+          schema:
+            type: string
+        - name: description
+          description: Filter by description
+          in: query
+          schema:
+            type: string
       responses:
         '200':
           description: List of organizations returned
@@ -2168,6 +2343,7 @@ paths:
         - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/verbosity'
       responses:
         '200':
           description: LDAP configuration returned
@@ -2274,11 +2450,13 @@ components:
         type: integer
     filterID:
       name: ID
-      description: Filter by ID
+      description: Filter one or more IDs
       in: query
       required: false
+      style: form
+      explode: false
       schema:
-        $ref: '#/components/schemas/filterIntList'
+        $ref: '#/components/schemas/intList'
     systemdUnit:
       name: unit
       description: Name of the unit to signal
@@ -2300,14 +2478,52 @@ components:
       required: true
       schema:
         type: string
+    match:
+      name: match
+      description: Match by substring
+      in: query
+      schema:
+        type: string
+    matchFields:
+      name: matchFields
+      description: Comma separated list of attributes to restrict matching to.
+      in: query
+      schema:
+        type: string
+    verbosity:
+      name: level
+      in: query
+      description: Set detail level of return value. Usually ranges from 0 to 2.
+      schema:
+        type: integer
+    queryLimit:
+      name: limit
+      in: query
+      description: Maximum number of results to return
+      schema:
+        type: integer
+        default: 50
+    queryOffset:
+      name: offset
+      in: query
+      description: Index of the first element to return
+      schema:
+        type: integer
+        default: 0
   schemas:
-    filterIntList:
-      type: string
-      pattern: '^[\d]*(,[\d]*)*$'
     ID:
       description: Unique ID of the object
       type: integer
       readOnly: true
+    intList:
+      type: array
+      items:
+        type: integer
+    intRange:
+      type: array
+      maxItems: 2
+      items:
+        type: integer
     date:
       type: string
       pattern: '^\d{4}-\d{2}-\d{2}$'

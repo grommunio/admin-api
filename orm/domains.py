@@ -42,7 +42,7 @@ class Domains(DataModel, DB.Base):
                       Text("adminName", flags="patch"),
                       Text("tel", flags="patch"),
                       Date("endDay", flags="patch"),
-                      Int("domainStatus", flags="patch")))
+                      Int("domainStatus", flags="patch", filter="set")))
 
     NORMAL = 0
     SUSPENDED = 1

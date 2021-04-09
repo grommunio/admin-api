@@ -69,7 +69,7 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
         query = Model.autofilter(query, request.args)
     if automatch and "match" in request.args:
         matchStr = request.args["match"].lower()
-        fields = set(request.args["fields"].split(",")) if "fields" in request.args else None
+        fields = set(request.args["matchFields"].split(",")) if "matchFields" in request.args else None
         query = Model.automatch(query, request.args["match"], fields)
     count = query.count() if include_count else None
     if result == "query":

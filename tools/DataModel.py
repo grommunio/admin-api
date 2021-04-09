@@ -620,7 +620,7 @@ def Text(name, **kwargs):
 def Int(name, **kwargs):
     """Create a name property."""
     _addFlags(kwargs, "sort")
-    return DataModel.Prop(name, filter="range", **kwargs)
+    return DataModel.Prop(name, filter=kwargs.pop("filter", "range"), **kwargs)
 
 
 def Bool(attr, **kwargs):
