@@ -7,10 +7,10 @@ from argparse import ArgumentParser
 from . import Cli
 
 SUCCESS = 0
-ERR_NO_LDAP = 1  # LDAP not available
-ERR_GENERIC = 2  # Something went wrong
-ERR_USR_ABRT = 3  # User aborted
-ERR_DECLINE = 4  # User declined prompt
+ERR_DECLINE = 1  # User declined prompt
+ERR_USR_ABRT = 2  # User aborted
+ERR_NO_LDAP = 3  # LDAP not available
+ERR_GENERIC = 4  # Something went wrong
 ERR_NO_USER = 5  # LDAP User not found
 ERR_AMBIG = 6  # Request was ambiguous
 ERR_DB = 7  # Error occured when communicating with the database
@@ -57,6 +57,19 @@ def _getl(prompt="", defaults=[]):
     return values
 
 
+def _reloadGromoxHttp():
+    from tools.systemd import Systemd
+    from dbus import DBusException
+    try:
+        sysd = Systemd(system=True)
+        res = sysd.reloadService("gromox-http.service")
+        if res != "done":
+            print(Cli.col("Failed to reload gromox-http: "+res, "yellow"))
+    except DBusException as err:
+        print(Cli.col("Failed to reload gromox-http.service: "+" - ".join(str(arg) for arg in err.args), "yellow"))
+    Systemd.quitLoop()
+
+
 def cliLdapInfo(args):
     Cli.require("LDAP")
     from tools import ldap
@@ -73,7 +86,7 @@ def _getCandidate(expr, auto):
     if candidate is None:
         matches = ldap.searchUsers(expr)
         if len(matches) == 0:
-            print("Could not find user matching '{}'".format(expr))
+            print(Cli.col("Could not find user matching '{}'".format(expr), "red"))
             return ERR_NO_USER
         if len(matches) == 1:
             candidate = matches[0]
@@ -109,7 +122,7 @@ def _getCandidates(expr):
     return [candidate] if candidate is not None else ldap.searchUsers(expr)
 
 
-def _downsyncUser(candidate, yes, auto, force):
+def _downsyncUser(candidate, yes, auto, force, reloadHttp=True):
     from tools import ldap
     if yes or auto:
         print("Synchronizing user '{}' ({})".format(candidate.name, candidate.email))
@@ -129,17 +142,20 @@ def _downsyncUser(candidate, yes, auto, force):
     from orm import roles
     from tools.DataModel import MismatchROError, InvalidAttributeError
 
+    if "@" not in candidate.email:
+        print(Cli.col("Cannot derive domain from e-mail address, aborting.", "red"))
+        return ERR_INVALID_DATA
     domain = Domains.query.filter(Domains.domainname == candidate.email.split("@")[1]).with_entities(Domains.ID).first()
     if domain is None:
-        print("Cannot import user: Domain not found")
+        print(Cli.col("Cannot import user: Domain not found", "red"))
         return ERR_INVALID_DATA
-    user = Users.query.filter(Users.externID == candidate.ID).first() or\
-        Users.query.filter(Users.username == candidate.email).first()
+    user = Users.optimized_query(2).filter(Users.externID == candidate.ID).first() or\
+        Users.optimized_query(2).filter(Users.username == candidate.email).first()
     if user is not None:
         if user.externID != candidate.ID and not force:
             if auto:
-                print("Cannot import user: User exists " +
-                      ("locally" if user.externID is None else "and is associated with another LDAP object"))
+                print(Cli.col("Cannot import user: User exists " +
+                              ("locally" if user.externID is None else "and is associated with another LDAP object"), "red"))
                 return ERR_CONFLICT
             else:
                 result = Cli.confirm("Force update "+("local only user" if user.externID is None else
@@ -157,16 +173,16 @@ def _downsyncUser(candidate, yes, auto, force):
             return SUCCESS
         except (InvalidAttributeError, MismatchROError, ValueError) as err:
             DB.session.rollback()
-            print("Failed to update user: "+err.args[0])
+            print(Cli.col("Failed to update user: "+err.args[0], "red"))
             return ERR_COMMIT
 
     userdata = ldap.downsyncUser(candidate.ID)
     if userdata is None:
-        print("Error retrieving user")
+        print(Cli.col("Error retrieving user", "red"))
         return ERR_NO_USER
     error = Users.checkCreateParams(userdata)
     if error is not None:
-        print("Cannot import user: "+error)
+        print(Cli.col("Cannot import user: "+error, "red"))
         return ERR_INVALID_DATA
     try:
         user = Users(userdata)
@@ -175,16 +191,18 @@ def _downsyncUser(candidate, yes, auto, force):
         DB.session.flush()
     except (InvalidAttributeError, MismatchROError, ValueError) as err:
         DB.session.rollback()
-        print("Failed to update user: "+err.args[0])
+        print(Cli.col("Failed to update user: "+err.args[0], "red"))
         return ERR_COMMIT
     from tools.storage import UserSetup
     with UserSetup(user) as us:
         us.run()
     if not us.success:
-        print("Error during user setup: ", us.error), us.errorCode
+        print(Cli.col("Error during user setup: "+us.error))
         return ERR_SETUP
     DB.session.commit()
     print("User '{}' created with ID {}.".format(user.username, user.ID))
+    if reloadHttp:
+        _reloadGromoxHttp()
     return SUCCESS
 
 
@@ -214,10 +232,11 @@ def cliLdapDownsync(args):
         print("Synchronizing {} user{}...".format(len(candidates), "" if len(candidates) == 1 else "s"))
         error = False
         for candidate in candidates:
-            result = _downsyncUser(candidate, args.yes, args.auto, args.force)
+            result = _downsyncUser(candidate, args.yes, args.auto, args.force, False)
             error = error or result != SUCCESS
             if result == ERR_USR_ABRT:
                 break
+        _reloadGromoxHttp()
         return ERR_GENERIC if error else SUCCESS
     from orm.users import Users
     users = Users.query.filter(Users.externID != None).with_entities(Users.externID).all()
@@ -230,7 +249,7 @@ def cliLdapDownsync(args):
     error = False
     print("Synchronizing {} user{}...".format(len(candidates), "" if len(candidates) == 1 else "s"))
     for candidate in candidates:
-        result = _downsyncUser(candidate, args.yes, args.auto, args.force)
+        result = _downsyncUser(candidate, args.yes, args.auto, args.force, False)
         error = error or result != SUCCESS
         if result == ERR_USR_ABRT:
             break
@@ -245,7 +264,7 @@ def cliLdapSearch(args):
         print("No matches")
         return ERR_NO_USER
     for match in matches:
-        print("{}: {} ({})".format(ldap.escape_filter_chars(match.ID), match.name, match.email))
+        print("{}: {} ({})".format(Cli.col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), match.name, match.email))
 
 
 def cliLdapCheck(args):

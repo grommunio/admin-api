@@ -110,8 +110,8 @@ def cliFsClean(args):
 def _setupCliFsParser(subp: ArgumentParser):
     sub = subp.add_subparsers()
     clean = sub.add_parser("clean", help="Remove unused user and domain files")
-    clean.description = "Delete domain and user directories that may be left behind when removing a domain or user without "\
-                        "deleteFiles directive"
+    clean.description = "Delete orphaned domain and user directories that may be left behind when removing a domain or user "\
+                        "without deleteFiles directive"
     clean.set_defaults(_handle=cliFsClean)
     clean.add_argument("partition", nargs="?", choices=("domain", "user"), help="Clean only specified partition")
     clean.add_argument("-d", "--dryrun", action="store_true", help="Do not actually delete anything")

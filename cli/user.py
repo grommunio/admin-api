@@ -76,6 +76,7 @@ def cliUserList(args):
         return 1
     for user in users:
         print("{}:\t{}".format(user.ID, user.username))
+    print("({} users total)".format(len(users)))
     DB.session.rollback()
 
 
@@ -139,7 +140,7 @@ def _setupCliUser(subp: ArgumentParser):
     sub = subp.add_subparsers()
     delete = sub.add_parser("delete", help="Delete user")
     delete.set_defaults(_handle=cliUserDelete)
-    delete.add_argument("userspec", help="User ID or name")
+    delete.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter
     delete.add_argument("-k", "--keep-files", action="store_true", help="Do not delete files on disk")
     delete.add_argument("-y", "--yes", action="store_true", help="Do not ask for confirmation")
     list = sub.add_parser("list", help="List users")

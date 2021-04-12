@@ -5,6 +5,7 @@
 import shutil
 import traceback
 
+from dbus import DBusException
 from flask import jsonify, request
 
 import api
@@ -18,6 +19,7 @@ from tools.DataModel import InvalidAttributeError, MismatchROError
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
 from tools.pyexmdb import pyexmdb
 from tools.storage import UserSetup
+from tools.systemd import Systemd
 
 from orm import DB
 if DB is not None:
@@ -135,6 +137,13 @@ def downloadLdapUser():
     if not us.success:
         return jsonify(message="Error during user setup", error=us.error), us.errorCode
     DB.session.commit()
+    try:
+        systemd = Systemd(system=True)
+        result = systemd.reloadService("gromox-http.service")
+        if result != "done":
+            API.logger.warn("Failed to reload gromox-http.service: "+result)
+    except DBusException as err:
+        API.logger.warn("Failed to reload gromox-http.service: "+" - ".join(str(arg) for arg in err.args))
     return jsonify(user.fulldesc()), 201
 
 

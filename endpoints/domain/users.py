@@ -3,14 +3,15 @@
 # SPDX-FileCopyrightText: 2020-2021 grammm GmbH
 
 import api
+
 from api.core import API, secure
 from api.security import checkPermissions
-
+from dbus import DBusException
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
-from .. import defaultListHandler, defaultObjectHandler, defaultPatch
+from .. import defaultListHandler, defaultObjectHandler
 
 from tools.misc import AutoClean, createMapping
 from tools.storage import UserSetup
@@ -19,6 +20,7 @@ from tools.config import Config
 from tools.constants import PropTags, PropTypes, ExchangeErrors, ExmdbCodes
 from tools.DataModel import InvalidAttributeError, MismatchROError
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
+from tools.systemd import Systemd
 
 import shutil
 
@@ -74,6 +76,13 @@ def createUser(domainID):
             if not us.success:
                 return jsonify(message="Error during user setup", error=us.error),  us.errorCode
             DB.session.commit()
+            try:
+                systemd = Systemd(system=True)
+                result = systemd.reloadService("gromox-http.service")
+                if result != "done":
+                    API.logger.warn("Failed to reload gromox-http.service: "+result)
+            except DBusException as err:
+                API.logger.warn("Failed to reload gromox-http.service: "+" - ".join(str(arg) for arg in err.args))
             return jsonify(user.fulldesc()), 201
     except IntegrityError as err:
         return jsonify(message="Object violates database constraints", error=err.orig.args[1]), 400
