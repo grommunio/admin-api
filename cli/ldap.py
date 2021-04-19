@@ -276,7 +276,7 @@ def cliLdapCheck(args):
     users = Users.query.filter(Users.externID != None).with_entities(Users.ID, Users.username, Users.externID, Users.maildir)\
                        .all()
     if len(users) == 0:
-        print("No LDAP users found")
+        print("No imported users found. You can import users using 'ldap downsync <name>' or 'ldap downsync --complete'.")
         return
     print("Checking {} user{}...".format(len(users), "" if len(users) == 1 else "s"))
     count, last = 0, time()
