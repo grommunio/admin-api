@@ -26,7 +26,7 @@ TaggedPropval::TaggedPropval(IOBuffer& buff)
     switch(svtype)
     {
     default:
-        throw std::runtime_error("Deserializaion of type "+std::to_string(type)+" is not supported.");
+        throw std::runtime_error("Deserialization of type "+std::to_string(type)+" is not supported.");
     case PropvalType::BYTE:
         buff >> value.u8; break;
     case PropvalType::SHORT:
@@ -422,7 +422,9 @@ void TaggedPropval::serialize(IOBuffer& buff) const
     case PropvalType::WSTRING:
         buff << value.str; break;
     case PropvalType::BINARY:
-        uint32_t len = le32toh(*reinterpret_cast<uint32_t*>(value.ptr));
+        uint32_t len;
+        memcpy(&len, value.ptr, sizeof(len));
+        len = le32toh(len);
         buff.push(value.ptr, len+sizeof(uint32_t)); break;
     }
 }

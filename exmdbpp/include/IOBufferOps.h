@@ -199,7 +199,8 @@ inline IOBuffer& operator>>(IOBuffer& buff, uint8_t& value)
  */
 inline IOBuffer& operator>>(IOBuffer& buff, uint16_t& value)
 {
-    value = le16toh(*reinterpret_cast<const uint16_t*>(buff.pop(sizeof(value))));
+    memcpy(&value, buff.pop(sizeof(value)), sizeof(value));
+    value = le16toh(value);
     return buff;
 }
 
@@ -215,7 +216,8 @@ inline IOBuffer& operator>>(IOBuffer& buff, uint16_t& value)
  */
 inline IOBuffer& operator>>(IOBuffer& buff, uint32_t& value)
 {
-    value = le32toh(*reinterpret_cast<const uint32_t*>(buff.pop(sizeof(value))));
+    memcpy(&value, buff.pop(sizeof(value)), sizeof(value));
+    value = le32toh(value);
     return buff;
 }
 
@@ -231,7 +233,8 @@ inline IOBuffer& operator>>(IOBuffer& buff, uint32_t& value)
  */
 inline IOBuffer& operator>>(IOBuffer& buff, uint64_t& value)
 {
-    value = le64toh(*reinterpret_cast<const uint64_t*>(buff.pop(sizeof(value))));
+    memcpy(&value, buff.pop(sizeof(value)), sizeof(value));
+    value = le64toh(value);
     return buff;
 }
 
@@ -245,7 +248,7 @@ inline IOBuffer& operator>>(IOBuffer& buff, uint64_t& value)
  */
 inline IOBuffer& operator>>(IOBuffer& buff, float& value)
 {
-    value = *reinterpret_cast<const float*>(buff.pop(sizeof(value)));
+    memcpy(&value, buff.pop(sizeof(value)), sizeof(value));
     return buff;
 }
 
@@ -259,7 +262,7 @@ inline IOBuffer& operator>>(IOBuffer& buff, float& value)
  */
 inline IOBuffer& operator>>(IOBuffer& buff, double& value)
 {
-    value = *reinterpret_cast<const double*>(buff.pop(sizeof(value)));
+    memcpy(&value, buff.pop(sizeof(value)), sizeof(value));
     return buff;
 }
 

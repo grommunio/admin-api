@@ -121,7 +121,10 @@ inline void IOBuffer::start()
  * Writes the message length to the first four bytes of the buffer.
  */
 inline void IOBuffer::finalize()
-{*reinterpret_cast<uint32_t*>(data()) = htole32(uint32_t(size()-4));}
+{
+    uint32_t v = htole32(uint32_t(size() - 4));
+    memcpy(data(), &v, sizeof(v));
+}
 
 /**
  * @brief      Extract object from buffer
