@@ -167,7 +167,8 @@ def loginUser(username, password):
         return False, "Invalid username or password"
     if not userLoginAllowed(user):
         return False, "Access denied"
-    return True, mkJWT({"usr": user.username})
+    token = mkJWT({"usr": user.username})
+    return True, (token.decode("ascii") if isinstance(token, bytes) else token)
 
 
 def checkPermissions(*requested):

@@ -40,7 +40,7 @@ def login():
     success, val = loginUser(request.form["user"], request.form["pass"])
     if not success:
         return jsonify(message="Login failed", error=val), 401
-    return jsonify({"grammmAuthJwt": val.decode("ascii")})
+    return jsonify({"grammmAuthJwt": val})
 
 
 @API.route(api.BaseRoute+"/profile", methods=["GET"])
