@@ -17,7 +17,7 @@ from tools import ldap
 def chkState():
     """Check status of the API."""
     return jsonify(message="API is operational",
-                   database=DB is not None,
+                   database=DB is not None and DB.testConnection() is None,
                    ldap=ldap.LDAP_available)
 
 

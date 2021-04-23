@@ -39,6 +39,13 @@ class DBConn:
         def removeSession(*args, **kwargs):
             self.session.remove()
 
+    def testConnection(self):
+        try:
+            self.session.execute("SELECT 1 FROM DUAL")
+            self.session.remove()
+        except OperationalError as err:
+            return "Database connection failed with error {}: {}".format(err.orig.args[0], err.orig.args[1])
+
 
 def _loadDBConfig():
     """Load database parameters from configuration.
@@ -79,12 +86,9 @@ else:
     DB_uri = _loadDBConfig()
     if DB_uri is not None:
         DB = DBConn(DB_uri)
-        try:
-            DB.session.execute("SELECT 1 FROM DUAL")
-            DB.session.remove()
-        except OperationalError as err:
-            DB = None
-            logging.error("Database connection failed with error {}: {}".format(err.orig.args[0], err.orig.args[1]))
+        err = DB.testConnection()
+        if err is not None:
+            logging.warning(err)
     else:
-        logging.warn("Database configuration failed. No data will be available")
+        logging.warning("Database configuration failed. No data will be available")
         DB = None

@@ -152,7 +152,7 @@ class Cli:
         """
         if "DB" in args:
             from orm import DB
-            if DB is None:
+            if DB is None or DB.testConnection() is not None:
                 raise CliError("Database not available")
         if "LDAP" in args:
             from tools.ldap import LDAP_available

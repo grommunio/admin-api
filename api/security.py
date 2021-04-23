@@ -30,8 +30,8 @@ def getUser():
     """
     if "user" in request.auth:
         return
-    from orm.users import Users
     try:
+        from orm.users import Users
         user = Users.query.filter(Users.username == request.auth["claims"]["usr"]).first()
     except:
         return "Database error"
