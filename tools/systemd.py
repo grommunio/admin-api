@@ -232,6 +232,7 @@ class Systemd:
             DBus communication failed.
         """
         res = self.manager.EnableUnitFiles([service], runtime, force)
+        self.manager.Reload()
         return "\n".join("{}: {} -> {}".format(*r) for r in res[1])
 
 
@@ -251,6 +252,7 @@ class Systemd:
             DBus communication failed.
         """
         res = self.manager.DisableUnitFiles([service], runtime)
+        self.manager.Reload()
         return "\n".join("{}: {} -> {}".format(*r) for r in res)
 
     @classmethod
