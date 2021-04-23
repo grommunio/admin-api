@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.19.4
+  version: 0.19.5
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -313,6 +313,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/service'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /system/dashboard/services/{unit}/{action}:
     post:
@@ -329,7 +333,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [start, stop, restart, reload]
+            enum: [start, stop, restart, reload, enable, disable]
       responses:
         '201':
           description: Signal was sent
@@ -2732,6 +2736,9 @@ components:
         description:
           type: string
           nullable: true
+        autostart:
+          type: string
+          description: State of the unit file
         since:
           $ref: '#/components/schemas/dateTime'
         name:

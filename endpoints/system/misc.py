@@ -106,6 +106,10 @@ def signalDashboardService(unit, action):
         command = Systemd.restartService
     elif action == "reload":
         command = Systemd.reloadService
+    elif action == "enable":
+        command = Systemd.enableService
+    elif action == "disable":
+        command = Systemd.disableService
     else:
         return jsonify(message="Invalid action"), 400
     if unit not in (service["unit"] for service in Config["options"]["dashboard"]["services"]):
@@ -115,8 +119,8 @@ def signalDashboardService(unit, action):
         result = command(sysd, unit)
     except DBusException as exc:
         errMsg = exc.args[0] if len(exc.args) > 0 else "Unknown "
-        return jsonify(message="Could not {} unit '{}': {}".format(action, unit, )), 500
-    return jsonify(message=result), 201 if result == "done" else 500
+        return jsonify(message="Could not {} unit '{}': {}".format(action, unit, errMsg)), 500
+    return jsonify(message=result), 201 if result == "done" or action in ("enable", "disable") else 500
 
 
 def dumpLicense():

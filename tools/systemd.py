@@ -141,6 +141,7 @@ class Systemd:
         result = dict()
         result["state"] = str(interface.Get("org.freedesktop.systemd1.Unit", "ActiveState"))
         result["substate"] = str(interface.Get("org.freedesktop.systemd1.Unit", "SubState"))
+        result["autostart"] = str(interface.Get("org.freedesktop.systemd1.Unit", "UnitFileState"))
         result["description"] = str(interface.Get("org.freedesktop.systemd1.Unit", "Description"))
         if result["state"] == "active":
             since = int(interface.Get("org.freedesktop.systemd1.Unit", "ActiveEnterTimestamp"))
@@ -212,6 +213,45 @@ class Systemd:
         """
         res = self._addQuery(self.manager.ReloadUnit(service, "replace"))
         return str(res.get())
+
+    def enableService(self, service: str, runtime: bool=False, force: bool=False):
+        """Enable systemd service.
+
+        Parameters
+        ----------
+        service : str
+            Name of the unit
+        runtime : bool, optional
+            Enable only until next reboot. Default is False.
+        force: bool, optional
+            Override existing symlinks. Default is False.
+
+        Raises
+        ------
+        dbus.DBusException
+            DBus communication failed.
+        """
+        res = self.manager.EnableUnitFiles([service], runtime, force)
+        return "\n".join("{}: {} -> {}".format(*r) for r in res[1])
+
+
+    def disableService(self, service: str, runtime: bool=False):
+        """Disable systemd service.
+
+        Parameters
+        ----------
+        service : str
+            Name of the unit
+        runtime : bool, optional
+            Disable only until next reboot. Default is False.
+
+        Raises
+        ------
+        dbus.DBusException
+            DBus communication failed.
+        """
+        res = self.manager.DisableUnitFiles([service], runtime)
+        return "\n".join("{}: {} -> {}".format(*r) for r in res)
 
     @classmethod
     def quitLoop(cls):
