@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.19.5
+  version: 0.20.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1004,6 +1004,96 @@ paths:
           description: License data returned
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /system/logs:
+    get:
+      summary: Get available log files
+      tags:
+        - System Admin/Logs
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: List of log files returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /system/logs/{file}:
+    get:
+      summary: Get log file content
+      description: Returns the n last lines of the log file, similar to the `tail` command line tool
+      tags:
+        - System Admin/Logs
+      security:
+        - JWTCookie: []
+      parameters:
+        - name: file
+          in: path
+          required: true
+          description: Name of the log file
+          schema:
+            type: string
+        - name: n
+          in: query
+          description: Number of lines to return
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+        - name: skip
+          in: query
+          description: Number of lines to skip
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: after
+          in: query
+          description: Return all lines after given time. Overrides `n` and `skip`.
+          schema:
+            $ref: '#/components/schemas/precTime'
+      responses:
+        '200':
+          description: List of log files returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      description: Log file entry
+                      properties:
+                        level:
+                          type: integer
+                          description: Priority level number as described in journalctl (1)
+                        message:
+                          type: string
+                          description: Log message
+                        time:
+                          $ref: '#/components/schemas/precTime'
+                        runtime:
+                          type: number
+                          description: Time since last reboot
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -2530,11 +2620,17 @@ components:
         type: integer
     date:
       type: string
+      description: Date string
       pattern: '^\d{4}-\d{2}-\d{2}$'
     dateTime:
       type: string
+      description: Date string with time
       pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
       nullable: True
+    precTime:
+      type: string
+      description: Precise date/time string including fractional seconds
+      pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,6}$'
     domain:
       type: object
       additionalProperties: false
@@ -3112,6 +3208,8 @@ tags:
     description: Endpoints for domain management
   - name: System Admin/License
     description: Endpoints for license management
+  - name: System Admin/Logs
+    description: Endpoints for viewing logs
   - name: System Admin/MConf
     description: Endpoints for accessing managed configurations
   - name: System Admin/Organizations

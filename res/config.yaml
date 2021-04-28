@@ -154,3 +154,18 @@ properties:
       ldapPath:
         type: string
         description: Path to the ldap configuration file
+  logs:
+    description: Associative list of log files to expose
+    type: object
+    additionalProperties:
+      type: object
+      required: [source]
+      properties:
+        format:
+          type: string
+          description: File format. Currently only `journald` is supported.
+          enum: [journald]
+          default: journald
+        source:
+          type: string
+          description: Name of the journald unit
