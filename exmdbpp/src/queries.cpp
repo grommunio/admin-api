@@ -30,7 +30,7 @@ Folder::Folder(const std::vector<TaggedPropval>& propvals)
  *
  * @param      response     Response to convert
  */
-Folder::Folder(const Response<GetFolderPropertiesRequest>& response)
+Folder::Folder(const PropvalResponse& response)
 {init(response.propvals);}
 
 /**
@@ -266,17 +266,30 @@ ProblemsResponse ExmdbQueries::setFolderProperties(const std::string& homedir, u
 {return send<SetFolderPropertiesRequest>(homedir, cpid, folderId, propvals);}
 
 /**
- * @brief      Modify folder properties
+ * @brief      Get folder properties
  *
  * @param      homedir   Home directory path of the domain
  * @param      cpid      Unknown purpose
- * @param      folderId  ID of the folder to modify
+ * @param      folderId  ID of the folder to get
+ * @param      propvals  PropertyValues to get
+ *
+ * @return     Response containing a list of problems encountered
+ */
+PropvalResponse ExmdbQueries::getFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderId,
+                                                                       const std::vector<uint32_t>& proptags)
+{return send<GetFolderPropertiesRequest>(homedir, cpid, folderId, proptags);}
+
+/**
+ * @brief      Get store properties
+ *
+ * @param      homedir   Home directory path of the domain
+ * @param      cpid      Unknown purpose
  * @param      propvals  PropertyValues to modify
  *
  * @return     Response containing a list of problems encountered
  */
-Response<GetFolderPropertiesRequest> ExmdbQueries::getFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderId,
+PropvalResponse ExmdbQueries::getStoreProperties(const std::string& homedir, uint32_t cpid,
                                                                        const std::vector<uint32_t>& proptags)
-{return send<GetFolderPropertiesRequest>(homedir, cpid, folderId, proptags);}
+{return send<GetStorePropertiesRequest>(homedir, cpid, proptags);}
 
 }

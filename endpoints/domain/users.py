@@ -6,6 +6,7 @@ import api
 
 from api.core import API, secure
 from api.security import checkPermissions
+from datetime import datetime
 from dbus import DBusException
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
@@ -20,6 +21,7 @@ from tools.config import Config
 from tools.constants import PropTags, PropTypes, ExchangeErrors, ExmdbCodes
 from tools.DataModel import InvalidAttributeError, MismatchROError
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
+from tools.rop import nxTime
 from tools.systemd import Systemd
 
 import shutil
@@ -217,3 +219,33 @@ def updateUserRoles(domainID, userID):
         return jsonify(message="Invalid data", error=err.orig.args[1]), 400
     roles = AdminRoles.query.join(AdminUserRoleRelation).filter(AdminUserRoleRelation.userID == userID).all()
     return jsonify(data=[role.ref() for role in roles])
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeProps", methods=["GET"])
+@secure(requireDB=True)
+def getUserStoreProps(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    props = [prop for prop in request.args.get("properties", "").split(",") if prop != ""]
+    if len(props) == 0:
+        return jsonify(data={})
+    for i in range(len(props)):
+        if not hasattr(PropTags, props[i].upper()) or not isinstance(getattr(PropTags, props[i].upper()), int):
+            return jsonify(message="Unknown property '{}'".format(props[i])), 400
+        props[i] = getattr(PropTags, props[i].upper())
+    try:
+        options = Config["options"]
+        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
+        response = client.getStoreProperties(user.maildir, 0, props)
+    except pyexmdb.ExmdbError as err:
+        return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
+    respData = {}
+    for propval in response.propvals:
+        propname = PropTags.lookup(propval.tag).lower()
+        if propval.tag & 0xFFFF == PropTypes.FILETIME:
+            respData[propname] = datetime.fromtimestamp(nxTime(int(propval.toString()))).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            respData[propname] = PropTypes.pyType(propval.tag)(propval.toString())
+    return jsonify(data=respData)

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.20.0
+  version: 0.20.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1175,11 +1175,7 @@ paths:
           in: query
           schema:
             $ref: '#/components/schemas/intList'
-        - name: properties
-          description: Comma separated list of properties to return
-          in: query
-          schema:
-            type: string
+        - $ref: '#/components/parameters/propnames'
       responses:
         '200':
           description: Data returned
@@ -1299,6 +1295,36 @@ paths:
       responses:
         '200':
           description: User deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/users/{userID}/storeProps:
+    get:
+      summary: Get user store properties
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/propnames'
+      responses:
+        '200':
+          description: Property values returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/propvals'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -2604,6 +2630,12 @@ components:
       schema:
         type: integer
         default: 0
+    propnames:
+      name: properties
+      description: Comma separated list of properties to return
+      in: query
+      schema:
+        type: string
   schemas:
     ID:
       description: Unique ID of the object
@@ -2682,6 +2714,14 @@ components:
         description:
           type: string
           nullable: true
+    propvals:
+      type: object
+      description: User properties as name/value pairs
+      additionalProperties:
+        anyOf:
+          - type: string
+          - type: integer
+          - type: number
     user:
       type: object
       additionalProperties: false
@@ -2706,13 +2746,7 @@ components:
               name:
                 type: string
         properties:
-          type: object
-          description: User properties as name/value pairs
-          additionalProperties:
-            anyOf:
-              - type: string
-              - type: integer
-              - type: number
+          $ref: '#/components/schemas/propvals'
         aliases:
           type: array
           description: List of aliases for this user

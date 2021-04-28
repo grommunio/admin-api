@@ -27,6 +27,7 @@
 %include "std_vector.i"
 %include "stdint.i"
 
+%template(Vuint32_t) std::vector<uint32_t>;
 %template(VTaggedPropval) std::vector<exmdbpp::structures::TaggedPropval>;
 %template(VVTaggedPropval) std::vector<std::vector<exmdbpp::structures::TaggedPropval> >;
 %template(VPropertyProblem) std::vector<exmdbpp::structures::PropertyProblem>;
@@ -105,10 +106,9 @@ struct Response<CreateFolderByPropertiesRequest>
     uint64_t folderId;
 };
 
-template<>
-struct Response<GetFolderPropertiesRequest>
+struct PropvalResponse
 {
-    std::vector<structures::TaggedPropval> proptags;
+    std::vector<structures::TaggedPropval> propvals;
 };
 
 struct SuccessResponse
@@ -120,6 +120,7 @@ struct ProblemsResponse
 {
     std::vector<structures::PropertyProblem> problems; ///< List of problems that occured when setting store values
 };
+
 
 %clearnodefaultctor;
 
@@ -137,7 +138,7 @@ struct Folder
 {
     Folder() = default;
     Folder(const std::vector<structures::TaggedPropval>&);
-    Folder(const requests::Response<requests::GetFolderPropertiesRequest>&);
+    Folder(const requests::PropvalResponse&);
 
     uint64_t folderId;
     std::string displayName;
@@ -190,7 +191,8 @@ public:
     requests::ProblemsResponse setStoreProperties(const std::string& homedir, uint32_t cpid, const std::vector<structures::TaggedPropval>& propvals) throw (ExmdbError, std::runtime_error, std::out_of_range);
     requests::NullResponse unloadStore(const std::string& homedir) throw (ExmdbError, std::runtime_error, std::out_of_range);
     requests::ProblemsResponse setFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderId, const std::vector<structures::TaggedPropval>& propvals) throw (ExmdbError, std::runtime_error, std::out_of_range);
-    requests::Response<GetFolderPropertiesRequest> getFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderId, const std::vector<uint32_t>& proptags = defaultFolderProps) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::PropvalResponse getFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderId, const std::vector<uint32_t>& proptags = defaultFolderProps) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::PropvalResponse getStoreProperties(const std::string& homedir, uint32_t cpid, const std::vector<uint32_t>& proptags);
 };
 
 }

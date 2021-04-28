@@ -18,7 +18,7 @@ namespace exmdbpp::requests
 /**
  * @brief      Deserialize response data
  *
- * @param      buff  Buffer containing the data
+ * @param      buff  Buffer containing the response
  */
 SuccessResponse::SuccessResponse(IOBuffer& buff) : success(buff.pop<uint8_t>())
 {}
@@ -37,6 +37,18 @@ ProblemsResponse::ProblemsResponse(IOBuffer& buff)
         problems.emplace_back(buff);
 }
 
+/**
+ * @brief      Deserialize propval response
+ *
+ * @param      buff       Buffer containing the response
+ */
+PropvalResponse::PropvalResponse(IOBuffer& buff)
+{
+    uint16_t count = buff.pop<uint16_t>();
+    propvals.reserve(count);
+    for(uint16_t i = 0; i < count; ++i)
+        propvals.emplace_back(buff);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -378,17 +390,27 @@ void GetFolderPropertiesRequest::serialize(IOBuffer& buff, const std::string& ho
         buff << proptag;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
 /**
- * @brief      Deserialize get folder properties response
+ * @brief      Initialize get store properties request
+ */
+GetStorePropertiesRequest::GetStorePropertiesRequest(const std::string& homedir, uint32_t cpid,
+                                                     const std::vector<uint32_t>& proptags) :
+    homedir(homedir), cpid(cpid), proptags(proptags)
+{}
+
+/**
+ * @brief      Write serialized request data to buffer
  *
  * @param      buff       Buffer to write to
  */
-Response<GetFolderPropertiesRequest>::Response(IOBuffer& buff)
+void GetStorePropertiesRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid,
+                                           const std::vector<uint32_t>& proptags)
 {
-    uint16_t count = buff.pop<uint16_t>();
-    propvals.reserve(count);
-    for(uint16_t i = 0; i < count; ++i)
-        propvals.emplace_back(buff);
+    buff << CallId::GET_STORE_PROPERTIES << homedir << cpid << uint16_t(proptags.size());
+    for(uint32_t proptag : proptags)
+        buff << proptag;
 }
 
 }

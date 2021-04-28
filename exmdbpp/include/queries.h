@@ -22,7 +22,7 @@ struct Folder
 {
     Folder() = default;
     Folder(const std::vector<structures::TaggedPropval>&);
-    Folder(const requests::Response<requests::GetFolderPropertiesRequest>&);
+    Folder(const requests::PropvalResponse&);
 
     uint64_t folderId = 0;
     std::string displayName;
@@ -90,7 +90,8 @@ public:
     requests::ProblemsResponse setStoreProperties(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
     requests::NullResponse unloadStore(const std::string&);
     requests::ProblemsResponse setFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<structures::TaggedPropval>&);
-    requests::Response<requests::GetFolderPropertiesRequest> getFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<uint32_t>& = defaultFolderProps);
+    requests::PropvalResponse getFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<uint32_t>& = defaultFolderProps);
+    requests::PropvalResponse getStoreProperties(const std::string&, uint32_t, const std::vector<uint32_t>&);
 };
 
 }

@@ -99,6 +99,17 @@ struct ProblemsResponse
     std::vector<structures::PropertyProblem> problems; ///< List of problems that occured when setting store values
 };
 
+/**
+ * @brief      Generic response containing a list of tagged propvals
+ */
+struct PropvalResponse
+{
+    PropvalResponse() = default;
+    PropvalResponse(IOBuffer&);
+
+    std::vector<structures::TaggedPropval> propvals;
+};
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -522,17 +533,43 @@ inline void GetFolderPropertiesRequest::serialize(IOBuffer& buff) const
 {serialize(buff, homedir, cpid, folderId, proptags);}
 
 /**
- * @brief      Response specialization for GetFolderPropertiesRequest
+ * Response type override for get folder properties request (-> PropvalResponse)
  */
 template<>
-struct Response<GetFolderPropertiesRequest>
-{
-    Response() = default;
-    Response(IOBuffer&);
+struct response_map<GetFolderPropertiesRequest>
+{using type = PropvalResponse;};
 
-    std::vector<structures::TaggedPropval> propvals;
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief       Get store properties
+ */
+struct GetStorePropertiesRequest
+{
+    GetStorePropertiesRequest(const std::string&, uint32_t, const std::vector<uint32_t>&);
+
+    std::string homedir;
+    uint32_t cpid;
+    std::vector<uint32_t> proptags;
+
+    void serialize(IOBuffer&) const;
+    static void serialize(IOBuffer&, const std::string&, uint32_t, const std::vector<uint32_t>&);
 };
 
+/**
+ * @brief      Serialize request
+ *
+ * @param      buff  Buffer to write data to
+ */
+inline void GetStorePropertiesRequest::serialize(IOBuffer& buff) const
+{serialize(buff, homedir, cpid, proptags);}
+
+/**
+ * Response type override for get store properties request (-> PropvalResponse)
+ */
+template<>
+struct response_map<GetStorePropertiesRequest>
+{using type = PropvalResponse;};
 }
 
 }
