@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.21.0
+  version: 0.21.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2702,6 +2702,12 @@ components:
           type: integer
           description: Domain status (0=Normal, 1=Suspended, 2=Out Of Date, 3=Deleted)
           default: 0
+        activeUsers:
+          type: integer
+          readOnly: true
+        inactiveUsers:
+          type: integer
+          readOnly: true
     org:
       type: object
       properties:
@@ -2720,6 +2726,10 @@ components:
           - type: string
           - type: integer
           - type: number
+    userStatus:
+      type: integer
+      description: User status (0=Normal, 1=Suspended, 2=Out-of-date, 3=Deleted)
+      enum: [0, 1, 2, 3]
     user:
       type: object
       additionalProperties: false
@@ -2750,6 +2760,8 @@ components:
           description: List of aliases for this user
           items:
             type: string
+        status:
+          $ref: '#/components/schemas/userStatus'
         pop3_imap:
           type: boolean
           description: POP3/IMAP privilege
@@ -2797,6 +2809,8 @@ components:
           description: List of aliases for this user
           items:
             type: string
+        status:
+          $ref: '#/components/schemas/userStatus'
         pop3_imap:
           type: boolean
           description: POP3/IMAP privilege
@@ -2834,6 +2848,8 @@ components:
           description: List of aliases for this user
           items:
             type: string
+        status:
+          $ref: '#/components/schemas/userStatus'
         pop3_imap:
           type: boolean
           description: POP3/IMAP privilege

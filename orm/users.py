@@ -44,14 +44,15 @@ class Users(DataModel, DB.Base):
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("domainID", flags="init"),
                       {"attr": "ldapID", "flags": "patch"}),
-                     (RefProp("roles", qopt=selectinload),
-                      RefProp("properties", flags="patch, managed", link="name", flat="val", qopt=selectinload),
-                      RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
+                     (Int("status", flags="patch"),
                       BoolP("pop3_imap", flags="patch"),
                       BoolP("smtp", flags="patch"),
                       BoolP("changePassword", flags="patch"),
                       BoolP("publicAddress", flags="patch"),
-                      RefProp("fetchmail", flags="managed, patch", link="ID")),
+                      RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
+                      RefProp("fetchmail", flags="managed, patch", link="ID"),
+                      RefProp("properties", flags="patch, managed", link="name", flat="val", qopt=selectinload),
+                      RefProp("roles", qopt=selectinload)),
                      ({"attr": "password", "flags": "init, hidden"},))
 
     POP3_IMAP = 1 << 0
@@ -73,6 +74,11 @@ class Users(DataModel, DB.Base):
     TEMPLATE = 0x101
     ADDRESS_TEMPLATE = 0x102
     SEARCH = 0x200
+
+    NORMAL = 0
+    SUSPENDED = 1
+    OUTOFDATE = 2
+    DELETED = 3
 
     @staticmethod
     def checkCreateParams(data):
@@ -247,6 +253,18 @@ class Users(DataModel, DB.Base):
     def ldapID(self, value):
         from tools.ldap import unescapeFilterChars
         self.externID = None if value is None else unescapeFilterChars(value)
+
+    @hybrid_property
+    def status(self):
+        return self.addressStatus & 0x3
+
+    @status.setter
+    def status(self, val):
+        self.addressStatus = (self.addressStatus & ~0x3) | (val & 0x3)
+
+    @status.expression
+    def status(cls):
+        return cls.addressStatus.op("&")(0x3)
 
     @staticmethod
     def count(*filters):

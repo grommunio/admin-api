@@ -5,9 +5,11 @@
 from . import DB
 from tools.DataModel import DataModel, Id, Text, Int, Date
 
-from sqlalchemy import Column
+from sqlalchemy import Column, func, select
 from sqlalchemy.dialects.mysql import DATE, INTEGER, TINYINT, VARCHAR
+from sqlalchemy.orm import column_property
 
+from .users import Users
 
 class Orgs(DataModel, DB.Base):
     __tablename__ = "orgs"
@@ -34,9 +36,14 @@ class Domains(DataModel, DB.Base):
     endDay = Column("end_day", DATE, nullable=False, default="3333-03-03")
     domainStatus = Column("domain_status", TINYINT, nullable=False, server_default="0")
 
+    activeUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus == 0)).as_scalar())
+    inactiveUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus != 0)).as_scalar())
+
     _dictmapping_ = ((Id(), Text("domainname", flags="init")),
                      (Id("orgID", flags="patch"),
                       Int("maxUser", flags="patch"),
+                      Int("activeUsers"),
+                      Int("inactiveUsers"),
                       Text("title", flags="patch"),
                       Text("address", flags="patch"),
                       Text("adminName", flags="patch"),
