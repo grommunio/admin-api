@@ -16,7 +16,7 @@ matchStringRe = re.compile(r"([\w\-]*)")
 
 
 def defaultListQuery(Model, filters=(), order=None, result="response", automatch=True, autofilter=True, autosort=True,
-                     include_count="count"):
+                     include_count="count", query=None):
     """Process a listing query for specified model.
 
     Automatically uses 'limit' (50), 'offset' (0) and 'level' (1) parameters from the request.
@@ -45,9 +45,11 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
         Whether to apply autofiltering. See DataModel.autofilter for more information. Default is True.
     autosort: boolean, optional
         Whether to apply autosorting. See DataModel.autosort for more information. Default is True.
-    include_count: boolean, optional
+    include_count: str, optional
         Name of the property containing the total number of results (regardless of limit) or None to disable.
         Default is "count".
+    query: BaseQuery, optional
+        Specify a base query to build upon. Default is None.
     Returns
     -------
     Response
@@ -60,7 +62,7 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
     if len(offset) == 0:
         offset = None
     verbosity = request.args.get("level", 1)
-    query = Model.optimized_query(verbosity).filter(*filters)
+    query = (Model.optimized_query(verbosity) if query is None else Model.optimize_query(query, verbosity)).filter(*filters)
     if autosort:
         query = Model.autosort(query, request.args.getlist("sort"))
     if order is not None:
@@ -271,7 +273,8 @@ def defaultBatchDelete(Model, filters=()):
     return jsonify(message="Delete successful.", deleted=IDs)
 
 
-def defaultListHandler(Model, filters=(), order=None, result="response", automatch=True, autofilter=True, autosort=True):
+def defaultListHandler(Model, filters=(), order=None, result="response", automatch=True, autofilter=True, autosort=True,
+                       include_count="count", query=None):
     """Handle operations on lists.
 
     Handles list (GET), create (POST) and batch delete (DELETE) requests for the given model.
@@ -293,14 +296,17 @@ def defaultListHandler(Model, filters=(), order=None, result="response", automat
         Whether to apply autofiltering. See DataModel.autofilter for more information. Default is True.
     autosort: boolean, optional
         Whether to apply autosorting. See DataModel.autosort for more information. Default is True.
-
+    include_count: str, optional
+        Forwarded to defaultListQuery. Default is "count"
+    query: BaseQuery, optional
+        Base query forwarded to defaultListQuery. Default is None.
     Returns
     -------
     Response
         Flask response containing data or error message.
     """
     if request.method == "GET":
-        return defaultListQuery(Model, filters, order, result, automatch, autofilter, autosort)
+        return defaultListQuery(Model, filters, order, result, automatch, autofilter, autosort, include_count, query)
     elif request.method == "POST":
         return defaultCreate(Model, result)
     elif request.method == "DELETE":

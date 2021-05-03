@@ -5,12 +5,12 @@
 from . import DB
 from tools.constants import PropTags, PropTypes
 from tools.rop import ntTime, nxTime
-from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp
+from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp, Bool, Date
 
-from sqlalchemy import Column, ForeignKey
-from sqlalchemy.dialects.mysql import INTEGER, TINYINT, VARBINARY, VARCHAR
+from sqlalchemy import Column, ForeignKey, func
+from sqlalchemy.dialects.mysql import ENUM, INTEGER, TEXT, TIMESTAMP, TINYINT, VARBINARY, VARCHAR
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import relationship, selectinload
+from sqlalchemy.orm import relationship, selectinload, validates
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 import crypt
@@ -39,6 +39,7 @@ class Users(DataModel, DB.Base):
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True,
                               collection_class=attribute_mapped_collection("name"))
     aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True)
+    fetchmail = relationship("Fetchmail", cascade="all, delete-orphan", single_parent=True, order_by="Fetchmail.active.desc()")
 
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("domainID", flags="init"),
@@ -49,7 +50,8 @@ class Users(DataModel, DB.Base):
                       BoolP("pop3_imap", flags="patch"),
                       BoolP("smtp", flags="patch"),
                       BoolP("changePassword", flags="patch"),
-                      BoolP("publicAddress", flags="patch")),
+                      BoolP("publicAddress", flags="patch"),
+                      RefProp("fetchmail", flags="managed, patch", link="ID")),
                      ({"attr": "password", "flags": "init, hidden"},))
 
     POP3_IMAP = 1 << 0
@@ -381,5 +383,71 @@ class Aliases(DataModel, DB.Base):
         return self
 
 
+class Fetchmail(DataModel, DB.Base):
+    __tablename__ = "fetchmail"
+
+    _sa = ("password", "kerberos_v5", "kerberos", "kerberos_v4", "gssapi", "cram-md5", "otp", "ntlm", "msn", "ssh", "any")
+
+    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
+    userID = Column("user_id", INTEGER(10, unsigned=True), ForeignKey(Users.ID), nullable=False)
+    mailbox = Column("mailbox", VARCHAR(255), nullable=False)
+    active = Column("active", TINYINT(1, unsigned=True), nullable=False, server_default="1")
+    srcServer = Column("src_server", VARCHAR(255), nullable=False)
+    srcAuth = Column("src_auth", ENUM(*_sa), nullable=False, server_default="password")
+    srcUser = Column("src_user", VARCHAR(255), nullable=False)
+    srcPassword = Column("src_password", VARCHAR(255), nullable=False)
+    srcFolder = Column("src_folder", VARCHAR(255), nullable=False)
+    fetchall = Column("fetchall", TINYINT(1, unsigned=True), nullable=False, server_default="0")
+    keep = Column("keep", TINYINT(1, unsigned=True), nullable=False, server_default="1")
+    protocol = Column("protocol", ENUM("POP3", "IMAP", "POP2", "ETRN", "AUTO"), nullable=False, server_default= 'IMAP')
+    useSSL = Column("usessl", TINYINT(1, unsigned=True), nullable=False, server_default="1")
+    sslCertCheck = Column("sslcertck", TINYINT(1, unsigned=True), nullable=False, server_default="0")
+    sslCertPath = Column("sslcertpath", VARCHAR(255, charset="utf8"))
+    sslFingerprint = Column("sslfingerprint", VARCHAR(255, charset="latin1"))
+    extraOptions = Column("extra_options", TEXT)
+    date = Column("date", TIMESTAMP, nullable=False, server_default="current_timestamp()", onupdate=func.current_timestamp())
+
+    user = relationship(Users)
+
+    _dictmapping_ = ((Id(), Text("mailbox", flags="patch"),
+                      Bool("active", flags="patch"),
+                      Text("srcServer", flags="patch"),
+                      Text("srcUser", flags="patch"),
+                      Date("date", time=True),
+                      Text("srcAuth", flags="patch"),
+                      Text("srcPassword", flags="patch"),
+                      Text("srcFolder", flags="patch"),
+                      Bool("fetchall", flags="patch"),
+                      Bool("keep", flags="patch"),
+                      Text("protocol", flags="patch"),
+                      Bool("useSSL", flags="patch"),
+                      Bool("sslCertCheck", flags="patch"),
+                      Text("sslCertPath", flags="patch"),
+                      Text("sslFingerprint", flags="patch"),
+                      Text("extraOptions", flags="patch")),)
+
+    def __init__(self, props, user, *args, **kwargs):
+        self.user = user
+        if "mailbox" not in props:
+            self.mailbox = user.username
+        self.fromdict(props)
+
+    def __str__(self):
+        fetchoptions = "options"
+        if self.useSSL == 1:
+            fetchoptions += " ssl"
+            if self.sslFingerprint:
+                fetchoptions = " sslfingerprint '{}'".format(self.sslFingerprint)
+            if self.sslCertCheck == 1:
+                fetchoptions += " sslCertCheck"
+            if self.sslCertPath:
+                fetchoptions += "sslcertpath "+self.sslCertPath
+        if self.fetchall == 1:
+            fetchoptions += " fetchall"
+        fetchoptions += " keep" if self.keep == 1 else " nokeep"
+        if self.extraOptions:
+            fetchoptions += self.extraOptions
+        return "poll {} with proto {} user {} there with password {} is {} here {}\n"\
+            .format(self.srcServer, self.protocol, self.srcUser, self.srcPassword, self.mailbox, fetchoptions)
 
 from . import roles

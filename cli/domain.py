@@ -188,6 +188,8 @@ def _cliDomainDomainspecAutocomp(prefix, **kwarg):
     else:
         return ()
 
+def _noComp(**kwargs):
+    return ()
 
 def _setupCliDomain(subp : ArgumentParser):
     def addProperties(parser, init):
@@ -221,7 +223,7 @@ def _setupCliDomain(subp : ArgumentParser):
     addProperties(modify, False)
     purge = sub.add_parser("purge", help="Permanently delete domain")
     purge.set_defaults(_handle=cliDomainPurge)
-    purge.add_argument("domainspec", nargs="?", help="Domain ID or prefix to match domainname against")
+    purge.add_argument("domainspec", nargs="?", help="Domain ID or prefix to match domainname against").completer = _noComp
     purge.add_argument("-f", "--files", action="store_true", help="Delete domain and user files on disk")
     purge.add_argument("-y", "--yes", action="store_true", help="Do not question the elevated one")
     recover = sub.add_parser("recover", help="Recover soft-deleted domain")

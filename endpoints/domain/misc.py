@@ -9,7 +9,7 @@ from api.core import API, secure
 
 from tools.permissions import SystemAdminPermission, DomainAdminPermission, OrgAdminPermission
 
-from flask import request, jsonify
+from flask import request
 from sqlalchemy import or_
 
 from orm import DB

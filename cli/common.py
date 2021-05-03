@@ -27,3 +27,12 @@ def userFilter(userSpec, *filters):
 def userCandidates(userSpec, *filters):
     from orm.users import Users
     return Users.query.filter(userFilter(userSpec, *filters))
+
+
+def userspecAutocomp(prefix, **kwargs):
+    from . import Cli
+    if Cli.rlAvail:
+        from orm.users import Users
+        return (user.username for user in userCandidates(prefix).with_entities(Users.username))
+    else:
+        return ()

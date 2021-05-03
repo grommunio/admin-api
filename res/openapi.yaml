@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.20.1
+  version: 0.21.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -29,8 +29,6 @@ paths:
                   ldap:
                     type: boolean
                     description: Whether the LDAP connection is initialized
-              example:
-                message: API is operational
 
   /about:
     get:
@@ -2768,6 +2766,11 @@ components:
           type: string
           nullable: true
           description: Base64 encoded LDAP object ID
+        fetchmail:
+          type: array
+          description: List of fetchmail entries for this user
+          items:
+            $ref: '#/components/schemas/fetchmailEntry'
     userInit:
       type: object
       additionalProperties: false
@@ -2806,6 +2809,11 @@ components:
         publicAddress:
           type: boolean
           description: Public address privilege
+        fetchmail:
+          type: array
+          description: List of fetchmail entries for this user
+          items:
+            $ref: '#/components/schemas/fetchmailEntry'
     userUpdate:
       type: object
       additionalProperties: false
@@ -2843,6 +2851,11 @@ components:
           description: Detach imported user from LDAP object
           nullable: true
           enum: [null]
+        fetchmail:
+          type: array
+          description: List of fetchmail entries for this user
+          items:
+            $ref: '#/components/schemas/fetchmailEntry'
     publicFolder:
       type: object
       properties:
@@ -3178,6 +3191,71 @@ components:
       type: object
       additionalProperties:
         type: string
+    fetchmailEntry:
+      type: object
+      properties:
+        ID:
+          type: integer
+        mailbox:
+          type: string
+          description: Username of the local user
+        active:
+          type: boolean
+          description: Whether fetchmail is currently activated
+        srcServer:
+          type: string
+          description: Source server address
+        srcUser:
+          type: string
+          description: Source user
+        srcPassword:
+          description: Password of the source user
+          type: string
+        date:
+          description: Last modification time
+          readOnly: true
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
+        srcAuth:
+          description: Type auf authentication to use
+          type: string
+          default: "password"
+          enum: [password, kerberos_v5, kerberos, kerberos_v4, gssapi, cram-md5, otp, ntlm, msn, ssh, any]
+        srcFolder:
+          description: Folder to sync from
+          type: string
+        fetchall:
+          description: Whether to fetch seen mails
+          type: boolean
+        keep:
+          description: Keep original e-mails
+          type: boolean
+        protocol:
+          description: Protocol to use
+          type: string
+          enum: [POP3, IMAP, POP2, ETRN, AUTO]
+        useSSL:
+          description: Whether to use SSL
+          type: boolean
+        sslCertCheck:
+          description: Check ssl certificate
+          type: boolean
+          default: false
+        sslCertPath:
+          description: Path to local certificate directory or null to use local default
+          type: string
+          nullable: true
+          default: null
+        sslFingerprint:
+          description: Fingerprint of the server certificate
+          pattern: '^([0-9A-F]{2}(:[0-9A-F]{2})*)?$'
+          type: string
+          nullable: true
+          default: null
+        extraOptions:
+          description: Additional fetchmail options
+          type: string
+          nullable: true
   responses:
     ServerError:
       description: An error occured while processing the request

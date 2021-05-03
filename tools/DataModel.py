@@ -88,8 +88,8 @@ class DataModel:
                 If set, do not serialize ref into an object, but use its `flat` attribute directly. The default is None.
             func : function, optional
                 Call `func` on the attribute. Effectively executes func(attr, *args, **kwargs). The default is None.
-            link : 2-tuple of str, optional
-                Name of the attributes linking the bi-directional relationship. The default is None.
+            link : str, optional
+                Name of the attribute identifying the foreign object. The default is None.
             filter : str, optional
                 Type of multi-value filtering to apply. Valid values are 'set' and 'range. The default is None.
             qopt : function, optional
@@ -640,6 +640,8 @@ def Proxy(attr, proxy, **kwargs):
     return DataModel.Prop(attr, target=attr, proxy=proxy, **kwargs)
 
 
-def Date(attr, **kwargs):
+def Date(attr, time=False, **kwargs):
     """Create a date attribute."""
-    return DataModel.Prop(attr, func=lambda date: date.strftime("%Y-%m-%d") if date else None, **kwargs)
+    format = "%Y-%m-%d %H:%M:%S" if time else"%Y-%m-%d"
+    _addFlags(kwargs, "sort")
+    return DataModel.Prop(attr, func=lambda date: date.strftime(format) if date else None, filter="range", **kwargs)
