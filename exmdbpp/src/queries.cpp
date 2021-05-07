@@ -5,6 +5,7 @@
 #include "queries.h"
 #include "util.h"
 #include "constants.h"
+#include "IOBufferImpl.h"
 
 using namespace exmdbpp::constants;
 using namespace exmdbpp::requests;
@@ -63,7 +64,7 @@ void Folder::init(const std::vector<structures::TaggedPropval>& propvals)
  *
  * @param      response  Response to convert
  */
-FolderListResponse::FolderListResponse(const Response<QueryTableRequest>& response)
+FolderListResponse::FolderListResponse(const Response_t<QueryTableRequest>& response)
 {
     folders.reserve(response.entries.size());
     for(auto& entry : response.entries)
@@ -75,7 +76,7 @@ FolderListResponse::FolderListResponse(const Response<QueryTableRequest>& respon
  *
  * @param      response  Response to convert
  */
-FolderOwnerListResponse::FolderOwnerListResponse(const Response<QueryTableRequest>& response)
+FolderOwnerListResponse::FolderOwnerListResponse(const Response_t<QueryTableRequest>& response)
 {
     owners.reserve(response.entries.size());
     for(auto& entry : response.entries)
@@ -108,7 +109,7 @@ FolderOwnerListResponse::FolderOwnerListResponse(const Response<QueryTableReques
  *
  * @return     Response of the QueryTableRequest. Can be converted to FolderListResponse for easier access.
  */
-Response<QueryTableRequest> ExmdbQueries::getFolderList(const std::string& homedir, const std::vector<uint32_t>& proptags)
+Response_t<QueryTableRequest> ExmdbQueries::getFolderList(const std::string& homedir, const std::vector<uint32_t>& proptags)
 {
     uint64_t folderId = util::makeEidEx(1, PublicFid::IPMSUBTREE);
     auto lhtResponse = send<LoadHierarchyTableRequest>(homedir, folderId, "", 0);
@@ -128,7 +129,7 @@ Response<QueryTableRequest> ExmdbQueries::getFolderList(const std::string& homed
  *
  * @return     Response returned by the server
  */
-Response<CreateFolderByPropertiesRequest> ExmdbQueries::createPublicFolder(const std::string& homedir, uint32_t domainId,
+Response_t<CreateFolderByPropertiesRequest> ExmdbQueries::createFolder(const std::string& homedir, uint32_t domainId,
                                   const std::string& folderName, const std::string& container, const std::string& comment)
 {
     auto acResponse = send<AllocateCnRequest>(homedir);
@@ -146,15 +147,12 @@ Response<CreateFolderByPropertiesRequest> ExmdbQueries::createPublicFolder(const
     propvals.emplace_back(PropTag::LASTMODIFICATIONTIME, now);
     propvals.emplace_back(PropTag::CHANGENUMBER, acResponse.changeNum);
 
-    tmpbuff.start();
-    xid.xid.serialize(tmpbuff, xid.size);
-    tmpbuff.finalize();
-    propvals.emplace_back(PropTag::CHANGEKEY, tmpbuff);
+    xid.writeXID(tmpbuff);
+    propvals.emplace_back(PropTag::CHANGEKEY, tmpbuff.data(), false);
 
-    tmpbuff.start();
-    xid.serialize(tmpbuff);
-    tmpbuff.finalize();
-    propvals.emplace_back(PropTag::PREDECESSORCHANGELIST, tmpbuff, false);
+    size_t offset = tmpbuff.tell();
+    tmpbuff.push(xid);
+    propvals.emplace_back(PropTag::PREDECESSORCHANGELIST, tmpbuff.data()+offset, false);
     if(!container.empty())
         propvals.emplace_back(PropTag::CONTAINERCLASS, container);
     return send<CreateFolderByPropertiesRequest>(homedir, 0, propvals);
@@ -168,7 +166,7 @@ Response<CreateFolderByPropertiesRequest> ExmdbQueries::createPublicFolder(const
  *
  * @return     Response returned by the server
  */
-SuccessResponse ExmdbQueries::deletePublicFolder(const std::string& homedir, uint64_t folderId)
+SuccessResponse ExmdbQueries::deleteFolder(const std::string& homedir, uint64_t folderId)
 {return send<DeleteFolderRequest>(homedir, 0, folderId, true);}
 
 /**
@@ -179,10 +177,10 @@ SuccessResponse ExmdbQueries::deletePublicFolder(const std::string& homedir, uin
  *
  * @return     Response containing the owners. Can be converted to FolderOwnerListResponse for easier access.
  */
-Response<QueryTableRequest> ExmdbQueries::getPublicFolderOwnerList(const std::string& homedir, uint64_t folderId)
+Response<QueryTableRequest::callId> ExmdbQueries::getFolderOwnerList(const std::string& homedir, uint64_t folderId)
 {
-    auto lptResponse = send<LoadPermissionTableRequest>(homedir, folderId);
-    std::vector<uint32_t> proptags = {PropTag::MEMBERID, PropTag::MEMBERNAME, PropTag::MEMBERRIGHTS};
+    auto lptResponse = send<LoadPermissionTableRequest>(homedir, folderId, 0);
+    uint32_t proptags[] = {PropTag::MEMBERID, PropTag::MEMBERNAME, PropTag::MEMBERRIGHTS};
     auto qtResponse = send<QueryTableRequest>(homedir, "", 0, lptResponse.tableId, proptags, 0, lptResponse.rowCount);
     send<UnloadTableRequest>(homedir, lptResponse.tableId);
     return qtResponse;
@@ -204,8 +202,7 @@ NullResponse ExmdbQueries::addFolderOwner(const std::string& homedir, uint64_t f
                             Permission::FOLDERVISIBLE;
     std::vector<TaggedPropval> propvals = {TaggedPropval(PropTag::SMTPADDRESS, username, false),
                                            TaggedPropval(PropTag::MEMBERRIGHTS, memberRights)};
-    std::vector<PermissionData> permissions;
-    permissions.emplace_back(PermissionData::ADD_ROW, propvals);
+    PermissionData permissions[] = {PermissionData(PermissionData::ADD_ROW, propvals)};
     return send<UpdateFolderPermissionRequest>(homedir, folderId, false, permissions);
 }
 
@@ -221,8 +218,7 @@ NullResponse ExmdbQueries::addFolderOwner(const std::string& homedir, uint64_t f
 NullResponse ExmdbQueries::deleteFolderOwner(const std::string& homedir, uint64_t folderId, uint64_t memberId)
 {
     std::vector<TaggedPropval> propvals = {TaggedPropval(PropTag::MEMBERID, memberId)};
-    std::vector<PermissionData> permissions;
-    permissions.emplace_back(PermissionData::REMOVE_ROW, propvals);
+    PermissionData permissions[] = {PermissionData(PermissionData::REMOVE_ROW, propvals)};
     return send<UpdateFolderPermissionRequest>(homedir, folderId, false, permissions);
 }
 

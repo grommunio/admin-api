@@ -10,7 +10,7 @@ namespace exmdbpp
 
 
 /**
- * @brief   Collection of multiple-request queries
+ * @brief   Higher level implementation of multi-request queries
  */
 namespace queries
 {
@@ -41,7 +41,7 @@ private:
  */
 struct FolderListResponse
 {
-    FolderListResponse(const requests::Response<requests::QueryTableRequest>&);
+    FolderListResponse(const requests::Response_t<requests::QueryTableRequest>&);
 
     std::vector<Folder> folders;
 };
@@ -62,7 +62,7 @@ struct FolderOwnerListResponse
         uint32_t memberRights = 0;
     };
 
-    FolderOwnerListResponse(const requests::Response<requests::QueryTableRequest>&);
+    FolderOwnerListResponse(const requests::Response_t<requests::QueryTableRequest>&);
 
     std::vector<Owner> owners;
 };
@@ -72,7 +72,7 @@ struct FolderOwnerListResponse
  *
  * ExmdbQueries can be used as a substitute for ExmdbClient and provides
  * implementations of frequently used queries (i.e. requests with fixed
- * default values or queries consisting of multiple requests.
+ * default values or queries consisting of multiple requests).
  */
 class ExmdbQueries final: public ExmdbClient
 {
@@ -81,17 +81,17 @@ public:
 
     static const std::vector<uint32_t> defaultFolderProps;
 
-    requests::Response<requests::QueryTableRequest> getFolderList(const std::string&, const std::vector<uint32_t>& = defaultFolderProps);
-    requests::Response<requests::CreateFolderByPropertiesRequest> createPublicFolder(const std::string&, uint32_t, const std::string&, const std::string&, const std::string&);
-    requests::SuccessResponse deletePublicFolder(const std::string&, uint64_t);
-    requests::Response<requests::QueryTableRequest> getPublicFolderOwnerList(const std::string&, uint64_t);
     requests::NullResponse addFolderOwner(const std::string&, uint64_t, const std::string&);
+    requests::Response_t<requests::CreateFolderByPropertiesRequest> createFolder(const std::string&, uint32_t, const std::string&, const std::string&, const std::string&);
+    requests::SuccessResponse deleteFolder(const std::string&, uint64_t);
     requests::NullResponse deleteFolderOwner(const std::string&, uint64_t, uint64_t);
-    requests::ProblemsResponse setStoreProperties(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
-    requests::NullResponse unloadStore(const std::string&);
-    requests::ProblemsResponse setFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<structures::TaggedPropval>&);
+    requests::Response_t<requests::QueryTableRequest> getFolderList(const std::string&, const std::vector<uint32_t>& = defaultFolderProps);
+    requests::Response_t<requests::QueryTableRequest> getFolderOwnerList(const std::string&, uint64_t);
     requests::PropvalResponse getFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<uint32_t>& = defaultFolderProps);
     requests::PropvalResponse getStoreProperties(const std::string&, uint32_t, const std::vector<uint32_t>&);
+    requests::ProblemsResponse setFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<structures::TaggedPropval>&);
+    requests::ProblemsResponse setStoreProperties(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
+    requests::NullResponse unloadStore(const std::string&);
 };
 
 }

@@ -6,7 +6,7 @@
 
 #include "structures.h"
 #include "constants.h"
-#include "IOBufferOps.h"
+#include "IOBufferImpl.h"
 #include "util.h"
 
 using namespace exmdbpp::constants;
@@ -388,48 +388,6 @@ void TaggedPropval::free()
 }
 
 /**
- * @brief      Serialize tagged propval to buffer
- *
- * @param      buff  Buffer to write data to
- */
-void TaggedPropval::serialize(IOBuffer& buff) const
-{
-    uint16_t svtype = (type&0x3000) == 0x3000? type & ~0x3000 : type;
-    buff << tag;
-    if(type == PropvalType::UNSPECIFIED)
-        buff << type;
-    switch(svtype)
-    {
-    default:
-        throw std::runtime_error("Serialization of type "+std::to_string(type)+" is not supported.");
-    case PropvalType::BYTE:
-        buff << value.u8; break;
-    case PropvalType::SHORT:
-        buff << value.u16; break;
-    case PropvalType::LONG:
-    case PropvalType::ERROR:
-        buff << value.u32; break;
-    case PropvalType::LONGLONG:
-    case PropvalType::CURRENCY:
-    case PropvalType::FILETIME:
-        buff << value.u64; break;
-    case PropvalType::FLOAT:
-        buff << value.f; break;
-    case PropvalType::DOUBLE:
-    case PropvalType::FLOATINGTIME:
-        buff << value.d; break;
-    case PropvalType::STRING:
-    case PropvalType::WSTRING:
-        buff << value.str; break;
-    case PropvalType::BINARY:
-        uint32_t len;
-        memcpy(&len, value.ptr, sizeof(len));
-        len = le32toh(len);
-        buff.push(value.ptr, len+sizeof(uint32_t)); break;
-    }
-}
-
-/**
  * @brief      Create GUID from domain ID
  *
  * @param      domainId  Domain ID
@@ -453,39 +411,6 @@ GUID GUID::fromDomainId(uint32_t domainId)
     return guid;
 }
 
-/**
- * @brief      Serialize GUID to buffer
- *
- * @param      buff  Buffer to write data to
- */
-void GUID::serialize(IOBuffer& buff) const
-{
-    buff << timeLow << timeMid << timeHighVersion << clockSeq << node;
-}
-
-/**
- * @brief      Initialize XID structure
- *
- * @param      guid     GUID struct
- * @param      localId  Local ID value (see util::valueToGc)
- */
-XID::XID(const GUID& guid, uint64_t localId) : guid(guid), localId(localId)
-{}
-
-/**
- * @brief      Serialize XID to buffer
- *
- * @param      buff  Buffer to write data to
- * @param      size  Total length of the XID in bytes (17...24)
- */
-void XID::serialize(IOBuffer& buff, uint8_t size) const
-{
-    if(size < 17 || size > 24)
-        throw std::runtime_error("Invalid XID size: "+std::to_string(size));
-    uint64_t lId = htole64(localId);
-    guid.serialize(buff);
-    buff.push(&lId, size-16);
-}
 
 /**
  * @brief      Initialize XID with size information
@@ -494,18 +419,21 @@ void XID::serialize(IOBuffer& buff, uint8_t size) const
  * @param      guid     GUID object
  * @param      localId  Local ID value (see util::valueToGc)
  */
-SizedXID::SizedXID(uint8_t size, const GUID& guid, uint64_t localId) : size(size), xid(guid, localId)
+SizedXID::SizedXID(uint8_t size, const GUID& guid, uint64_t localId) : guid(guid), localId(localId), size(size)
 {}
 
 /**
- * @brief      Serialize XID with size information to buffer
+ * @brief      Write XID to buffer
  *
- * @param      buff  Buffer to write data to
+ * @param      buff     Buffer to write XID to
  */
-void SizedXID::serialize(IOBuffer& buff) const
+void SizedXID::writeXID(IOBuffer& buff) const
 {
-    buff << size;
-    xid.serialize(buff, size);
+    if(size < 17 || size > 24)
+        throw std::runtime_error("Invalid XID size: "+std::to_string(size));
+    uint64_t lId = htole64(localId);
+    buff.push(guid);
+    buff.push_raw(&lId, size-16);
 }
 
 const uint8_t PermissionData::ADD_ROW;
@@ -522,17 +450,6 @@ const uint8_t PermissionData::REMOVE_ROW;
 PermissionData::PermissionData(uint8_t flags, const std::vector<TaggedPropval>& propvals) : flags(flags), propvals(propvals)
 {}
 
-/**
- * @brief      Serialize PermissionData to buffer
- *
- * @param      buff  Buffer to write data to
- */
-void PermissionData::serialize(IOBuffer& buff) const
-{
-    buff << flags << uint16_t(propvals.size());
-    for(auto& propval : propvals)
-        propval.serialize(buff);
-}
 
 /**
  * @brief      Load PropertyProblem from buffer
@@ -542,5 +459,94 @@ void PermissionData::serialize(IOBuffer& buff) const
 PropertyProblem::PropertyProblem(IOBuffer& buff)
     : index(buff.pop<uint16_t>()), proptag(buff.pop<uint32_t>()), err(buff.pop<uint32_t>())
 {}
+
+}
+
+namespace exmdbpp
+{
+
+using namespace structures;
+
+/**
+ * @brief      Serialize tagged propval to buffer
+ *
+ * @param      buff  Buffer to write data to
+ * @param      pv    TaggedPropval to serialize
+ */
+template<>
+void IOBuffer::Serialize<TaggedPropval>::push(IOBuffer& buff, const TaggedPropval& pv)
+{
+    uint16_t svtype = (pv.type&0x3000) == 0x3000? pv.type & ~0x3000 : pv.type;
+    buff << pv.tag;
+    if(pv.type == PropvalType::UNSPECIFIED)
+        buff << pv.type;
+    switch(svtype)
+    {
+    default:
+        throw std::runtime_error("Serialization of type "+std::to_string(pv.type)+" is not supported.");
+    case PropvalType::BYTE:
+        buff << pv.value.u8; break;
+    case PropvalType::SHORT:
+        buff << pv.value.u16; break;
+    case PropvalType::LONG:
+    case PropvalType::ERROR:
+        buff << pv.value.u32; break;
+    case PropvalType::LONGLONG:
+    case PropvalType::CURRENCY:
+    case PropvalType::FILETIME:
+        buff << pv.value.u64; break;
+    case PropvalType::FLOAT:
+        buff << pv.value.f; break;
+    case PropvalType::DOUBLE:
+    case PropvalType::FLOATINGTIME:
+        buff << pv.value.d; break;
+    case PropvalType::STRING:
+    case PropvalType::WSTRING:
+        buff << pv.value.str; break;
+    case PropvalType::BINARY:
+        uint32_t len;
+        memcpy(&len, pv.value.ptr, sizeof(len));
+        len = le32toh(len);
+        buff.push_raw(pv.value.ptr, len+sizeof(uint32_t)); break;
+    }
+}
+
+/**
+ * @brief      Serialize GUID to buffer
+ *
+ * @param      buff  Buffer to write data to
+ * @param      guid  GUID to serialize
+ */
+template<>
+void IOBuffer::Serialize<GUID>::push(IOBuffer& buff, const GUID& guid)
+{buff.push(guid.timeLow, guid.timeMid, guid.timeHighVersion, guid.clockSeq, guid.node);}
+
+/**
+ * @brief      Serialize XID with size information to buffer
+ *
+ * @param      buff  Buffer to write data to
+ * @param      sXID  SizedXID to serialize
+ */
+template<>
+void IOBuffer::Serialize<SizedXID>::push(IOBuffer& buff, const SizedXID& sXID)
+{
+    if(sXID.size < 17 || sXID.size > 24)
+        throw std::runtime_error("Invalid XID size: "+std::to_string(sXID.size));
+    buff.push(sXID.size);
+    sXID.writeXID(buff);
+}
+
+/**
+ * @brief      Serialize PermissionData to buffer
+ *
+ * @param      buff  Buffer to write data to
+ */
+template<>
+void IOBuffer::Serialize<PermissionData>::push(IOBuffer& buff, const PermissionData& pd)
+{
+    buff.push(pd.flags, uint16_t(pd.propvals.size()));
+    for(auto& propval : pd.propvals)
+        buff.push(propval);
+}
 
 }

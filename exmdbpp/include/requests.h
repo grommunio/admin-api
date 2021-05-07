@@ -2,13 +2,140 @@
 
 #include <string>
 #include <vector>
+#include <array>
+#include <limits>
+#include <stdexcept>
+#include <string>
 
+#include "constants.h"
 #include "structures.h"
+#include "IOBuffer.h"
 
 namespace exmdbpp
 {
 
-class IOBuffer;
+/**
+ * @brief      Convenience container interface
+ *
+ * Provides a simple interface for serializing arrays of objects.
+ *
+ * @tparam     SizeType  Type to use for length serialization
+ * @tparam     T         Element type
+ */
+template<typename SizeType, typename T>
+class Collection
+{
+public:
+    Collection(const std::vector<T>&) noexcept;
+    template<size_t N> constexpr Collection(const std::array<T, N>&) noexcept;
+    template<size_t N> constexpr Collection(const T(&)[N]) noexcept;
+
+    using value_type = T; ///< Type of contained values
+    using iterator = const T*; ///< Iterator type
+    using const_iterator = const T*; ///< Const iterator type
+
+    iterator begin() const noexcept;
+    iterator end() const noexcept;
+    size_t size() const noexcept;
+private:
+    const T *b, *e; ///< Beginning and end
+};
+
+/**
+ * @brief      Construct from vector
+ *
+ * @param      data      The data
+ *
+ * @tparam     SizeType  Type to use for length serialization
+ * @tparam     T         Element type
+ */
+template<typename SizeType, typename T>
+inline Collection<SizeType, T>::Collection(const std::vector<T>& data) noexcept : b(data.data()), e(data.data()+data.size())
+{}
+
+
+/**
+ * @brief      Construct from array
+ *
+ * If array size is bigger than the maximum value supported by SizeType,
+ * a compile time error is raised.
+ *
+ * @param      data      The data
+ *
+ * @tparam     SizeType  Type to use for length serialization
+ * @tparam     T         Element type
+ * @tparam     N         Array length
+ */
+template<typename SizeType, typename T>
+template<size_t N>
+inline constexpr Collection<SizeType, T>::Collection(const std::array<T, N>& data) noexcept
+    : b(data.begin()), e(data.end())
+{static_assert (N <= std::numeric_limits<SizeType>::max(), "SizeType is to small to encode array length");}
+
+/**
+ * @brief      Construct from C-style array
+ *
+ * If array size is bigger than the maximum value supported by SizeType,
+ * a compile time error is raised.
+ *
+ * @param      data      The data
+ *
+ * @tparam     SizeType  Type to use for length serialization
+ * @tparam     T         Element type
+ * @tparam     N         Array length
+ */
+template<typename SizeType, typename T>
+template<size_t N>
+inline constexpr Collection<SizeType, T>::Collection(const T (&data)[N]) noexcept : b(data), e(data+N)
+{static_assert (N <= std::numeric_limits<SizeType>::max(), "SizeType is to small to encode array length");}
+
+/**
+ * @brief      Return iterator to beginning
+ *
+ * @tparam     SizeType  Type to use for length serialization
+ * @tparam     T         Element type
+ *
+ * @return     Iterator to the first element
+ */
+template<typename SizeType, typename T>
+inline auto Collection<SizeType, T>::begin() const noexcept -> iterator
+{return b;}
+
+/**
+ * @brief      Return iterator to end
+ *
+ * @tparam     SizeType  Type to use for length serialization
+ * @tparam     T         Element type
+ *
+ * @return     Iterator to element following the last element
+ */
+template<typename SizeType, typename T>
+inline auto Collection<SizeType, T>::end() const noexcept -> iterator
+{return e;}
+
+/**
+ * @brief      Return size of collection
+ *
+ * @tparam     SizeType  Type to use for length serialization
+ * @tparam     T         Element type
+ *
+ * @return     Number of elements
+ */
+template<typename SizeType, typename T>
+inline size_t Collection<SizeType, T>::size() const noexcept
+{return e-b;}
+
+/**
+ * @brief      IOBuffer::Serialize specialization for Collection
+ *
+ * @tparam     SizeType  Type to use for length serialization
+ * @tparam     T         Element type
+ */
+template<typename SizeType, typename T>
+struct IOBuffer::Serialize<Collection<SizeType, T>>
+{static void push(IOBuffer&, const Collection<SizeType, T>&);};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief   RPC requests and responses
@@ -22,8 +149,7 @@ namespace requests
 struct NullResponse
 {
     NullResponse() = default;
-    NullResponse(IOBuffer&);
-
+    explicit NullResponse(IOBuffer&);
 };
 
 /**
@@ -31,27 +157,36 @@ struct NullResponse
  *
  * @tparam     Request  Request that triggered the response.
  */
-template<class Request>
+template<uint8_t CallId>
 struct Response final : NullResponse
-{
-using NullResponse::NullResponse;
-};
+{using NullResponse::NullResponse;};
 
 /**
- * @brief      Request to Response sype mapping struct
+ * @brief      Request ID to Response type mapping struct
  *
  * Allows reuse of Response classes by explicitely mapping Requests to specific
  * Response classes.
  *
  * The default is to map each Request to its own Response specialization (or
- * the generic, empty, response if no specialization is provided).
+ * the generic (empty) response if no specialization is provided).
  */
-template<class Request>
+template<uint8_t CallId>
 struct response_map
-{using type = Response<Request>;};
+{using type = Response<CallId>;};
+
+/// Response type resolution alias (by request)
+template<class Request>
+using Response_t = typename response_map<Request::callId>::type;
+
+/// Response type resolution alias (by request ID)
+template<uint8_t CallId>
+using Response_i = typename response_map<CallId>::type;
+
 
 /**
  * @brief      Do not perform any response interpretation
+ *
+ * Success of request is checked via return code on message reception by client
  *
  * @param      <unnamed>  Buffer to read from (unused)
  */
@@ -59,32 +194,18 @@ inline NullResponse::NullResponse(IOBuffer&)
 {}
 
 /**
- * @brief      Stream insertion operator overload for IOBuffer
+ * @brief   Load table response
  *
- * @param      buffer   Buffer to write data to
- * @param      req      Request to serialize
- *
- * @tparam     Request  Type of the request
- *
- * @return     Reference to the buffer
+ * Result of LoadHierarchyTableRequest or LoadPermissionTableRequest
  */
-template<class Request>
-inline IOBuffer& operator<<(IOBuffer& buffer, const Request& req)
+struct LoadTableResponse
 {
-    req.serialize(buffer);
-    return buffer;
-}
+    explicit LoadTableResponse(IOBuffer&);
 
-/**
- * @brief      Generic response for requests returning only success status
- */
-struct SuccessResponse
-{
-    SuccessResponse() = default;
-    SuccessResponse(IOBuffer&);
-
-    bool success;
+    uint32_t tableId;   ///< ID of the created view
+    uint32_t rowCount;  ///< Number of rows in the view
 };
+
 
 /**
  * @brief       Generic response containing a list of problems
@@ -94,7 +215,7 @@ struct SuccessResponse
 struct ProblemsResponse
 {
     ProblemsResponse() = default;
-    ProblemsResponse(IOBuffer&);
+    explicit ProblemsResponse(IOBuffer&);
 
     std::vector<structures::PropertyProblem> problems; ///< List of problems that occured when setting store values
 };
@@ -105,121 +226,256 @@ struct ProblemsResponse
 struct PropvalResponse
 {
     PropvalResponse() = default;
-    PropvalResponse(IOBuffer&);
+    explicit PropvalResponse(IOBuffer&);
 
-    std::vector<structures::TaggedPropval> propvals;
+    std::vector<structures::TaggedPropval> propvals; ///< Propvals genereated by the request
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**
+ * @brief      Generic response for requests returning only success status
+ */
+struct SuccessResponse
+{
+    SuccessResponse() = default;
+    explicit SuccessResponse(IOBuffer&);
+
+    bool success; ///< Whether the operation was successful
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 /**
- * @brief      Connection request
+ * @brief      Request template
+ *
+ * @tparam     CallId  ID of the RPC call
+ * @tparam     Args    RPC signature
  */
-struct ConnectRequest
+template<uint8_t CallId, typename... Args>
+struct Request
 {
-    ConnectRequest(const std::string&, bool);
+    static void write(IOBuffer&, const Args&...);
 
-    std::string prefix;     ///< Data area prefix managed by the server
-    std::string sessionID;  ///< [TODO]: Find out what this is used for
-    bool isPrivate;         ///< Whether private or public data is accessed
+    static constexpr uint8_t callId = CallId;
+};
 
-    static uint8_t SIDLEN;  ///< Number of charaters to use for session ID
+///////////////////////////////////////////////////////////////////////////////
 
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, bool, const std::string& = mkSessionID());
+/**
+ * @brief   Change number allocation request
+ *
+ * @param   string  homedir
+ *
+ * @return  Response<AllocateCnRequest::callId>
+ */
+struct AllocateCnRequest : public Request<constants::CallId::ALLOCATE_CN, std::string> {};
 
+template<>
+struct Response<AllocateCnRequest::callId>
+{
+    explicit Response(IOBuffer&);
+
+    uint64_t changeNum; ///< Newly allocated change number
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+/**
+ * @brief   Connection request
+ *
+ * @param   string  prefix
+ * @param   bool    private
+ *
+ * @return  NullResponse
+ */
+struct ConnectRequest : public
+        Request<constants::CallId::CONNECT, std::string, std::string, bool>
+{
+    static void write(IOBuffer&, const std::string&, bool);
 private:
     static std::string mkSessionID();
 };
 
-/**
- * @brief      Serialize request
- *
- * @param      buff  Buffer to write data to
- */
-inline void ConnectRequest::serialize(IOBuffer& buff) const
-{serialize(buff, prefix, isPrivate, sessionID);}
-
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief      Load hierarchy table request
+ * @brief   Create folder defined by list of properties
  *
- * Requests creation of a table view which can then be queries using QueryTableRequest.
- * The created table must be explicitely discarded with an UnloadTableRequest.
+ * @param   string          homedir
+ * @param   uint32_t        cpid
+ * @param   TaggedPropval[] propvals
+ *
+ * @return  Response<CreateFolderByPropertiesRequest::callId>
  */
-struct LoadHierarchyTableRequest
-{
-    LoadHierarchyTableRequest(const std::string&, uint64_t, const std::string&, uint8_t);
-
-    std::string homedir;    ///< Home directory of the domain
-    uint64_t folderId;      ///< ID of the folder to view
-    std::string username;   ///< [TODO] Find out what this is used for
-    uint8_t tableFlags;     ///< [TODO] Find out what this is used for
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, uint64_t, const std::string&, uint8_t);
-};
+struct CreateFolderByPropertiesRequest : public Request<constants::CallId::CREATE_FOLDER_BY_PROPERTIES,
+        std::string, uint32_t, Collection<uint16_t, structures::TaggedPropval>>
+{};
 
 /**
- * @brief      Serialize request
- *
- * @param      buff  Buffer to write data to
- */
-inline void LoadHierarchyTableRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir, folderId, username, tableFlags);}
-
-/**
- * @brief      Response specialization for LoadHierarchyTableRequest
+ * @brief      Response specialization for CreateFolderByPropertiesRequest
  */
 template<>
-struct Response<LoadHierarchyTableRequest>
+struct Response<CreateFolderByPropertiesRequest::callId>
 {
-    Response(IOBuffer&);
+    Response() = default;
+    explicit Response(IOBuffer&);
 
-    uint32_t tableId;   ///< ID of the created view
-    uint32_t rowCount;  ///< Number of rows in the view
+    uint64_t folderId; ///< ID of the newly created folder
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief      Query table request
+ * @brief   Delete folder
  *
- * Used to load data from a table created with LoadHierarchyTableRequest.
+ * @param   string      homedir
+ * @param   uint32_t    cpid
+ * @param   uint64_t    folderId
+ * @param   bool        hard
+ *
+ * @return  SuccessResponse
  */
-struct QueryTableRequest
-{
-    QueryTableRequest(const std::string&, const std::string&, uint32_t, uint32_t, const std::vector<uint32_t>&, uint32_t, uint32_t);
+struct DeleteFolderRequest : public Request<constants::CallId::DELETE_FOLDER,
+        std::string, uint32_t, uint64_t, bool>
+{};
 
-    std::string homedir;
-    std::string username;
-    uint32_t cpid;
-    uint32_t tableId;
-    std::vector<uint32_t> proptags;
-    uint32_t startPos;
-    uint32_t rowNeeded;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, const std::string&, uint32_t, uint32_t, const std::vector<uint32_t>&, uint32_t, uint32_t);
-};
 
 /**
- * @brief      Serialize request
- *
- * @param      buff  Buffer to write data to
+ * Response type override for delete folder request (-> SuccessResponse)
  */
-inline void QueryTableRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir, username, cpid, tableId, proptags, startPos, rowNeeded);}
+template<>
+struct response_map<DeleteFolderRequest::callId>
+{using type = SuccessResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Get folder properties
+ *
+ * @param   string      homedir
+ * @param   uint32_t    cpid
+ * @param   uint64_t    folderId
+ * @param   uint32_t[]  proptags
+ *
+ * @return PropvalResponse
+ */
+struct GetFolderPropertiesRequest : public Request<constants::CallId::GET_FOLDER_PROPERTIES,
+        std::string, uint32_t, uint64_t, Collection<uint16_t, uint32_t>>
+{};
+
+/**
+ * Response type override for get folder properties request (-> PropvalResponse)
+ */
+template<>
+struct response_map<GetFolderPropertiesRequest::callId>
+{using type = PropvalResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Get store properties request
+ *
+ * @param   string      homedir
+ * @param   uint32_t    cpid
+ * @param   uint32_t[]  proptags
+ *
+ * @return  PropvalResponse
+ */
+struct GetStorePropertiesRequest : public Request<constants::CallId::GET_STORE_PROPERTIES,
+        std::string, uint32_t, Collection<uint16_t, uint32_t>>
+{};
+
+/**
+ * Response type override for get store properties request (-> PropvalResponse)
+ */
+template<>
+struct response_map<GetStorePropertiesRequest::callId>
+{using type = PropvalResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Load data into a table
+ *
+ * Recursively loads all elements below `folderId` into a table.
+ *
+ * Use QueryTableRequest to retrieve the loaded data.
+ *
+ * Note that the table must be manually unloaded with UnloadTableRequest after
+ * usage.
+ *
+ * @param   string      homedir
+ * @param   uint64_t    folderId
+ * @param   string      username
+ * @param   uint8_t     tableFlags
+ *
+ * @return  LoadTableResponse
+ */
+struct LoadHierarchyTableRequest : public Request<constants::CallId::LOAD_HIERARCHY_TABLE,
+        std::string, uint64_t, std::string, uint8_t, bool>
+{static void write(IOBuffer&, const std::string&, const uint64_t&, const std::string&, const uint8_t&);};
+
+/**
+ * Response type override for load hierarchy table request (-> LoadTableResponse)
+ */
+template<>
+struct response_map<LoadHierarchyTableRequest::callId>
+{using type = LoadTableResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Load folder permission table
+ *
+ * Use QueryTableRequest to retrieve the loaded data.
+ *
+ * Note that the table must be manually unloaded with UnloadTableRequest after
+ * usage.
+ *
+ * @param   string      homedir
+ * @param   uint64_t    folderId
+ * @param   uint8_t     tableFlags
+ *
+ * @return  LoadTableResponse
+ */
+struct LoadPermissionTableRequest : public Request<constants::CallId::LOAD_PERMISSION_TABLE,
+        std::string, uint64_t, uint8_t>
+{};
+
+/**
+ * Response type override for load hierarchy table request (-> LoadTableResponse)
+ */
+template<>
+struct response_map<LoadPermissionTableRequest::callId>
+{using type = LoadTableResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Retrieve data from previously loaded table
+ *
+ * @param   string      homedir
+ * @param   string      username;
+ * @param   uint32_t    cpid;
+ * @param   uint32_t    tableId;
+ * @param   uint32_t[]  proptags;
+ * @param   uint32_t    startPos;
+ * @param   uint32_t    rowNeeded;
+ *
+ * @return  Response<QueryTableRequest::callId>
+ */
+struct QueryTableRequest : public Request<constants::CallId::QUERY_TABLE,
+        std::string, std::string, uint32_t, uint32_t, Collection<uint16_t, uint32_t>, uint32_t, uint32_t>
+{};
 
 /**
  * @brief      Response specialization for QueryTableRequest
  */
 template<>
-struct Response<QueryTableRequest>
+struct Response<QueryTableRequest::callId>
 {
     Response() = default;
-    Response(IOBuffer&);
+    explicit Response(IOBuffer&);
 
     std::vector<std::vector<structures::TaggedPropval> > entries; ///< Returned rows of entries
 };
@@ -227,349 +483,89 @@ struct Response<QueryTableRequest>
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief      Unload table request
+ * @brief   Set folder properties
  *
- * Discard view previously created with LoadHierarchyTableRequest.
- */
-struct UnloadTableRequest
-{
-    UnloadTableRequest(const std::string&, uint32_t);
-
-    std::string homedir;
-    uint32_t tableId;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, uint32_t);
-};
-
-/**
- * @brief      Serialize request
+ * @param   string          homedir
+ * @param   uint32_t        cpid
+ * @param   uint64_t        folderId
+ * @param   TaggedPropval[] propvals
  *
- * @param      buff  Buffer to write data to
+ * @return  ProblemsResponse
  */
-inline void UnloadTableRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir, tableId);}
+struct SetFolderPropertiesRequest : public Request<constants::CallId::SET_FOLDER_PROPERTIES,
+        std::string, uint32_t, uint64_t, Collection<uint16_t, structures::TaggedPropval>>
+{};
 
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Change number allocation request
- */
-struct AllocateCnRequest
-{
-    AllocateCnRequest(const std::string&);
-
-    std::string homedir;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&);
-};
-
-/**
- * @brief      Serialize request
- *
- * @param      buff  Buffer to write data to
- */
-inline void AllocateCnRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir);}
-
-/**
- * @brief      Response specialization for AllocateCnRequest
- */
-template<>
-struct Response<AllocateCnRequest>
-{
-    Response(IOBuffer&);
-
-    uint64_t changeNum; ///< Newly allocated change number
-};
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Create folder defined by list of properties
- */
-struct CreateFolderByPropertiesRequest
-{
-    CreateFolderByPropertiesRequest(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
-
-    std::string homedir;
-    uint32_t cpid;
-    std::vector<structures::TaggedPropval> propvals;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
-};
-
-/**
- * @brief      Serialize request
- *
- * @param      buff  Buffer to write data to
- */
-inline void CreateFolderByPropertiesRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir, cpid, propvals);}
-
-/**
- * @brief      Response specialization for CreateFolderByPropertiesRequest
- */
-template<>
-struct Response<CreateFolderByPropertiesRequest>
-{
-    Response() = default;
-    Response(IOBuffer&);
-
-    uint64_t folderId; ///< ID of the newly cerated folder
-};
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Delete folder
- */
-struct DeleteFolderRequest
-{
-    DeleteFolderRequest(const std::string&, uint32_t, uint64_t, bool);
-
-    std::string homedir;
-    uint32_t cpid;
-    uint64_t folderId;
-    bool hard;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, uint32_t, uint64_t, bool);
-};
-
-/**
- * @brief      Serialize request
- *
- * @param      buff  Buffer to write data to
- */
-inline void DeleteFolderRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir, cpid, folderId, hard);}
-
-/**
- * Response type override for delete folder request (-> SuccessResponse)
- */
-template<>
-struct response_map<DeleteFolderRequest>
-{using type = SuccessResponse;};
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief   Load folder permission table
- */
-struct LoadPermissionTableRequest
-{
-    LoadPermissionTableRequest(const std::string&, uint64_t, uint8_t=0);
-
-    std::string homedir;
-    uint64_t folderId;
-    uint8_t tableFlags;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, uint64_t, uint8_t=0);
-};
-
-/**
- * @brief      Serialize request
- *
- * @param      buff  Buffer to write data to
- */
-inline void LoadPermissionTableRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir, folderId, tableFlags);}
-
-/**
- * @brief      Response specialization for LoadPermissionTableRequest
- */
-template<>
-struct Response<LoadPermissionTableRequest>
-{
-    Response(IOBuffer&);
-
-    uint32_t tableId;   ///< ID of the created view
-    uint32_t rowCount;  ///< Number of rows in the view
-};
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief   Update folder permissions
- */
-struct UpdateFolderPermissionRequest
-{
-    UpdateFolderPermissionRequest(const std::string&, uint64_t, bool, const std::vector<structures::PermissionData>&);
-
-    const std::string& homedir;
-    uint64_t folderId;
-    bool freebusy;
-    std::vector<structures::PermissionData> permissions;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, uint64_t, bool, const std::vector<structures::PermissionData>&);
-};
-
-/**
- * @brief      Serialize request
- *
- * @param      buff  Buffer to write data to
- */
-inline void UpdateFolderPermissionRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir, folderId, freebusy, permissions);}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Update store properties
- */
-struct SetStorePropertiesRequest
-{
-    SetStorePropertiesRequest(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
-
-    std::string homedir;
-    uint32_t cpid;
-    std::vector<structures::TaggedPropval> propvals;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
-};
-
-/**
- * @brief      Serialize request
- *
- * @param      buff  Buffer to write data to
- */
-inline void SetStorePropertiesRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir, cpid, propvals);}
-
-/**
- * Response type override for set store properties request (-> ProblemsResponse)
- */
-template<>
-struct response_map<SetStorePropertiesRequest>
-{using type = ProblemsResponse;};
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Unload store
- */
-struct UnloadStoreRequest
-{
-    UnloadStoreRequest(const std::string&);
-
-    std::string homedir;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&);
-};
-
-/**
- * @brief      Serialize request
- *
- * @param      buff  Buffer to write data to
- */
-inline void UnloadStoreRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir);}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief       Set folder properties
- */
-struct SetFolderPropertiesRequest
-{
-    SetFolderPropertiesRequest(const std::string&, uint32_t, uint64_t, const std::vector<structures::TaggedPropval>&);
-
-    std::string homedir;
-    uint32_t cpid;
-    uint64_t folderId;
-    std::vector<structures::TaggedPropval> propvals;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, uint32_t, uint64_t, const std::vector<structures::TaggedPropval>&);
-};
-
-/**
- * @brief      Serialize request
- *
- * @param      buff  Buffer to write data to
- */
-inline void SetFolderPropertiesRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir, cpid, folderId, propvals);}
 
 /**
  * Response type override for set folder properties request (-> ProblemsResponse)
  */
 template<>
-struct response_map<SetFolderPropertiesRequest>
+struct response_map<SetFolderPropertiesRequest::callId>
 {using type = ProblemsResponse;};
 
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief       Get folder properties
- */
-struct GetFolderPropertiesRequest
-{
-    GetFolderPropertiesRequest(const std::string&, uint32_t, uint64_t, const std::vector<uint32_t>&);
-
-    std::string homedir;
-    uint32_t cpid;
-    uint64_t folderId;
-    std::vector<uint32_t> proptags;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, uint32_t, uint64_t, const std::vector<uint32_t>&);
-};
-
-/**
- * @brief      Serialize request
+ * @brief   Update store properties
  *
- * @param      buff  Buffer to write data to
+ * @param   string          homedir
+ * @param   uint32_t        cpid
+ * @param   TaggedPropval[] propvals
+ *
+ * @return  PropblemsResponse
  */
-inline void GetFolderPropertiesRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir, cpid, folderId, proptags);}
+struct SetStorePropertiesRequest : public Request<constants::CallId::SET_STORE_PROPERTIES,
+        std::string, uint32_t, Collection<uint16_t, structures::TaggedPropval>>
+{};
+
 
 /**
- * Response type override for get folder properties request (-> PropvalResponse)
+ * Response type override for set store properties request (-> ProblemsResponse)
  */
 template<>
-struct response_map<GetFolderPropertiesRequest>
-{using type = PropvalResponse;};
+struct response_map<SetStorePropertiesRequest::callId>
+{using type = ProblemsResponse;};
 
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief       Get store properties
- */
-struct GetStorePropertiesRequest
-{
-    GetStorePropertiesRequest(const std::string&, uint32_t, const std::vector<uint32_t>&);
-
-    std::string homedir;
-    uint32_t cpid;
-    std::vector<uint32_t> proptags;
-
-    void serialize(IOBuffer&) const;
-    static void serialize(IOBuffer&, const std::string&, uint32_t, const std::vector<uint32_t>&);
-};
-
-/**
- * @brief      Serialize request
+ * @brief   Close store database
  *
- * @param      buff  Buffer to write data to
+ * @param   string  homedir
+ *
+ * @return  NullResponse
  */
-inline void GetStorePropertiesRequest::serialize(IOBuffer& buff) const
-{serialize(buff, homedir, cpid, proptags);}
+struct UnloadStoreRequest : public Request<constants::CallId::UNLOAD_STORE, std::string>{};
+
+///////////////////////////////////////////////////////////////////////////////
 
 /**
- * Response type override for get store properties request (-> PropvalResponse)
+ * @brief   Unload table
+ *
+ * @param   string      homedir
+ * @param   uint32_t    tableId
+ *
+ * @return  NullResponse
  */
-template<>
-struct response_map<GetStorePropertiesRequest>
-{using type = PropvalResponse;};
+struct UnloadTableRequest : public Request<constants::CallId::UNLOAD_TABLE, std::string, uint32_t> {};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Update folder permissions
+ *
+ * @param   string              homedir
+ * @param   uint64_t            folderId
+ * @param   bool                freebusy
+ * @param   PermissionData[]    permissions
+ *
+ * @return  NullResponse
+ */
+struct UpdateFolderPermissionRequest : public Request<constants::CallId::UPDATE_FOLDER_PERMISSION,
+        std::string, uint64_t, bool, Collection<uint16_t, structures::PermissionData>>
+{};
+
 }
 
 }

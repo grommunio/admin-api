@@ -56,7 +56,7 @@ def createPublicFolder(domainID):
     data = request.json
     try:
         client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["domainPrefix"], False)
-        response = client.createPublicFolder(domain.homedir, domain.ID, data["displayname"], data["container"], data["comment"])
+        response = client.createFolder(domain.homedir, domain.ID, data["displayname"], data["container"], data["comment"])
     except pyexmdb.ExmdbError as err:
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
     if response.folderId == 0:
@@ -124,7 +124,7 @@ def deletePublicFolder(domainID, folderID):
         return jsonify(message="Domain not found"), 404
     try:
         client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["domainPrefix"], False)
-        response = client.deletePublicFolder(domain.homedir, folderID)
+        response = client.deleteFolder(domain.homedir, folderID)
     except pyexmdb.ExmdbError as err:
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
     if not response.success:
@@ -142,7 +142,7 @@ def getPublicFolderOwnerList(domainID, folderID):
         return jsonify(message="Domain not found"), 404
     try:
         client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["domainPrefix"], False)
-        response = pyexmdb.FolderOwnerListResponse(client.getPublicFolderOwnerList(domain.homedir, folderID))
+        response = pyexmdb.FolderOwnerListResponse(client.getFolderOwnerList(domain.homedir, folderID))
     except pyexmdb.ExmdbError as err:
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
     owners = [{"memberID": owner.memberId, "displayName": owner.memberName}

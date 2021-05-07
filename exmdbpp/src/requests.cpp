@@ -3,7 +3,7 @@
  * SPDX-FileCopyrightText: 2020 grammm GmbH
  */
 #include "requests.h"
-#include "IOBufferOps.h"
+#include "IOBufferImpl.h"
 #include "constants.h"
 
 #include <random>
@@ -12,17 +12,47 @@
 using namespace exmdbpp::structures;
 using namespace exmdbpp::constants;
 
+namespace exmdbpp
+{
+
+/**
+ * @brief      Serialize collection into buffer
+ *
+ * Includes the size as SizeType element before the actual data.
+ * If the number of elements cannot be represented by SizeType, a
+ * std::range_error is thrown.
+ *
+ * @param      buff   Buffer to insert into
+ * @param      col    Collection to serialize
+ *
+ * @tparam     SizeType  Type to use for length serialization
+ * @tparam     T         Element type
+ */
+template<typename SizeType, typename T>
+void IOBuffer::Serialize<Collection<SizeType, T>>::push(IOBuffer& buff, const Collection<SizeType, T>& col)
+{
+    constexpr size_t maxSize = std::numeric_limits<SizeType>::max();
+    if(col.size() > maxSize)
+        throw std::range_error("Array size "+std::to_string(col.size())+
+                               " is too large for SizeType (max "+ std::to_string(maxSize)+")");
+    IOBuffer::Serialize<SizeType>::push(buff, SizeType(col.size()));
+    for(auto const& v : col)
+        IOBuffer::Serialize<typename Collection<SizeType, T>::value_type>::push(buff, v);
+}
+
+}
+
+
 namespace exmdbpp::requests
 {
 
 /**
- * @brief      Deserialize response data
+ * @brief      Deserialize load table response
  *
- * @param      buff  Buffer containing the response
+ * @param      buff  Buffer containing the data
  */
-SuccessResponse::SuccessResponse(IOBuffer& buff) : success(buff.pop<uint8_t>())
-{}
-
+LoadTableResponse::LoadTableResponse(IOBuffer& buff)
+{buff.pop(tableId, rowCount);}
 
 /**
  * @brief      Deserialize problems response
@@ -50,28 +80,45 @@ PropvalResponse::PropvalResponse(IOBuffer& buff)
         propvals.emplace_back(buff);
 }
 
+/**
+ * @brief      Deserialize response data
+ *
+ * @param      buff  Buffer containing the response
+ */
+SuccessResponse::SuccessResponse(IOBuffer& buff) : success(buff.pop<uint8_t>())
+{}
+
 ///////////////////////////////////////////////////////////////////////////////
 
-uint8_t ConnectRequest::SIDLEN = 15;
+/**
+ * @brief      Generic request serialization
+ *
+ * Provides serialization of call ID and parameters.
+ *
+ * Must be explicitely instantiated to be available to the linker.
+ *
+ * @param      buf   Buffer to wirte serialization to
+ * @param      args  The arguments
+ *
+ * @tparam     ID    RPC call ID
+ * @tparam     Args  RPC signature
+ */
+template<uint8_t ID, typename... Args>
+void Request<ID, Args...>::Request:: write(IOBuffer& buf, const Args&... args)
+{buf.push(ID, args...);}
+
+
+static uint8_t SIDLEN = 15; ///< Length of the session ID
+/// Available session ID characters
 static const std::string sidchars("0123456789abcdefghjklmnopqrstvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+/// Rng used for session ID creation
 static std::mt19937_64 rng(ulong(std::chrono::system_clock::now().time_since_epoch().count()));
 
 /**
  * @brief      Initialize a connection request
  */
-ConnectRequest::ConnectRequest(const std::string& prefix, bool isPrivate) :
-    prefix(prefix),
-    sessionID(mkSessionID()),
-    isPrivate(isPrivate)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void ConnectRequest::serialize(IOBuffer& buff, const std::string& prefix, bool isPrivate, const std::string& sessionID)
-{buff << CallId::CONNECT << prefix << sessionID << isPrivate;}
+void ConnectRequest::ConnectRequest::write(IOBuffer& buf, const std::string& prefix, bool isPrivate)
+{Request::write(buf, prefix, mkSessionID(), isPrivate);}
 
 /**
  * @brief      Generate session ID
@@ -88,72 +135,43 @@ std::string ConnectRequest::mkSessionID()
         sessionID += sidchars[rng()%sidchars.length()];
     return sessionID;
 }
-///////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief      Initialize load hierarchy table request
- */
-LoadHierarchyTableRequest::LoadHierarchyTableRequest(const std::string& homedir, uint64_t folderId,
-                                                     const std::string& username, uint8_t tableFlags) :
-    homedir(homedir), folderId(folderId), username(username), tableFlags(tableFlags)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
+ * @brief      LoadHierarchyTableRequest augmentation
  *
- * @param      buff       Buffer to write to
- */
-void LoadHierarchyTableRequest::serialize(IOBuffer& buff, const std::string& homedir, uint64_t folderId,
-                                          const std::string& username, uint8_t tableFlags)
-{
-    buff << CallId::LOAD_HIERARCHY_TABLE << homedir << folderId << !username.empty();
-    if(!username.empty())
-        buff << username;
-    buff << tableFlags << false;
-}
-
-/**
- * @brief      Deserialize response data
+ * LoadHierarchyTable expects Restrictions, which are currently not implemented.
  *
  * @param      buff  Buffer containing the data
  */
-Response<LoadHierarchyTableRequest>::Response(IOBuffer& buff)
-{buff >> tableId >> rowCount;}
+void LoadHierarchyTableRequest::write(IOBuffer& buff, const std::string& homedir, const uint64_t& folderId,
+                                      const std::string& username, const uint8_t& tableFlags)
+{Request::write(buff, homedir, folderId, username, tableFlags, false);}
 
 ///////////////////////////////////////////////////////////////////////////////
+//Response specializations
 
 /**
- * @brief      Initialize query table request
- */
-QueryTableRequest::QueryTableRequest(const std::string& homedir, const std::string& username, uint32_t cpid, uint32_t tableId,
-                                     const std::vector<uint32_t>& proptags, uint32_t startPos, uint32_t rowNeeded) :
-    homedir(homedir), username(username), cpid(cpid), tableId(tableId), proptags(proptags), startPos(startPos),
-    rowNeeded(rowNeeded)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void QueryTableRequest::serialize(IOBuffer& buff, const std::string& homedir, const std::string& username, uint32_t cpid,
-                                  uint32_t tableId,const std::vector<uint32_t>& proptags, uint32_t startPos, uint32_t rowNeeded)
-{
-    buff << CallId::QUERY_TABLE << homedir << !username.empty();
-    if(!username.empty())
-        buff << username;
-    buff << cpid << tableId << uint16_t(proptags.size());
-    for(uint32_t proptag : proptags)
-        buff << proptag;
-    buff << startPos << rowNeeded;
-}
-
-/**
- * @brief      Deserialize response data
+ * @brief      Deserialize changenum allocation response
  *
  * @param      buff  Buffer containing the data
  */
-Response<QueryTableRequest>::Response(IOBuffer& buff)
+Response<AllocateCnRequest::callId>::Response(IOBuffer& buff) : changeNum(buff.pop<uint64_t>())
+{}
+
+/**
+ * @brief      Deserialize folder creation response
+ *
+ * @param      buff  Buffer containing the data
+ */
+Response<CreateFolderByPropertiesRequest::callId>::Response(IOBuffer& buff) : folderId(buff.pop<uint64_t>())
+{}
+
+/**
+ * @brief      Deserialize query table response
+ *
+ * @param      buff  Buffer containing the data
+ */
+Response<QueryTableRequest::callId>::Response(IOBuffer& buff)
 {
     entries.resize(buff.pop<uint32_t>());
     for(auto& entry : entries)
@@ -166,251 +184,20 @@ Response<QueryTableRequest>::Response(IOBuffer& buff)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// Explicit template instantiations for requests
 
-/**
- * @brief      Initialize unload table request
- */
-UnloadTableRequest::UnloadTableRequest(const std::string& homedir, uint32_t tableId) : homedir(homedir), tableId(tableId)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void UnloadTableRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t tableId)
-{buff << CallId::UNLOAD_TABLE << homedir << tableId;}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Initialize change number allocation request
- */
-
-AllocateCnRequest::AllocateCnRequest(const std::string& homedir) : homedir(homedir)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void AllocateCnRequest::serialize(IOBuffer& buff, const std::string& homedir)
-{buff << CallId::ALLOCATE_CN << homedir;}
-
-
-/**
- * @brief      Deserialize response data
- *
- * @param      buff  Buffer containing the data
- */
-Response<AllocateCnRequest>::Response(IOBuffer& buff) : changeNum(buff.pop<uint64_t>())
-{}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Initialize folder creation request
- */
-CreateFolderByPropertiesRequest::CreateFolderByPropertiesRequest(const std::string& homedir, uint32_t cpid,
-                                                                 const std::vector<TaggedPropval>& propvals)
-    : homedir(homedir), cpid(cpid), propvals(propvals)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void CreateFolderByPropertiesRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid,
-                                                const std::vector<TaggedPropval>& propvals)
-{
-    buff << CallId::CREATE_FOLDER_BY_PROPERTIES << homedir << cpid << uint16_t(propvals.size());
-    for(const TaggedPropval& propval : propvals)
-        propval.serialize(buff);
-}
-
-/**
- * @brief      Deserialize response data
- *
- * @param      buff  Buffer containing the data
- */
-Response<CreateFolderByPropertiesRequest>::Response(IOBuffer& buff) : folderId(buff.pop<uint64_t>())
-{}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Initialize folder deletion request
- */
-DeleteFolderRequest::DeleteFolderRequest(const std::string& homedir, uint32_t cpid, uint64_t folderId, bool hard)
-    : homedir(homedir), cpid(cpid), folderId(folderId), hard(hard)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void DeleteFolderRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid, uint64_t folderId, bool hard)
-{buff << CallId::DELETE_FOLDER << homedir << cpid << folderId << hard;}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Initialize load permission table request
- */
-LoadPermissionTableRequest::LoadPermissionTableRequest(const std::string& homedir, uint64_t folderId, uint8_t tableFlags)
-    : homedir(homedir), folderId(folderId), tableFlags(tableFlags)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void LoadPermissionTableRequest::serialize(IOBuffer& buff, const std::string& homedir, uint64_t folderId, uint8_t tableFlags)
-{buff << CallId::LOAD_PERMISSION_TABLE << homedir << folderId << tableFlags;}
-
-/**
- * @brief      Deserialize response data
- *
- * @param      buff  Buffer containing the data
- */
-Response<LoadPermissionTableRequest>::Response(IOBuffer& buff) : tableId(buff.pop<uint32_t>()), rowCount(buff.pop<uint32_t>())
-{}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Initialize update folder permission request
- */
-UpdateFolderPermissionRequest::UpdateFolderPermissionRequest(const std::string& homedir, uint64_t folderId, bool freebusy,
-                                                             const std::vector<structures::PermissionData>& permissions)
-    : homedir(homedir), folderId(folderId), freebusy(freebusy), permissions(permissions)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void UpdateFolderPermissionRequest::serialize(IOBuffer& buff, const std::string& homedir, uint64_t folderId, bool freebusy,
-                                              const std::vector<structures::PermissionData>& permissions)
-{
-    buff << CallId::UPDATE_FOLDER_PERMISSION << homedir << folderId << freebusy << uint16_t(permissions.size());
-    for(auto& permissionData : permissions)
-        permissionData.serialize(buff);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Initialize store update request
- */
-SetStorePropertiesRequest::SetStorePropertiesRequest(const std::string& homedir, uint32_t cpid,
-                                                     const std::vector<structures::TaggedPropval>& propvals)
-    : homedir(homedir), cpid(cpid), propvals(propvals)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void SetStorePropertiesRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid,
-                                          const std::vector<structures::TaggedPropval>& propvals)
-{
-    buff << CallId::SET_STORE_PROPERTIES << homedir << cpid << uint16_t(propvals.size());
-    for(const TaggedPropval& propval : propvals)
-        propval.serialize(buff);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Initialize unload store request
- */
-UnloadStoreRequest::UnloadStoreRequest(const std::string& homedir) : homedir(homedir)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void UnloadStoreRequest::serialize(IOBuffer& buff, const std::string& homedir)
-{buff << CallId::UNLOAD_STORE << homedir;}
-
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Initialize set folder properties request
- */
-SetFolderPropertiesRequest::SetFolderPropertiesRequest(const std::string& homedir, uint32_t cpid, uint64_t folderId,
-                                                       const std::vector<TaggedPropval>& propvals) :
-    homedir(homedir), cpid(cpid), folderId(folderId), propvals(propvals)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void SetFolderPropertiesRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid, uint64_t folderId,
-                                           const std::vector<structures::TaggedPropval>& propvals)
-{
-    buff << CallId::SET_FOLDER_PROPERTIES << homedir << cpid << folderId << uint16_t(propvals.size());
-    for(auto& propval : propvals)
-        propval.serialize(buff);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Initialize get folder properties request
- */
-GetFolderPropertiesRequest::GetFolderPropertiesRequest(const std::string& homedir, uint32_t cpid, uint64_t folderId,
-                                                       const std::vector<uint32_t>& proptags) :
-    homedir(homedir), cpid(cpid), folderId(folderId), proptags(proptags)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void GetFolderPropertiesRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid, uint64_t folderId,
-                                           const std::vector<uint32_t>& proptags)
-{
-    buff << CallId::GET_FOLDER_PROPERTIES << homedir << cpid << folderId << uint16_t(proptags.size());
-    for(uint32_t proptag : proptags)
-        buff << proptag;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief      Initialize get store properties request
- */
-GetStorePropertiesRequest::GetStorePropertiesRequest(const std::string& homedir, uint32_t cpid,
-                                                     const std::vector<uint32_t>& proptags) :
-    homedir(homedir), cpid(cpid), proptags(proptags)
-{}
-
-/**
- * @brief      Write serialized request data to buffer
- *
- * @param      buff       Buffer to write to
- */
-void GetStorePropertiesRequest::serialize(IOBuffer& buff, const std::string& homedir, uint32_t cpid,
-                                           const std::vector<uint32_t>& proptags)
-{
-    buff << CallId::GET_STORE_PROPERTIES << homedir << cpid << uint16_t(proptags.size());
-    for(uint32_t proptag : proptags)
-        buff << proptag;
-}
+template struct Request<constants::CallId::ALLOCATE_CN, std::string>;
+template struct Request<constants::CallId::CREATE_FOLDER_BY_PROPERTIES, std::string, uint32_t, Collection<uint16_t, structures::TaggedPropval>>;
+template struct Request<constants::CallId::DELETE_FOLDER, std::string, uint32_t, uint64_t, bool>;
+template struct Request<constants::CallId::GET_FOLDER_PROPERTIES, std::string, uint32_t, uint64_t, Collection<uint16_t, uint32_t>>;
+template struct Request<constants::CallId::GET_STORE_PROPERTIES, std::string, uint32_t, Collection<uint16_t, uint32_t>>;
+template struct Request<constants::CallId::LOAD_HIERARCHY_TABLE, std::string, uint64_t, std::string, uint8_t>;
+template struct Request<constants::CallId::LOAD_PERMISSION_TABLE, std::string, uint64_t, uint8_t>;
+template struct Request<constants::CallId::QUERY_TABLE, std::string, std::string, uint32_t, uint32_t, Collection<uint16_t, uint32_t>, uint32_t, uint32_t>;
+template struct Request<constants::CallId::SET_FOLDER_PROPERTIES, std::string, uint32_t, uint64_t, Collection<uint16_t, structures::TaggedPropval>>;
+template struct Request<constants::CallId::SET_STORE_PROPERTIES, std::string, uint32_t, Collection<uint16_t, structures::TaggedPropval>>;
+template struct Request<constants::CallId::UNLOAD_STORE, std::string>;
+template struct Request<constants::CallId::UNLOAD_TABLE, std::string, uint32_t>;
+template struct Request<constants::CallId::UPDATE_FOLDER_PERMISSION, std::string, uint64_t, bool, Collection<uint16_t, structures::PermissionData>>;
 
 }

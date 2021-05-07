@@ -3,6 +3,7 @@
  * SPDX-FileCopyrightText: 2020-2021 grammm GmbH
  */
 #include "ExmdbClient.h"
+#include "IOBufferImpl.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -13,7 +14,6 @@
 #include <stdexcept>
 
 #include "constants.h"
-#include "IOBufferOps.h"
 
 namespace exmdbpp
 {
@@ -123,7 +123,7 @@ void ExmdbClient::Connection::send(IOBuffer& buff)
     buff.resize(length);
     for(uint32_t offset = 0;offset < length;offset += bytes)
     {
-        bytes = recv(sock, buff.data(), length, 0);
+        bytes = recv(sock, buff.data()+offset, length-offset, 0);
         if(bytes < 0)
             throw std::runtime_error("Message reception failed");
         if(bytes == 0)
@@ -155,7 +155,7 @@ ExmdbClient::ExmdbClient(const std::string& host, const std::string& port, const
 void ExmdbClient::connect(const std::string& host, const std::string& port, const std::string& prefix, bool isPrivate)
 {
     connection.connect(host, port);
-    send(ConnectRequest(prefix, isPrivate));
+    send<ConnectRequest>(prefix, isPrivate);
 }
 
 }

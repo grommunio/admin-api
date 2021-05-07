@@ -5,15 +5,9 @@
 #include <array>
 #include <vector>
 
-namespace exmdbpp
-{
+#include "IOBuffer.h"
 
-class IOBuffer;
-
-/**
- * @brief   MAPI structures
- */
-namespace structures
+namespace exmdbpp::structures
 {
 
 /**
@@ -25,7 +19,7 @@ public:
 
 
     TaggedPropval() = default;
-    TaggedPropval(IOBuffer&);
+    explicit TaggedPropval(IOBuffer&);
     TaggedPropval(const TaggedPropval&);
     TaggedPropval(TaggedPropval&&);
     ~TaggedPropval();
@@ -61,10 +55,8 @@ public:
         double d;
         char* str;
         uint16_t* wstr;
-        void* ptr;
+        void* ptr = nullptr;
     } value; ///< Data contained by the tag
-
-    void serialize(IOBuffer&) const;
 
 private:
     bool owned = true; ///< Whether the memory stored in pointer values is owned (automatically deallocated in destructor)
@@ -73,6 +65,7 @@ private:
     void copyData(const void*, size_t);
     void free();
 };
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -88,21 +81,6 @@ struct GUID
     std::array<uint8_t, 6> node;
 
     static GUID fromDomainId(uint32_t);
-
-    void serialize(IOBuffer&) const;
-};
-
-/**
- * @brief      XID class
- */
-struct XID
-{
-    XID(const GUID&, uint64_t);
-
-    GUID guid;
-    uint64_t localId;
-
-    void serialize(IOBuffer&, uint8_t) const;
 };
 
 /**
@@ -112,10 +90,11 @@ struct SizedXID
 {
     SizedXID(uint8_t, const GUID&, uint64_t);
 
-    uint8_t size;
-    XID xid;
+    void writeXID(IOBuffer&) const;
 
-    void serialize(IOBuffer&) const;
+    GUID guid;
+    uint64_t localId;
+    uint8_t size;
 };
 
 /**
@@ -128,8 +107,6 @@ struct PermissionData
     uint8_t flags;
     std::vector<TaggedPropval> propvals;
 
-    void serialize(IOBuffer&) const;
-
     static const uint8_t ADD_ROW = 0x01;
     static const uint8_t MODIFY_ROW = 0x02;
     static const uint8_t REMOVE_ROW = 0x04;
@@ -141,7 +118,7 @@ struct PermissionData
 struct PropertyProblem
 {
     PropertyProblem() = default;
-    PropertyProblem(IOBuffer&);
+    explicit PropertyProblem(IOBuffer&);
 
     uint16_t index;
     uint32_t proptag;
@@ -149,5 +126,15 @@ struct PropertyProblem
 };
 
 }
+
+namespace exmdbpp
+{
+
+//Serialization declarations for structures
+
+template<> void IOBuffer::Serialize<structures::TaggedPropval>::push(IOBuffer&, const structures::TaggedPropval&);
+template<> void IOBuffer::Serialize<structures::PermissionData>::push(IOBuffer&, const structures::PermissionData&);
+template<> void IOBuffer::Serialize<structures::GUID>::push(IOBuffer&, const structures::GUID&);
+template<> void IOBuffer::Serialize<structures::SizedXID>::push(IOBuffer&, const structures::SizedXID&);
 
 }
