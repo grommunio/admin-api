@@ -31,8 +31,13 @@ def setLdapConfig():
     if data is None:
         return jsonify(message="Missing configuration"), 400
     error = ldap.reloadConfig(data)
+    forced = False
     if error:
-        return jsonify(message=error), 400
+        if request.args.get("force") == "true":
+            forced = True
+        else:
+            return jsonify(message=error), 400
     error = mconf.dumpLdap(data)
-    return jsonify(message="LDAP configuration updated"+("" if error is None else
-                                                         ", save to disk failed: "+error))
+    if error:
+        return jsonify(message="Configuration updated, but save to disk failed: "+error), 500
+    return jsonify(message="Force updated LDAP configuration" if forced else "LDAP configuration updated")
