@@ -48,7 +48,7 @@ def login():
 def getProfile():
     user = request.auth["user"]
     capabilities = tuple(user.permissions().capabilities())
-    return jsonify(user=user.fulldesc(), capabilities=capabilities)
+    return jsonify(user=user.fulldesc(exclude={"fetchmail"}), capabilities=capabilities)
 
 
 def updatePasswordUnauth(data):

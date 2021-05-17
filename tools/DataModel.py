@@ -314,34 +314,36 @@ class DataModel:
                                  getattr(cls, "_sortables_", set()),
                                  getattr(cls, "_matchables_", tuple()))
 
-    def ref(self):
+    def ref(self, **kwargs):
         """Generate level 0 representation.
 
         See todict for more information.
         """
-        return self.todict(0)
+        return self.todict(0, **kwargs)
 
-    def overview(self):
+    def overview(self, **kwargs):
         """Generate level 1 representation.
 
         See todict for more information.
         """
-        return self.todict(1)
+        return self.todict(1, **kwargs)
 
-    def fulldesc(self):
+    def fulldesc(self, **kwargs):
         """Generate level 2 representation.
 
         See todict for more information.
         """
-        return self.todict(2)
+        return self.todict(2, **kwargs)
 
-    def todict(self, verbosity):
+    def todict(self, verbosity, exclude=set()):
         """Create dictionary representation of the object.
 
         Parameters
         ----------
         verbosity : int
             Level of detail.
+        exclude : set
+            Attributes to exclude
 
         Returns
         -------
@@ -350,7 +352,7 @@ class DataModel:
         """
         self._init()
         return {prop.key: prop.value(self) for prop in self._meta.props(verbosity, lambda x: x.proxy is None)
-                if "hidden" not in prop.flags}
+                if "hidden" not in prop.flags and prop.attr not in exclude}
 
     @classmethod
     def optimize_query(cls, query, verbosity):

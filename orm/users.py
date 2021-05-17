@@ -50,7 +50,7 @@ class Users(DataModel, DB.Base):
                       BoolP("changePassword", flags="patch"),
                       BoolP("publicAddress", flags="patch"),
                       RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
-                      RefProp("fetchmail", flags="managed, patch", link="ID"),
+                      RefProp("fetchmail", flags="managed, patch", link="ID", qopt=selectinload),
                       RefProp("properties", flags="patch, managed", link="name", flat="val", qopt=selectinload),
                       RefProp("roles", qopt=selectinload)),
                      ({"attr": "password", "flags": "init, hidden"},))
