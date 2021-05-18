@@ -132,7 +132,7 @@ def _setupCliDbconf(subp: ArgumentParser):
     get = sub.add_parser("get", help="Print file or key")
     get.set_defaults(_handle=cliDbconfGet)
     get.add_argument("service", help="Service get configuration for").completer = _autocompService
-    get.add_argument("file", nargs="?", help="File or section. If omitted print all files").completer = _autocompFile
+    get.add_argument("file", help="File or section. If omitted print all files").completer = _autocompFile
     get.add_argument("key", nargs="?", help="Configuration entry. If omitted, print complete file").completer = _autocompKey
     list = sub.add_parser("list", help="List services, files or keys")
     list.set_defaults(_handle=cliDbconfList)

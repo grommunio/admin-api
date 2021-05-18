@@ -58,7 +58,7 @@ class LDAPGuard:
         return repr(self.__obj)
 
 
-_defaultProps = {"storagequotalimit": mconf.LDAP.get("users", {}).get("defaultQuota", 42)}
+_defaultProps = {"storagequotalimit": mconf.LDAP.get("users", {}).get("defaultQuota", 1024*1024)}
 _unescapeRe = re.compile(rb"\\(?P<value>[a-fA-F0-9]{2})")
 _userAttributes = None
 LDAPConn = None
@@ -120,7 +120,7 @@ def _matchFiltersMulti(IDs):
     return "(&{}{}{})".format(filters, IDfilters, ldapconf["users"].get("filter", ""))
 
 
-def _searchFilters(query, domains=None):
+def _searchFilters(query, domains=None, userconf=None):
     """Generate search filters string.
 
     Includes a filter for each entry in ldap.users.filters and adds substring filters for all attributes in
@@ -137,18 +137,19 @@ def _searchFilters(query, domains=None):
     str
         A string including all search filters.
     """
-    username = ldapconf["users"]["username"]
-    filterexpr = "".join("("+f+")" for f in ldapconf["users"].get("filters", ()))
+    conf = userconf or ldapconf["users"]
+    username = conf["username"]
+    filterexpr = "".join("("+f+")" for f in conf.get("filters", ()))
     domainexpr = "(|{})".format("".join("({}=*@{})".format(username, d) for d in domains)) if domains is not None else ""
     if query is not None:
         query = escape_filter_chars(query)
-        searchexpr = "(|{})".format("".join(("("+sattr+"=*"+query+"*)" for sattr in ldapconf["users"]["searchAttributes"])))
+        searchexpr = "(|{})".format("".join(("("+sattr+"=*"+query+"*)" for sattr in conf["searchAttributes"])))
     else:
         searchexpr = ""
-    return "(&{}{}{}{})".format(filterexpr, searchexpr, domainexpr, ldapconf["users"].get("filter", ""))
+    return "(&{}{}{}{})".format(filterexpr, searchexpr, domainexpr, conf.get("filter", ""))
 
 
-def _searchBase():
+def _searchBase(conf=None):
     """Generate directory name to search.
 
     If configured, adds the ldap.users.subtree path to ldap.baseDn. Otherwise only ldap.baseDn is returned.
@@ -158,9 +159,10 @@ def _searchBase():
     str
         LDAP directory to search for users.
     """
-    if "users" in ldapconf and "subtree" in ldapconf["users"]:
-        return ldapconf["users"]["subtree"]+","+ldapconf["baseDn"]
-    return ldapconf["baseDn"]
+    conf = conf or ldapconf
+    if "users" in conf and "subtree" in conf["users"]:
+        return conf["users"]["subtree"]+","+conf["baseDn"]
+    return conf["baseDn"]
 
 
 def unescapeFilterChars(text):
@@ -372,12 +374,13 @@ def _createConnection(server, bindUser, bindPass, starttls):
 
 def _testConfig(ldapconf):
     for required in ("baseDn", "objectID", "users", "connection"):
-        if required not in ldapconf or ldapconf[required] is None:
+        if required not in ldapconf or ldapconf[required] is None or len(ldapconf[required]) == 0:
             raise KeyError("Missing required config value '{}'".format(required))
-    if "server" not in ldapconf["connection"] or ldapconf["connection"]["server"] is None:
+    if "server" not in ldapconf["connection"] or ldapconf["connection"]["server"] is None or\
+       len(ldapconf["connection"]["server"]) == 0:
         raise KeyError("Missing required config value 'connection.server'")
     for required in ("username", "searchAttributes", "displayName"):
-        if required not in ldapconf["users"] or ldapconf["users"][required] is None:
+        if required not in ldapconf["users"] or ldapconf["users"][required] is None or len(ldapconf["users"][required]) == 0:
             raise KeyError("Missing required config value 'users.{}'".format(required))
     _templatesEnabled = ldapconf["users"].get("templates", [])
     _userAttributes = {}
@@ -395,6 +398,11 @@ def _testConfig(ldapconf):
                          ldapconf["connection"].get("starttls", False))
     if LDAPConn.error is not None:
         raise LDAPConn.error
+    if "filter" in ldapconf["users"]:
+        f = ldapconf["users"]["filter"]
+        if f is not None and len(f) != 0 and f[0] != "(" and f[-1] != ")":
+            ldapconf["users"]["filter"] = "("+f+")"
+    LDAPConn.search(_searchBase(ldapconf), _searchFilters(" ", userconf=ldapconf["users"]), attributes=[], paged_size=0)
     return LDAPConn, _userAttributes
 
 
