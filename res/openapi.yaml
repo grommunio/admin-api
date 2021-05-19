@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.21.2
+  version: 0.21.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2250,6 +2250,8 @@ paths:
         - LDAP
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/completeSync'
       responses:
         '200':
           description: Update process successful
@@ -2259,24 +2261,38 @@ paths:
                 type: object
                 properties:
                   data:
-                    type: array
-                    description: List of updated users
-                    items:
-                      type: object
-                      properties:
-                        ID:
-                          $ref: '#/components/schemas/ID'
-                        username:
-                          type: string
-                        code:
-                          type: integer
-                          description: HTTP-like status code of the user update
-                          enum: [200, 404, 500, 503]
-                        message:
-                          type: string
-                          description: Update message
+                    $ref: '#/components/schemas/syncStatus'
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /domains/{domainID}/ldap/downsync:
+    post:
+      summary: Update all LDAP imported users in this domain
+      tags:
+        - LDAP
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/completeSync'
+      responses:
+        '200':
+          description: Update process successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/syncStatus'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
         '503':
@@ -2581,6 +2597,13 @@ components:
       explode: false
       schema:
         $ref: '#/components/schemas/intList'
+    completeSync:
+      name: import
+      in: query
+      required: false
+      description: Import new users from LDAP
+      schema:
+        type: boolean
     systemdUnit:
       name: unit
       description: Name of the unit to signal
@@ -3278,6 +3301,23 @@ components:
           description: Additional fetchmail options
           type: string
           nullable: true
+    syncStatus:
+      type: array
+      description: List of updated/imported users
+      items:
+        type: object
+        properties:
+          ID:
+            $ref: '#/components/schemas/ID'
+          username:
+            type: string
+          code:
+            type: integer
+            description: HTTP-like status code of the user update or import
+            enum: [200, 201, 400, 404, 409, 500, 503]
+          message:
+            type: string
+            description: Update/import message
   responses:
     ServerError:
       description: An error occured while processing the request

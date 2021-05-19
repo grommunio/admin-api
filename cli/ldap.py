@@ -149,8 +149,8 @@ def _downsyncUser(candidate, yes, auto, force, reloadHttp=True):
     if domain is None:
         print(Cli.col("Cannot import user: Domain not found", "red"))
         return ERR_INVALID_DATA
-    user = Users.optimized_query(2).filter(Users.externID == candidate.ID).first() or\
-        Users.optimized_query(2).filter(Users.username == candidate.email).first()
+    user = Users.query.filter(Users.externID == candidate.ID).first() or\
+        Users.query.filter(Users.username == candidate.email).first()
     if user is not None:
         if user.externID != candidate.ID and not force:
             if auto:
@@ -224,8 +224,7 @@ def cliLdapDownsync(args):
             error = error or result != SUCCESS
         return ERR_GENERIC if error else SUCCESS
     elif args.complete:
-        from time import time
-        candidates = ldap.searchUsers(None)
+        candidates = ldap.searchUsers(None, limit=None)
         if len(candidates) == 0:
             print("No LDAP users found.")
             return SUCCESS
@@ -259,12 +258,13 @@ def cliLdapDownsync(args):
 def cliLdapSearch(args):
     Cli.require("LDAP")
     from tools import ldap
-    matches = ldap.searchUsers(args.query)
+    matches = ldap.searchUsers(args.query, limit=args.max_results or None)
     if len(matches) == 0:
-        print("No matches")
+        print(Cli.col("No matches", "yellow"))
         return ERR_NO_USER
     for match in matches:
         print("{}: {} ({})".format(Cli.col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), match.name, match.email))
+    print("({} match{})".format(len(matches), "" if len(matches) == 1 else "es"))
 
 
 def cliLdapCheck(args):
@@ -415,7 +415,9 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     reload.set_defaults(_handle=cliLdapReload)
     search = sub.add_parser("search", help="Search LDAP tree")
     search.set_defaults(_handle=cliLdapSearch)
-    search.add_argument("query")
+    search.add_argument("query", nargs="?", help="Optional search query, omit to return all users")
+    search.add_argument("-n", "--max-results", type=int, default=25,
+                        help="Maximum number of results or 0 to disable limit (default: 25)")
 
 
 @Cli.command("ldap", _cliLdapParserSetup, help="LDAP configuration, diagnostics and synchronization")

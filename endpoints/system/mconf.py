@@ -35,6 +35,7 @@ def setLdapConfig():
     if error:
         if request.args.get("force") == "true":
             forced = True
+            ldap.disable()
         else:
             return jsonify(message=error), 400
     error = mconf.dumpLdap(data)

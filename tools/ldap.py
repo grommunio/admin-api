@@ -310,7 +310,7 @@ def downsyncUser(ID, props=None):
     return userdata
 
 
-def searchUsers(query, domains=None):
+def searchUsers(query, domains=None, limit=25):
     """Search for ldap users matchig the query.
 
     Parameters
@@ -337,7 +337,7 @@ def searchUsers(query, domains=None):
     LDAPConn.search(_searchBase(),
                     _searchFilters(query, domains),
                     attributes=[IDattr, name, email],
-                    paged_size=25)
+                    paged_size=limit)
     return exact+[GenericObject(ID=result[IDattr].raw_values[0],
                                 email=result[email].value,
                                 name=result[name].value)
