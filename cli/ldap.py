@@ -200,7 +200,7 @@ def _downsyncUser(candidate, yes, auto, force, reloadHttp=True):
         print(Cli.col("Error during user setup: "+us.error))
         return ERR_SETUP
     DB.session.commit()
-    print("User '{}' created with ID {}.".format(user.username, user.ID))
+    print("User '{}' created with ID {}.".format(Cli.col(user.username, attrs=["bold"]), Cli.col(user.ID, attrs=["bold"])))
     if reloadHttp:
         _reloadGromoxHttp()
     return SUCCESS

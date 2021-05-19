@@ -298,7 +298,10 @@ def downsyncUser(ID, props=None):
     """
     if not LDAP_available:
         return None
-    LDAPConn.search(_searchBase(), _matchFilters(ID), attributes=["*", ldapconf["objectID"]])
+    try:
+        LDAPConn.search(_searchBase(), _matchFilters(ID), attributes=["*", ldapconf["objectID"]])
+    except:
+        return None
     if len(LDAPConn.response) == 0:
         return None
     if len(LDAPConn.response) > 1:
