@@ -42,3 +42,26 @@ def setLdapConfig():
     if error:
         return jsonify(message="Configuration updated, but save to disk failed: "+error), 500
     return jsonify(message="Force updated LDAP configuration" if forced else "LDAP configuration updated")
+
+
+@API.route(api.BaseRoute+"/system/mconf/authmgr", methods=["GET", "DELETE"])
+@secure(requireDB=True, authLevel="user")
+def getAuthmgrConfig():
+    checkPermissions(SystemAdminPermission())
+    if request.method == "DELETE":
+        mconf.dumpAuthmgr({})
+        return jsonify(message="authmgr configuration set to default")
+    return jsonify(data=mconf.AUTHMGR)
+
+
+@API.route(api.BaseRoute+"/system/mconf/authmgr", methods=["PUT"])
+@secure(requireDB=True, authLevel="user")
+def setAuthmgrConfig():
+    checkPermissions(SystemAdminPermission())
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify(message="Missing configuration"), 400
+    error = mconf.dumpAuthmgr(data)
+    if error:
+        return jsonify(message="Configuration updated, but save to disk failed: "+error), 500
+    return jsonify(message="authmgr configuration updated")

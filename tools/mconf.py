@@ -11,6 +11,7 @@ from .config import Config
 from .misc import setDirectoryOwner, setDirectoryPermission
 
 LDAP = {}
+AUTHMGR = {}
 
 
 def _loadConf(path):
@@ -49,6 +50,9 @@ def _addIfDef(dc, d, sc, s, all=False, type=None):
         return v if type is None else type(v)
     if s in sc:
         dc[d] = tf(sc[s]) if not all else [tf(v) for v in sc.getall(s)]
+
+
+###############################################################################
 
 
 def _transformLdap(conf):
@@ -142,8 +146,63 @@ def dumpLdap(conf=None, file=None):
         return " - ".join((str(arg) for arg in err.args))
 
 
+###############################################################################
+
+
+def loadAuthmgr():
+    """(Re)load authmgr configuration from disk.
+
+    Returns
+    -------
+    str
+        Error message or None if successful
+    """
+    if "authmgrPath" not in Config["mconf"]:
+        return "mconf.authmgrPath not set"
+    try:
+        global AUTHMGR
+        rconf = _loadConf(Config["mconf"]["authmgrPath"])
+        AUTHMGR = {"authBackendSelection": rconf.get("auth_backend_selection", "always_mysql")}
+    except Exception as err:
+        return " - ".join((str(arg) for arg in err.args))
+
+
+def dumpAuthmgr(conf=None, file=None):
+    """Write authmgr configuration to disk.
+
+    Parameters
+    ----------
+    conf : dict, optional
+        New authmgr configuration or None to use current config.
+
+    Returns
+    -------
+    str
+        Error message or None if successful
+    """
+    if "authmgrPath" not in Config["mconf"]:
+        return "mconf.authmgrPath not set"
+    try:
+        global AUTHMGR
+        if conf is not None:
+            AUTHMGR = conf
+        wconf = {"auth_backend_selection": AUTHMGR.get("authBackendSelection", "always_mysql")}
+        if file is None:
+            _dumpConf(Config["mconf"]["authmgrPath"], wconf)
+        else:
+            _fDumpConf(file, wconf)
+    except Exception as err:
+        return " - ".join((str(arg) for arg in err.args))
+
+
+###############################################################################
+
+
 def load():
     error = loadLdap()
+    if error:
+        logging.warn("Could not load ldap config: "+error)
+    error = loadAuthmgr()
     if error:
         logging.warn("Could not load ldap config: "+error)
 

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.21.3
+  version: 0.21.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2395,6 +2395,69 @@ paths:
       responses:
         '200':
           description: LDAP deactivated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /system/mconf/authmgr:
+    get:
+      summary: Get the current authmgr configuration
+      tags:
+        - System Admin/MConf
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: authmgr configuration returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authBackendSelection:
+                    type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      summary: Set new authmgr configuration
+      tags:
+        - System Admin/MConf
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                authBackendSelection:
+                  type: string
+                  enum: [always_mysql, always_ldap, externid]
+      responses:
+        '200':
+          description: authmgr configuration updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      summary: Reset authmgr configuration to default
+      tags:
+        - System Admin/MConf
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: authmgr configuration reset
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '500':

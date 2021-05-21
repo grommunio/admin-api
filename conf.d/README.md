@@ -46,6 +46,7 @@ Possible parameters:
 - `fileGid` (`string` or `int`): If set, change ownership of created configuration files to this group. Defaults to `options.fileGid` if omitted
 - `filePermissions` (`int`): If set, change file permissions of created configuration files to this bitmask. Defaults to `options.filePermissions` if omitted
 - `ldapPath` (`string`): Path to the LDAP configuration file
+- `authmgrPath` (`string`): Path to the authmgr configuration file
 
 ### Logs ###
 grammm-admin can provide access to journald logs through the API. Accessible log files can be configured in the `logs` object.  
