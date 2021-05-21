@@ -94,7 +94,7 @@ class GenericObject:
 def setDirectoryOwner(path, uid=None, gid=None):
     """Recursively set directory ownership of path.
 
-    If neither uid nor gid is set, the function return immediatly without touching any files.
+    If neither uid nor gid is set, the function returns immediatly without touching any files.
 
     Parameters
     ----------
@@ -106,9 +106,42 @@ def setDirectoryOwner(path, uid=None, gid=None):
     """
     import os
     import shutil
+    uid = None if uid == "" else uid
+    gid = None if gid == "" else gid
     if uid is None and gid is None:
         return
+    if os.path.isfile(path):
+        shutil.chown(path, uid, gid)
     for path, subdirs, files in os.walk(path):
         shutil.chown(path, uid, gid)
         for entry in subdirs+files:
             shutil.chown(os.path.join(path, entry), uid, gid)
+
+
+def setDirectoryPermission(path, mode):
+    """Recursively set directory permissions of path.
+
+    If mode is not set, the function returns immediatly without touching any files.
+
+    Parameters
+    ----------
+    path : str
+        Name of the target directory or file
+    uid : str or in, optional
+        uid of the new owner
+    gid : str or int, optional
+    """
+    import os
+    if not mode:
+        return
+    if os.path.isfile(path):
+        os.chmod(path, mode)
+    dirmode = mode
+    for field in range(0, 9, 3):
+        dirmode |= 1<<field if mode & 7<<field else 0
+    for path, subdirs, files in os.walk(path):
+        os.chmod(path, dirmode)
+        for entry in subdirs:
+            os.chmod(os.path.join(path, entry), dirmode)
+        for entry in files:
+            os.chmod(os.path.join(path, entry), mode)

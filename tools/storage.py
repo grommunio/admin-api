@@ -6,7 +6,7 @@ from math import ceil
 import os
 import shutil
 
-from .misc import setDirectoryOwner
+from .misc import setDirectoryOwner, setDirectoryPermission
 from .structures import XID, GUID
 from .config import Config
 from .constants import PropTags, ConfigIDs, PublicFIDs, PrivateFIDs, Misc
@@ -183,6 +183,7 @@ class DomainSetup(SetupContext):
             self.createExmdb()
             try:
                 setDirectoryOwner(self.domain.homedir, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
+                setDirectoryPermission(self.domain.homedir, Config["options"].get("filePermissions"))
             except Exception as err:
                 logging.warn("Could not set domain directory ownership: "+" - ".join(str(arg) for arg in err.args))
             self.success = True
@@ -273,6 +274,7 @@ class UserSetup(SetupContext):
             self.createMidb()
             try:
                 setDirectoryOwner(self.user.maildir, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
+                setDirectoryPermission(self.user.maildir, Config["options"].get("filePermissions"))
             except Exception as err:
                 logging.warn("Could not set user directory ownership: "+" - ".join(str(arg) for arg in err.args))
             self.success = True

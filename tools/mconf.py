@@ -8,7 +8,7 @@ Module containing admin Managed CONFigurations
 import logging
 
 from .config import Config
-from .misc import setDirectoryOwner
+from .misc import setDirectoryOwner, setDirectoryPermission
 
 LDAP = {}
 
@@ -37,7 +37,11 @@ def _fDumpConf(file, conf):
 def _dumpConf(path, conf):
     with open(path, "w") as file:
         _fDumpConf(file, conf)
-    setDirectoryOwner(path, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
+    uid = Config["mconf"].get("fileUid", Config["options"].get("fileUid"))
+    gid = Config["mconf"].get("fileGid", Config["options"].get("fileGid"))
+    prm = Config["mconf"].get("filePermissions", Config["options"].get("filePermissions"))
+    setDirectoryOwner(path, uid, gid)
+    setDirectoryPermission(path, prm)
 
 
 def _addIfDef(dc, d, sc, s, all=False, type=None):

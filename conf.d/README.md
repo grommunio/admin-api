@@ -42,6 +42,9 @@ Possible parameters:
 ### Managed Configurations ###
 Some configurations can be managed by grammm-admin. Parameters can be configured by the `mconf` object.  
 Possible parameters:
+- `fileUid` (`string` or `int`): If set, change ownership of created configuration files to this user. Defaults to `options.fileUid` if omitted
+- `fileGid` (`string` or `int`): If set, change ownership of created configuration files to this group. Defaults to `options.fileGid` if omitted
+- `filePermissions` (`int`): If set, change file permissions of created configuration files to this bitmask. Defaults to `options.filePermissions` if omitted
 - `ldapPath` (`string`): Path to the LDAP configuration file
 
 ### Logs ###
@@ -62,5 +65,6 @@ Further parameters can be set in the `options` object:
 - `exmdbPort` (`string`, default: `5000`): Port of the exmdb service provider
 - `fileUid` (`string` or `int`): If set, change ownership of created files to this user
 - `fileGid` (`string` or `int`): If set, change ownership of created files to this group
+- `filePermissions` (`int`): If set, change file permissions of any created files to this bitmask
 - `antispamUrl` (`string`, default: `http://127.0.0.1:11334`): URL of the grammm-antispam backend
 - `antispamEndpoints` (`list of strings`, default: `["stat", "graph", "errors"]`): List of allowed endpoints to proxy to grammm-antispam
