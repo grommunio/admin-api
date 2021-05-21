@@ -155,7 +155,7 @@ class Users(DataModel, DB.Base):
         return self.username.rsplit("@", 1)[0]
 
     def domainName(self):
-        return self.username.rsplit("@", 1)[0] if "@" in self.username else None
+        return self.username.rsplit("@", 1)[1] if "@" in self.username else None
 
     def permissions(self):
         if self.ID == 0:
@@ -265,6 +265,14 @@ class Users(DataModel, DB.Base):
     @status.expression
     def status(cls):
         return cls.addressStatus.op("&")(0x3)
+
+    @hybrid_property
+    def domainStatus(self):
+        return self.addressStatus >> 4 & 0x3
+
+    @status.setter
+    def status(self, val):
+        self.addressStatus = (self.addressStatus & ~0x30) | (val << 4 & 0x30)
 
     @staticmethod
     def count(*filters):

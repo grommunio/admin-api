@@ -9,14 +9,16 @@ import jwt
 from tools import ldap
 from tools.config import Config
 
+_priFile = Config["security"]["jwtPrivateKeyFile"]
+_pubFile = Config["security"]["jwtPublicKeyFile"]
 try:
-    with open(Config["security"]["jwtPrivateKeyFile"], "rb") as file:  # Private key for JWT signing
+    with open(_priFile, "rb") as file:  # Private key for JWT signing
         jwtPrivkey = file.read()
-    with open(Config["security"]["jwtPublicKeyFile"], "rb") as file:  # Public key for JWT signature verification
+    with open(_pubFile, "rb") as file:  # Public key for JWT signature verification
         jwtPubkey = file.read()
 except:
     import logging
-    logging.error("Could not load JWT RSA keys, authentication will not work")
+    logging.error("Could not load JWT RSA keys ('{}', '{}'), authentication will not work".format(_priFile, _pubFile))
     jwtPrivkey = jwtPubkey = None
 
 
@@ -167,7 +169,10 @@ def loginUser(username, password):
         return False, "Invalid username or password"
     if not userLoginAllowed(user):
         return False, "Access denied"
-    token = mkJWT({"usr": user.username})
+    try:
+        token = mkJWT({"usr": user.username})
+    except:
+        return False, "Token generation failed"
     return True, (token.decode("ascii") if isinstance(token, bytes) else token)
 
 

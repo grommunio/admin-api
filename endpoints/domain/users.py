@@ -107,8 +107,6 @@ def patchUser(domainID, userID):
     data = request.get_json(silent=True, cache=True)
     if data is None:
         return jsonify(message="Could not update: no valid JSON data"), 400
-    if user.externID is not None and data.get("ldapID", True) is not None:
-        return jsonify(message="Cannot modify LDAP imported user"), 400
     props = data.get("properties")
     storeprops = ("storagequotalimit", "prohibitreceivequota", "prohibitsendquota")
     updateStore = props is not None and any(prop in props and props[prop] != user.getProp(prop) for prop in storeprops)

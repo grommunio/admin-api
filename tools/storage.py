@@ -183,8 +183,8 @@ class DomainSetup(SetupContext):
             self.createExmdb()
             try:
                 setDirectoryOwner(self.domain.homedir, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
-            except Exception:
-                logging.warn("Could not set domain directory ownership: "+" - ".join(Exception.args))
+            except Exception as err:
+                logging.warn("Could not set domain directory ownership: "+" - ".join(str(arg) for arg in err.args))
             self.success = True
         except PermissionError as err:
             logging.error(traceback.format_exc())
@@ -273,8 +273,8 @@ class UserSetup(SetupContext):
             self.createMidb()
             try:
                 setDirectoryOwner(self.user.maildir, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
-            except Exception:
-                logging.warn("Could not set user directory ownership: "+" - ".join(Exception.args))
+            except Exception as err:
+                logging.warn("Could not set user directory ownership: "+" - ".join(str(arg) for arg in err.args))
             self.success = True
         except PermissionError as err:
             logging.error(traceback.format_exc())
