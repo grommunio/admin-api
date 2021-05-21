@@ -190,6 +190,7 @@ class DomainSetup(SetupContext):
         except PermissionError as err:
             logging.error(traceback.format_exc())
             self.error = "Could not create home directory ({})".format(err.args[1])
+            self.errorCode = 500
         except:
             logging.error(traceback.format_exc())
             self.error = "Unknown error"
