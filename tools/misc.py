@@ -134,6 +134,7 @@ def setDirectoryPermission(path, mode):
     import os
     if not mode:
         return
+    mode = int(mode, 0)
     if os.path.isfile(path):
         os.chmod(path, mode)
     dirmode = mode

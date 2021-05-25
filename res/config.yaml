@@ -138,9 +138,11 @@ properties:
           - type: integer
             description: Change ownership of created files to this group (ID)
       filePermissions:
-        type: integer
-        nullable: true
-        description: Permission bitmask of newly created files
+        oneOf:
+          - type: integer
+            description: Permission bitmask of newly created files
+          - type: string
+            description: Permission bitmask of newly created files
       antispamUrl:
           type: string
           default: 'http://127.0.0.1:11334'
@@ -168,9 +170,11 @@ properties:
           - type: integer
             description: Change ownership of created files to this group (ID)
       filePermissions:
-        type: integer
-        nullable: true
-        description: Permission bitmask of newly created files
+        oneOf:
+          - type: integer
+            description: Permission bitmask of newly created files
+          - type: string
+            description: Permission bitmask of newly created files
       ldapPath:
         type: string
         description: Path to the ldap configuration file
