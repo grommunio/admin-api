@@ -8,7 +8,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker, class_mapper, Query
-from urllib.parse import quote_plus
 
 from tools.config import Config
 
@@ -72,11 +71,11 @@ def _loadDBConfig():
         logging.info("Database connection not specified. Using default '127.0.0.1:3306'")
     host = DBconf.get("host", "127.0.0.1")
     port = DBconf.get("port", 3306)
-    return "mysql+mysqldb://{user}:{password}@{host}:{port}/{db}".format(user=quote_plus(DBconf["user"]),
-                                                                         password=quote_plus(DBconf["pass"]),
-                                                                         host=quote_plus(host),
+    return "mysql+mysqldb://{user}:{password}@{host}:{port}/{db}".format(user=DBconf["user"],
+                                                                         password=DBconf["pass"],
+                                                                         host=host,
                                                                          port=port,
-                                                                         db=quote_plus(DBconf["database"]))
+                                                                         db=DBconf["database"])
 
 
 if Config["options"]["disableDB"]:
