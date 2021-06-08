@@ -6,25 +6,14 @@ from . import Cli
 
 from argparse import ArgumentParser
 
-
-def _getDomainFilter(spec):
-    if spec is None:
-        return True
-    from orm.domains import Domains
-    from orm.users import Users
-    from sqlalchemy import or_
-    try:
-        ID = int(spec, 0)
-    except:
-        ID = None
-    return Users.domainID.in_(Domains.query.filter(or_(Domains.ID == ID, Domains.domainname.ilike("%"+spec+"%")))
-                              .with_entities(Domains.ID))
+_statusMap = {0: "active", 1: "suspended", 2: "out-of-date", 3: "deleted"}
+_statusColor = {0: "green", 1: "yellow", 2: "yellow", 3: "red"}
 
 
 def _mkUserQuery(args):
     from .common import userFilter
     from orm.users import Users
-    query = Users.query.filter(userFilter(args.userspec, _getDomainFilter(args.domain)))
+    query = Users.query.filter(userFilter(args.userspec))
     if "filter" in args and args.filter is not None:
         query = Users.autofilter(query, {f.split("=", 1)[0]: f.split("=", 1)[1] for f in args.filter if "=" in f})
     if "sort" in args and args.sort is not None:
@@ -32,80 +21,91 @@ def _mkUserQuery(args):
     return query
 
 
-def _dumpUser(user, indent=0):
+def _mkStatus(cli, status):
+    return cli.col(_statusMap.get(status, "unknown"), _statusColor.get(status, "magenta"))
+
+
+def _dumpUser(cli, user, indent=0):
     from ldap3.utils.conv import escape_filter_chars
-    from orm import DB
-    for attr in ("ID", "username", "domainID", "maildir", "addressStatus", "privilegeBits"):
+    for attr in ("ID", "username", "domainID", "maildir", "privilegeBits"):
         v = getattr(user, attr, None)
-        print("{}{}: {}".format(" "*indent, attr, v if v is not None else ""))
-    print(" "*indent+"externID: "+escape_filter_chars(user.externID))
-    print(" "*indent+"aliases:"+(" (none)" if len(user.aliases) == 0 else ""))
+        cli.print("{}{}: {}".format(" "*indent, attr, v if v is not None else ""))
+    cli.print("{}addressStatus: {} ({}|{})".format(" "*indent, user.addressStatus,
+                                                   _mkStatus(cli, user.status), _mkStatus(cli, user.domainStatus)))
+    cli.print(" "*indent+"externID: "+(escape_filter_chars(user.externID) if user.externID is not None else
+                                       cli.col("(none)", attrs=["dark"])))
+    cli.print(" "*indent+"aliases:"+(cli.col(" (none)", attrs=["dark"]) if len(user.aliases) == 0 else ""))
     for alias in user.aliases:
-        print(" "*indent+"  "+alias.aliasname)
-    print(" "*indent+"roles:"+(" (none)" if len(user.roles) == 0 else ""))
+        cli.print(" "*indent+"  "+alias.aliasname)
+    cli.print(" "*indent+"roles:"+(cli.col(" (none)", attrs=["dark"]) if len(user.roles) == 0 else ""))
     for role in user.roles:
-        print(" "*indent+"  "+role.name)
-    print(" "*indent+"properties:"+(" (none)" if len(user.properties) == 0 else ""))
+        cli.print(" "*indent+"  "+role.name)
+    cli.print(" "*indent+"fetchmail:"+ (cli.col(" (none)", attrs=["dark"]) if len(user.fetchmail) == 0 else ""))
+    for fml in user.fetchmail:
+        cli.print("{}  {}@{}/{} ({})".format(" "*indent, fml.srcUser, fml.srcServer, fml.srcFolder,
+                                             cli.col("active", "green") if fml.active == 1 else cli.col("inactive", "red")))
+    cli.print(" "*indent+"properties:"+(cli.col(" (none)", attrs=["dark"]) if len(user.properties) == 0 else ""))
     for key, value in user.propmap.items():
-        print("{}  {}: {}".format(" "*indent, key, value))
+        cli.print("{}  {}: {}".format(" "*indent, key, value))
 
 
 def cliUserShow(args):
-    Cli.require("DB")
-    from orm import DB
-    if args.id:
-        from orm.users import Users
-        users = Users.query.filter(Users.ID == args.userspec).all()
-    else:
-        users = _mkUserQuery(args).all()
+    cli = args._cli
+    cli.require("DB")
+    users = _mkUserQuery(args).all()
     if len(users) == 0:
-        print(Cli.col("No users found.", "yellow"))
+        cli.print(cli.col("No users found.", "yellow"))
         return 1
     for user in users:
-        print(Cli.col("{} ({}):".format(user.username, user.ID), attrs=["bold"]))
-        _dumpUser(user, 2)
-    DB.session.rollback()
+        cli.print(cli.col("{} ({}):".format(user.username, user.ID), attrs=["bold"]))
+        _dumpUser(cli, user, 2)
 
 
 def cliUserList(args):
-    Cli.require("DB")
-    from orm import DB
+    cli = args._cli
+    cli.require("DB")
     users = _mkUserQuery(args).all()
     if len(users) == 0:
-        print(Cli.col("No users found.", "yellow"))
+        cli.print(cli.col("No users found.", "yellow"))
         return 1
+    maxNameLen = max(len(user.username) for user in users)
     for user in users:
-        print("{}:\t{}".format(user.ID, user.username))
-    print("({} users total)".format(len(users)))
-    DB.session.rollback()
+        if user.domainName() is not None:
+            printName = "{}@{}".format(cli.col(user.baseName(), attrs=["bold"]), user.domainName())
+        else:
+            printName = cli.col(user.username, attrs=["bold"])
+        cli.print("{}:\t{}{}({}|{})".format(user.ID, printName, " "*(maxNameLen-len(user.username)+4),
+                                               _mkStatus(cli, user.domainStatus), _mkStatus(cli, user.status)))
+    cli.print("({} users total)".format(len(users)))
 
 
 def cliUserDelete(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm import DB
     users = _mkUserQuery(args).all()
     if len(users) == 0:
-        print(Cli.col("No users found.", "yellow"))
+        cli.print(cli.col("No users found.", "yellow"))
         return 1
     if len(users) > 1:
-        print("'{}' is ambiguous. Candidates are:".format(args.userspec))
+        cli.print("'{}' is ambiguous. Candidates are:".format(args.userspec))
         for user in users:
-            print("  {}:\t{}".format(user.ID, user.username))
+            cli.print("  {}:\t{}".format(user.ID, user.username))
         return 2
     user = users[0]
     maildir = user.maildir
     if not args.yes:
-        if Cli.confirm("Delete user '{}' ({})? [y/N]: ".format(user.username, user.ID)) != Cli.SUCCESS:
+        if cli.confirm("Delete user '{}' ({})? [y/N]: ".format(user.username, user.ID)) != Cli.SUCCESS:
             return 3
     else:
-        print("Deleting user '{}' ({})".format(user.username, user.ID))
+        cli.print("Deleting user '{}' ({})".format(user.username, user.ID))
     user.delete()
     DB.session.commit()
-    print("User deleted.")
+    cli.print("User deleted.")
     if maildir == "":
-        print("No user files to delete.")
+        cli.print("No user files to delete.")
         return 0
-    print("Unloading store...", end="", flush=True)
+    cli.print("Unloading store...", end="", flush=True)
     try:
         from tools.config import Config
         from tools.constants import ExmdbCodes
@@ -113,30 +113,27 @@ def cliUserDelete(args):
         options = Config["options"]
         client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
         client.unloadStore(maildir)
-        print("Done.")
+        cli.print("Done.")
     except pyexmdb.ExmdbError as err:
-        print(Cli.col("Failed.\n  Exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code)), "yellow"))
+        cli.print(cli.col("Failed.\n  Exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code)), "yellow"))
     except RuntimeError as err:
-        print(Cli.col("Failed.\n  "+err.args[0],"yellow"))
-    if args.keep_files or (not args.yes and Cli.confirm("Delete user directory from disk? [y/N]: ") != Cli.SUCCESS):
-        print(Cli.col("Files remain in "+maildir, attrs=["bold"]))
+        cli.print(cli.col("Failed.\n  "+err.args[0],"yellow"))
+    if args.keep_files or (not args.yes and cli.confirm("Delete user directory from disk? [y/N]: ") != Cli.SUCCESS):
+        cli.print(cli.col("Files remain in "+maildir, attrs=["bold"]))
         return 0
-    print("Deleting user files...", end="")
+    cli.print("Deleting user files...", end="")
     import shutil
     shutil.rmtree(maildir, ignore_errors=True)
-    print("Done.")
+    cli.print("Done.")
 
 
 def _cliUserspecCompleter(prefix, **kwargs):
-    if Cli.rlAvail:
-        from orm.users import Users
-        return (user.username for user in Users.query.filter(Users.username.ilike(prefix+"%"))
-                                                     .with_entities(Users.username).all())
-    return ()
+    from orm.users import Users
+    return (user.username for user in Users.query.filter(Users.username.ilike(prefix+"%"))
+                                                 .with_entities(Users.username).all())
 
 
 def _setupCliUser(subp: ArgumentParser):
-    subp.add_argument("-d", "--domain", help="Restrict operations to domain.")
     sub = subp.add_subparsers()
     delete = sub.add_parser("delete", help="Delete user")
     delete.set_defaults(_handle=cliUserDelete)
@@ -151,7 +148,6 @@ def _setupCliUser(subp: ArgumentParser):
     show = sub.add_parser("show", help="Show detailed information about user")
     show.set_defaults(_handle=cliUserShow)
     show.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter
-    show.add_argument("-i", "--id", action="store_true", help="Only match user by ID")
     show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
     show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
 

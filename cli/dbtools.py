@@ -66,40 +66,41 @@ def _passwdParserSetup(subp: ArgumentParser):
 
 @Cli.command("passwd", _passwdParserSetup, help="User password management")
 def setUserPassword(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm.users import DB, Users
     import orm.roles
     if args.user is not None:
         from .common import userCandidates
         users = userCandidates(args.user).all()
         if len(users) == 0:
-            print(Cli.col("User '{}' not found.".format(args.user), "yellow"))
+            cli.print(cli.col("User '{}' not found.".format(args.user), "yellow"))
             return 1
         if len(users) != 1:
-            print(Cli.col("'{}' is ambiguous.".format(args.user), "yellow"))
+            cli.print(cli.col("'{}' is ambiguous.".format(args.user), "yellow"))
             return 1
         user = users[0]
         if user.externID is not None:
-            print(Cli.col("Cannot change password of LDAP user", "yellow"))
+            cli.print(cli.col("Cannot change password of LDAP user", "yellow"))
             return 2
     else:
         user = Users.query.filter(Users.ID == 0).first()
         if user is None:
-            print("System admin user not found, creating...")
+            cli.print("System admin user not found, creating...")
             DB.session.execute("SET sql_mode='NO_AUTO_VALUE_ON_ZERO';")
             user, _ = createAdmin()
             DB.session.add(user)
-    print("Setting password for user '{}'".format(user.username))
+    cli.print("Setting password for user '{}'".format(user.username))
     if args.auto:
         password = mkPasswd(args.length)
-        print("New password is "+Cli.col(password, attrs=["bold"]))
+        cli.print("New password is "+cli.col(password, attrs=["bold"]))
     elif args.password is not None:
         password = args.password
     else:
         password = getpass("Password: ")
         if getpass("Retype password: ") != password:
-            print(Cli.col("Passwords do not match, aborting.", "yellow"))
+            cli.print(cli.col("Passwords do not match, aborting.", "yellow"))
             return 3
     user.password = password
     DB.session.commit()
-    print("Password updated")
+    cli.print("Password updated")

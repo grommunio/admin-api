@@ -37,8 +37,8 @@ class Users(DataModel, DB.Base):
 
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True,
-                              collection_class=attribute_mapped_collection("name"))
-    aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True)
+                              collection_class=attribute_mapped_collection("name"), passive_deletes=True)
+    aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True, passive_deletes=True)
     fetchmail = relationship("Fetchmail", cascade="all, delete-orphan", single_parent=True, order_by="Fetchmail.active.desc()")
 
     _dictmapping_ = ((Id(), Text("username", flags="init")),
@@ -309,7 +309,7 @@ class Users(DataModel, DB.Base):
         from .misc import Forwards
         from .classes import Members
         if self.ID == 0:
-            return "Cannot delete superuser"
+            raise ValueError("Cannot delete superuser")
         Forwards.query.filter(Forwards.username == self.username).delete(synchronize_session=False)
         Members.query.filter(Members.username == self.username).delete(synchronize_session=False)
         Associations.query.filter(Associations.username == self.username).delete(synchronize_session=False)
@@ -321,7 +321,7 @@ class UserProperties(DataModel, DB.Base):
 
     supportedTypes = PropTypes.intTypes | PropTypes.floatTypes | {PropTypes.STRING, PropTypes.WSTRING}
 
-    userID = Column("user_id", INTEGER(unsigned=True), ForeignKey(Users.ID), primary_key=True)
+    userID = Column("user_id", INTEGER(unsigned=True), ForeignKey(Users.ID, ondelete="cascade", onupdate="cascade"), primary_key=True)
     tag = Column("proptag", INTEGER(unsigned=True), primary_key=True, index=True)
     _propvalbin = Column("propval_bin", VARBINARY(4096))
     _propvalstr = Column("propval_str", VARCHAR(4096))
@@ -422,7 +422,7 @@ class Fetchmail(DataModel, DB.Base):
     srcAuth = Column("src_auth", ENUM(*_sa), nullable=False, server_default="password")
     srcUser = Column("src_user", VARCHAR(255), nullable=False)
     srcPassword = Column("src_password", VARCHAR(255), nullable=False)
-    srcFolder = Column("src_folder", VARCHAR(255), nullable=False)
+    srcFolder = Column("src_folder", VARCHAR(255), nullable=False, default="")
     fetchall = Column("fetchall", TINYINT(1, unsigned=True), nullable=False, server_default="0")
     keep = Column("keep", TINYINT(1, unsigned=True), nullable=False, server_default="1")
     protocol = Column("protocol", ENUM("POP3", "IMAP", "POP2", "ETRN", "AUTO"), nullable=False, server_default= 'IMAP')
@@ -450,7 +450,8 @@ class Fetchmail(DataModel, DB.Base):
                       Bool("sslCertCheck", flags="patch"),
                       Text("sslCertPath", flags="patch"),
                       Text("sslFingerprint", flags="patch"),
-                      Text("extraOptions", flags="patch")),)
+                      Text("extraOptions", flags="patch")),
+                     (Id("userID", flags="hidden"),))
 
     def __init__(self, props, user, *args, **kwargs):
         self.user = user
@@ -473,7 +474,8 @@ class Fetchmail(DataModel, DB.Base):
         fetchoptions += " keep" if self.keep == 1 else " nokeep"
         if self.extraOptions:
             fetchoptions += self.extraOptions
-        return "poll {} with proto {} user {} there with password {} is {} here {}\n"\
-            .format(self.srcServer, self.protocol, self.srcUser, self.srcPassword, self.mailbox, fetchoptions)
+        srcFolder = " folder "+self.srcFolder if self.srcFolder and self.protocol not in ("POP3", "ETRN", "ODMR") else ""
+        return "poll {} with proto {} user {}{} there with password {} is {} here {}\n"\
+            .format(self.srcServer, self.protocol, self.srcUser, srcFolder, self.srcPassword, self.mailbox, fetchoptions)
 
 from . import roles

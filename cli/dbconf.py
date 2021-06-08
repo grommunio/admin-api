@@ -12,35 +12,36 @@ _commitHelp = "Commit configuration changes to the service. Commit actions can b
 
 
 def _autocompService(prefix, **kwargs):
-    if Cli.rlAvail:
+    try:
         from orm.misc import DBConf
         return (entry.service for entry in
                 DBConf.query.filter(DBConf.service.like(prefix+"%"))
                 .with_entities(DBConf.service).all())
-    return ()
-
+    except:
+        return ()
 
 def _autocompFile(prefix, parsed_args, **kwargs):
-    if Cli.rlAvail:
+    try:
         from orm.misc import DBConf
         return (entry.file for entry in
                 DBConf.query.filter(DBConf.service == parsed_args.service,
                                     DBConf.file.like(prefix+"%")).all())
-    return ()
-
+    except:
+        return ()
 
 def _autocompKey(prefix, parsed_args, **kwargs):
-    if Cli.rlAvail:
+    try:
         from orm.misc import DBConf
         return (entry.key for entry in
                 DBConf.query.filter(DBConf.service == parsed_args.service,
                                     DBConf.file == parsed_args.file,
                                     DBConf.key.like(prefix+"%")).all())
-    return ()
-
+    except:
+        return ()
 
 def cliDbconfSet(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm.misc import DB, DBConf
     entry = DBConf.query.filter(DBConf.service == args.service, DBConf.file == args.file, DBConf.key == args.key).first()
     if entry is None:
@@ -48,23 +49,24 @@ def cliDbconfSet(args):
         DB.session.add(entry)
     else:
         if args.init and args.value != entry.value:
-            print(Cli.col("Key exists - aborted.", "yellow"))
+            cli.print(cli.col("Key exists - aborted.", "yellow"))
             return 1
         entry.value = args.value
     DB.session.commit()
-    print("{}={}".format(entry.key, entry.value or ""))
+    cli.print("{}={}".format(entry.key, entry.value or ""))
     if not args.batch:
         from tools import dbconf
-        print("Committing change...")
+        cli.print("Committing change...")
         error = dbconf.commit(args.service, args.file, args.key)
         if error is not None:
-            print("Commit failed: "+error)
+            cli.print("Commit failed: "+error)
             return 2
-        print("Success.")
+        cli.print("Success.")
 
 
 def cliDbconfGet(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm.misc import DB, DBConf
     DB.session.rollback()
     query = DBConf.query.filter(DBConf.service == args.service, DBConf.file == args.file)
@@ -72,11 +74,12 @@ def cliDbconfGet(args):
         query = query.filter(DBConf.key == args.key)
     entries = query.with_entities(DBConf.key, DBConf.value).all()
     for entry in entries:
-        print("{}={}".format(entry.key, entry.value or ""))
+        cli.print("{}={}".format(entry.key, entry.value or ""))
 
 
 def cliDbconfDelete(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm.misc import DB, DBConf
     query = DBConf.query.filter(DBConf.service == args.service)
     if args.file is not None:
@@ -85,11 +88,12 @@ def cliDbconfDelete(args):
         query = query.filter(DBConf.key == args.key)
     deleted = query.delete()
     DB.session.commit()
-    print("Deleted {} entr{}".format(deleted, "y" if deleted == 1 else "ies"))
+    cli.print("Deleted {} entr{}".format(deleted, "y" if deleted == 1 else "ies"))
 
 
 def cliDbconfList(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm.misc import DB, DBConf
     DB.session.rollback()
     query = DBConf.query
@@ -104,12 +108,12 @@ def cliDbconfList(args):
         header = "Keys in {}/{}:".format(args.service, args.file)
         target = DBConf.key.distinct()
         query = query.filter(DBConf.file == args.file)
-    print(header)
+    cli.print(header)
     entries = query.with_entities(target).all()
     if len(entries) == 0:
-        print(Cli.col("  (no entries)", "yellow"))
+        cli.print(cli.col("  (no entries)", "yellow"))
     for entry in entries:
-        print("  "+entry[0])
+        cli.print("  "+entry[0])
 
 
 def cliDbConfCommit(args):

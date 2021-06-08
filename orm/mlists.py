@@ -50,12 +50,12 @@ class MLists(DataModel, DB.Base):
     listType = Column("list_type", TINYINT, nullable=False)
     listPrivilege = Column("list_privilege", TINYINT, nullable=False, server_default="0")
 
-    _dictmapping_ = ((Id(), Text("listname", flags="init"), Int("listType", flags="init", filter="set")),
+    _dictmapping_ = ((Id(), Text("listname", flags="init"), Int("listType", flags="patch", filter="set")),
                      (Id("domainID", flags="init"),
                       Int("listPrivilege", flags="patch", filter="set")),
                      (RefProp("associations", flags="patch, managed", link="username", flat="username", qopt=selectinload),
                       RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload),
-                      RefProp("class_", alias="class")))
+                      RefProp("class_", alias="class", flags="patch")))
 
     user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname, cascade="all, delete-orphan", single_parent=True)
     associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID, cascade="all, delete-orphan", single_parent=True)
@@ -124,7 +124,7 @@ class MLists(DataModel, DB.Base):
         DataModel.fromdict(self, data, *args, **kwargs)
         if classID is not None:
             if self.listType != self.TYPE_CLASS:
-                raise ValueError("Cannot associat non-class mailing list with class")
+                raise ValueError("Cannot associate non-class mailing list with class")
             from orm.classes import Classes
             class_ = Classes.query.filter(Classes.ID == classID).first()
             if class_ is None:
@@ -137,8 +137,6 @@ class MLists(DataModel, DB.Base):
         return self
 
     def delete(self):
-        if self.user:
-            self.user.delete()
         if self.listType == self.TYPE_CLASS:
             from .classes import Classes
             Classes.query.filter(Classes.listname == self.listname).update({Classes.listname: None}, synchronize_session=False)
@@ -153,7 +151,7 @@ class MLists(DataModel, DB.Base):
     @validates("specifieds")
     def validateSpecifieds(self, key, spec, *args):
         if self.listPrivilege != self.PRIV_SPECIFIED:
-            raise ValueError("Privilege specification requires 'specific' list privilege")
+            raise ValueError("Sender specification requires 'specific' list privilege")
         return spec
 
     @validates("listType")

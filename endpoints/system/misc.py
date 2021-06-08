@@ -6,6 +6,8 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
+from cli import Cli
+
 from tools.config import Config
 from tools.license import getLicense, updateCertificate
 from tools.permissions import SystemAdminPermission
@@ -14,9 +16,11 @@ from tools.systemd import Systemd
 import os
 import psutil
 import requests
+import shlex
 from datetime import datetime
 from dbus import DBusException
 from flask import jsonify, make_response, request
+from io import StringIO
 
 from orm import DB
 if DB is not None:
@@ -174,3 +178,32 @@ def rspamdProxy(path):
         API.logger.error(type(err).__name__+": "+" - ".join(str(arg) for arg in err.args))
         return jsonify(message="Failed to connect to antispam"), 503
     return res.raw.read(), res.status_code, res.headers.items()
+
+
+@API.route(api.BaseRoute+"/system/cli", methods=["POST"])
+@secure()
+def cliOverRest():
+    checkPermissions(SystemAdminPermission)
+    if Config["options"].get("disableRemoteCli"):
+        return jsonify(message="Remote CLI disabled by config"), 400
+    params = request.get_json(silent=True)
+    if params is None:
+        return jsonify(message="Missing parameters"), 400
+    if "command" not in params:
+        return jsonify(message="Missing command"), 400
+    mode = params.get("mode", "exec")
+    stdout = StringIO()
+    fs = params.get("fs")
+    cli = Cli(mode="adhoc", stdin=None, stdout=stdout, color=params.get("color", False), fs=fs)
+    if mode == "complete":
+        return jsonify(completions=cli.complete(params["command"]))
+    API.logger.info("Executing CLI command '{}'".format(params["command"]))
+    result = 0
+    try:
+        result = cli.execute(shlex.split(params["command"]), secure=False)
+    except SystemExit:
+        pass
+    except Exception as err:
+        return jsonify(message="{} ({})".format(type(err).__name__, " - ".join(str(arg) for arg in err.args))), 500
+    cli.closeFiles()
+    return jsonify(code=result, stdout=stdout.getvalue(), fs=cli.fs)

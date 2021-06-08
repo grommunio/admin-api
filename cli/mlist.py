@@ -6,35 +6,17 @@ from . import Cli
 from argparse import ArgumentParser
 
 _typemap = {"normal": 0, "domain": 2, "class": 3}
-_typenames = tuple(_typemap.keys())
+_typenames = {value: key for key, value in _typemap.items()}
 _privmap = {"all": 0, "internal": 1, "domain": 2, "specific": 3, "outgoing": 4}
-_privnames = tuple(_privmap.keys())
-
-
-def _getDomainFilter(spec):
-    if spec is None:
-        return True
-    from orm.domains import Domains
-    from orm.users import Users
-
-
-def _getMlistFilter(mspec, dspec, args=None):
-    from orm.mlists import MLists
-    from sqlalchemy import and_, or_
-    if mspec is None:
-        return _getDomainFilter(dspec)
-    try:
-        ID = int(mspec, 0)
-    except:
-        ID = None
-    if args is not None and "id" in args and args.id is True:
-        return and_(MLists.ID == ID, _getDomainFilter(dspec))
-    return and_(or_(MLists.ID == ID, MLists.listname.ilike("%"+mspec+"%")), _getDomainFilter(dspec))
+_privnames = {value: ky for ky, value in _privmap.items()}
 
 
 def _mkMlistQuery(args):
     from orm.mlists import MLists
-    query = MLists.query.filter(_getMlistFilter(args.mlistspec, args.domain))
+    mspec = args.mlistspec
+    query = MLists.query
+    if mspec is not None:
+        query = query.filter(MLists.ID == mspec if mspec.isdigit() else MLists.listname.ilike(mspec+"%"))
     if "filter" in args and args.filter is not None:
         query = MLists.autofilter(query, {f.split("=", 1)[0]: f.split("=", 1)[1] for f in args.filter if "=" in f})
     if "sort" in args and args.sort is not None:
@@ -43,14 +25,15 @@ def _mkMlistQuery(args):
 
 
 def cliMlistCreate(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm import DB
     from orm.mlists import MLists
     data = dict(listname=args.name,
-                listType=_typemap.get(args.type, 0),
-                listPrivilege= _privmap.get(args.privilege, 0),
-                associations=args.recipient,
-                specifieds=args.sender)
+                listType=_typemap.get(args.type or "normal", 0),
+                listPrivilege= _privmap.get(args.privilege or "all", 0),
+                associations=args.recipient or [],
+                specifieds=args.sender or [])
     if args.class_:
         from orm.classes import Classes
         from sqlalchemy import or_
@@ -60,176 +43,212 @@ def cliMlistCreate(args):
             ID = None
         classes = Classes.query.filter(or_(Classes.ID == ID, Classes.classname.ilike("%"+args.class_+"%"))).all()
         if len(classes) == 0:
-            print(Cli.col("No class matching '{}' found".format(args.class_), "yellow"))
+            cli.print(cli.col("No class matching '{}' found".format(args.class_), "yellow"))
             return 1
         if len(classes) > 1:
-            print(Cli.col("Class specification '{}' is ambiguous:", "yellow"))
+            cli.print(cli.col("Class specification '{}' is ambiguous:", "yellow"))
             for c in classes:
-                print(Cli.col("  {}:\t{}".format(c.ID, c.classname), "yellow"))
+                cli.print(cli.col("  {}:\t{}".format(c.ID, c.classname), "yellow"))
             return 2
         data["class"] = classes[0].ID
     error = MLists.checkCreateParams(data)
     if error is not None:
-        print(Cli.col("Cannot create mlist: "+error, "red"))
+        cli.print(cli.col("Cannot create mlist: "+error, "red"))
         return 3
     try:
         mlist = MLists(data)
         DB.session.add(mlist)
         DB.session.commit()
-        print("Mailing list '{}' created with ID {}.".format(mlist.listname, mlist.ID))
+        cli.print(cli.col("{} ({}):".format(mlist.listname, mlist.ID), attrs=["bold"]))
+        _dumpMlist(cli, mlist, 2)
     except ValueError as err:
-        print(Cli.col("Cannot create mlist: "+err.args[0], "red"))
+        cli.print(cli.col("Cannot create mlist: "+err.args[0], "red"))
         DB.session.rollback()
 
 
-def _dumpMlist(mlist, indent=0):
-    print("{}ID: {}".format(" "*indent, mlist.ID))
-    print("{}listname: {}".format(" "*indent, mlist.listname))
-    print("{}listType: {} ({})".format(" "*indent, mlist.listType, _typenames[mlist.listType]))
-    print("{}listPrivilege: {} ({})".format(" "*indent, mlist.listPrivilege, _privnames[mlist.listPrivilege]))
-    print("{}userID: {}".format(" "*indent, "(not found)" if mlist.user is None else mlist.user.ID))
+def _dumpMlist(cli, mlist, indent=0):
+    cli.print("{}ID: {}".format(" "*indent, mlist.ID))
+    cli.print("{}listname: {}".format(" "*indent, mlist.listname))
+    col, attr = (None, ["dark"]) if mlist.listType in _typenames else ("red", None)
+    cli.print("{}listType: {} ({})".format(" "*indent, mlist.listType,
+                                           cli.col(_typenames.get(mlist.listType, "unknown"), col, attrs=attr)))
+    col, attr = (None, ["dark"]) if mlist.listPrivilege in _privnames else ("red", None)
+    cli.print("{}listPrivilege: {} ({})".format(" "*indent, mlist.listPrivilege,
+                                                cli.col(_privnames.get(mlist.listPrivilege, "unknown"), col, attrs=attr)))
+    cli.print("{}userID: {}".format(" "*indent, "(not found)" if mlist.user is None else mlist.user.ID))
     if mlist.listType == 0:
-        print(" "*indent+"recipients: "+("(none)" if len(mlist.associations) == 0 else ""))
+        cli.print(" "*indent+"recipients: "+(cli.col("(none)", attrs=["dark"]) if len(mlist.associations) == 0 else ""))
         for assoc in mlist.associations:
-            print(" "*indent+"  "+assoc.username)
+            cli.print(" "*indent+"  "+assoc.username)
     if mlist.listPrivilege == 3:
-        print(" "*indent+"senders: "+("(none)" if len(mlist.specifieds) == 0 else ""))
+        cli.print(" "*indent+"senders: "+(cli.col("(none)", attrs=["dark"]) if len(mlist.specifieds) == 0 else ""))
         for spec in mlist.specifieds:
-            print(" "*indent+"  "+spec.username)
+            cli.print(" "*indent+"  "+spec.username)
 
 
 def cliMlistShow(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm import DB
-    if args.id:
-        from orm.mlists import MLists
-        mlists = MLists.query.filter(MLists.ID == args.mlistspec).all()
-    else:
-        mlists = _mkMlistQuery(args).all()
+    mlists = _mkMlistQuery(args).all()
     if len(mlists) == 0:
-        print(Cli.col("No mailing lists found.", "yellow"))
+        cli.print(cli.col("No mailing lists found.", "yellow"))
         return 1
     for mlist in mlists:
-        print(Cli.col("{} ({}):".format(mlist.listname, mlist.ID), attrs=["bold"]))
-        _dumpMlist(mlist, 2)
+        cli.print(cli.col("{} ({}):".format(mlist.listname, mlist.ID), attrs=["bold"]))
+        _dumpMlist(cli, mlist, 2)
     DB.session.rollback()
 
 
 def cliMlistList(args):
-    Cli.require("DB")
-    from orm import DB
-    from orm.mlists import MLists
+    cli = args._cli
+    cli.require("DB")
     mlists = _mkMlistQuery(args).all()
     if len(mlists) == 0:
-        print(Cli.col("No mailing lists found.", "yellow"))
+        cli.print(cli.col("No mailing lists found.", "yellow"))
         return 1
     for mlist in mlists:
-        print("{}:\t{}".format(mlist.ID, mlist.listname))
-    DB.session.rollback()
+        cli.print("{}:\t{}".format(mlist.ID, mlist.listname))
 
 
 def cliMlistDelete(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm import DB
     mlists = _mkMlistQuery(args).all()
     if len(mlists) == 0:
-        print(Cli.col("No mailing lists found.", "yellow"))
+        cli.print(cli.col("No mailing lists found.", "yellow"))
         return 1
     if len(mlists) > 1:
-        print("'{}' is ambiguous. Candidates are:".format(args.mlistspec))
-        for mlist in mlists:
-            print("  {}:\t{}".format(mlist.ID, mlist.listname))
+        cli.print(cli.col("'{}' is ambiguous".format(args.mlistspec), "yellow"))
         return 2
     mlist = mlists[0]
     if not args.yes:
-        if Cli.confirm("Delete mailing list '{}' ({})? [y/N]: ".format(mlist.listname, mlist.ID)) != Cli.SUCCESS:
+        if cli.confirm("Delete mailing list '{}' ({})? [y/N]: ".format(cli.col(mlist.listname, attrs=["bold"]), mlist.ID))\
+            != Cli.SUCCESS:
             return 3
     else:
-        print("Deleting mlist '{}' ({})".format(mlist.listname, mlist.ID))
+        cli.print("Deleting mlist '{}' ({})".format(mlist.listname, mlist.ID))
     mlist.delete()
     DB.session.commit()
-    print("Done.")
+    cli.print("Done.")
 
 
-def cliMlistModify(args):
-    Cli.require("DB")
+def cliMlistAr(args):
+    cli = args._cli
+    cli.require("DB")
     from orm import DB
     mlists = _mkMlistQuery(args).all()
     if len(mlists) == 0:
-        print(Cli.col("No mailing lists found.", "yellow"))
+        cli.print(cli.col("No mailing lists found.", "yellow"))
         return 1
     if len(mlists) > 1:
-        print("'{}' is ambiguous. Candidates are:".format(args.mlistspec))
+        cli.print("'{}' is ambiguous. Candidates are:".format(args.mlistspec))
         for mlist in mlists:
-            print("  {}:\t{}".format(mlist.ID, mlist.listname))
+            cli.print("  {}:\t{}".format(mlist.ID, mlist.listname))
         return 2
     mlist = mlists[0]
     attr = mlist.specifieds if args.attribute == "sender" else mlist.associations
-    if args.command == "remove":
+    if args.__command == "remove":
         for element in attr:
             if element.username == args.entry:
                 attr.remove(element)
                 break
         else:
-            print(Cli.col("Entry '{}' not found".format(args.entry)))
+            cli.print(cli.col("Entry '{}' not found".format(args.entry)))
             return 0
-        print("Removed '{}' as {} from {}.".format(args.entry, args.attribute, mlist.listname))
-    elif args.command == "add":
+        cli.print("Removed '{}' as {} from {}.".format(args.entry, args.attribute, mlist.listname))
+    elif args.__command == "add":
         if sum((1 for element in attr if element.username == args.entry)):
-            print(Cli.col("'{}' already exists as {} {}".format(args.entry, args.attribute, mlist.listname), "yellow"))
+            cli.print(cli.col("'{}' already exists as {} {}".format(args.entry, args.attribute, mlist.listname), "yellow"))
             return 0
         try:
             from orm.mlists import Associations, Specifieds
             attr.append((Specifieds if args.attribute == "sender" else Associations)(args.entry))
-            print("Added '{}' as {} to {}".format(args.entry, args.attribute, mlist.listname))
+            cli.print("Added '{}' as {} to {}".format(args.entry, args.attribute, mlist.listname))
         except ValueError as err:
-            print(Cli.col(err.args[0], "red"))
+            cli.print(cli.col(err.args[0], "red"))
             DB.session.rollback()
             return 1
     DB.session.commit()
 
 
+def cliMlistModify(args):
+    cli = args._cli
+    cli.require("DB")
+    from orm import DB
+    mlists = _mkMlistQuery(args).all()
+    if len(mlists) == 0:
+        cli.print(cli.col("No mailing lists found.", "yellow"))
+        return 1
+    if len(mlists) > 1:
+        cli.print("'{}' is ambiguous. Candidates are:".format(args.mlistspec))
+        for mlist in mlists:
+            cli.print("  {}:\t{}".format(mlist.ID, mlist.listname))
+        return 2
+    mlist = mlists[0]
+    attrs = dict()
+    if args.class_ is not None:
+        attrs["class"] = args.class_
+    if args.privilege is not None:
+        attrs["listPrivilege"] = _privmap[args.privilege]
+    if args.type is not None:
+        attrs["listType"] = _typemap[args.type]
+    try:
+        mlist.fromdict(attrs)
+        DB.session.commit()
+    except ValueError as err:
+        cli.print(cli.col(err.args[0], "red"))
+        DB.session.rollback()
+        return 1
+    _dumpMlist(cli, mlist)
+
+
 def _cliListspecCompleter(prefix, **kwargs):
-    if Cli.rlAvail:
-        from orm.mlists import MLists
-        return (mlist.listname for mlist in MLists.query.filter(MLists.listname.ilike(prefix+"%"))
-                                                        .with_entities(MLists.listname).all())
-    return ()
+    from orm.mlists import MLists
+    return (mlist.listname for mlist in MLists.query.filter(MLists.listname.ilike(prefix+"%"))
+                                                    .with_entities(MLists.listname).all())
 
 
 def _setupCliMlist(subp: ArgumentParser):
-    subp.add_argument("-d", "--domain", help="Restrict operations to domain.")
+    def arArgs(ar, command):
+        ar.set_defaults(_handle=cliMlistAr, __command=command)
+        ar.add_argument("mlistspec", help="Mlist ID or name").completer = _cliListspecCompleter
+        ar.add_argument("attribute", choices=("recipient", "sender"), help="Attribute to modify")
+        ar.add_argument("entry", help="Which entry to "+command)
+
     sub = subp.add_subparsers()
+    add = sub.add_parser("add", help="Add recipient or sender")
+    arArgs(add, "add")
     create = sub.add_parser("create", help="Create new list")
     create.set_defaults(_handle=cliMlistCreate)
     create.add_argument("name", help="Name of the mailing list")
-    create.add_argument("-p", "--privilege", choices=_privnames, default="all", help="List privilege type")
-    create.add_argument("-s", "--sender", action="append", default=[],
-                        help="Users allowed to send to the list (only for privilege 'specific')")
-    create.add_argument("-t", "--type", choices=_typenames, default="normal", help="Mailing list type")
-    create.add_argument("-r", "--recipient", action="append", default=[], help="Users to associate with normal lists")
-    create.add_argument("-c", "--class", help="ID or name of the class to use for class lists", dest="class_")
+    create.add_argument("-c", "--class", help="ID or name of the class to use for class lists", dest="class_", metavar="class")
+    create.add_argument("-p", "--privilege", choices=_privmap, default="all", help="List privilege type")
+    create.add_argument("-r", "--recipient", action="append", help="Users to associate with normal lists")
+    create.add_argument("-s", "--sender", action="append",
+                        help="Users allowed to send to the list ('specific' privilege only)")
+    create.add_argument("-t", "--type", choices=_typemap, help="Mailing list type")
     delete = sub.add_parser("delete", help="Delete list")
     delete.set_defaults(_handle=cliMlistDelete)
-    delete.add_argument("mlistspec", help="Mlist ID or name").completer = _cliListspecCompleter
-    delete.add_argument("-i", "--id", action="store_true", help="Only match list by ID")
+    delete.add_argument("mlistspec", help="List ID or name prefix").completer = _cliListspecCompleter
     delete.add_argument("-y", "--yes", action="store_true", help="Do not ask for confirmation")
     list = sub.add_parser("list", help="List existing lists")
     list.set_defaults(_handle=cliMlistList)
-    list.add_argument("mlistspec", nargs="?", help="List ID or substring to match listname against")
+    list.add_argument("mlistspec", nargs="?", help="List ID or name prefix")
     list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s listname,desc")
     list.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
     modify = sub.add_parser("modify", help="Modify list")
     modify.set_defaults(_handle=cliMlistModify)
-    modify.add_argument("-i", "--id", action="store_true", help="Only match list by ID")
-    modify.add_argument("mlistspec", help="Mlist ID or name").completer = _cliListspecCompleter
-    modify.add_argument("command", choices=("add", "remove"), help="Modification to perform")
-    modify.add_argument("attribute", choices=("recipient", "sender"), help="Attribute to modify")
-    modify.add_argument("entry", help="Which entry to add/remove")
+    modify.add_argument("mlistspec", help="List ID or name prefix").completer = _cliListspecCompleter
+    modify.add_argument("-c", "--class", help="ID or name of the class to use for class lists", dest="class_", metavar="class")
+    modify.add_argument("-p", "--privilege", choices=_privmap, help="List privilege type")
+    modify.add_argument("-t", "--type", choices=_typemap, help="Mailing list type")
+    remove = sub.add_parser("remove", help="Remove recipient or sender")
+    arArgs(remove, "remove")
     show = sub.add_parser("show", help="Show detailed information about list")
     show.set_defaults(_handle=cliMlistShow)
     show.add_argument("mlistspec", help="Mlist ID or name").completer = _cliListspecCompleter
-    show.add_argument("-i", "--id", action="store_true", help="Only match list by ID")
     show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s listname,desc")
     show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
 

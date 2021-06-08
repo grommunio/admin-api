@@ -9,8 +9,8 @@ _statusMap = {0: "active", 1: "suspended", 2: "out-of-date", 3: "deleted"}
 _statusColor = {0: "green", 1: "yellow", 2: "yellow", 3: "red"}
 
 
-def _domainStatus(status):
-    return Cli.col(_statusMap.get(status, "unknown"), _statusColor.get(status, "magenta"))
+def _domainStatus(cli, status):
+    return cli.col(_statusMap.get(status, "unknown"), _statusColor.get(status, "magenta"))
 
 
 def _domainQuery(args):
@@ -24,60 +24,61 @@ def _domainQuery(args):
     return query
 
 
-def _dumpDomain(domain):
-    print(Cli.col("{} ({}):".format(domain.domainname, domain.ID), attrs=["bold"]))
-    print("  ID: "+str(domain.ID))
-    print("  orgID: "+str(domain.orgID))
-    print("  domainname: "+domain.domainname)
-    print("  domainStatus: {} ({})".format(domain.domainStatus, _domainStatus(domain.domainStatus)))
-    print("  activeUsers: "+str(domain.activeUsers))
-    print("  inactiveUsers: "+str(domain.inactiveUsers))
-    print("  maxUser: "+str(domain.maxUser))
-    print("  homedir: "+domain.homedir)
-    print("  endDay: "+str(domain.endDay))
-    print("  title: "+domain.title)
-    print("  address: "+domain.address)
-    print("  adminName: "+domain.adminName)
-    print("  tel: "+domain.tel)
+def _dumpDomain(cli, domain):
+    cli.print(cli.col("{} ({}):".format(domain.domainname, domain.ID), attrs=["bold"]))
+    cli.print("  ID: "+str(domain.ID))
+    cli.print("  orgID: "+str(domain.orgID))
+    cli.print("  domainname: "+domain.domainname)
+    cli.print("  domainStatus: {} ({})".format(domain.domainStatus, _domainStatus(cli, domain.domainStatus)))
+    cli.print("  activeUsers: "+str(domain.activeUsers))
+    cli.print("  inactiveUsers: "+str(domain.inactiveUsers))
+    cli.print("  maxUser: "+str(domain.maxUser))
+    cli.print("  homedir: "+domain.homedir)
+    cli.print("  endDay: "+str(domain.endDay))
+    cli.print("  title: "+domain.title)
+    cli.print("  address: "+domain.address)
+    cli.print("  adminName: "+domain.adminName)
+    cli.print("  tel: "+domain.tel)
 
 
 def _sanitizeData(data):
-    cliargs = {"_handle", "domainspec", "skip_adaptor_reload"}
+    cliargs = {"_handle", "_cli", "domainspec", "skip_adaptor_reload"}
     return {key: value for key, value in data.items() if value is not None and key not in cliargs}
 
 
 def cliDomainList(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm.domains import DB, Domains
     DB.session.rollback()
     domains = _domainQuery(args).with_entities(Domains.ID, Domains.domainname, Domains.domainStatus).all()
     if len(domains) == 0:
-        print(Cli.col("No domains found.", "yellow"))
+        cli.print(cli.col("No domains found.", "yellow"))
         return 1
     for domain in domains:
-        print("{}: {} ({})".format(domain.ID, domain.domainname, _domainStatus(domain.domainStatus)))
+        cli.print("{}: {} ({})".format(domain.ID, domain.domainname, _domainStatus(cli, domain.domainStatus)))
 
 
 def cliDomainShow(args):
-    Cli.require("DB")
-    from orm.domains import DB, Domains
-    DB.session.rollback()
+    cli = args._cli
+    cli.require("DB")
     domains = _domainQuery(args).all()
     if len(domains) == 0:
-        print(Cli.col("No domains found.", "yellow"))
+        cli.print(cli.col("No domains found.", "yellow"))
         return 1
     for domain in domains:
-        _dumpDomain(domain)
+        _dumpDomain(cli, domain)
 
 
 def cliDomainCreate(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm.domains import DB, Domains
     from tools.storage import DomainSetup
     data = _sanitizeData(args.__dict__)
     error = Domains.checkCreateParams(data)
     if error is not None:
-        print(Cli.col("Cannot create domain: "+error, "red"))
+        cli.print(cli.col("Cannot create domain: "+error, "red"))
         return 1
     try:
         domain = Domains(data)
@@ -93,83 +94,87 @@ def cliDomainCreate(args):
                 sysd = Systemd(system=True)
                 res = sysd.reloadService("gromox-adaptor.service")
                 if res != "done":
-                    print(Cli.col("Failed to reload gromox-adaptor: "+res, "yellow"))
+                    cli.print(cli.col("Failed to reload gromox-adaptor: "+res, "yellow"))
             except DBusException as err:
-                print(Cli.col("Failed to reload gromox-adaptor.service: "+" - ".join(str(arg) for arg in err.args), "yellow"))
+                cli.print(cli.col("Failed to reload gromox-adaptor.service: "+" - ".join(str(arg) for arg in err.args), "yellow"))
             Systemd.quitLoop()
-        _dumpDomain(domain)
+        _dumpDomain(cli, domain)
     except BaseException as err:
-        print(Cli.col("Cannot create domain: "+" - ".join(str(arg) for arg in err.args), "red"))
+        cli.print(cli.col("Cannot create domain: "+" - ".join(str(arg) for arg in err.args), "red"))
         DB.session.rollback()
 
 
 def cliDomainDelete(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm import DB
     from .common import domainCandidates
     domains = domainCandidates(args.domainspec).all()
     if len(domains) == 0:
-        print(Cli.col("No domains found.", "yellow"))
+        cli.print(cli.col("No domains found.", "yellow"))
         return 1
     if len(domains) > 1:
-        print(Cli.col("'{}' is ambiguous".format(args.domainspec), "yellow"))
+        cli.print(cli.col("'{}' is ambiguous".format(args.domainspec), "yellow"))
         return 2
     domain = domains[0]
     domain.delete()
     DB.session.commit()
-    _dumpDomain(domain)
+    _dumpDomain(cli, domain)
 
 
 def cliDomainRecover(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm import DB
     from .common import domainCandidates
     domains = domainCandidates(args.domainspec).all()
     if len(domains) == 0:
-        print(Cli.col("No domains found.", "yellow"))
+        cli.print(cli.col("No domains found.", "yellow"))
         return 1
     if len(domains) > 1:
-        print(Cli.col("'{}' is ambiguous".format(args.domainspec), "yellow"))
+        cli.print(cli.col("'{}' is ambiguous".format(args.domainspec), "yellow"))
         return 2
     domain = domains[0]
     domain.recover()
     DB.session.commit()
-    _dumpDomain(domain)
+    _dumpDomain(cli, domain)
 
 
 def cliDomainPurge(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm import DB
     from .common import domainCandidates
     domains = domainCandidates(args.domainspec).all()
     if len(domains) == 0:
-        print(Cli.col("No domains found.", "yellow"))
+        cli.print(cli.col("No domains found.", "yellow"))
         return 1
     if len(domains) > 1:
-        print(Cli.col("'{}' is ambiguous".format(args.domainspec), "yellow"))
+        cli.print(cli.col("'{}' is ambiguous".format(args.domainspec), "yellow"))
         return 2
     domain = domains[0]
     if not args.yes:
-        if Cli.confirm("Permanently delete domain "+
-                       Cli.col(domain.domainname, "red", attrs=["bold"])+
+        if cli.confirm("Permanently delete domain "+
+                       cli.col(domain.domainname, "red", attrs=["bold"])+
                        (" and all associated files" if args.files else "")+"? [y/N]: "):
             return 1
     domain.purge(deleteFiles=args.files, printStatus=True)
-    print("Removing database entries...", end="")
+    cli.print("Removing database entries...", end="")
     DB.session.commit()
-    print("Done\nDomain removed.")
+    cli.print("Done\nDomain removed.")
 
 
 def cliDomainModify(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from orm import DB
     from .common import domainCandidates
     domains = domainCandidates(args.domainspec).all()
     if len(domains) == 0:
-        print(Cli.col("No domains found.", "yellow"))
+        cli.print(cli.col("No domains found.", "yellow"))
         return 1
     if len(domains) > 1:
-        print(Cli.col("'{}' is ambiguous".format(args.domainspec), "yellow"))
+        cli.print(cli.col("'{}' is ambiguous".format(args.domainspec), "yellow"))
         return 2
     domain = domains[0]
     data = _sanitizeData(args.__dict__)
@@ -177,18 +182,16 @@ def cliDomainModify(args):
         domain.fromdict(data)
         DB.session.commit()
     except ValueError as err:
-        print(Cli.col("Cannot update domain: "+err.args[0]))
+        cli.print(cli.col("Cannot update domain: "+err.args[0]))
         DB.session.rollback()
-    _dumpDomain(domain)
+    _dumpDomain(cli, domain)
 
 
 def _cliDomainDomainspecAutocomp(prefix, **kwarg):
-    if Cli.rlAvail:
-        from .common import domainCandidates
-        from orm.domains import Domains
-        return (domain.domainname for domain in domainCandidates(prefix).with_entities(Domains.domainname).all())
-    else:
-        return ()
+    from .common import domainCandidates
+    from orm.domains import Domains
+    return (domain.domainname for domain in domainCandidates(prefix).with_entities(Domains.domainname).all())
+
 
 def _noComp(**kwargs):
     return ()
@@ -230,7 +233,7 @@ def _setupCliDomain(subp : ArgumentParser):
     purge.add_argument("-y", "--yes", action="store_true", help="Do not question the elevated one")
     recover = sub.add_parser("recover", help="Recover soft-deleted domain")
     recover.set_defaults(_handle=cliDomainRecover)
-    recover.add_argument("domainspec", nargs="?", help="Domain ID or prefix to match domainname against")\
+    recover.add_argument("domainspec", help="Domain ID or prefix to match domainname against")\
         .completer = _cliDomainDomainspecAutocomp
     show = sub.add_parser("show", help="Show detailed information about one or more domains")
     show.set_defaults(_handle=cliDomainShow)

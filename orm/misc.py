@@ -30,4 +30,4 @@ class DBConf(DB.Base):
     service = Column("service", VARCHAR(200), nullable=False, index=True)
     file = Column("file", VARCHAR(200), nullable=False, index=True)
     key = Column("key", VARCHAR(200), nullable=False)
-    value = Column("value", VARCHAR(200), nullable=True)
+    value = Column("value", VARCHAR(200), nullable=False, default="")

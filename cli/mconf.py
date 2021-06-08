@@ -8,32 +8,38 @@ from argparse import ArgumentParser
 from . import Cli
 
 
-_configs = ("ldap", )
+_configs = ("authmgr", "ldap")
 
-def _getConfig(name):
+def _getConfig(cli, name):
     if name not in _configs:
-        print("Unknown config '{}'".format(name))
+        cli.print(cli.col("Unknown config '{}'".format(name), "red"))
         return None
     from tools import mconf
-    if name == "ldap":
+    if name == "authmgr":
+        return mconf.AUTHMGR
+    elif name == "ldap":
         return mconf.LDAP
 
 
 def _cliMconfPrint(args):
-    import yaml
-    config = _getConfig(args.config)
+    cli = args._cli
+    config = _getConfig(cli, args.config)
     if config is None:
         return 1
-    print(yaml.dump(config))
+    import yaml
+    data = yaml.dump(config)
+    cli.print(data, end="" if data.endswith("\n") else "\n")
 
 
 def _cliMconfDump(args):
-    import sys
+    cli = args._cli
     from tools import mconf
-    if args.config == "ldap":
-        mconf.dumpLdap(file=sys.stdout)
+    if args.config == "authmgr":
+        mconf.dumpAuthmgr(file=cli.stdout)
+    elif args.config == "ldap":
+        mconf.dumpLdap(file=cli.stdout)
     else:
-        print("Invalid config")
+        cli = cli.print(cli.col("Invalid config", "red"))
         return 1
 
 
@@ -49,17 +55,26 @@ def _getValue(args):
 
 
 def _cliMconfSave(args):
+    cli = args._cli
     from tools import mconf
-    if args.config == "ldap":
-        error = mconf.dumpLdap()
-    else:
-        print("Unknown config '{}'".format(args.config))
-        return 1
-    print("Configuration saved" if error is None else "Failed to save configuration: "+error)
+    try:
+        if args.config == "authmgr":
+            error = mconf.dumpAuthmgr(file=cli.open("mconf.authmgrPath", "w", True))
+        elif args.config == "ldap":
+            error = mconf.dumpLdap(file=cli.open("mconf.ldapPath", "w", True))
+        else:
+            cli.print(cli.col("Unknown config '{}'".format(args.config), "red"))
+            return 1
+    except KeyError as err:
+        error = err.args[0]
+    except Exception as err:
+        error = " - ".join((str(arg) for arg in err.args))
+    cli.print("Configuration saved" if error is None else cli.col("Failed to save configuration: "+error, "yellow"))
 
 
 def _cliMconfModify(args):
-    config = _getConfig(args.config)
+    cli = args._cli
+    config = _getConfig(cli, args.config)
     if config is None:
         return 1
     if "." in args.key:
@@ -69,7 +84,7 @@ def _cliMconfModify(args):
             if level not in parent:
                 parent[level] = {}
             elif not isinstance(parent[level], dict):
-                print("'{}': invalid path".format(args.key))
+                cli.print(cli.col("'{}': invalid path".format(args.key), "red"))
                 return 2
             parent = parent[level]
     else:
@@ -78,7 +93,7 @@ def _cliMconfModify(args):
         try:
             value = _getValue(args)
         except ValueError as err:
-            print(err.args[0])
+            cli.print(cli.col(err.args[0], "red"))
             return 3
     if args.action == "set":
         parent[var] = value
@@ -89,18 +104,18 @@ def _cliMconfModify(args):
         if target is None:
             parent[var] = target = []
         elif not isinstance(target, list):
-            print("Cannot add value: '{}' is not an array".format(var))
+            cli.print(cli.col("Cannot add value: '{}' is not an array".format(var), "red"))
             return 4
         target.append(value)
     elif args.action == "remove":
         target = parent.get(var)
         if not isinstance(target, list):
-            print("Cannot remove value: '{}' is not an array".format(var))
+            cli.print(cli.col("Cannot remove value: '{}' is not an array".format(var), "red"))
             return 4
         try:
             target.remove(value)
         except ValueError:
-            print("Value {} not found in '{}'".format(value, var))
+            cli.print(cli.col("Value {} not found in '{}'".format(value, var), "red"))
             return 5
     if not args.defer:
         _cliMconfSave(args)
@@ -144,7 +159,7 @@ def _setupCliMconf(subp: ArgumentParser):
     printConf.add_argument("config", choices=_configs)
     save = sub.add_parser("save", help="Write configuration to disk")
     save.set_defaults(_handle=_cliMconfSave)
-    save.add_argument("config")
+    save.add_argument("config", choices=_configs)
 
 
 @Cli.command("mconf", _setupCliMconf, help="Managed configurations manipulation")

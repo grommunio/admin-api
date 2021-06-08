@@ -15,9 +15,9 @@ def _isCollection(obj):
 
 
 def _str2bool(string):
-    if string.lower() == "true":
+    if string.lower() in ("true", "1", "yes"):
         return True
-    elif string.lower() == "false":
+    elif string.lower() in ("false", "0", "no"):
         return False
     raise ValueError("Argument must be either 'true' or 'false'")
 

@@ -189,3 +189,5 @@ class Classes(DataModel, DB.Base):
 
         ClassFilter(data)
         self._filters = json.dumps(data, separators=(",", ":"))
+
+from . import domains

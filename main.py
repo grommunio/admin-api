@@ -14,7 +14,7 @@ if __name__ == '__main__':
     import sys
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
     from cli import Cli
-    sys.exit(Cli.execute())
+    sys.exit(Cli().execute(secure=False))
 else:
     from api.core import API
     from endpoints import *

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.21.4
+  version: 0.22.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1117,6 +1117,80 @@ paths:
           description: Connection to grammm-antispam failed
         default:
           description: Response returned by the grammm-admin backend
+
+  /system/cli:
+    post:
+      summary: Remote CLI invocation
+      tags:
+        - Misc
+      security:
+        - JWTCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [command]
+              properties:
+                command:
+                  type: string
+                  description: CLI command to execute
+                mode:
+                  type: string
+                  description: CLI mode (execute or complete)
+                  enum: [exec, complete]
+                  default: exec
+                color:
+                  type: boolean
+                  description: Enable terminal colors
+                  default: false
+                fs:
+                  type: object
+                  nullable: true
+                  description: If not null, enable filesystem redirection. Each property is a file path
+                  additionalProperties:
+                    type: string
+                    description: Content of the file
+      responses:
+        '200':
+          description: Execution successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    description: Command exit code (`exec` mode only)
+                  stdout:
+                    type: string
+                    description: Command output (`exec` mode only)
+                  fs:
+                    type: object
+                    nullable: true
+                    additionalProperties:
+                      type: object
+                      properties:
+                        mode:
+                          type: string
+                          description: Mode the file was opened with
+                        conf:
+                          type: string
+                          nullable: true
+                          description: Configuration key the file path was derived from
+                        content:
+                          type: string
+                          description: Content of the file
+                  completions:
+                    type: array
+                    description: Possible command completions (`complete` mode only)
+                    items:
+                      type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /domains:
     get:

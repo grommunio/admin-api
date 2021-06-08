@@ -26,12 +26,13 @@ def _du(path):
     return files, size
 
 
-def _statStr(files, size):
-    human = "" if size < 1024 else " ("+Cli.col("{:.3n} {}".format(*_human(size)), attrs=["bold"])+")"
-    return f"{size:,} bytes{human} used by "+Cli.col(f"{files} file"+("" if files == 1 else "s"), attrs=["bold"])
+def _statStr(cli, files, size):
+    human = "" if size < 1024 else " ("+cli.col("{:.3n} {}".format(*_human(size)), attrs=["bold"])+")"
+    return f"{size:,} bytes{human} used by "+cli.col(f"{files} file"+("" if files == 1 else "s"), attrs=["bold"])
 
 
 def cliFsDu(args):
+    cli = args._cli
     from tools.config import Config
     files = size = 0
     if args.partition is None or args.partition == "domain":
@@ -39,18 +40,18 @@ def cliFsDu(args):
         f, s = _du(prefix)
         files += f
         size += s
-        print(prefix+": "+_statStr(f, s))
+        cli.print(prefix+": "+_statStr(cli, f, s))
     if args.partition is None or args.partition == "user":
         prefix = Config["options"]["userPrefix"]
         f, s = _du(prefix)
         files += f
         size += s
-        print(prefix+": "+_statStr(f, s))
+        cli.print(prefix+": "+_statStr(cli, f, s))
     if args.partition == None:
-        print(_statStr(files, size))
+        cli.print(_statStr(cli, files, size))
 
 
-def _clean(path, used, maxdepth, du=False, delete=True):
+def _clean(cli, path, used, maxdepth, du=False, delete=True):
     import os
     import shutil
     path = path.rstrip(os.path.sep)
@@ -73,12 +74,12 @@ def _clean(path, used, maxdepth, du=False, delete=True):
                     f, s = _du(dp)
                     files += f
                     size += s
-                print("Remov{} {}".format("ing" if delete else "e", Cli.col(dp, attrs=["bold"])))
+                cli.print("Remov{} {}".format("ing" if delete else "e", cli.col(dp, attrs=["bold"])))
                 if delete:
                     shutil.rmtree(dp, ignore_errors=True)
         if len(dirnames)-removed <= 0 and depth != 0:
             size += os.path.getsize(pathname)
-            print("Removing empty directory "+Cli.col(pathname, attrs=["bold"]))
+            cli.print("Removing empty directory "+cli.col(pathname, attrs=["bold"]))
             if delete:
                 try: os.rmdir(pathname)
                 except: pass
@@ -87,24 +88,25 @@ def _clean(path, used, maxdepth, du=False, delete=True):
 
 
 def cliFsClean(args):
-    Cli.require("DB")
+    cli = args._cli
+    cli.require("DB")
     from tools.config import Config
     opt = Config["options"]
     files = size = 0
     if args.partition is None or args.partition == "domain":
         from orm.domains import Domains
         used = {d.homedir for d in Domains.query.with_entities(Domains.homedir).filter(Domains.homedir != "").all()}
-        f, s = _clean(opt["domainPrefix"], used, opt["domainStorageLevels"], not args.nostat, not args.dryrun)
+        f, s = _clean(cli, opt["domainPrefix"], used, opt["domainStorageLevels"], not args.nostat, not args.dryrun)
         files += f
         size += s
     if args.partition is None or args.partition == "user":
         from orm.users import Users
         used = {u.maildir for u in Users.query.with_entities(Users.maildir).filter(Users.maildir != "").all()}
-        f, s = _clean(opt["userPrefix"], used, opt["userStorageLevels"], not args.nostat, not args.dryrun)
+        f, s = _clean(cli, opt["userPrefix"], used, opt["userStorageLevels"], not args.nostat, not args.dryrun)
         files += f
         size += s
     if not args.nostat:
-        print(("Operation would free " if args.dryrun else "Freed ")+_statStr(files, size))
+        cli.print(("Operation would free " if args.dryrun else "Freed ")+_statStr(cli, files, size))
 
 
 def _setupCliFsParser(subp: ArgumentParser):
@@ -124,4 +126,3 @@ def _setupCliFsParser(subp: ArgumentParser):
 @Cli.command("fs", _setupCliFsParser, help="Filesystem operations")
 def cliFsStub(args):
     pass
-

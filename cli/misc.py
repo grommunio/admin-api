@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grammm GmbH
 
-from . import Cli, ArgumentParser
+from . import Cli, CliError, ArgumentParser
 
 
 def _runParserSetup(subp: ArgumentParser):
@@ -14,11 +14,14 @@ def _runParserSetup(subp: ArgumentParser):
 
 @Cli.command("run", _runParserSetup, help="Run the REST API")
 def cliRun(args):
-    if not args.no_config_check:
-        from tools import config
-        error = config.validate()
-        if error:
-            print("Invalid configuration found: "+error)
+    cli = args._cli
+    if cli.mode == "adhoc":
+        raise CliError("Cannot run in adhoc mode")
+    from tools import config
+    error = config.validate()
+    if error:
+        cli.print(cli.col("Invalid configuration found: "+error, "yellow" if args.no_config_check else "red"))
+        if not args.no_config_check:
             return 1
     from api.core import API
     import endpoints
@@ -37,33 +40,35 @@ def _versionParserSetup(subp: ArgumentParser):
 @Cli.command("version", _versionParserSetup, help="Show version information")
 def cliVersion(args):
     from api import backendVersion, apiVersion
+    cli = args._cli
     if args.api:
-        print(apiVersion)
+        cli.print(apiVersion)
     if args.backend:
-        print(backendVersion)
+        cli.print(backendVersion)
     if args.combined or not any((args.api, args.backend, args.combined)):
         vdiff = int(backendVersion.rsplit(".", 1)[1])-int(apiVersion.rsplit(".", 1)[1])
         if vdiff == 0:
-            print(apiVersion)
+            cli.print(apiVersion)
         else:
-            print("{}{:+}".format(apiVersion, vdiff))
+            cli.print("{}{:+}".format(apiVersion, vdiff))
 
 
 def _cliConfigCheck(args):
     from tools.config import validate
+    cli = args._cli
     result = validate()
     if result is None:
-        print("Configuration schema valid")
+        cli.print("Configuration schema valid")
         return 0
     else:
-        print("Error: "+result)
+        cli.print(cli.col(result, "red"))
         return 1
 
 
 def _cliConfigDump(args):
     from tools.config import Config
     import yaml
-    print(yaml.dump(Config))
+    args._cli.print(yaml.dump(Config))
 
 
 def _setupCliConfigParser(subp: ArgumentParser):
@@ -103,6 +108,7 @@ def _setupTaginfo(subp: ArgumentParser):
 
 @Cli.command("taginfo", _setupTaginfo, help="Print information about proptags")
 def cliTaginfo(args):
+    cli = args._cli
     from tools.constants import PropTags, PropTypes
     for tagid in args.tagID:
         try:
@@ -110,11 +116,12 @@ def cliTaginfo(args):
         except:
             ID = getattr(PropTags, tagid.upper(), None)
             if ID is None or type(ID) != int:
-                print("Unknown tag '{}'".format(tagid))
+                cli.print("Unknown tag '{}'".format(tagid))
                 continue
         propname = PropTags.lookup(ID, "unknown")
-        proptype = PropTypes.lookup(ID, "unknown")
-        print("0x{:x} ({}): {}, type {}".format(ID, ID, propname, proptype))
+        typename = PropTypes.lookup(ID, "unknown")
+        proptype = cli.col("{:04x}".format(ID%(1<<16)), attrs=["dark"])
+        cli.print("0x{:04x}{} ({}): {}, type {}".format(ID>>16, proptype, ID, propname, typename))
 
 
 def _setupCliShell(subp: ArgumentParser):
@@ -124,38 +131,52 @@ def _setupCliShell(subp: ArgumentParser):
 
 @Cli.command("shell", _setupCliShell, help="Start interactive shell")
 def cliShell(args):
+    cli = args._cli
     def rlEnable(state):
-        if Cli.rlAvail:
-            readline.set_completer(completer.rl_complete if state else lambda *args: None)
+        if rlAvail:
+            readline.set_completer(cli.complete if state else lambda *args: None)
             readline.set_auto_history(state)
+
+
+    if cli.stdin is None:
+        cli.print(cli.col("No input available - aborting", "red"))
+        return -1
 
     import shlex
     import sys
-    Cli.interactive = sys.stdin.isatty()
-    if Cli.interactive:
-        print("\x1b]2;grammm-admin\x07", end="")
-        print("grammm-admin shell. Type exit or press CTRL+D to exit.")
+    rlAvail = False
+    interactive = cli.stdin.isatty()
+    if interactive:
+        cli.print("\x1b]2;grammm-admin\x07", end="")
+        if cli.host is None:
+            cli.print("grammm-admin shell. Type exit or press CTRL+D to exit.")
+        else:
+            cli.print("Starting remote admin shell. Type exit or press CTRL+D to exit.")
         try:
             import readline
             import argcomplete
-            completer = argcomplete.CompletionFinder(Cli.parser, always_complete_options=False)
+            completer = argcomplete.CompletionFinder(cli.parser, always_complete_options=False)
             readline.set_completer_delims("")
-            readline.set_completer(completer.rl_complete)
             readline.parse_and_bind("tab: complete")
             readline.set_history_length(100)
-            Cli.rlAvail = True
+            rlAvail = True
         except:
-            print("Install readline module to enable autocompletion")
-    else:
-        print(Cli.col("WARNING: The CLI is still under development and subject to changes. Be careful when using scripts.\n",
-                      "yellow"), file=sys.stderr)
+            cli.print("Install readline module to enable autocompletion")
+    elif cli.mode == "standalone":
+        cli.print(cli.col("WARNING: The CLI is still under development and subject to changes. Be careful when using scripts.\n",
+                          "yellow"), file=sys.stderr)
     try:
         while True:
             rlEnable(True)
             try:
-                command = input(Cli.col("grammm-admin", "cyan", attrs=["dark", "bold"])+"> " if Cli.interactive else "").strip()
+                prompt = ""
+                if interactive:
+                    prompt += cli.col("grammm-admin", "cyan", attrs=["bold", "dark"])
+                    prompt += "@"+cli.col(cli.host, "red", attrs=["bold", "dark"]) if cli.host is not None else ""
+                    prompt += "> "
+                command = cli.input(prompt).strip()
             except KeyboardInterrupt:
-                print("^C")
+                cli.print("^C")
                 continue
             if command == "":
                 continue
@@ -163,40 +184,41 @@ def cliShell(args):
                 break
             try:
                 rlEnable(False)
-                result = Cli.execute(shlex.split(command)) or 0
+                result = cli.execute(shlex.split(command), secure=False) or 0
                 if result != 0 and args.exit:
                     return result
             except SystemExit:
                 pass
             except AttributeError as err:
-                print(Cli.col("Caught AttributeError: "+"-".join(str(arg) for arg in err.args), "blue", attrs=["dark"]))
+                cli.print(cli.col("Caught AttributeError: "+"-".join(str(arg) for arg in err.args), "blue", attrs=["dark"]))
             except KeyboardInterrupt:
-                print("^C")
+                cli.print("^C")
                 continue
             except EOFError:
                 raise
             except BaseException as err:
-                print(Cli.col("An exception occured ({}): {}".format(type(err).__name__,
-                                                                     "-".join(str(arg) for arg in err.args)),
-                              "red"))
+                cli.print(cli.col("An exception occured ({}): {}".format(type(err).__name__,
+                                                                         "-".join(str(arg) for arg in err.args)),
+                                  "red"))
     except EOFError:
-        print()
+        cli.print()
 
 
 @Cli.command("shrek")
 def cliShrek(args):
-    print(Cli.col("⢀⡴⠑⡄⠀⠀⠀⠀⠀⠀⠀⣀⣀⣤⣤⣤⣀⡀\n"
-                  "⠸⡇⠀⠿⡀⠀⠀⠀⣀⡴⢿⣿⣿⣿⣿⣿⣿⣿⣷⣦⡀\n"
-                  "⠀⠀⠀⠀⠑⢄⣠⠾⠁⣀⣄⡈⠙⣿⣿⣿⣿⣿⣿⣿⣿⣆\n"
-                  "⠀⠀⠀⠀⢀⡀⠁⠀⠀⠈⠙⠛⠂⠈⣿⣿⣿⣿⣿⠿⡿⢿⣆\n"
-                  "⠀⠀⠀⢀⡾⣁⣀⠀⠴⠂⠙⣗⡀⠀⢻⣿⣿⠭⢤⣴⣦⣤⣹⠀⠀⠀⢀⢴⣶⣆\n"
-                  "⠀⠀⢀⣾⣿⣿⣿⣷⣮⣽⣾⣿⣥⣴⣿⣿⡿⢂⠔⢚⡿⢿⣿⣦⣴⣾⠁⠸⣼⡿\n"
-                  "⠀⢀⡞⠁⠙⠻⠿⠟⠉⠀⠛⢹⣿⣿⣿⣿⣿⣌⢤⣼⣿⣾⣿⡟⠉\n"
-                  "⠀⣾⣷⣶⠇⠀⠀⣤⣄⣀⡀⠈⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇\n"
-                  "⠀⠉⠈⠉⠀⠀⢦⡈⢻⣿⣿⣿⣶⣶⣶⣶⣤⣽⡹⣿⣿⣿⣿⡇\n"
-                  "⠀⠀⠀⠀⠀⠀⠀⠉⠲⣽⡻⢿⣿⣿⣿⣿⣿⣿⣷⣜⣿⣿⣿⡇\n"
-                  "⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣷⣶⣮⣭⣽⣿⣿⣿⣿⣿⣿⣿\n"
-                  "⠀⠀⠀⠀⠀⠀⣀⣀⣈⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇\n"
-                  "⠀⠀⠀⠀⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃\n"
-                  "⠀⠀⠀⠀⠀⠀⠀⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠁\n"
-                  "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⠻⠿⠿⠿⠿⠛⠉", "green"))
+    cli = args._cli
+    cli.print(cli.col("⢀⡴⠑⡄⠀⠀⠀⠀⠀⠀⠀⣀⣀⣤⣤⣤⣀⡀\n"
+                      "⠸⡇⠀⠿⡀⠀⠀⠀⣀⡴⢿⣿⣿⣿⣿⣿⣿⣿⣷⣦⡀\n"
+                      "⠀⠀⠀⠀⠑⢄⣠⠾⠁⣀⣄⡈⠙⣿⣿⣿⣿⣿⣿⣿⣿⣆\n"
+                      "⠀⠀⠀⠀⢀⡀⠁⠀⠀⠈⠙⠛⠂⠈⣿⣿⣿⣿⣿⠿⡿⢿⣆\n"
+                      "⠀⠀⠀⢀⡾⣁⣀⠀⠴⠂⠙⣗⡀⠀⢻⣿⣿⠭⢤⣴⣦⣤⣹⠀⠀⠀⢀⢴⣶⣆\n"
+                      "⠀⠀⢀⣾⣿⣿⣿⣷⣮⣽⣾⣿⣥⣴⣿⣿⡿⢂⠔⢚⡿⢿⣿⣦⣴⣾⠁⠸⣼⡿\n"
+                      "⠀⢀⡞⠁⠙⠻⠿⠟⠉⠀⠛⢹⣿⣿⣿⣿⣿⣌⢤⣼⣿⣾⣿⡟⠉\n"
+                      "⠀⣾⣷⣶⠇⠀⠀⣤⣄⣀⡀⠈⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇\n"
+                      "⠀⠉⠈⠉⠀⠀⢦⡈⢻⣿⣿⣿⣶⣶⣶⣶⣤⣽⡹⣿⣿⣿⣿⡇\n"
+                      "⠀⠀⠀⠀⠀⠀⠀⠉⠲⣽⡻⢿⣿⣿⣿⣿⣿⣿⣷⣜⣿⣿⣿⡇\n"
+                      "⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣷⣶⣮⣭⣽⣿⣿⣿⣿⣿⣿⣿\n"
+                      "⠀⠀⠀⠀⠀⠀⣀⣀⣈⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇\n"
+                      "⠀⠀⠀⠀⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃\n"
+                      "⠀⠀⠀⠀⠀⠀⠀⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠁\n"
+                      "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⠻⠿⠿⠿⠿⠛⠉", "green"))
