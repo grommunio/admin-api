@@ -8,7 +8,7 @@ OBJ=$(SRC:.cpp=.o)
 PYEXMDB_DIR=pyexmdb
 
 INCLUDE=-I include
-PYTHON_INCLUDE=-I/usr/include/python3.6
+PYTHON_INCLUDE=-I/usr/include/python3.6 -I/usr/include/python3.6m
 
 .PHONY: clean all libexmdbpp exmdbpp-python doc
 
