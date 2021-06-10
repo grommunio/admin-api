@@ -25,10 +25,11 @@ def _domainQuery(args):
 
 
 def _dumpDomain(cli, domain):
+    displayname = domain.displayname if domain.displayname != domain.domainname else None
     cli.print(cli.col("{} ({}):".format(domain.domainname, domain.ID), attrs=["bold"]))
     cli.print("  ID: "+str(domain.ID))
     cli.print("  orgID: "+str(domain.orgID))
-    cli.print("  domainname: "+domain.domainname)
+    cli.print("  domainname: "+domain.domainname+(" ({})".format(cli.col(displayname, attrs=["dark"])) if displayname else ""))
     cli.print("  domainStatus: {} ({})".format(domain.domainStatus, _domainStatus(cli, domain.domainStatus)))
     cli.print("  activeUsers: "+str(domain.activeUsers))
     cli.print("  inactiveUsers: "+str(domain.inactiveUsers))
@@ -49,14 +50,13 @@ def _sanitizeData(data):
 def cliDomainList(args):
     cli = args._cli
     cli.require("DB")
-    from orm.domains import DB, Domains
-    DB.session.rollback()
-    domains = _domainQuery(args).with_entities(Domains.ID, Domains.domainname, Domains.domainStatus).all()
+    domains = _domainQuery(args).all()
     if len(domains) == 0:
         cli.print(cli.col("No domains found.", "yellow"))
         return 1
     for domain in domains:
-        cli.print("{}: {} ({})".format(domain.ID, domain.domainname, _domainStatus(cli, domain.domainStatus)))
+        dname = " ({})".format(cli.col(domain.displayname, attrs=["dark"])) if domain.displayname != domain.domainname else ""
+        cli.print("{}: {}{} ({})".format(domain.ID, domain.domainname, dname, _domainStatus(cli, domain.domainStatus)))
 
 
 def cliDomainShow(args):

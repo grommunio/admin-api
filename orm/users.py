@@ -3,9 +3,10 @@
 # SPDX-FileCopyrightText: 2020-2021 grammm GmbH
 
 from . import DB
+from tools import formats
 from tools.constants import PropTags, PropTypes
-from tools.rop import ntTime, nxTime
 from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp, Bool, Date
+from tools.rop import ntTime, nxTime
 
 from sqlalchemy import Column, ForeignKey, func
 from sqlalchemy.dialects.mysql import ENUM, INTEGER, TEXT, TIMESTAMP, TINYINT, VARBINARY, VARCHAR
@@ -14,7 +15,6 @@ from sqlalchemy.orm import relationship, selectinload, validates
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 import crypt
-import re
 import time
 from datetime import datetime
 
@@ -94,8 +94,10 @@ class Users(DataModel, DB.Base):
             domain = None
         if domain is None:
             return "Invalid domain"
-        if "@" in data["username"] and domain.domainname != data["username"].split("@", 1)[1]:
-            return "Domain specifications do not match"
+        if "@" in data["username"]:
+            dname = data["username"].split("@", 1)[1]
+            if domain.domainname != dname and domain.displayname != dname:
+                return "Domain specifications do not match"
         data["domain"] = domain
         data["domainID"] = domain.ID
         domainUsers = Users.count(Users.domainID == domain.ID)
@@ -123,16 +125,19 @@ class Users(DataModel, DB.Base):
         self.addressStatus = (self.addressStatus or 0) | status
 
     def fromdict(self, patches, *args, **kwargs):
-        if "username" in patches:
+        if "username" in patches and patches["username"] != self.username:
             from orm.domains import Domains
             username = patches.pop("username")
             domain = patches.pop("domain", None) or Domains.query.filter(Domains.ID == self.domainID).first()
             if "@" in username:
-                if username.split("@",1)[1] != domain.domainname:
+                uname, dname = username.split("@",1)
+                if dname != domain.domainname and dname != domain.displayname:
                     raise ValueError("Domain specifications mismatch.")
-                self.username = username
+                self.username = uname+"@"+domain.domainname
             else:
                 self.username = username+"@"+domain.domainname
+            if not formats.email.match(self.username):
+                raise ValueError("'{}' is not a valid e-mail address".format(self.username))
         DataModel.fromdict(self, patches, args, kwargs)
         displaytype = self.propmap.get("displaytypeex", 0)
         if displaytype in (0, 1, 7, 8):
@@ -385,8 +390,6 @@ class UserProperties(DataModel, DB.Base):
 class Aliases(DataModel, DB.Base):
     __tablename__ = "aliases"
 
-    emailRe = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
-
     aliasname = Column("aliasname", VARCHAR(128), nullable=False, unique=True, primary_key=True)
     mainname = Column("mainname", VARCHAR(128), ForeignKey(Users.username, ondelete="cascade", onupdate="cascade"),
                       nullable=False, index=True)
@@ -403,7 +406,7 @@ class Aliases(DataModel, DB.Base):
         self.fromdict(aliasname)
 
     def fromdict(self, aliasname, *args, **kwargs):
-        if not self.emailRe.match(aliasname):
+        if not formats.email.match(aliasname):
             raise ValueError("'{}' is not a valid email address".format(aliasname))
         self.aliasname = aliasname
         return self
@@ -458,6 +461,18 @@ class Fetchmail(DataModel, DB.Base):
         if "mailbox" not in props:
             self.mailbox = user.username
         self.fromdict(props)
+
+    @validates("mailbox")
+    def validateMailbox(self, key, value, *args):
+        if not formats.email.match(value):
+            raise ValueError("'{}' is not a valid e-mail address".format(value))
+        return value
+
+    @validates("srcServer")
+    def validateServer(self, key, value, *args):
+        if not formats.domain.match(value):
+            raise ValueError("'{}' is not a valid domain".format(value))
+        return value
 
     def __str__(self):
         fetchoptions = "options"

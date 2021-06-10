@@ -3,11 +3,16 @@
 # SPDX-FileCopyrightText: 2021 grammm GmbH
 
 from . import DB
+from tools import formats
 from tools.DataModel import DataModel, Id, Text, Int, Date
+
+import idna
 
 from sqlalchemy import Column, func, select
 from sqlalchemy.dialects.mysql import DATE, INTEGER, TINYINT, VARCHAR
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import column_property
+from sqlalchemy.types import TypeDecorator
 
 from .users import Users
 
@@ -22,11 +27,26 @@ class Orgs(DataModel, DB.Base):
 
 
 class Domains(DataModel, DB.Base):
+    class DomainName(TypeDecorator):
+        """Custom column type to allow comparisons to work with unicode names."""
+        impl = VARCHAR
+        cache_ok = True
+
+        def process_bind_param(self, value, dialect):
+            try:
+                xfix = "%" if value[0] == "%" else "", "%" if value[-1] == "%" else ""
+                return xfix[0]+idna.encode(value.strip("%")).decode("ascii")+xfix[1]
+            except:
+                try:
+                    return value.encode("ascii")
+                except:
+                    return None
+
     __tablename__ = "domains"
 
     ID = Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True, nullable=False)
     orgID = Column("org_id", INTEGER(10, unsigned=True), nullable=False, server_default="0", index=True)
-    domainname = Column("domainname", VARCHAR(64), nullable=False)
+    _domainname = Column("domainname", DomainName(64), nullable=False)
     homedir = Column("homedir", VARCHAR(128), nullable=False, server_default="")
     maxUser = Column("max_user", INTEGER(10, unsigned=True), nullable=False)
     title = Column("title", VARCHAR(128), nullable=False, server_default="")
@@ -39,7 +59,7 @@ class Domains(DataModel, DB.Base):
     activeUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus == 0)).as_scalar())
     inactiveUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus != 0)).as_scalar())
 
-    _dictmapping_ = ((Id(), Text("domainname", flags="init")),
+    _dictmapping_ = ((Id(), Text("domainname", flags="init"), "displayname"),
                      (Id("orgID", flags="patch"),
                       Int("maxUser", flags="patch"),
                       Int("activeUsers"),
@@ -60,6 +80,24 @@ class Domains(DataModel, DB.Base):
         if "password" in props:
             self.password = props.pop("password")
         DataModel.__init__(self, props, args, kwargs)
+
+    @hybrid_property
+    def domainname(self):
+        return self._domainname
+
+    @domainname.setter
+    def domainname(self, value):
+        try:
+            idn = idna.encode(value).decode("ascii")
+        except:
+            idn = value
+        if not formats.domain.match(idn):
+            raise ValueError("'{}' is not a valid domain name".format(idn))
+        self._domainname = idn
+
+    @property
+    def displayname(self):
+        return idna.decode(self._domainname)
 
     @staticmethod
     def checkCreateParams(data):

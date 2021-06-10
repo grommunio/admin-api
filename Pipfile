@@ -15,6 +15,7 @@ pyjwt = "*"
 ldap3 = "*"
 argcomplete = "*"
 systemd-python = "*"
+idna = "*"
 
 [dev-packages]
 

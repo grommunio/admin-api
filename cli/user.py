@@ -31,7 +31,7 @@ def _dumpUser(cli, user, indent=0):
         v = getattr(user, attr, None)
         cli.print("{}{}: {}".format(" "*indent, attr, v if v is not None else ""))
     cli.print("{}addressStatus: {} ({}|{})".format(" "*indent, user.addressStatus,
-                                                   _mkStatus(cli, user.status), _mkStatus(cli, user.domainStatus)))
+                                                   _mkStatus(cli, user.domainStatus), _mkStatus(cli, user.status)))
     cli.print(" "*indent+"externID: "+(escape_filter_chars(user.externID) if user.externID is not None else
                                        cli.col("(none)", attrs=["dark"])))
     cli.print(" "*indent+"aliases:"+(cli.col(" (none)", attrs=["dark"]) if len(user.aliases) == 0 else ""))

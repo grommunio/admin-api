@@ -569,7 +569,7 @@ class DataModel:
         for prop in matchables:
             column, query = prop.resolve(cls, query)
             targets.append((prop, column))
-        filters = [column.ilike(matchexpr) for match in matchexpr for prop, column in targets if prop.match == "default"] +\
+        filters = [column.ilike(match) for match in matchexpr for prop, column in targets if prop.match == "default"] +\
                   [column == prop.tf(expr) for prop, column in targets if prop.match == "exact" and prop.tf(expr) is not None]
         query = query.filter(or_(filter for filter in filters))
         return query.reset_joinpoint()
