@@ -214,6 +214,22 @@ class Systemd:
         res = self._addQuery(self.manager.ReloadUnit(service, "replace"))
         return str(res.get())
 
+    def tryReloadRestartService(self, service: str):
+        """Issue systemd service reload or restart.
+
+        Parameters
+        ----------
+        service : str
+            Name of the unit
+
+        Raises
+        ------
+        dbus.DBusException
+            DBus communication failed.
+        """
+        res = self._addQuery(self.manager.ReloadOrTryRestartUnit(service, "replace"))
+        return str(res.get())
+
     def enableService(self, service: str, runtime: bool=False, force: bool=False):
         """Enable systemd service.
 

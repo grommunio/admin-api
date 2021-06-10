@@ -5,14 +5,19 @@
 Module containing admin Managed CONFigurations
 """
 
+import dbus
 import logging
 
 from .config import Config
 from .misc import setDirectoryOwner, setDirectoryPermission
+from .systemd import Systemd
 
 LDAP = {}
 AUTHMGR = {}
 
+
+_ldapDepServices = ("gromox-http.service", "gromox-midb.service", "gromox-zcore.service", "gromox-delivery.service",
+                    "gromox-smtp.service", "gromox-imap.service", "gromox-pop3.service")
 
 def _loadConf(path):
     from multidict import MultiDict
@@ -50,6 +55,17 @@ def _addIfDef(dc, d, sc, s, all=False, type=None):
         return v if type is None else type(v)
     if s in sc:
         dc[d] = tf(sc[s]) if not all else [tf(v) for v in sc.getall(s)]
+
+
+def _reloadServices(*services):
+    sysd = Systemd(system=True)
+    for service in services:
+        try:
+            res = sysd.tryReloadRestartService(service)
+            if res != "done":
+                logging.warn("Failed ro reload/restart '{}': {}".format(service, res))
+        except dbus.DBusException as err:
+            logging.warn("Failed to reload/restart '{}': {}".format(service, " - ".join(str(arg) for arg in err.args)))
 
 
 ###############################################################################
@@ -119,7 +135,7 @@ def loadLdap():
         return " - ".join((str(arg) for arg in err.args))
 
 
-def dumpLdap(conf=None, file=None):
+def dumpLdap(conf=None, file=None, reloadServices=True):
     """Write LDAP configuration to disk.
 
     Parameters
@@ -140,6 +156,8 @@ def dumpLdap(conf=None, file=None):
             LDAP = conf
         if file is None:
             _dumpConf(Config["mconf"]["ldapPath"], _flattenLdap(LDAP))
+            if reloadServices:
+                _reloadServices(*_ldapDepServices)
         else:
             _fDumpConf(file, _flattenLdap(LDAP))
     except Exception as err:
@@ -167,7 +185,7 @@ def loadAuthmgr():
         return " - ".join((str(arg) for arg in err.args))
 
 
-def dumpAuthmgr(conf=None, file=None):
+def dumpAuthmgr(conf=None, file=None, reloadServices=False):
     """Write authmgr configuration to disk.
 
     Parameters
@@ -189,6 +207,8 @@ def dumpAuthmgr(conf=None, file=None):
         wconf = {"auth_backend_selection": AUTHMGR.get("authBackendSelection", "always_mysql")}
         if file is None:
             _dumpConf(Config["mconf"]["authmgrPath"], wconf)
+            if reloadServices:
+                _reloadServices(*_ldapDepServices)
         else:
             _fDumpConf(file, wconf)
     except Exception as err:
