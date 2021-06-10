@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.22.1
+  version: 0.22.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1112,6 +1112,45 @@ paths:
           description: Connection to grammm-antispam failed
         default:
           description: Response returned by the grammm-admin backend
+
+  /chkFormat:
+    get:
+      summary: Check format of input
+      tags:
+        - Misc
+      parameters:
+        - name: domain
+          description: Check format of domain name
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: email
+          description: Check format of e-mail address
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Validaty information returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domain:
+                    type: string
+                    nullable: true
+                    description: Error message or `null` if valid
+                  email:
+                    type: string
+                    nullable: true
+                    description: Error message or `null` if valid
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /system/cli:
     post:

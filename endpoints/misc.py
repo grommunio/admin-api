@@ -5,11 +5,13 @@
 from flask import jsonify, request
 
 import api
+import idna
+
 from api.core import API, secure
 from api.security import loginUser, refreshToken, getSecurityContext
 from orm import DB
 
-from tools import ldap
+from tools import formats, ldap
 
 
 @API.route(api.BaseRoute+"/status", methods=["GET"])
@@ -88,3 +90,39 @@ def updatePassword():
     user.password = data["new"]
     DB.session.commit()
     return jsonify(message="Password updated")
+
+
+def chkDomain(domain):
+    try:
+        domain = idna.encode(domain).decode("ascii")
+        if not formats.domain.match(domain):
+            return "Domain does not match required format"
+        else:
+            return None
+    except idna.IDNAError as err:
+        return err.args[0]
+    except Exception as err:
+        return "Unknown error ({})".format(type(err).__name__)
+
+
+def chkEmail(email):
+    if email.count("@") != 1:
+        return "E-Mail address does not match required format"
+    user, domain = email.split("@")
+    err = chkDomain(domain)
+    if err:
+        return err
+    email = user+"@"+idna.encode(domain).decode("ascii")
+    if not formats.email.match(email):
+        return "E-Mail address does not match required format"
+
+
+@API.route(api.BaseRoute+"/chkFormat", methods=["GET"])
+@secure(requireAuth=False)
+def validateFormat():
+    result = {}
+    if "domain" in request.args:
+        result["domain"] = chkDomain(request.args["domain"])
+    if "email" in request.args:
+        result["email"] = chkEmail(request.args["email"])
+    return jsonify(result)
