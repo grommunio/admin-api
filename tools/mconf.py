@@ -63,7 +63,7 @@ def _reloadServices(*services):
         try:
             res = sysd.tryReloadRestartService(service)
             if res != "done":
-                logging.warn("Failed ro reload/restart '{}': {}".format(service, res))
+                logging.warn("Failed to reload/restart '{}': {}".format(service, res))
         except dbus.DBusException as err:
             logging.warn("Failed to reload/restart '{}': {}".format(service, " - ".join(str(arg) for arg in err.args)))
 
