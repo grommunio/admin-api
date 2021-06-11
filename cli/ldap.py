@@ -74,8 +74,9 @@ def cliLdapInfo(args):
     cli = args._cli
     cli.require("LDAP")
     from tools import ldap
-    cli.print("Successfully connected to {} as {}".format(ldap.ldapconf["connection"]["server"],
-                                                          ldap.ldapconf["connection"].get("bindUser") or "anonymous"))
+    cli.print("Successfully connected to {}:{} as {}".format(cli.col(ldap.LDAPConn.server.host, attrs=["bold"]),
+                                                             cli.col(ldap.LDAPConn.server.port, attrs=["dark"]),
+                                                             ldap.ldapconf["connection"].get("bindUser", "anonymous")))
 
 
 def _getCandidate(cli, expr, auto):

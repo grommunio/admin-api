@@ -17,8 +17,9 @@ from .misc import GenericObject
 class LDAPGuard:
     """LDAP connection proxy class."""
 
-    def __init__(self, Base, *args, **kwargs):
+    def __init__(self, Base, servers, *args, **kwargs):
         self.__base = Base
+        self.__servers = servers.split()
         self.__args = args
         self.__kwargs = kwargs
         self.error = None
@@ -34,7 +35,7 @@ class LDAPGuard:
                 try:
                     return attr(*args, **kwargs)
                 except (exc.LDAPSocketOpenError, exc.LDAPSocketSendError, exc.LDAPSessionTerminatedByServerError):
-                    logging.warn("LDAP socket error - reconnecting")
+                    logging.warn("LDAP connection error - reconnecting")
                     if not self.__connect(True):
                         raise self.error
                     nattr = getattr(self.__obj, name)
@@ -46,11 +47,11 @@ class LDAPGuard:
         if self.__obj is not None and not reconnect:
             return True
         try:
-            self.__obj = self.__base(*self.__args, **self.__kwargs)
+            pool = ldap3.ServerPool(self.__servers, "FIRST", active=1) if len(self.__servers) != 1 else self.__servers[0]
+            self.__obj = self.__base(pool, *self.__args, **self.__kwargs)
+            self.error = None
             return True
-        except exc.LDAPBindError as err:
-            self.error = err
-        except exc.LDAPSocketOpenError as err:
+        except (exc.LDAPBindError, exc.LDAPSocketOpenError, exc.LDAPServerPoolExhaustedError) as err:
             self.error = err
         return False
 
@@ -447,7 +448,7 @@ def disable():
 def _init():
     err = reloadConfig(mconf.LDAP)
     if err is not None:
-        logging.warn("Could not initialize LDAP: "+err+". Service disabled.")
+        logging.warn("Could not initialize LDAP: "+err+". Service plugin disabled.")
 
-
+ldap3.set_config_parameter("POOLING_LOOP_TIMEOUT", 1)
 _init()

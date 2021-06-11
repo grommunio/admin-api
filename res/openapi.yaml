@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.22.2
+  version: 0.22.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3195,7 +3195,7 @@ components:
           properties:
             server:
               type: string
-              description: Address of the LDAP server to connect to
+              description: Space separated list of addresses of the LDAP server to connect to
             bindUser:
               type: string
               description: DN of the user to perform initial bind with
