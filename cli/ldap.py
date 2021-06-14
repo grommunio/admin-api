@@ -230,7 +230,7 @@ def cliLdapDownsync(args):
     elif args.complete:
         candidates = ldap.searchUsers(None, limit=None)
         if len(candidates) == 0:
-            cli.print("No LDAP users found.")
+            cli.print(cli.col("No LDAP users found.", "yellow"))
             return SUCCESS
         cli.print("Synchronizing {} user{}...".format(len(candidates), "" if len(candidates) == 1 else "s"))
         error = False
@@ -244,11 +244,14 @@ def cliLdapDownsync(args):
     from orm.users import Users
     users = Users.query.filter(Users.externID != None).with_entities(Users.externID).all()
     if len(users) == 0:
-        cli.print("No imported users found")
+        cli.print(cli.col("No imported users found", "yellow"))
         return SUCCESS
     candidates = ldap.getAll(user.externID for user in users)
     if len(candidates) != len(users):
-        cli.print("Some ldap references seem to be broken - please run ldap check")
+        cli.print(cli.col("Some ldap references seem to be broken - please run ldap check", "yellow"))
+    if len(candidates) == 0:
+        cli.print("No users to synchronize")
+        return SUCCESS
     error = False
     cli.print("Synchronizing {} user{}...".format(len(candidates), "" if len(candidates) == 1 else "s"))
     for candidate in candidates:
@@ -265,10 +268,11 @@ def cliLdapSearch(args):
     from tools import ldap
     matches = ldap.searchUsers(args.query, limit=args.max_results or None)
     if len(matches) == 0:
-        cli.print(cli.col("No matches", "yellow"))
+        cli.print(cli.col("No "+("matches" if args.query else "entries"), "yellow"))
         return ERR_NO_USER
     for match in matches:
-        cli.print("{}: {} ({})".format(cli.col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), match.name, match.email))
+        cli.print("{}: {} ({})".format(cli.col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), match.name,
+                                       match.email if match.email else cli.col("N/A", "red")))
     cli.print("({} match{})".format(len(matches), "" if len(matches) == 1 else "es"))
 
 

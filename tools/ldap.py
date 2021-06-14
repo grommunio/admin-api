@@ -166,6 +166,30 @@ def _searchBase(conf=None):
     return conf["baseDn"]
 
 
+def _userComplete(user, required=None):
+    """Check if LDAP object provides all required fields.
+
+    If no required fields are specified, the default `objectID`,
+    `users.username` and `users.displayname` config values are used.
+
+    Parameters
+    ----------
+    user : LDAP object
+        Ldap object to check
+    required : iterable, optional
+        List of field names. The default is None.
+
+    Returns
+    -------
+    bool
+        True if all required fields are present, False otherwise
+
+    """
+    props = required or (ldapconf["users"]["username"], ldapconf["users"]["displayName"], ldapconf["objectID"])
+    res = all(prop in user and user[prop].value is not None for prop in props)
+    return res
+
+
 def unescapeFilterChars(text):
     """Reverse escape_filter_chars function.
 
@@ -240,7 +264,7 @@ def getUserInfo(ID):
         LDAPConn.search(_searchBase(), _matchFilters(ID), attributes=[username, name, ldapconf["objectID"]])
     except exc.LDAPInvalidValueError:
         return None
-    if len(LDAPConn.response) != 1:
+    if len(LDAPConn.response) != 1 or not _userComplete(LDAPConn.entries[0]):
         return None
     return GenericObject(ID=LDAPConn.entries[0][ldapconf["objectID"]].raw_values[0],
                          username=LDAPConn.entries[0][username].value,
@@ -272,7 +296,7 @@ def getAll(IDs):
                           username=entry[username].value,
                           name=entry[name].value,
                           email=entry[username].value)
-            for entry in LDAPConn.entries]
+            for entry in LDAPConn.entries if _userComplete(entry)]
 
 
 def downsyncUser(ID, props=None):
@@ -308,6 +332,8 @@ def downsyncUser(ID, props=None):
     if len(LDAPConn.response) > 1:
         raise RuntimeError("Multiple entries found - aborting")
     ldapuser = LDAPConn.entries[0]
+    if not _userComplete(ldapuser, (ldapconf["users"]["username"],)):
+        return None
     userdata = dict(username=ldapuser[ldapconf["users"]["username"]].value)
     userdata["properties"] = props or _defaultProps.copy()
     userdata["properties"].update({prop: ldapuser[attr].value for attr, prop in _userAttributes.items() if attr in ldapuser})
@@ -335,7 +361,7 @@ def searchUsers(query, domains=None, limit=25):
     name, email = ldapconf["users"]["displayName"], ldapconf["users"]["username"]
     try:
         exact = getUserInfo(unescapeFilterChars(query))
-        exact = [] if exact is None else [exact]
+        exact = [] if exact is None or not _userComplete(exact) else [exact]
     except:
         exact = []
     LDAPConn.search(_searchBase(),
@@ -345,7 +371,7 @@ def searchUsers(query, domains=None, limit=25):
     return exact+[GenericObject(ID=result[IDattr].raw_values[0],
                                 email=result[email].value,
                                 name=result[name].value)
-                  for result in LDAPConn.entries]
+                  for result in LDAPConn.entries if _userComplete(result)]
 
 
 def dumpUser(ID):
