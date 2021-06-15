@@ -327,9 +327,9 @@ def downsyncUser(ID, props=None):
         LDAPConn.search(_searchBase(), _matchFilters(ID), attributes=["*", ldapconf["objectID"]])
     except:
         return None
-    if len(LDAPConn.response) == 0:
+    if len(LDAPConn.entries) == 0:
         return None
-    if len(LDAPConn.response) > 1:
+    if len(LDAPConn.entries) > 1:
         raise RuntimeError("Multiple entries found - aborting")
     ldapuser = LDAPConn.entries[0]
     if not _userComplete(ldapuser, (ldapconf["users"]["username"],)):
@@ -337,6 +337,13 @@ def downsyncUser(ID, props=None):
     userdata = dict(username=ldapuser[ldapconf["users"]["username"]].value)
     userdata["properties"] = props or _defaultProps.copy()
     userdata["properties"].update({prop: ldapuser[attr].value for attr, prop in _userAttributes.items() if attr in ldapuser})
+    if ldapconf["users"].get("aliases"):
+        aliasattr = ldapconf["users"]["aliases"]
+        if aliasattr in ldapuser and ldapuser[aliasattr].value is not None:
+            aliases = ldapuser[aliasattr].value
+            userdata["aliases"] = aliases if isinstance(aliases, list) else [aliases]
+        else:
+            userdata["aliases"] = []
     return userdata
 
 

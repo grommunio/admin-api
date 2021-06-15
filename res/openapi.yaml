@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.22.3
+  version: 0.22.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3252,6 +3252,9 @@ components:
               items:
                 type: string
                 description: LDAP attribute name
+            aliases:
+              type: string
+              description: LDAP attribute containing alternative e-mail addresses
     mlistRead:
       type: object
       properties:
