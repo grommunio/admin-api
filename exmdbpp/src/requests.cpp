@@ -167,6 +167,18 @@ Response<CreateFolderByPropertiesRequest::callId>::Response(IOBuffer& buff) : fo
 {}
 
 /**
+ * @brief      Deserialize list of all store properties
+ *
+ * @param      buff  Buffer containing the data
+ */
+Response<GetAllStorePropertiesRequest::callId>::Response(IOBuffer& buff)
+{
+    proptags.resize(buff.pop<uint16_t>());
+    for(uint32_t& entry : proptags)
+        buff.pop(entry);
+}
+
+/**
  * @brief      Deserialize query table response
  *
  * @param      buff  Buffer containing the data
@@ -190,10 +202,12 @@ template struct Request<constants::CallId::ALLOCATE_CN, std::string>;
 template struct Request<constants::CallId::CREATE_FOLDER_BY_PROPERTIES, std::string, uint32_t, Collection<uint16_t, structures::TaggedPropval>>;
 template struct Request<constants::CallId::DELETE_FOLDER, std::string, uint32_t, uint64_t, bool>;
 template struct Request<constants::CallId::GET_FOLDER_PROPERTIES, std::string, uint32_t, uint64_t, Collection<uint16_t, uint32_t>>;
+template struct Request<constants::CallId::GET_STORE_ALL_PROPTAGS, std::string>;
 template struct Request<constants::CallId::GET_STORE_PROPERTIES, std::string, uint32_t, Collection<uint16_t, uint32_t>>;
 template struct Request<constants::CallId::LOAD_HIERARCHY_TABLE, std::string, uint64_t, std::string, uint8_t>;
 template struct Request<constants::CallId::LOAD_PERMISSION_TABLE, std::string, uint64_t, uint8_t>;
 template struct Request<constants::CallId::QUERY_TABLE, std::string, std::string, uint32_t, uint32_t, Collection<uint16_t, uint32_t>, uint32_t, uint32_t>;
+template struct Request<constants::CallId::REMOVE_STORE_PROPERTIES, std::string, Collection<uint16_t, uint32_t>>;
 template struct Request<constants::CallId::SET_FOLDER_PROPERTIES, std::string, uint32_t, uint64_t, Collection<uint16_t, structures::TaggedPropval>>;
 template struct Request<constants::CallId::SET_STORE_PROPERTIES, std::string, uint32_t, Collection<uint16_t, structures::TaggedPropval>>;
 template struct Request<constants::CallId::UNLOAD_STORE, std::string>;

@@ -59,7 +59,7 @@ class LDAPGuard:
         return repr(self.__obj)
 
 
-_defaultProps = {"storagequotalimit": mconf.LDAP.get("users", {}).get("defaultQuota", 1024*1024)}
+_defaultProps = {}
 _unescapeRe = re.compile(rb"\\(?P<value>[a-fA-F0-9]{2})")
 _userAttributes = None
 LDAPConn = None
@@ -439,6 +439,11 @@ def _testConfig(ldapconf):
         f = ldapconf["users"]["filter"]
         if f is not None and len(f) != 0 and f[0] != "(" and f[-1] != ")":
             ldapconf["users"]["filter"] = "("+f+")"
+    global _defaultProps
+    if "defaultQuota" in ldapconf["users"]:
+        _defaultProps = {prop: ldapconf["users"]["defaultQuota"] for prop in ("storagequotalimit", "prohibitsendquota", "prohibitreceivequota")}
+    else:
+        _defaultProps = {}
     LDAPConn.search(_searchBase(ldapconf), _searchFilters(" ", userconf=ldapconf["users"]), attributes=[], paged_size=0)
     return LDAPConn, _userAttributes
 

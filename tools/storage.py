@@ -355,9 +355,12 @@ class UserSetup(SetupContext):
         self.exmdb.execute(stmt, ("REPORT.IPM", PrivateFIDs.INBOX, ntNow))
         stmt = "INSERT INTO store_properties VALUES (?, ?)"
         self.exmdb.execute(stmt, (PropTags.CREATIONTIME, ntNow))
-        self.exmdb.execute(stmt, (PropTags.PROHIBITRECEIVEQUOTA, self.user.properties["prohibitreceivequota"].val))
-        self.exmdb.execute(stmt, (PropTags.PROHIBITSENDQUOTA, self.user.properties["prohibitsendquota"].val))
-        self.exmdb.execute(stmt, (PropTags.STORAGEQUOTALIMIT, self.user.properties["storagequotalimit"].val))
+        if "prohibitreceivequota" in self.user.properties:
+            self.exmdb.execute(stmt, (PropTags.PROHIBITRECEIVEQUOTA, self.user.properties["prohibitreceivequota"].val))
+        if "prohibitsendquota" in self.user.properties:
+            self.exmdb.execute(stmt, (PropTags.PROHIBITSENDQUOTA, self.user.properties["prohibitsendquota"].val))
+        if "storagequotalimit" in self.user.properties:
+            self.exmdb.execute(stmt, (PropTags.STORAGEQUOTALIMIT, self.user.properties["storagequotalimit"].val))
         self.createGenericFolder(PrivateFIDs.ROOT, self.user.ID)
         self.createGenericFolder(PrivateFIDs.IPMSUBTREE, self.user.ID)
         self.createGenericFolder(PrivateFIDs.INBOX, self.user.ID)

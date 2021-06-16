@@ -22,8 +22,10 @@ static const uint8_t PUSH_ERROR = 0x09;
 namespace CallId
 {
 static const uint8_t CONNECT = 0x00;
+static const uint8_t GET_STORE_ALL_PROPTAGS = 0x08;
 static const uint8_t GET_STORE_PROPERTIES = 0x09;
 static const uint8_t SET_STORE_PROPERTIES = 0x0a;
+static const uint8_t REMOVE_STORE_PROPERTIES = 0x0b;
 static const uint8_t CREATE_FOLDER_BY_PROPERTIES = 0x15;
 static const uint8_t GET_FOLDER_PROPERTIES = 0x17;
 static const uint8_t SET_FOLDER_PROPERTIES = 0x18;

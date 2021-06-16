@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.22.5
+  version: 0.22.6
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1469,6 +1469,27 @@ paths:
                   errors:
                     type: object
                     description: Tag name / error message for tags that failed to update
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete user store props
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/propnames'
+      responses:
+        '200':
+          description: Properties removed
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':

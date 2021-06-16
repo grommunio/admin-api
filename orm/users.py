@@ -107,11 +107,6 @@ class Users(DataModel, DB.Base):
         if "properties" not in data:
             data["properties"] = {}
         properties = data["properties"]
-        if "storagequotalimit" not in properties:
-            data["properties"]["storagequotalimit"] = 0
-        for prop in ("prohibitreceivequota", "prohibitsendquota"):
-            if prop not in properties:
-                properties[prop] = properties["storagequotalimit"]
         properties["creationtime"] = datetime.now()
         if "displaytypeex" not in properties:
             properties["displaytypeex"] = 0

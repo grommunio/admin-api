@@ -98,6 +98,8 @@ FolderOwnerListResponse::FolderOwnerListResponse(const Response_t<QueryTableRequ
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /**
  * @brief      Retrieve public folder list
  *
@@ -287,5 +289,26 @@ PropvalResponse ExmdbQueries::getFolderProperties(const std::string& homedir, ui
 PropvalResponse ExmdbQueries::getStoreProperties(const std::string& homedir, uint32_t cpid,
                                                                        const std::vector<uint32_t>& proptags)
 {return send<GetStorePropertiesRequest>(homedir, cpid, proptags);}
+
+/**
+ * @brief      Get all store proptags
+ *
+ * @param      homedir   Home directory path of the domain
+ *
+ * @return     Response containing a list prop tags
+ */
+Response_t<GetAllStorePropertiesRequest> ExmdbQueries::getAllStoreProperties(const std::string& homedir)
+{return send<GetAllStorePropertiesRequest>(homedir);}
+
+/**
+ * @brief      Remove store properties
+ *
+ * @param      homedir   Home directory path of the domain
+ * @param      proptags  Properties to remove
+ *
+ * @return     Empty response if successful
+ */
+NullResponse ExmdbQueries::removeStoreProperties(const std::string& homedir, const std::vector<uint32_t>& proptags)
+{return send<RemoveStorePropertiesRequest>(homedir, proptags);}
 
 }

@@ -85,10 +85,12 @@ public:
     requests::Response_t<requests::CreateFolderByPropertiesRequest> createFolder(const std::string&, uint32_t, const std::string&, const std::string&, const std::string&);
     requests::SuccessResponse deleteFolder(const std::string&, uint64_t);
     requests::NullResponse deleteFolderOwner(const std::string&, uint64_t, uint64_t);
+    requests::Response_t<requests::GetAllStorePropertiesRequest> getAllStoreProperties(const std::string&);
     requests::Response_t<requests::QueryTableRequest> getFolderList(const std::string&, const std::vector<uint32_t>& = defaultFolderProps);
     requests::Response_t<requests::QueryTableRequest> getFolderOwnerList(const std::string&, uint64_t);
     requests::PropvalResponse getFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<uint32_t>& = defaultFolderProps);
     requests::PropvalResponse getStoreProperties(const std::string&, uint32_t, const std::vector<uint32_t>&);
+    requests::NullResponse removeStoreProperties(const std::string&, const std::vector<uint32_t>&);
     requests::ProblemsResponse setFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<structures::TaggedPropval>&);
     requests::ProblemsResponse setStoreProperties(const std::string&, uint32_t, const std::vector<structures::TaggedPropval>&);
     requests::NullResponse unloadStore(const std::string&);

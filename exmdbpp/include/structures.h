@@ -113,16 +113,16 @@ struct PermissionData
 };
 
 /**
- * @brief      List of problems that occured while setting store properties
+ * @brief      Problem that occured while setting store properties
  */
 struct PropertyProblem
 {
     PropertyProblem() = default;
     explicit PropertyProblem(IOBuffer&);
 
-    uint16_t index;
-    uint32_t proptag;
-    uint32_t err;
+    uint16_t index;  ///< Index in the PropTag array
+    uint32_t proptag; ///< PropTag that caused the error
+    uint32_t err; ///< Exchange error code
 };
 
 }

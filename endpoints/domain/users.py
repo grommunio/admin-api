@@ -171,9 +171,9 @@ def updateUserRoles(domainID, userID):
     return jsonify(data=[role.ref() for role in roles])
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeProps", methods=["GET"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeProps", methods=["GET", "DELETE"])
 @secure(requireDB=True)
-def getUserStoreProps(domainID, userID):
+def rdUserStoreProps(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
     if user is None:
@@ -188,6 +188,9 @@ def getUserStoreProps(domainID, userID):
     try:
         options = Config["options"]
         client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
+        if request.method == "DELETE":
+            client.removeStoreProperties(user.maildir, props)
+            return jsonify(message="Success.")
         response = client.getStoreProperties(user.maildir, 0, props)
     except pyexmdb.ExmdbError as err:
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
@@ -242,7 +245,7 @@ def setUserStoreProps(domainID, userID):
             errors[tag] = err
         if len(errors) != 0:
             API.logger.warn("Failed to set proptags: "+", ".join("{} ({})".format(tag, err) for tag, err in errors.items()))
-        return jsonify(message="Success" if len(errors) == 0 else "Some tags could not be set", errors=errors)
+        return jsonify(message="Great success!" if len(errors) == 0 else "Some tags could not be set", errors=errors)
     except pyexmdb.ExmdbError as err:
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
     except RuntimeError as err:

@@ -350,6 +350,31 @@ struct response_map<DeleteFolderRequest::callId>
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
+ * @brief   Get all store proptags request
+ *
+ * @param   string      homedir
+ *
+ * @return  Response<GetAllStorePropertiesRequest::callId>
+ */
+struct GetAllStorePropertiesRequest : public Request<constants::CallId::GET_STORE_ALL_PROPTAGS,
+        std::string>
+{};
+
+/**
+ * @brief      Response specialization for GetAllStorePropertiesRequest
+ */
+template<>
+struct Response<GetAllStorePropertiesRequest::callId>
+{
+    Response() = default;
+    explicit Response(IOBuffer&);
+
+    std::vector<uint32_t> proptags; ///< List of prop tags contained in the store
+};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
  * @brief   Get folder properties
  *
  * @param   string      homedir
@@ -483,6 +508,21 @@ struct Response<QueryTableRequest::callId>
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
+ * @brief   Delete proptags from store
+ *
+ * @param   string      homedir
+ * @param   uint32_t[]  proptags
+ *
+ * @return
+ */
+struct RemoveStorePropertiesRequest: public Request<constants::CallId::REMOVE_STORE_PROPERTIES,
+        std::string, Collection<uint16_t, uint32_t>>
+{};
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
  * @brief   Set folder properties
  *
  * @param   string          homedir
@@ -513,7 +553,7 @@ struct response_map<SetFolderPropertiesRequest::callId>
  * @param   uint32_t        cpid
  * @param   TaggedPropval[] propvals
  *
- * @return  PropblemsResponse
+ * @return  ProblemsResponse
  */
 struct SetStorePropertiesRequest : public Request<constants::CallId::SET_STORE_PROPERTIES,
         std::string, uint32_t, Collection<uint16_t, structures::TaggedPropval>>
