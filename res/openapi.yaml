@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.22.4
+  version: 0.22.5
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1439,6 +1439,45 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/DatabaseError'
+    patch:
+      summary: Update store properties
+      tags:
+       - Domain Admin/Users
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+      requestBody:
+        content:
+          application/json:
+           schema:
+            type: object
+            description: Tag name / value mapping of proptags to modify
+            additionalProperties:
+              oneOf:
+                - type: integer
+                - type: string
+      responses:
+        '200':
+          description: Modification request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    description: Tag name / error message for tags that failed to update
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
 
   /domains/{domainID}/users/{userID}/password:
     put:

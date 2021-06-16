@@ -90,59 +90,11 @@ def createUser(domainID):
         return jsonify(message="Object violates database constraints", error=err.orig.args[1]), 400
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["GET"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["GET", "PATCH"])
 @secure(requireDB=True)
 def userObjectEndpoint(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     return defaultObjectHandler(Users, userID, "User", filters=(Users.domainID == domainID,))
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["PATCH"])
-@secure(requireDB=True)
-def patchUser(domainID, userID):
-    checkPermissions(DomainAdminPermission(domainID))
-    user = Users.query.filter(Users.domainID == domainID, Users.ID == userID).first()
-    if user is None:
-        return jsonify(message="User not found"), 404
-    data = request.get_json(silent=True, cache=True)
-    if data is None:
-        return jsonify(message="Could not update: no valid JSON data"), 400
-    props = data.get("properties")
-    storeprops = ("storagequotalimit", "prohibitreceivequota", "prohibitsendquota")
-    updateStore = props is not None and any(prop in props and props[prop] != user.getProp(prop) for prop in storeprops)
-    try:
-        user.fromdict(data)
-        DB.session.flush()
-    except (InvalidAttributeError, MismatchROError, ValueError) as err:
-        DB.session.rollback()
-        return jsonify(message=err.args[0]), 400
-    except IntegrityError as err:
-        DB.session.rollback()
-        return jsonify(message="Could not update: invalid data", error=err.orig.args[1]), 400
-    if updateStore:
-        options = Config["options"]
-        propvals = [pyexmdb.TaggedPropval_u64(user.properties[prop].tag, user.properties[prop].val)
-                    for prop in storeprops if prop in user.properties and user.properties[prop].type in PropTypes.intTypes]
-        try:
-            client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
-            status = client.setStoreProperties(user.maildir, 0, propvals)
-        except pyexmdb.ExmdbError as err:
-            DB.session.rollback()
-            return jsonify(message="Failed to update store properties: exmdb error "
-                           + ExmdbCodes.lookup(err.code, hex(err.code))), 500
-        except RuntimeError as err:
-            DB.session.rollback()
-            return jsonify(message="Failed to update store properties: "+err.args[0]), 500
-        if len(status.problems):
-            problems = ",\n".join("\t{}: {} - {}".format(problem.index,
-                                                         PropTags.lookup(problem.proptag, hex(problem.proptag)),
-                                                         ExchangeErrors.lookup(problem.err, hex(problem.err)))
-                                  for problem in status.problems)
-            API.logger.error("Failed to adjust user quota:\n"+problems)
-            DB.session.rollback()
-            return jsonify(message="Failed to set user quota"), 500
-    DB.session.commit()
-    return jsonify(user.fulldesc())
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["DELETE"])
@@ -239,6 +191,8 @@ def getUserStoreProps(domainID, userID):
         response = client.getStoreProperties(user.maildir, 0, props)
     except pyexmdb.ExmdbError as err:
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
+    except RuntimeError as err:
+        return jsonify(message="exmdb query failed: "+err.args[0]), 500
     respData = {}
     for propval in response.propvals:
         propname = PropTags.lookup(propval.tag).lower()
@@ -247,3 +201,49 @@ def getUserStoreProps(domainID, userID):
         else:
             respData[propname] = PropTypes.pyType(propval.tag)(propval.toString())
     return jsonify(data=respData)
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeProps", methods=["PATCH"])
+@secure(requireDB=True)
+def setUserStoreProps(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    data = request.get_json(silent=True)
+    if data is None or len(data) == 0:
+        return jsonify(message="Missing data"), 400
+    if user is None:
+        return jsonify(message="User not found"), 404
+    if not user.maildir:
+        return jsonify(message="User has no store"), 400
+    errors = {}
+    propvals = []
+    for prop, val in data.items():
+        tag = getattr(PropTags, prop.upper(), None)
+        if tag is None:
+            errors[prop] = "Unknown tag"
+            continue
+        tagtype = tag & 0xFFFF
+        if not isinstance(val, PropTypes.pyType(tagtype)):
+                errors[prop] = "Invalid type"
+                continue
+        if tagtype in (PropTypes.STRING, PropTypes.WSTRING):
+            propvals.append(pyexmdb.TaggedPropval_str(tag, val))
+        elif tagtype in PropTypes.intTypes:
+            propvals.append(pyexmdb.TaggedPropval_u64(tag, val))
+        else:
+            errors[prop] = "Unsupported type"
+    try:
+        options = Config["options"]
+        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], user.maildir, True)
+        result = client.setStoreProperties(user.maildir, 0, propvals)
+        for entry in result.problems:
+            tag = PropTags.lookup(entry.proptag, hex(entry.proptag)).lower()
+            err = ExchangeErrors.lookup(entry.err, hex(entry.err))
+            errors[tag] = err
+        if len(errors) != 0:
+            API.logger.warn("Failed to set proptags: "+", ".join("{} ({})".format(tag, err) for tag, err in errors.items()))
+        return jsonify(message="Success" if len(errors) == 0 else "Some tags could not be set", errors=errors)
+    except pyexmdb.ExmdbError as err:
+        return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
+    except RuntimeError as err:
+        return jsonify(message="exmdb query failed: "+err.args[0]), 500
