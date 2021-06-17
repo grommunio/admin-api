@@ -85,7 +85,7 @@ def mkJWT(claims):
     """
     from tools.config import Config
     if "exp" not in claims:
-        claims["exp"] = int(time.mktime(time.gmtime())+Config["security"].get("jwtExpiresAfter", 7*24*60*60))
+        claims["exp"] = int(time.mktime(time.gmtime())+Config["options"].get("jwtExpiresAfter", 7*24*60*60))
     return jwt.encode(claims, jwtPrivkey, "RS256")
 
 

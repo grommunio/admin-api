@@ -275,7 +275,7 @@ def getUserInfo(ID):
         LDAPConn.search(_searchBase(), _matchFilters(ID), attributes=[username, name, ldapconf["objectID"]])
     except exc.LDAPInvalidValueError:
         return None
-    if len(LDAPConn.response) != 1 or not _userComplete(LDAPConn.entries[0]):
+    if len(LDAPConn.entries) != 1 or not _userComplete(LDAPConn.entries[0]):
         return None
     return GenericObject(ID=LDAPConn.entries[0][ldapconf["objectID"]].raw_values[0],
                          username=LDAPConn.entries[0][username].value,
