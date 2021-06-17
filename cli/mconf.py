@@ -54,6 +54,21 @@ def _getValue(args):
         return args.value
 
 
+def _cliMconfReload(args):
+    cli = args._cli
+    from tools import mconf
+    if args.config == "authmgr":
+        error = mconf.loadAuthmgr()
+    elif args.config == "ldap":
+        error = mconf.loadLdap()
+    else:
+        cli.print(cli.col("Unknown config '{}'".format(args.config), "red"))
+        return 1
+    if error:
+        cli.print(cli.col("Could not load {} config: {}".format(args.config, error), "yellow"))
+        return 2
+
+
 def _cliMconfSave(args):
     cli = args._cli
     from tools import mconf
@@ -157,6 +172,10 @@ def _setupCliMconf(subp: ArgumentParser):
     printConf.set_defaults(_handle=_cliMconfPrint)
     printConf.help = "Print current configuration"
     printConf.add_argument("config", choices=_configs)
+    reload = sub.add_parser("reload", help="Reload configuration")
+    reload.set_defaults(_handle=_cliMconfReload)
+    reload.help = "Reload configuration from disk"
+    reload.add_argument("config", choices=_configs)
     save = sub.add_parser("save", help="Write configuration to disk")
     save.set_defaults(_handle=_cliMconfSave)
     save.add_argument("config", choices=_configs)
