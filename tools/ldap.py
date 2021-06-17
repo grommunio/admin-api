@@ -17,8 +17,8 @@ from .misc import GenericObject
 class LDAPGuard:
     """LDAP connection proxy class."""
 
-    def __init__(self, Base, servers, *args, **kwargs):
-        self.__base = Base
+    def __init__(self, servers, *args, **kwargs):
+        self.__base = self.__createConnection
         self.__servers = servers.split()
         self.__args = args
         self.__kwargs = kwargs
@@ -57,6 +57,17 @@ class LDAPGuard:
 
     def __repr__(self):
         return repr(self.__obj)
+
+    @staticmethod
+    def __createConnection(server, bindUser, bindPass, starttls):
+        conn = ldap3.Connection(server, user=bindUser, password=bindPass)
+        if starttls:
+            if not conn.start_tls():
+                logging.error("Failed to initiate StartTLS LDAP connection")
+        if not conn.bind():
+            raise exc.LDAPBindError("LDAP bind failed ({}): {}".format(conn.result["description"], conn.result["message"]))
+            return None
+        return conn
 
 
 _defaultProps = {}
@@ -398,17 +409,6 @@ def dumpUser(ID):
     return LDAPConn.entries[0] if len(LDAPConn.entries) == 1 else None
 
 
-def _createConnection(server, bindUser, bindPass, starttls):
-    conn = ldap3.Connection(server, user=bindUser, password=bindPass)
-    if starttls:
-        if not conn.start_tls():
-            logging.error("Failed to initiate StartTLS LDAP connection")
-    if not conn.bind():
-        raise exc.LDAPBindError("LDAP bind failed ({}): {}".format(conn.result["description"], conn.result["message"]))
-        return None
-    return conn
-
-
 def _testConfig(ldapconf):
     for required in ("baseDn", "objectID", "users", "connection"):
         if required not in ldapconf or ldapconf[required] is None or len(ldapconf[required]) == 0:
@@ -428,8 +428,7 @@ def _testConfig(ldapconf):
     _userAttributes.update(ldapconf["users"].get("attributes", {}))
     if ldapconf.get("disabled", False):
         return None, _userAttributes
-    LDAPConn = LDAPGuard(_createConnection,
-                         ldapconf["connection"].get("server"),
+    LDAPConn = LDAPGuard(ldapconf["connection"].get("server"),
                          ldapconf["connection"].get("bindUser"),
                          ldapconf["connection"].get("bindPass"),
                          ldapconf["connection"].get("starttls", False))

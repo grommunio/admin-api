@@ -290,8 +290,9 @@ class Systemd:
         None.
 
         """
-        if cls.eventLoop is not None:
-            cls.eventLoop.quit()
+        if cls.eventLoop is None:
+            return
+        cls.eventLoop.quit()
         while cls.eventThread.is_alive():
             pass
         cls.eventLoop = cls.eventThread = None

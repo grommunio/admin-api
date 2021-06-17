@@ -22,7 +22,7 @@ ERR_SETUP = 11  # Error during user setup
 
 def _getv(cli, prompt="", default="", secret=False):
     from getpass import getpass
-    v = (getpass if secret else cli.input)("{}{}: ".format(prompt, " ["+default+"]" if default else ""))
+    v = (getpass if secret else cli.input)("{}{}: ".format(prompt, " ["+str(default)+"]" if default is not None else ""))
     return default if v == "" else v
 
 
@@ -46,12 +46,15 @@ def _getc(cli, prompt="", default="", choices=(), getter=_getv):
 
 
 def _getl(cli, prompt="", defaults=[]):
-    cli.print(prompt+", press CTRL+D when done:")
+    cli.print(prompt+":")
     values = []
     defiter = (d for d in defaults)
     try:
         while True:
-            values.append(_getv(cli, "", next(defiter, "")))
+            val = _getv(cli, "", next(defiter, ""))
+            if val == "":
+                raise EOFError
+            values.append(val)
     except EOFError:
         cli.print("[Done]")
     return values
@@ -340,26 +343,70 @@ def cliLdapDump(args):
             cli.print(str(ldap.dumpUser(candidate.ID)))
 
 
+def _applyTemplate(index, conf):
+    conf["users"] = conf.get("users", {})
+    if index == 1: # AD
+        conf["objectID"] = "objectGUID"
+        conf["users"]["aliases"] = "proxyAddresses"
+        conf["users"]["displayName"] = "displayName"
+        conf["users"]["username"] = "mail"
+    elif index == 2: # OpenLDAP
+        conf["objectID"] = "entryUUID"
+        conf["users"]["aliases"] = "mailAlternativeAddress"
+        conf["users"]["displayName"] = "displayname"
+        conf["users"]["username"] = "mailPrimaryAddress"
+
+
+def _checkConn(cli, connfig):
+    from tools import ldap
+    cli.print(cli.col("Checking connectivity...", attrs=["dark"]), end="", flush=True)
+    try:
+        conn = ldap.LDAPGuard(connfig["server"], connfig["bindUser"], connfig["bindPass"], connfig["starttls"])
+        err = conn.error
+    except Exception as exc:
+        err = exc
+    if err is None:
+        cli.print(cli.col("success!", attrs=["dark"]))
+        return True
+    cli.print(cli.col("\nConnection check failed: "+" - ".join(str(arg) for arg in err.args), "red"))
+    res = cli.choice("(a)bort, (c)ontinue anyway, (e)dit configuration? [e]: ", "ace", "e")
+    if res in (None, "a"):
+        raise KeyboardInterrupt
+    return res == "c"
+
+
 def _getConf(cli, old):
     conf = {"connection": {}, "users": {"filters": [], "searchAttributes": []}}
-    conf["connection"]["server"] = _getv(cli, "URL of the LDAP server", old.get("connection", {}).get("server", ""))
-    conf["connection"]["bindUser"] = _getv(cli, "Username for access", old.get("connection", {}).get("bindUser"), )
-    conf["connection"]["bindPass"] = _getv(cli, "Password for access", None, True) or old.get("connection", {}).get("bindPass")
-    conf["connection"]["starttls"] = _getc(cli, "Use StartTLS connection",
-                                           "y" if old.get("connection", {}).get("starttls") else "n", ("y", "n")) == "y"
+    connected = False
+    connfig = old.get("connection", {}).copy()
+    while not connected:
+        oldpw = "[***]" if connfig.get("bindPass") else "[]"
+        connfig["server"] = _getv(cli, "URL of the LDAP server(s)", connfig.get("server", ""))
+        connfig["bindUser"] = _getv(cli, "Username for access", connfig.get("bindUser"), )
+        connfig["bindPass"] = _getv(cli, "Password for access "+oldpw, None, True) or connfig.get("bindPass")
+        connfig["starttls"] = _getc(cli, "Use StartTLS connection",
+                                               "y" if connfig.get("starttls") else "n", ("y", "n")) == "y"
+        connected = _checkConn(cli, connfig)
+    conf["connection"] = connfig
     conf["baseDn"] = _getv(cli, "DN for user lookup/searches", old.get("baseDn", ""))
-    conf["objectID"] = _getv(cli, "Attribute containing unique object ID", old.get("objectID"))
     users = old.get("users", {})
+    oldtempl = users.get("templates", ())
+    res = _getc(cli, "Choose a template:\n 0: No template\n 1: ActiveDirectory\n 2: OpenLDAP\n",
+                1 if "ActiveDirectory" in oldtempl else 2 if "OpenLDAP" in oldtempl else 0, range(2), _geti)
+    conf["users"]["templates"] = [] if res == 0 else ["common", "ActiveDirectory" if res == 1 else "OpenLDAP"]
+    if res != 0 and cli.confirm("Apply default template parameters? [y/N]: ") == Cli.SUCCESS:
+        _applyTemplate(res, old)
+        users = old.get("users", {})
+    conf["objectID"] = _getv(cli, "Attribute containing unique object ID", old.get("objectID"))
     conf["users"]["username"] = _getv(cli, "Attribute containing e-mail address of a user", users.get("username", ""))
     conf["users"]["displayName"] = _getv(cli, "Attribute containing name of a user", users.get("displayName", ""))
-    conf["users"]["defaultQuota"] = _geti(cli, "Default storage quota for imported users", users.get("defaultQuota", 0))
+    conf["users"]["aliases"] = _getv(cli, "Attribute containing alternative e-mail addresses", users.get("aliases", ""))
+    conf["users"]["defaultQuota"] = _geti(cli, "Default storage quota for imported users (0=unlimited)", users.get("defaultQuota", 0))
     conf["users"]["filter"] = _getv(cli, "Enter filter expression for user search", users.get("filter", ""))
     conf["users"]["searchAttributes"] = _getl(cli, "Enter attributes used for searching (one per line)",
                                               users.get("searchAttributes", []))
-    oldtempl = users.get("templates", ())
-    res = _getc(cli, "Choose a mapping template for user import:\n 0: No template\n 1: ActiveDirectory\n 2: OpenLDAP\n",
-                1 if "ActiveDirectory" in oldtempl else 2 if "OpenLDAP" in oldtempl else 0, range(2), _geti)
-    conf["users"]["templates"] = [] if res == 0 else ["common", "ActiveDirectory" if res == 1 else "OpenLDAP"]
+    if not conf["users"]["defaultQuota"]:
+        conf["users"].pop("defaultQuota")
     return conf
 
 
