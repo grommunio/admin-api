@@ -124,6 +124,7 @@ class Domains(DataModel, DB.Base):
     def purge(self, deleteFiles=False, printStatus=False):
         from .classes import Classes, Hierarchy, Members
         from .mlists import MLists, Associations, Specifieds
+        from .roles import AdminRoles as AR, AdminRolePermissionRelation as ARPR
         from .users import Users, Aliases
         users = Users.query.filter(Users.domainID == self.ID)
         if deleteFiles:
@@ -149,6 +150,15 @@ class Domains(DataModel, DB.Base):
         mlists.delete(**nosync)
         Aliases.query.filter(Aliases.mainname.in_(users.with_entities(Users.username))).delete(**nosync)
         users.delete(**nosync)
+        permissions = ARPR.query.filter(ARPR.permission == "DomainAdmin", ARPR._params == self.ID)
+        roles = []
+        for permission in permissions:
+            DB.session.delete(permission)
+            roles.append(permission.roleID)
+        roles = AR.query.filter(AR.ID.in_(roles))
+        for role in roles:
+            if len(role.permissions) == 0:
+                DB.session.delete(role)
         DB.session.delete(self)
 
     @staticmethod

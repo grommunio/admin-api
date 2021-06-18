@@ -82,3 +82,5 @@ class AdminUserRoleRelation(DataModel, DB.Base):
             self.roleID = role
         else:
             self.role = role
+
+from .users import Users
