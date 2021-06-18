@@ -186,27 +186,11 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
     if userdata is None:
         cli.print(cli.col("Error retrieving user", "red"))
         return ERR_NO_USER
-    error = Users.checkCreateParams(userdata)
-    if error is not None:
-        cli.print(cli.col("Cannot import user: "+error, "red"))
-        return ERR_INVALID_DATA
-    try:
-        user = Users(userdata)
-        user.externID = candidate.ID
-        DB.session.add(user)
-        DB.session.flush()
-    except (InvalidAttributeError, MismatchROError, ValueError) as err:
-        DB.session.rollback()
-        cli.print(cli.col("Failed to update user: "+err.args[0], "red"))
+    result, code = Users.create(userdata, reloadGromoxHttp=False)
+    if code != 201:
+        cli.print(cli.col("Failed to create user: "+result, "red"))
         return ERR_COMMIT
-    from tools.storage import UserSetup
-    with UserSetup(user) as us:
-        us.run()
-    if not us.success:
-        cli.print(cli.col("Error during user setup: "+us.error))
-        return ERR_SETUP
-    DB.session.commit()
-    cli.print("User '{}' created with ID {}.".format(cli.col(user.username, attrs=["bold"]), cli.col(user.ID, attrs=["bold"])))
+    cli.print("User '{}' created with ID {}.".format(cli.col(result.username, attrs=["bold"]), cli.col(result.ID, attrs=["bold"])))
     if reloadHttp:
         _reloadGromoxHttp(cli)
     return SUCCESS

@@ -7,22 +7,18 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 from datetime import datetime
-from dbus import DBusException
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
 from .. import defaultListHandler, defaultObjectHandler
 
-from tools.misc import AutoClean, createMapping
-from tools.storage import UserSetup
+from tools.misc import createMapping
 from tools.pyexmdb import pyexmdb
 from tools.config import Config
 from tools.constants import PropTags, PropTypes, ExchangeErrors, ExmdbCodes
-from tools.DataModel import InvalidAttributeError, MismatchROError
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
 from tools.rop import nxTime
-from tools.systemd import Systemd
 
 import shutil
 
@@ -60,34 +56,13 @@ def getUsers(domainID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["POST"])
 @secure(requireDB=True)
 def createUser(domainID):
-    def rollback():
-        DB.session.rollback()
-
     checkPermissions(DomainAdminPermission(domainID))
     data = request.get_json(silent=True) or {}
     data["domainID"] = domainID
-    user = defaultListHandler(Users, result="object")
-    if not isinstance(user, Users):
-        return user  # If the return value is not a user, it is an error response
-    try:
-        with AutoClean(rollback):
-            DB.session.add(user)
-            DB.session.flush()
-            with UserSetup(user) as us:
-                us.run()
-            if not us.success:
-                return jsonify(message="Error during user setup", error=us.error),  us.errorCode
-            DB.session.commit()
-            try:
-                systemd = Systemd(system=True)
-                result = systemd.reloadService("gromox-http.service")
-                if result != "done":
-                    API.logger.warn("Failed to reload gromox-http.service: "+result)
-            except DBusException as err:
-                API.logger.warn("Failed to reload gromox-http.service: "+" - ".join(str(arg) for arg in err.args))
-            return jsonify(user.fulldesc()), 201
-    except IntegrityError as err:
-        return jsonify(message="Object violates database constraints", error=err.orig.args[1]), 400
+    result, code = Users.create(data, reloadGromoxHttp=True)
+    if code != 201:
+        return jsonify(message=result), code
+    return jsonify(result.fulldesc()), 201
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["GET", "PATCH"])

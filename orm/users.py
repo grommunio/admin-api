@@ -6,10 +6,12 @@ from . import DB
 from tools import formats
 from tools.constants import PropTags, PropTypes
 from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp, Bool, Date
+from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
 from tools.rop import ntTime, nxTime
 
 from sqlalchemy import Column, ForeignKey, func
 from sqlalchemy.dialects.mysql import ENUM, INTEGER, TEXT, TIMESTAMP, TINYINT, VARBINARY, VARCHAR
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, selectinload, validates
 from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -314,6 +316,40 @@ class Users(DataModel, DB.Base):
         Members.query.filter(Members.username == self.username).delete(synchronize_session=False)
         Associations.query.filter(Associations.username == self.username).delete(synchronize_session=False)
         DB.session.delete(self)
+
+    @staticmethod
+    def create(props, reloadGromoxHttp=True, *args, **kwargs):
+        import logging
+        from tools.misc import AutoClean
+        from tools.storage import UserSetup
+        error = Users.checkCreateParams(props)
+        if error is not None:
+            return error, 400
+        try:
+            user = Users(props)
+        except (InvalidAttributeError, MismatchROError, MissingRequiredAttributeError, ValueError) as err:
+            return err.args[0], 400
+        try:
+            with AutoClean(lambda: DB.session.rollback()):
+                DB.session.add(user)
+                DB.session.flush()
+                with UserSetup(user) as us:
+                    us.run()
+                if not us.success:
+                    return "Error during user setup: "+us.error, us.errorCode
+                DB.session.commit()
+                if reloadGromoxHttp:
+                    try:
+                        from tools.systemd import Systemd, dbus
+                        systemd = Systemd(system=True)
+                        result = systemd.reloadService("gromox-http.service")
+                        if result != "done":
+                            logging.warning("Failed to reload gromox-http.service: "+result)
+                    except dbus.DBusException as err:
+                        logging.warning("Failed to reload gromox-http.service: "+" - ".join(str(arg) for arg in err.args))
+                return user, 201
+        except IntegrityError as err:
+            return "Object violates database constraints "+err.orig.args[1], 400
 
 
 class UserProperties(DataModel, DB.Base):

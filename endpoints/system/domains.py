@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grammm GmbH
 
-from dbus import DBusException
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
 
@@ -12,17 +11,12 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
-
-from tools.misc import AutoClean
 from tools.permissions import SystemAdminPermission, DomainAdminPermission, OrgAdminPermission, DomainPurgePermission
-from tools.storage import DomainSetup
-from tools.systemd import Systemd
 
 from orm import DB
 if DB is not None:
     from orm.domains import Domains, Orgs
     from orm.users import Users
-    from orm.roles import AdminRoles
 
 
 @API.route(api.BaseRoute+"/system/orgs", methods=["GET", "POST"])
