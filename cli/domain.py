@@ -73,35 +73,13 @@ def cliDomainShow(args):
 def cliDomainCreate(args):
     cli = args._cli
     cli.require("DB")
-    from orm.domains import DB, Domains
-    from tools.storage import DomainSetup
+    from orm.domains import Domains
     data = _sanitizeData(args.__dict__)
-    error = Domains.checkCreateParams(data)
-    if error is not None:
-        cli.print(cli.col("Cannot create domain: "+error, "red"))
+    result, code = Domains.create(data, createRole=data.pop("create_role", False))
+    if code != 201:
+        cli.print(cli.col("Could not create domain: "+result, "red"))
         return 1
-    try:
-        domain = Domains(data)
-        DB.session.add(domain)
-        DB.session.flush()
-        with DomainSetup(domain) as ds:
-            ds.run()
-        DB.session.commit()
-        if not args.skip_adaptor_reload:
-            from tools.systemd import Systemd
-            from dbus import DBusException
-            try:
-                sysd = Systemd(system=True)
-                res = sysd.reloadService("gromox-adaptor.service")
-                if res != "done":
-                    cli.print(cli.col("Failed to reload gromox-adaptor: "+res, "yellow"))
-            except DBusException as err:
-                cli.print(cli.col("Failed to reload gromox-adaptor.service: "+" - ".join(str(arg) for arg in err.args), "yellow"))
-            Systemd.quitLoop()
-        _dumpDomain(cli, domain)
-    except BaseException as err:
-        cli.print(cli.col("Cannot create domain: "+" - ".join(str(arg) for arg in err.args), "red"))
-        DB.session.rollback()
+    _dumpDomain(cli, result)
 
 
 def cliDomainDelete(args):
@@ -209,6 +187,7 @@ def _setupCliDomain(subp : ArgumentParser):
     create = sub.add_parser("create", help="Create new domain")
     create.set_defaults(_handle=cliDomainCreate)
     create.add_argument("domainname", help="Name of the domain")
+    create.add_argument("--create-role", action="store_true", help="Create domain administrator role for new domain")
     create.add_argument("--skip-adaptor-reload", action="store_true", help="Do not reload gromox-adaptor service")
     addProperties(create, True)
     delete = sub.add_parser("delete", help="Soft delete domain",

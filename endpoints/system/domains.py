@@ -61,36 +61,13 @@ def domainListEndpoint():
 @secure(requireDB=True)
 def domainCreate():
     checkPermissions(SystemAdminPermission())
-    def rollback():
-        DB.session.rollback()
-    domain = defaultListHandler(Domains, result="object")
-    if not isinstance(domain, Domains):
-        return domain  # If the return value is not a domain, it is an error response
-    try:
-        with AutoClean(rollback):
-            DB.session.add(domain)
-            DB.session.flush()
-            with DomainSetup(domain) as ds:
-                ds.run()
-            if not ds.success:
-                return jsonify(message="Error during domain setup", error=ds.error),  ds.errorCode
-            DB.session.commit()
-        try:
-            systemd = Systemd(system=True)
-            result = systemd.reloadService("gromox-adaptor.service")
-            if result != "done":
-                API.logger.warn("Failed to reload gromox-adaptor.service: "+result)
-        except DBusException as err:
-            API.logger.warn("Failed to reload gromox-adaptor.service: "+" - ".join(str(arg) for arg in err.args))
-        domainAdminRoleName = "Domain Admin ({})".format(domain.domainname)
-        if AdminRoles.query.filter(AdminRoles.name == domainAdminRoleName).count() == 0:
-            DB.session.add(AdminRoles({"name": domainAdminRoleName,
-                                       "description": "Domain administrator for "+domain.domainname,
-                                       "permissions": [{"permission": "DomainAdmin", "params": domain.ID}]}))
-            DB.session.commit()
-        return jsonify(domain.fulldesc()), 201
-    except IntegrityError as err:
-        return jsonify(message="Object violates database constraints", error=err.orig.args[1]), 400
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify(message="Missing data"), 400
+    result, code = Domains.create(data, request.args.get("createRole", "false") == "true")
+    if code != 201:
+        return jsonify(message=result), code
+    return jsonify(result.fulldesc()), 201
 
 
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>", methods=["GET"])

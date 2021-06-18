@@ -5,11 +5,13 @@
 from . import DB
 from tools import formats
 from tools.DataModel import DataModel, Id, Text, Int, Date
+from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
 
 import idna
 
 from sqlalchemy import Column, func, select
 from sqlalchemy.dialects.mysql import DATE, INTEGER, TINYINT, VARCHAR
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import column_property
 from sqlalchemy.types import TypeDecorator
@@ -148,3 +150,43 @@ class Domains(DataModel, DB.Base):
         Aliases.query.filter(Aliases.mainname.in_(users.with_entities(Users.username))).delete(**nosync)
         users.delete(**nosync)
         DB.session.delete(self)
+
+    @staticmethod
+    def create(props, createRole=True, *args, **kwargs):
+        import logging
+        from .roles import AdminRoles
+        from tools.storage import DomainSetup
+        from tools.misc import AutoClean
+        from tools.systemd import Systemd, dbus
+        error = Domains.checkCreateParams(props)
+        if error is not None:
+            return error, 400
+        try:
+            domain = Domains(props, *args, **kwargs)
+        except (MissingRequiredAttributeError, InvalidAttributeError, MismatchROError, ValueError) as err:
+            return err.args[0], 400
+        try:
+            with AutoClean(lambda: DB.session.rollback()):
+                DB.session.add(domain)
+                DB.session.flush()
+                with DomainSetup(domain) as ds:
+                    ds.run()
+                if not ds.success:
+                    return "Error during domain setup: "+ds.error, ds.errorCode
+                DB.session.commit()
+            try:
+                systemd = Systemd(system=True)
+                result = systemd.reloadService("gromox-adaptor.service")
+                if result != "done":
+                    logging.warning("Failed to reload gromox-adaptor.service: "+result)
+            except dbus.DBusException as err:
+                logging.warning("Failed to reload gromox-adaptor.service: "+" - ".join(str(arg) for arg in err.args))
+            domainAdminRoleName = "Domain Admin ({})".format(domain.domainname)
+            if createRole and AdminRoles.query.filter(AdminRoles.name == domainAdminRoleName).count() == 0:
+                DB.session.add(AdminRoles({"name": domainAdminRoleName,
+                                           "description": "Domain administrator for "+domain.domainname,
+                                           "permissions": [{"permission": "DomainAdmin", "params": domain.ID}]}))
+                DB.session.commit()
+            return domain, 201
+        except IntegrityError as err:
+            return "Object violates database constraints ({})".format(err.orig.args[1]), 400
