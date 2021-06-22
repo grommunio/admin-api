@@ -196,3 +196,39 @@ properties:
         source:
           type: string
           description: Name of the journald unit
+  sync:
+    description: Options for grammm-sync access
+    type: object
+    properties:
+      host:
+        type: string
+        description: Host running the Redis instance
+        default: 127.0.0.1
+      port:
+        type: integer
+        description: Port the Redis instance is listening on
+        default: 6379
+      db:
+        type: string
+        description: Name of the Redis database
+        default: '0'
+      password:
+        type: string
+        description: Password to connect with
+        default: null
+      topTimestampKey:
+        type: string
+        description: Key to write the current timestamp to
+        default: grammm-sync:topenabledat
+      topdataKey:
+        type: string
+        description: Key containing the top data hash
+        default: grammm-sync:topdata
+      topExpireEnded:
+        type: integer
+        description: Time (in seconds) after which ended processes are removed
+        default: 20
+      topExpireUpdated:
+        type: integer
+        description: Time (in seconds) since the last update after which processes are removed
+        default: 120

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.22.7
+  version: 0.23.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1232,6 +1232,64 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
+
+  /system/sync/top:
+    get:
+      summary: Get grammm-sync usage information
+      description: Get current usage. Should be called at least twice to provide useful information.
+      tags:
+        -  Misc
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Data returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        pid:
+                          type: integer
+                          description: Process ID
+                        ip:
+                          type: string
+                          description: IP address of the device
+                        user:
+                          type: string
+                        start:
+                          type: integer
+                          description: UNIX timestamp of process start
+                        devtype:
+                          type: string
+                        devid:
+                          type: string
+                        devagent:
+                          type: string
+                        command:
+                          type: integer
+                        ended:
+                          type: integer
+                          description: UNIX timestamp of process end or 0 if still running
+                        push:
+                          type: boolean
+                        addinfo:
+                          type: string
+                          description: Additional information about the process
+                        update:
+                          type: integer
+                          description: UNIX timestamp of last update
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /domains:
     get:

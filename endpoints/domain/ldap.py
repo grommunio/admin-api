@@ -109,7 +109,7 @@ def ldapDownsyncDomains(domains):
                     us.run()
                 if not us.success:
                     syncStatus.append({"username": candidate.email, "code": us.errorCode,
-                                       "message": "Error during user setup"+us.error})
+                                       "message": "Error during user setup: "+us.error})
                     DB.session.rollback()
                     continue
                 DB.session.commit()

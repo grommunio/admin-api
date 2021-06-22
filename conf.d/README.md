@@ -54,6 +54,18 @@ Each entry in the `logs` object describes a log file. The name of the entry is t
 Possible parameters for each entry:
 - `source` (`string`, required): Name of the systemd unit  
 
+### Sync ###
+Some parameters determining how grammm-admin connects to grammm-sync can be adjusted in the `sync` object.  
+Possible parameters:
+- `host` (`string`, default `127.0.0.1`): Host running the Redis instance
+- `port` (`int`, default `6379`): Port the Redis instance is listening on
+- `db` (`string`, default `0`): Name of the Redis database
+- `password` (`string`, default ``): Password to connect with
+- `topTimestampKey` (`string`, default `grammm-sync:topenabledat`): Key to write the current timestamp to
+- `topdataKey` (`string`, default `grammm-sync:topdata`): Key containing the top data hash
+- `topExpireEnded` (`int`, default `20`): Time (in seconds) after which ended processes are removed
+- `topExpireUpdate` (`int`, default `120`): Time (in seconds) since the last update after which processes are removed
+
 ### Options ###
 Further parameters can be set in the `options` object:
 - `dataPath` (`string`, default: `/usr/share/grammm/common`): Directory where shared resources used by Grammm modules are stored

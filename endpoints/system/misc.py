@@ -13,10 +13,14 @@ from tools.license import getLicense, updateCertificate
 from tools.permissions import SystemAdminPermission
 from tools.systemd import Systemd
 
+import json
 import os
 import psutil
+import redis
 import requests
 import shlex
+import time
+
 from datetime import datetime
 from dbus import DBusException
 from flask import jsonify, make_response, request
@@ -207,3 +211,35 @@ def cliOverRest():
         return jsonify(message="{} ({})".format(type(err).__name__, " - ".join(str(arg) for arg in err.args))), 500
     cli.closeFiles()
     return jsonify(code=result, stdout=stdout.getvalue(), fs=cli.fs)
+
+
+@API.route(api.BaseRoute+"/system/sync/top", methods=["GET"])
+@secure()
+def syncTop():
+    checkPermissions(SystemAdminPermission)
+    sync = Config["sync"]
+    try:
+        r = redis.Redis(sync.get("host", "localhost"), sync.get("port", 6379), sync.get("db", 0), sync.get("password"),
+                                 decode_responses=True)
+        now = int(time.mktime(time.localtime()))
+        r.set(sync.get("topTimestampKey", "grammm-sync:topenabledat"), now)
+        hdata = r.hgetall(sync.get("topdataKey", "grammm-sync:topdata"))
+        if hdata is None:
+            return jsonify(data=[])
+        data = []
+        remove = []
+        for key, value in hdata.items():
+            try:
+                value = json.loads(value)
+                if (value["ended"] != 0 and now-value["ended"] > sync.get("topExpireEnded", 20)) or \
+                    now-value["update"] > sync.get("topExpireUpdate", 120):
+                    remove.append(key)
+                else:
+                    data.append(value)
+            except Exception as err:
+                API.logger.info(type(err).__name__+": "+str(err.args))
+        if len(remove) > 0:
+            r.hdel(sync.get("topdataKey", "grammm-sync:topdata"), *remove)
+        return jsonify(data=data)
+    except redis.exceptions.ConnectionError as err:
+        return jsonify(message="Redis connection failed: "+err.args[0]), 503

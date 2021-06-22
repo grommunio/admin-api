@@ -35,7 +35,8 @@ _defaultConfig_ = {"openapi": {
                      "jwtPublicKeyFile": "res/jwt-pubkey.pem"
                    },
                    "mconf": {},
-                   "logs": {}
+                   "logs": {},
+                   "sync": {},
                    }
 
 
