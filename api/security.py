@@ -137,7 +137,8 @@ def refreshToken():
         return
     if "exp" in claims:
         claims.pop("exp")
-    return mkJWT(claims)
+    token = mkJWT(claims)
+    return token.decode("ascii") if isinstance(token, bytes) else token
 
 
 def loginUser(username, password):
