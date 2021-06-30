@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <vector>
 
 #include "requests.h"
@@ -67,6 +68,8 @@ struct FolderOwnerListResponse
     std::vector<Owner> owners;
 };
 
+using SyncData = std::unordered_map<std::string, std::string>;
+
 /**
  * @brief      ExmdbClient extension providing useful queries
  *
@@ -82,13 +85,14 @@ public:
     static const std::vector<uint32_t> defaultFolderProps;
 
     requests::NullResponse addFolderOwner(const std::string&, uint64_t, const std::string&);
-    requests::Response_t<requests::CreateFolderByPropertiesRequest> createFolder(const std::string&, uint32_t, const std::string&, const std::string&, const std::string&);
+    requests::FolderResponse createFolder(const std::string&, uint32_t, const std::string&, const std::string&, const std::string&);
     requests::SuccessResponse deleteFolder(const std::string&, uint64_t);
     requests::NullResponse deleteFolderOwner(const std::string&, uint64_t, uint64_t);
-    requests::Response_t<requests::GetAllStorePropertiesRequest> getAllStoreProperties(const std::string&);
-    requests::Response_t<requests::QueryTableRequest> getFolderList(const std::string&, const std::vector<uint32_t>& = defaultFolderProps);
-    requests::Response_t<requests::QueryTableRequest> getFolderOwnerList(const std::string&, uint64_t);
+    requests::ProptagResponse getAllStoreProperties(const std::string&);
+    requests::TableResponse getFolderList(const std::string&, const std::vector<uint32_t>& = defaultFolderProps);
+    requests::TableResponse getFolderOwnerList(const std::string&, uint64_t);
     requests::PropvalResponse getFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<uint32_t>& = defaultFolderProps);
+    SyncData getSyncData(const std::string&, const std::string&);
     requests::PropvalResponse getStoreProperties(const std::string&, uint32_t, const std::vector<uint32_t>&);
     requests::NullResponse removeStoreProperties(const std::string&, const std::vector<uint32_t>&);
     requests::ProblemsResponse setFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<structures::TaggedPropval>&);

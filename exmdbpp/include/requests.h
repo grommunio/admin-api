@@ -194,6 +194,19 @@ inline NullResponse::NullResponse(IOBuffer&)
 {}
 
 /**
+ * @brief   Folder ID response
+ *
+ * Result of CreateTableByPropertiesRequest and GetFolderByNameRequest
+ */
+struct FolderResponse
+{
+    FolderResponse() = default;
+    explicit FolderResponse(IOBuffer&);
+
+    uint64_t folderId; ///< ID of the folder
+};
+
+/**
  * @brief   Load table response
  *
  * Result of LoadHierarchyTableRequest or LoadPermissionTableRequest
@@ -204,6 +217,18 @@ struct LoadTableResponse
 
     uint32_t tableId;   ///< ID of the created view
     uint32_t rowCount;  ///< Number of rows in the view
+};
+
+/**
+ * @brief   Message content response
+ *
+ * Result of ReadMessageRequest or ReadMessageInstanceRequest
+ */
+struct MessageContentResponse
+{
+    explicit MessageContentResponse(IOBuffer&);
+
+    structures::MessageContent content; ///< Content of the message
 };
 
 
@@ -218,6 +243,17 @@ struct ProblemsResponse
     explicit ProblemsResponse(IOBuffer&);
 
     std::vector<structures::PropertyProblem> problems; ///< List of problems that occured when setting store values
+};
+
+/**
+ * @brief   Generic response containing a list of proptags
+ */
+struct ProptagResponse
+{
+    ProptagResponse() = default;
+    explicit ProptagResponse(IOBuffer&);
+
+    std::vector<uint32_t> proptags; ///< List of prop tags contained in the store
 };
 
 /**
@@ -242,6 +278,14 @@ struct SuccessResponse
     bool success; ///< Whether the operation was successful
 };
 
+struct TableResponse
+{
+    TableResponse() = default;
+    explicit TableResponse(IOBuffer&);
+
+    std::vector<std::vector<structures::TaggedPropval> > entries; ///< Returned rows of entries
+};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -254,7 +298,7 @@ struct SuccessResponse
 template<uint8_t CallId, typename... Args>
 struct Request
 {
-    static void write(IOBuffer&, const Args&...);
+    static void write(IOBuffer&, const std::string&, const Args&...);
 
     static constexpr uint8_t callId = CallId;
 };
@@ -268,7 +312,7 @@ struct Request
  *
  * @return  Response<AllocateCnRequest::callId>
  */
-struct AllocateCnRequest : public Request<constants::CallId::ALLOCATE_CN, std::string> {};
+struct AllocateCnRequest : public Request<constants::CallId::ALLOCATE_CN> {};
 
 template<>
 struct Response<AllocateCnRequest::callId>
@@ -289,7 +333,7 @@ struct Response<AllocateCnRequest::callId>
  * @return  NullResponse
  */
 struct ConnectRequest : public
-        Request<constants::CallId::CONNECT, std::string, std::string, bool>
+        Request<constants::CallId::CONNECT, std::string, bool>
 {
     static void write(IOBuffer&, const std::string&, bool);
 private:
@@ -308,20 +352,15 @@ private:
  * @return  Response<CreateFolderByPropertiesRequest::callId>
  */
 struct CreateFolderByPropertiesRequest : public Request<constants::CallId::CREATE_FOLDER_BY_PROPERTIES,
-        std::string, uint32_t, Collection<uint16_t, structures::TaggedPropval>>
+        uint32_t, Collection<uint16_t, structures::TaggedPropval>>
 {};
 
 /**
- * @brief      Response specialization for CreateFolderByPropertiesRequest
+ * Response type override for create folder by properties (-> FolderResponse)
  */
 template<>
-struct Response<CreateFolderByPropertiesRequest::callId>
-{
-    Response() = default;
-    explicit Response(IOBuffer&);
-
-    uint64_t folderId; ///< ID of the newly created folder
-};
+struct response_map<CreateFolderByPropertiesRequest::callId>
+{using type = FolderResponse;};
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -336,7 +375,7 @@ struct Response<CreateFolderByPropertiesRequest::callId>
  * @return  SuccessResponse
  */
 struct DeleteFolderRequest : public Request<constants::CallId::DELETE_FOLDER,
-        std::string, uint32_t, uint64_t, bool>
+        uint32_t, uint64_t, bool>
 {};
 
 
@@ -353,24 +392,60 @@ struct response_map<DeleteFolderRequest::callId>
  * @brief   Get all store proptags request
  *
  * @param   string      homedir
+ * @param   uint64_t    folderId
  *
- * @return  Response<GetAllStorePropertiesRequest::callId>
+ * @return  ProptagResponse
  */
-struct GetAllStorePropertiesRequest : public Request<constants::CallId::GET_STORE_ALL_PROPTAGS,
-        std::string>
+struct GetAllFolderPropertiesRequest : public Request<constants::CallId::GET_FOLDER_ALL_PROPTAGS,
+        uint64_t>
 {};
 
 /**
- * @brief      Response specialization for GetAllStorePropertiesRequest
+ * Response type override for get all folder properties request (-> ProptagResponse)
  */
 template<>
-struct Response<GetAllStorePropertiesRequest::callId>
-{
-    Response() = default;
-    explicit Response(IOBuffer&);
+struct response_map<GetAllFolderPropertiesRequest::callId>
+{using type = ProptagResponse;};
 
-    std::vector<uint32_t> proptags; ///< List of prop tags contained in the store
-};
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Get all store proptags request
+ *
+ * @param   string      homedir
+ *
+ * @return  Response<GetAllStorePropertiesRequest::callId>
+ */
+struct GetAllStorePropertiesRequest : public Request<constants::CallId::GET_STORE_ALL_PROPTAGS>
+{};
+
+/**
+ * Response type override for get all store properties request (-> ProptagResponse)
+ */
+template<>
+struct response_map<GetAllStorePropertiesRequest::callId>
+{using type = ProptagResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Got folder ID from folder name
+ *
+ * @param   uint64_t    parent
+ * @param   string      name
+ *
+ * @return  FolderResponse
+ */
+struct GetFolderByNameRequest : public Request<constants::CallId::GET_FOLDER_BY_NAME,
+        uint64_t, std::string>
+{};
+
+/**
+ * Response type override for get all store properties request (-> ProptagResponse)
+ */
+template<>
+struct response_map<GetFolderByNameRequest::callId>
+{using type = FolderResponse;};
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -385,7 +460,7 @@ struct Response<GetAllStorePropertiesRequest::callId>
  * @return PropvalResponse
  */
 struct GetFolderPropertiesRequest : public Request<constants::CallId::GET_FOLDER_PROPERTIES,
-        std::string, uint32_t, uint64_t, Collection<uint16_t, uint32_t>>
+        uint32_t, uint64_t, Collection<uint16_t, uint32_t>>
 {};
 
 /**
@@ -398,6 +473,53 @@ struct response_map<GetFolderPropertiesRequest::callId>
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
+ * @brief   Get instance properties
+ *
+ * @param   string      homedir
+ * @param   uint32_t    sizeLimit
+ * @param   uint32_t    instanceId
+ * @param   uint32_t[]  proptags
+ *
+ * @return PropvalResponse
+ */
+struct GetInstancePropertiesRequest : public Request<constants::CallId::GET_INSTANCE_PROPERTIES,
+        uint32_t, uint32_t, Collection<uint16_t, uint32_t>>
+{};
+
+/**
+ * Response type override for get instance properties request (-> PropvalResponse)
+ */
+template<>
+struct response_map<GetInstancePropertiesRequest::callId>
+{using type = PropvalResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Get message properties
+ *
+ * @param   string      homedir
+ * @param   string      username
+ * @param   uint32_t    cpid
+ * @param   uint64_t    messageId
+ * @param   uint32_t[]  proptags
+ *
+ * @return PropvalResponse
+ */
+struct GetMessagePropertiesRequest : public Request<constants::CallId::GET_MESSAGE_PROPERTIES,
+        std::string, uint32_t, uint64_t, Collection<uint16_t, uint32_t>>
+{};
+
+/**
+ * Response type override for get message properties request (-> PropvalResponse)
+ */
+template<>
+struct response_map<GetMessagePropertiesRequest::callId>
+{using type = PropvalResponse;};
+
+//////////////////////////////////////////////////////////////////////////////
+
+/**
  * @brief   Get store properties request
  *
  * @param   string      homedir
@@ -407,7 +529,7 @@ struct response_map<GetFolderPropertiesRequest::callId>
  * @return  PropvalResponse
  */
 struct GetStorePropertiesRequest : public Request<constants::CallId::GET_STORE_PROPERTIES,
-        std::string, uint32_t, Collection<uint16_t, uint32_t>>
+        uint32_t, Collection<uint16_t, uint32_t>>
 {};
 
 /**
@@ -430,15 +552,49 @@ struct response_map<GetStorePropertiesRequest::callId>
  * usage.
  *
  * @param   string      homedir
+ * @param   uint32_t    cpid
  * @param   uint64_t    folderId
  * @param   string      username
  * @param   uint8_t     tableFlags
+ * @param   Restriction restriction (optional)
+ * @param   SortOrder   <not supported>
+ *
+ * @return  LoadTableResponse
+ */
+struct LoadContentTableRequest : public Request<constants::CallId::LOAD_CONTENT_TABLE,
+        uint32_t, uint64_t, std::string, uint8_t, structures::Restriction>
+{static void write(IOBuffer&, const std::string&, const uint32_t&, const uint64_t&, const std::string&, const uint8_t&, const structures::Restriction& = structures::Restriction::XNULL());};
+
+/**
+ * Response type override for load content table request (-> LoadTableResponse)
+ */
+template<>
+struct response_map<LoadContentTableRequest::callId>
+{using type = LoadTableResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Load hierarchy data into a table
+ *
+ * Loads all elements directly below `folderId` into a table.
+ *
+ * Use QueryTableRequest to retrieve the loaded data.
+ *
+ * Note that the table must be manually unloaded with UnloadTableRequest after
+ * usage.
+ *
+ * @param   string      homedir
+ * @param   uint64_t    folderId
+ * @param   string      username
+ * @param   uint8_t     tableFlags
+ * @param   Restriction restriction (optional)
  *
  * @return  LoadTableResponse
  */
 struct LoadHierarchyTableRequest : public Request<constants::CallId::LOAD_HIERARCHY_TABLE,
-        std::string, uint64_t, std::string, uint8_t, bool>
-{static void write(IOBuffer&, const std::string&, const uint64_t&, const std::string&, const uint8_t&);};
+        uint64_t, std::string, uint8_t, bool, structures::Restriction>
+{static void write(IOBuffer&, const std::string&, const uint64_t&, const std::string&, const uint8_t&, const structures::Restriction& = structures::Restriction::XNULL());};
 
 /**
  * Response type override for load hierarchy table request (-> LoadTableResponse)
@@ -446,6 +602,40 @@ struct LoadHierarchyTableRequest : public Request<constants::CallId::LOAD_HIERAR
 template<>
 struct response_map<LoadHierarchyTableRequest::callId>
 {using type = LoadTableResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Load message instance
+ *
+ * Use ReadMessageInstanceRequest to obtain the message.
+ *
+ * Note that the instance must be manually unloaded with UnloadInstanceRequest after
+ * usage.
+ *
+ * @param   string      homedir
+ * @param   string      username
+ * @param   uint32_t    cpid
+ * @param   bool        new
+ * @param   uint64_t    folderId
+ * @param   uint64_t    messageId
+ *
+ * @return  Response<LoadMessageInstanceRequest::callId>
+ */
+struct LoadMessageInstanceRequest : public Request<constants::CallId::LOAD_MESSAGE_INSTANCE,
+        std::string, uint32_t, bool, uint64_t, uint64_t>
+{};
+
+/**
+ * Response specialization for LoadMessageInstanceRequest
+ */
+template<>
+struct Response<LoadMessageInstanceRequest::callId>
+{
+    explicit Response(IOBuffer&);
+
+    uint32_t instanceId; ///< ID of the loaded instance
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -464,7 +654,7 @@ struct response_map<LoadHierarchyTableRequest::callId>
  * @return  LoadTableResponse
  */
 struct LoadPermissionTableRequest : public Request<constants::CallId::LOAD_PERMISSION_TABLE,
-        std::string, uint64_t, uint8_t>
+        uint64_t, uint8_t>
 {};
 
 /**
@@ -477,33 +667,49 @@ struct response_map<LoadPermissionTableRequest::callId>
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
+ * @brief   Get information about messages in folder
+ *
+ * @param   string      homedir
+ * @param   uint64_t    folderId
+ *
+ * @return  Response<QueryTableRequest::callId>
+ */
+struct QueryFolderMessagesRequest : public Request<constants::CallId::QUERY_FOLDER_MESSAGES,
+        uint64_t>
+{};
+
+/**
+ * @brief      Response type override for QueryFolderMessagesRequest (-> TableResponse)
+ */
+template<>
+struct response_map<QueryFolderMessagesRequest::callId>
+{using type = TableResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
  * @brief   Retrieve data from previously loaded table
  *
  * @param   string      homedir
- * @param   string      username;
- * @param   uint32_t    cpid;
- * @param   uint32_t    tableId;
- * @param   uint32_t[]  proptags;
- * @param   uint32_t    startPos;
- * @param   uint32_t    rowNeeded;
+ * @param   string      username
+ * @param   uint32_t    cpid
+ * @param   uint32_t    tableId
+ * @param   uint32_t[]  proptags
+ * @param   uint32_t    startPos
+ * @param   uint32_t    rowNeeded
  *
  * @return  Response<QueryTableRequest::callId>
  */
 struct QueryTableRequest : public Request<constants::CallId::QUERY_TABLE,
-        std::string, std::string, uint32_t, uint32_t, Collection<uint16_t, uint32_t>, uint32_t, uint32_t>
+        std::string, uint32_t, uint32_t, Collection<uint16_t, uint32_t>, uint32_t, uint32_t>
 {};
 
 /**
- * @brief      Response specialization for QueryTableRequest
+ * @brief      Response type override for QueryTableRequest (-> TableResponse)
  */
 template<>
-struct Response<QueryTableRequest::callId>
-{
-    Response() = default;
-    explicit Response(IOBuffer&);
-
-    std::vector<std::vector<structures::TaggedPropval> > entries; ///< Returned rows of entries
-};
+struct response_map<QueryTableRequest::callId>
+{using type = TableResponse;};
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -516,7 +722,7 @@ struct Response<QueryTableRequest::callId>
  * @return
  */
 struct RemoveStorePropertiesRequest: public Request<constants::CallId::REMOVE_STORE_PROPERTIES,
-        std::string, Collection<uint16_t, uint32_t>>
+        Collection<uint16_t, uint32_t>>
 {};
 
 
@@ -533,7 +739,7 @@ struct RemoveStorePropertiesRequest: public Request<constants::CallId::REMOVE_ST
  * @return  ProblemsResponse
  */
 struct SetFolderPropertiesRequest : public Request<constants::CallId::SET_FOLDER_PROPERTIES,
-        std::string, uint32_t, uint64_t, Collection<uint16_t, structures::TaggedPropval>>
+        uint32_t, uint64_t, Collection<uint16_t, structures::TaggedPropval>>
 {};
 
 
@@ -547,6 +753,60 @@ struct response_map<SetFolderPropertiesRequest::callId>
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
+ * @brief   Read message
+ *
+ * Get contents of a message
+ * *
+ * @param   string      homedir
+ * @param   string      username
+ * @param   uint64_t    messageId
+ *
+ * @return  Response<ReadMessageRequest::callId>
+ */
+struct ReadMessageRequest : public Request<constants::CallId::READ_MESSAGE,
+        uint32_t>
+{};
+
+/**
+ * Response type override for read message instance request (-> ContentResponse)
+ */
+template<>
+struct response_map<ReadMessageRequest::callId>
+{using type = MessageContentResponse;};
+
+///////////////////////////////////////////////////////////////////////////////
+
+
+/**
+ * @brief   Read message instance
+ *
+ * Get contents of a message prevously loaded with LoadMessageInstanceRequest.
+ *
+ * Note that the instance must be manually unloaded with UnloadInstanceRequest after
+ * usage.
+ *
+ * @param   string      homedir
+ * @param   string      username
+ * @param   uint32_t    cpid
+ * @param   bool        new
+ * @param   uint64_t    folderId
+ * @param   uint64_t    messageId
+ *
+ * @return  Response<ReadMessageInstanceRequest::callId>
+ */
+struct ReadMessageInstanceRequest : public Request<constants::CallId::READ_MESSAGE_INSTANCE,
+        uint32_t>
+{};
+
+/**
+ * Response type override for read message instance request (-> ContentResponse)
+ */
+template<>
+struct response_map<ReadMessageInstanceRequest::callId>
+{using type = MessageContentResponse;};
+///////////////////////////////////////////////////////////////////////////////
+
+/**
  * @brief   Update store properties
  *
  * @param   string          homedir
@@ -556,7 +816,7 @@ struct response_map<SetFolderPropertiesRequest::callId>
  * @return  ProblemsResponse
  */
 struct SetStorePropertiesRequest : public Request<constants::CallId::SET_STORE_PROPERTIES,
-        std::string, uint32_t, Collection<uint16_t, structures::TaggedPropval>>
+        uint32_t, Collection<uint16_t, structures::TaggedPropval>>
 {};
 
 
@@ -576,7 +836,19 @@ struct response_map<SetStorePropertiesRequest::callId>
  *
  * @return  NullResponse
  */
-struct UnloadStoreRequest : public Request<constants::CallId::UNLOAD_STORE, std::string>{};
+struct UnloadStoreRequest : public Request<constants::CallId::UNLOAD_STORE>{};
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief   Unload instance
+ *
+ * @param   string      homedir
+ * @param   uint32_t    instanceId
+ *
+ * @return  NullResponse
+ */
+struct UnloadInstanceRequest : public Request<constants::CallId::UNLOAD_INSTANCE, uint32_t> {};
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -588,7 +860,8 @@ struct UnloadStoreRequest : public Request<constants::CallId::UNLOAD_STORE, std:
  *
  * @return  NullResponse
  */
-struct UnloadTableRequest : public Request<constants::CallId::UNLOAD_TABLE, std::string, uint32_t> {};
+struct UnloadTableRequest : public Request<constants::CallId::UNLOAD_TABLE, uint32_t> {};
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -603,7 +876,7 @@ struct UnloadTableRequest : public Request<constants::CallId::UNLOAD_TABLE, std:
  * @return  NullResponse
  */
 struct UpdateFolderPermissionRequest : public Request<constants::CallId::UPDATE_FOLDER_PERMISSION,
-        std::string, uint64_t, bool, Collection<uint16_t, structures::PermissionData>>
+        uint64_t, bool, Collection<uint16_t, structures::PermissionData>>
 {};
 
 }

@@ -3,6 +3,7 @@
  * SPDX-FileCopyrightText: 2020-2021 grammm GmbH
  */
 #include <cstring>
+#include <type_traits>
 
 #include "structures.h"
 #include "constants.h"
@@ -44,11 +45,20 @@ TaggedPropval::TaggedPropval(IOBuffer& buff)
     case PropvalType::FLOATINGTIME:
         buff >> value.d; break;
     case PropvalType::STRING:
-    case PropvalType::WSTRING:
+    case PropvalType::WSTRING: {
         const char* str = buff.pop<const char*>();
         size_t len = strlen(str);
         value.str = new char[len+1];
         strcpy(value.str, str); break;
+    }
+    case PropvalType::BINARY: {
+        uint32_t len = buff.pop<uint32_t>();
+        if(len)
+        {
+            value.ptr = new uint8_t[len];
+            memcpy(value.ptr, buff.pop_raw(len), len);
+        }
+    }
     }
 }
 
@@ -226,6 +236,7 @@ TaggedPropval::TaggedPropval(const TaggedPropval& tp) : tag(tp.tag), type(tp.typ
 TaggedPropval::TaggedPropval(TaggedPropval&& tp) : tag(tp.tag), type(tp.type), value(tp.value), owned(tp.owned)
 {tp.value.ptr = nullptr;}
 
+
 /**
  * @brief      Copy assignment operator
  *
@@ -263,13 +274,23 @@ TaggedPropval& TaggedPropval::operator=(TaggedPropval&& tp)
     return *this;
 }
 
-
 /**
  * @brief      Destructor
  */
 TaggedPropval::~TaggedPropval()
+{free();}
+
+static std::string hexData(const uint8_t* data, uint32_t len)
 {
-    free();
+    static const char* digits = "0123456789ABCDEF";
+    std::string str;
+    str.reserve(len*2);
+    for(const uint8_t* end = data+len; data < end; ++data)
+    {
+        str += digits[*data>>4];
+        str += digits[*data&0xF];
+    }
+    return str;
 }
 
 /**
@@ -308,6 +329,9 @@ std::string TaggedPropval::printValue() const
     case PropvalType::STRING:
     case PropvalType::WSTRING:
         content = value.str; break;
+    case PropvalType::BINARY: {
+        content = *value.a32 > 20? "[DATA]" : hexData(value.a8+4, *value.a32); break;
+    }
     default:
         content = "[UNKNOWN]";
     }
@@ -348,6 +372,8 @@ std::string TaggedPropval::toString() const
     case PropvalType::STRING:
     case PropvalType::WSTRING:
         content = value.str; break;
+    case PropvalType::BINARY:
+        content = "[DATA]"; break;
     default:
         content = "[UNKNOWN]";
     }
@@ -386,6 +412,8 @@ void TaggedPropval::free()
             && value.ptr != nullptr && owned)
         delete[] value.str;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief      Create GUID from domain ID
@@ -440,6 +468,7 @@ const uint8_t PermissionData::ADD_ROW;
 const uint8_t PermissionData::MODIFY_ROW;
 const uint8_t PermissionData::REMOVE_ROW;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief      Construct new PermissionData object
@@ -459,6 +488,287 @@ PermissionData::PermissionData(uint8_t flags, const std::vector<TaggedPropval>& 
 PropertyProblem::PropertyProblem(IOBuffer& buff)
     : index(buff.pop<uint16_t>()), proptag(buff.pop<uint32_t>()), err(buff.pop<uint32_t>())
 {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline Restriction::RChain::RChain(std::vector<Restriction>&& ress) : elements(std::move(ress)) {}
+inline Restriction::RNot::RNot(Restriction&& res) : res(new Restriction(std::move(res))) {}
+inline Restriction::RContent::RContent(uint32_t fl, uint32_t pt, TaggedPropval&& tp) : fuzzyLevel(fl), proptag(pt != 0? pt : tp.tag), propval(std::move(tp)) {}
+inline Restriction::RProp::RProp(Op op, uint32_t pt, TaggedPropval&& tp) : op(op), proptag(pt != 0? pt : tp.tag), propval(std::move(tp)) {}
+inline Restriction::RPropComp::RPropComp(Op op, uint32_t pt1, uint32_t pt2) : op(op), proptag1(pt1), proptag2(pt2) {}
+inline Restriction::RBitMask::RBitMask(bool all, uint32_t pt, uint32_t mask): all(all), proptag(pt), mask(mask) {}
+inline Restriction::RSize::RSize(Op op, uint32_t pt, uint32_t size) : op(op), proptag(pt), size(size) {}
+inline Restriction::RExist::RExist(uint32_t pt) : proptag(pt) {}
+inline Restriction::RSubObj::RSubObj(uint32_t so, Restriction&& res) : subobject(so), res(new Restriction(std::move(res))) {}
+inline Restriction::RComment::RComment(std::vector<TaggedPropval>&& tvs, Restriction&& res) : propvals(std::move(tvs)), res(res.res.index() == size_t(Type::iXNULL)? new Restriction(std::move(res)) : nullptr) {}
+inline Restriction::RCount::RCount(uint32_t count, Restriction&& res) : count(count), subres(new Restriction(std::move(res))) {}
+
+template<Restriction::Type I, typename... Args>
+inline Restriction Restriction::create(Args&&... args)
+{
+    Restriction r;
+    r.res.emplace<size_t(I)>(std::forward<Args>(args)...);
+    return r;
+}
+
+/**
+ * @brief       Create a new AND restriction chain
+ *
+ * Resulting restriction matches iff all sub restrictions match.
+ *
+ * @param       ress    Vector of sub restrictions
+ *
+ * @return      New AND restriction
+ */
+Restriction Restriction::AND(std::vector<Restriction>&& ress)
+{return create<Type::AND>(std::move(ress));}
+
+/**
+ * @brief       Create a new OR restriction chain
+ *
+ * Resulting restriction matches iff at least on sub restriction matches.
+ *
+ * @param       ress    Vector of sub restrictions
+ *
+ * @return      New OR restriction
+ */
+Restriction Restriction::OR(std::vector<Restriction>&& ress)
+{return create<Type::OR>(std::move(ress));}
+
+/**
+ * @brief       Create a new NOT restriction
+ *
+ * Resulting restriction matches iff sub restriction does not match
+ *
+ * @param       res     Sub restriction
+ *
+ * @return      New NOT restriction
+ */
+Restriction Restriction::NOT(Restriction&& res)
+{return create<Type::NOT>(std::move(res));}
+
+/**
+ * @brief       Create a new CONTENT restriction
+ *
+ * Resulting restriction matches iff the string is contained in the property. Can only be applied to UNICODE proptags.
+ *
+ * `fuzzyLevel` can be one of FL_FULLSTRING, FL_SUBSTRING or FL_PREFIX,
+ * optionally combined with one or more of FL_IGNORECASE, FL_IGNORENOSPACE or
+ * FL_LOOSE.
+ *
+ * @param       fuzzyLevel  How precise the match must be
+ * @param       proptag     Tag to match (or 0 to derive automatically from `propval`)
+ * @param       propval     Propval to match against
+ *
+ * @return      New CONTENT restriction
+ */
+Restriction Restriction::CONTENT(uint32_t fuzzyLevel, uint32_t proptag, TaggedPropval&& propval)
+{return create<Type::CONTENT>(fuzzyLevel, proptag, std::move(propval));}
+
+/**
+ * @brief       Create a new PROPERTY restriction
+ *
+ * Resulting restriction matches iff the property exists and matches (according
+ * to the operator) the provided property.
+ *
+ * @param       op          Operator to apply
+ * @param       proptag     Tag to match (or 0 to derive automatically from `propval`)
+ * @param       propval     Propval to match against
+ *
+ * @return      New PROPERTY restriction
+ */
+Restriction Restriction::PROPERTY(Op op, uint32_t proptag, TaggedPropval&& propval)
+{return create<Type::PROPERTY>(op, proptag, std::move(propval));}
+
+/**
+ * @brief       Create a new PROPCOMP restriction
+ *
+ * Resulting restriction matches iff the first tag matches (according to the
+ * operator) the second tag.
+ *
+ * @param       op          Operator to apply
+ * @param       proptag1    First operand
+ * @param       proptag2    Second operand
+ *
+ * @return      New PROPCOMP restriction
+ */
+Restriction Restriction::PROPCOMP(Op op, uint32_t proptag1, uint32_t proptag2)
+{return create<Type::PROPCOMP>(op, proptag1, proptag2);}
+
+/**
+ * @brief       Create a new BITMASK restriction
+ *
+ * Resulting restriction matches iff the bitmask overlaps with at least 1
+ * (all = true) or no (all = false) bits of the target property.
+ *
+ * Can only be applied to LONG properties.
+ *
+ * @param       all         Whether the bitmask must match
+ * @param       proptag     Tag to match
+ * @param       mask        Bitmask to apply
+ *
+ * @return      New CONTENT restriction
+ */
+Restriction Restriction::BITMASK(bool all, uint32_t proptag, uint32_t mask)
+{return create<Type::BITMASK>(all, proptag, mask);}
+
+/**
+ * @brief       Create a new SIZE restriction
+ *
+ * Resulting restriction matches iff the size of the proptag matches (according
+ * to the operator) the specified size
+ *
+ * @param       op          Operator to apply
+ * @param       proptag     Tag to match
+ * @param       size        Memory size of tag value in bytes
+ *
+ * @return      New SIZE restriction
+ */
+Restriction Restriction::SIZE(Op op, uint32_t proptag, uint32_t size)
+{return create<Type::SIZE>(op, proptag, size);}
+
+/**
+ * @brief       Create a new EXIST restriction
+ *
+ * Resulting restriction matches iff the proptag exists.
+ *
+ * @param       proptag     Tag to check
+ *
+ * @return      New EXIST restriction
+ */
+Restriction Restriction::EXIST(uint32_t proptag)
+{return create<Type::EXIST>(proptag);}
+
+/**
+ * @brief       Create a new SUBOBJECT restriction
+ *
+ * Apply restriction to a specifig subobject. Possible subobjects are
+ * `MESSAGERECIPIENTS` and `MESSAGEATTACHMENTS` properties.
+ *
+ * @param       res         Restriction to apply
+ *
+ * @return      New SUBOBJECT restriction
+ */
+Restriction Restriction::SUBOBJECT(uint32_t subobject, Restriction&& res)
+{return create<Type::SUBRES>(subobject, std::move(res));}
+
+/**
+ * @brief       Create a new COMMENT restriction
+ *
+ * Restriction with arbitrary (unused) metadata.
+ *
+ * Matches iff the sub-restriction matches.
+ *
+ * @param       propvals    Properties acting as comments
+ * @param       res         Restriction to apply
+ *
+ * @return      New COMMENT restriction
+ */
+Restriction Restriction::COMMENT(std::vector<TaggedPropval>&& propvals, Restriction&& res)
+{return create<Type::COMMENT>(std::move(propvals), std::move(res));}
+
+/**
+ * @brief       Create a new COUNT restriction
+ *
+ * Resulting restriction matches iff sub-restriction matches, but only at most
+ * `count` times.
+ *
+ * @param       count       Maximum number of matches
+ * @param       subres      Sub-restriction to count
+ *
+ * @return      New SIZE restriction
+ */
+Restriction Restriction::COUNT(uint32_t count, Restriction&& subres)
+{return create<Type::COUNT>(count, std::move(subres));}
+
+/**
+ * @brief       Create a new NULL restriction
+ *
+ * The NULL restriction is only a virtual construct and is not serialized and
+ * sent to the server.
+ *
+ * @return      New NULL restriction
+ */
+Restriction Restriction::XNULL()
+{return Restriction();}
+
+/**
+ * @brief       Serialize Restriction into IOBuffer
+ *
+ * @param       buff    Buffer to write serialized data to
+ */
+void Restriction::serialize(IOBuffer& buff) const
+{
+    Type type = Type(res.index());
+    if(type == Type::iXNULL)
+        return;
+    buff.push(uint8_t(type));
+    switch(type)
+    {
+    case Type::AND:
+    case Type::OR: {
+        const std::vector<Restriction>* ress = type == Type::AND? &std::get<size_t(Type::AND)>(res).elements : &std::get<size_t(Type::OR)>(res).elements;
+        if(ress->size() > 2ull<<32)
+            throw std::runtime_error("Too many sub-restrictions ("+std::to_string(ress->size())+")");
+        buff.push(uint32_t(ress->size()));
+        for(const Restriction& r : *ress)
+            buff.push(r);
+        return;
+    }
+    case Type::NOT:
+        return buff.push(*std::get<size_t(Type::NOT)>(res).res);
+    case Type::CONTENT: {
+        const RContent& r = std::get<size_t(Type::CONTENT)>(res);
+        return buff.push(r.fuzzyLevel, r.proptag, r.propval);
+    }
+    case Type::PROPERTY: {
+        const RProp& r = std::get<size_t(Type::PROPERTY)>(res);
+        return buff.push(uint8_t(r.op), r.proptag, r.propval);
+    }
+    case Type::PROPCOMP: {
+        const RPropComp& r = std::get<size_t(Type::PROPCOMP)>(res);
+        return buff.push(uint8_t(r.op), r.proptag1, r.proptag2);
+    }
+    case Type::BITMASK: {
+        const RBitMask& r = std::get<size_t(Type::BITMASK)>(res);
+        return buff.push(uint8_t(!r.all), r.proptag, r.mask);
+    }
+    case Type::SIZE: {
+        const RSize& r = std::get<size_t(Type::SIZE)>(res);
+        return buff.push(uint8_t(r.op), r.proptag, r.size);
+    }
+    case Type::EXIST: {
+        const RExist& r = std::get<size_t(Type::EXIST)>(res);
+        return buff.push(r.proptag);
+    }
+    case Type::SUBRES: {
+        const RSubObj& r = std::get<size_t(Type::SUBRES)>(res);
+        return buff.push(r.subobject, *r.res);
+    }
+    case Type::COMMENT: {
+        const RComment& r = std::get<size_t(Type::COMMENT)>(res);
+        if(r.propvals.size() == 0 || r.propvals.size() > 255)
+            throw std::runtime_error("Invalid COMMENT restriction propval count "+std::to_string(r.propvals.size()));
+        buff.push(uint8_t(r.propvals.size()));
+        for(const TaggedPropval& tp : r.propvals)
+            buff.push(tp);
+        return r.res? buff.push(uint8_t(1), *r.res) : buff.push(uint8_t(0));
+    }
+    case Type::COUNT: {
+        const RCount& r = std::get<size_t(Type::COUNT)>(res);
+        return buff.push(r.count, *r.subres);
+    }
+    default:
+        throw std::runtime_error("Invalid restriction type "+std::to_string(uint8_t(type)));
+    }
+}
+
+/**
+ * @brief       Check whether the restriction is non-empty
+ */
+Restriction::operator bool() const
+{return res.index() != size_t(Type::iXNULL);}
+
 
 }
 
@@ -548,5 +858,9 @@ void IOBuffer::Serialize<PermissionData>::push(IOBuffer& buff, const PermissionD
     for(auto& propval : pd.propvals)
         buff.push(propval);
 }
+
+template<>
+void IOBuffer::Serialize<Restriction>::push(IOBuffer& buff, const Restriction& res)
+{res.serialize(buff);}
 
 }

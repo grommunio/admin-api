@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.23.0
+  version: 0.23.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1564,6 +1564,57 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/{domainID}/users/{userID}/sync:
+    get:
+      summary: Get status of synced devices
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: Devices returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    description: Assiciative array of devices with their sync entries
+                    additionalProperties:
+                      type: object
+                      properties:
+                        devicetype:
+                          type: string
+                        useragent:
+                          type: string
+                        firstsynctime:
+                          type: integer
+                          description: UNIX timestamp of first sync
+                        lastupdatetime:
+                          type: integer
+                          description: UNIX timestamp of last update
+                        asversion:
+                          type: string
+                          description: Sync version
+                        foldersSyncable:
+                          type: integer
+                          description: Number of folders that can be synced
+                        foldersSynced:
+                          type: integer
+                          description: Number of folders that were actually synced
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
 
   /domains/{domainID}/users/{userID}/password:
     put:

@@ -1,4 +1,4 @@
-CPP=g++ -fPIC -O2
+CPP=g++ -std=c++17 -fPIC -O2
 LD=g++ -shared
 SWIG=swig -c++ -python -py3
 

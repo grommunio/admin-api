@@ -65,6 +65,7 @@ Possible parameters:
 - `topdataKey` (`string`, default `grammm-sync:topdata`): Key containing the top data hash
 - `topExpireEnded` (`int`, default `20`): Time (in seconds) after which ended processes are removed
 - `topExpireUpdate` (`int`, default `120`): Time (in seconds) since the last update after which processes are removed
+- `syncStateFolder` (`string`, default `GS-SyncState`): Sub-folder containing the device sync states
 
 ### Options ###
 Further parameters can be set in the `options` object:

@@ -232,3 +232,7 @@ properties:
         type: integer
         description: Time (in seconds) since the last update after which processes are removed
         default: 120
+      syncStateFolder:
+        type: string
+        description: Sub-folder containing the device sync states
+        default: GS-SyncState

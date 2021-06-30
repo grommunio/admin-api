@@ -2,9 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020 grammm GmbH
 
-import time
-
 from datetime import datetime
+from io import BytesIO
 
 from .constants import PropTags, PropTypes
 from .rop import nxTime
@@ -147,3 +146,115 @@ def setDirectoryPermission(path, mode):
             os.chmod(os.path.join(path, entry), dirmode)
         for entry in files:
             os.chmod(os.path.join(path, entry), mode)
+
+#######################################################
+#
+# Shamelessly stolen from `phpserialize` project and
+# enhanced to support objects and classes out of the
+# box.
+#
+#######################################################
+def loadPSO(data, charset='utf-8', decode_strings=False,
+         object_hook=None, array_hook=None):
+    """Read a string from the open file object `fp` and interpret it as a
+    data stream of PHP-serialized objects, reconstructing and returning
+    the original object hierarchy.
+
+    `fp` must provide a `read()` method that takes an integer argument.  Both
+    method should return strings.  Thus `fp` can be a file object opened for
+    reading, a `StringIO` object (`BytesIO` on Python 3), or any other custom
+    object that meets this interface.
+
+    `load` will read exactly one object from the stream.  See the docstring of
+    the module for this chained behavior.
+
+    If an object hook is given object-opcodes are supported in the serilization
+    format.  The function is called with the class name and a dict of the
+    class data members.  The data member names are in PHP format which is
+    usually not what you want.  The `simple_object_hook` function can convert
+    them to Python identifier names.
+
+    If an `array_hook` is given that function is called with a list of pairs
+    for all array items.  This can for example be set to
+    `collections.OrderedDict` for an ordered, hashed dictionary.
+    """
+    fp = BytesIO(data)
+    if array_hook is None:
+        array_hook = dict
+
+    def _expect(e):
+        v = fp.read(len(e))
+        if v != e:
+            raise ValueError('failed expectation, expected %r got %r' % (e, v))
+
+    def _read_until(delim):
+        buf = []
+        while 1:
+            char = fp.read(1)
+            if char == delim:
+                break
+            elif not char:
+                raise ValueError('unexpected end of stream')
+            buf.append(char)
+        return b''.join(buf)
+
+    def _load_array():
+        items = int(_read_until(b':')) * 2
+        _expect(b'{')
+        result = []
+        last_item = Ellipsis
+        for idx in range(items):
+            item = _unserialize()
+            if last_item is Ellipsis:
+                last_item = item
+            else:
+                result.append((last_item, item))
+                last_item = Ellipsis
+        _expect(b'}')
+        return result
+
+    def _load_class():
+        unused = int(_read_until(b':'))
+        _expect(b'{')
+        data = _unserialize()
+        _expect(b'}')
+        return data
+
+    def _unserialize():
+        type_ = fp.read(1).lower()
+        if type_ == b'n':
+            _expect(b';')
+            return None
+        if type_ in b'idb':
+            _expect(b':')
+            data = _read_until(b';')
+            if type_ == b'i':
+                return int(data)
+            if type_ == b'd':
+                return float(data)
+            return int(data) != 0
+        if type_ == b's':
+            _expect(b':')
+            length = int(_read_until(b':'))
+            _expect(b'"')
+            data = fp.read(length)
+            _expect(b'"')
+            if decode_strings:
+                data = data.decode(charset)
+            _expect(b';')
+            return data
+        if type_ == b'a':
+            _expect(b':')
+            return array_hook(_load_array())
+        if type_ in b'oc':
+            _expect(b':')
+            name_length = int(_read_until(b':'))
+            _expect(b'"')
+            name = fp.read(name_length)
+            _expect(b'":')
+            if decode_strings:
+                name = name.decode(charset)
+            return {name: dict(_load_array()) if type_ == b'o' else _load_class()}
+        raise ValueError('unexpected opcode')
+
+    return _unserialize()

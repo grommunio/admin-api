@@ -26,16 +26,26 @@ static const uint8_t GET_STORE_ALL_PROPTAGS = 0x08;
 static const uint8_t GET_STORE_PROPERTIES = 0x09;
 static const uint8_t SET_STORE_PROPERTIES = 0x0a;
 static const uint8_t REMOVE_STORE_PROPERTIES = 0x0b;
+static const uint8_t QUERY_FOLDER_MESSAGES = 0x11;
+static const uint8_t GET_FOLDER_BY_NAME = 0x13;
 static const uint8_t CREATE_FOLDER_BY_PROPERTIES = 0x15;
+static const uint8_t GET_FOLDER_ALL_PROPTAGS = 0x16;
 static const uint8_t GET_FOLDER_PROPERTIES = 0x17;
 static const uint8_t SET_FOLDER_PROPERTIES = 0x18;
 static const uint8_t DELETE_FOLDER = 0x1a;
 static const uint8_t LOAD_HIERARCHY_TABLE = 0x26;
+static const uint8_t LOAD_CONTENT_TABLE = 0x28;
 static const uint8_t LOAD_PERMISSION_TABLE = 0x29;
 static const uint8_t UNLOAD_TABLE = 0x2b;
 static const uint8_t QUERY_TABLE = 0x2d;
+static const uint8_t LOAD_MESSAGE_INSTANCE = 0x39;
+static const uint8_t READ_MESSAGE_INSTANCE = 0x3e;
+static const uint8_t UNLOAD_INSTANCE = 0x46;
+static const uint8_t GET_INSTANCE_PROPERTIES = 0x48;
+static const uint8_t GET_MESSAGE_PROPERTIES = 0x57;
 static const uint8_t ALLOCATE_CN = 0x5c;
 static const uint8_t UPDATE_FOLDER_PERMISSION = 0x6a;
+static const uint8_t READ_MESSAGE = 0x6f;
 static const uint8_t UNLOAD_STORE = 0x80;
 }
 

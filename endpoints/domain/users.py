@@ -6,6 +6,7 @@ import api
 
 from api.core import API, secure
 from api.security import checkPermissions
+from base64 import b64decode
 from datetime import datetime
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
@@ -13,11 +14,11 @@ from sqlalchemy.orm import aliased
 
 from .. import defaultListHandler, defaultObjectHandler
 
-from tools.misc import createMapping
-from tools.pyexmdb import pyexmdb
 from tools.config import Config
 from tools.constants import PropTags, PropTypes, ExchangeErrors, ExmdbCodes
+from tools.misc import createMapping, loadPSO
 from tools.permissions import SystemAdminPermission, DomainAdminPermission
+from tools.pyexmdb import pyexmdb
 from tools.rop import nxTime
 
 import shutil
@@ -221,6 +222,36 @@ def setUserStoreProps(domainID, userID):
         if len(errors) != 0:
             API.logger.warn("Failed to set proptags: "+", ".join("{} ({})".format(tag, err) for tag, err in errors.items()))
         return jsonify(message="Great success!" if len(errors) == 0 else "Some tags could not be set", errors=errors)
+    except pyexmdb.ExmdbError as err:
+        return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
+    except RuntimeError as err:
+        return jsonify(message="exmdb query failed: "+err.args[0]), 500
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync", methods=["GET"])
+@secure(requireDB=True)
+def getUserSyncData(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    try:
+        devices = dict()
+        options = Config["options"]
+        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], user.maildir, True)
+        data = client.getSyncData(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState")).asdict()
+        props = ("devicetype", "useragent", "deviceuser", "firstsynctime", "lastupdatetime", "asversion")
+        for device, state in data.items():
+            try:
+                decoded = loadPSO(b64decode(state), decode_strings=True)
+                stateobj = decoded["StateObject"][1]["devices"][user.username]["ASDevice"][1]
+                syncstate = {prop: stateobj[prop] for prop in props}
+                syncstate["foldersSyncable"] = len(stateobj["contentdata"])
+                syncstate["foldersSynced"] = len([folder for folder in stateobj["contentdata"].values() if 1 in folder])
+                devices[device] = syncstate
+            except Exception as err:
+                API.logger.warn("Failed to decode sync state: {}({})".format(type(err).__name__, ", ".join(str(arg) for arg in err.args)))
+        return jsonify(data=devices)
     except pyexmdb.ExmdbError as err:
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
     except RuntimeError as err:

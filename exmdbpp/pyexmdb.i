@@ -24,12 +24,14 @@
 %include "std_string.i"
 %include "std_except.i"
 %include "std_vector.i"
+%include "std_unordered_map.i"
 %include "stdint.i"
 
 %template(Vuint32_t) std::vector<uint32_t>;
 %template(VTaggedPropval) std::vector<exmdbpp::structures::TaggedPropval>;
 %template(VVTaggedPropval) std::vector<std::vector<exmdbpp::structures::TaggedPropval> >;
 %template(VPropertyProblem) std::vector<exmdbpp::structures::PropertyProblem>;
+%template(MStringString) std::unordered_map<std::string, std::string>;
 
 namespace exmdbpp
 {
@@ -86,28 +88,15 @@ struct Response : NullResponse
 
 struct QueryTableRequest;
 struct CreateFolderByPropertiesRequest;
-struct DeleteFolderRequest;
-struct DeleteFolderRequest;
-struct SetStorePropertiesRequest;
-struct GetFolderPropertiesRequest;
-struct GetAllStorePropertiesRequest;
 
 %nodefaultctor;
 
-template<>
-struct Response<exmdbpp::requests::QueryTableRequest::callId>
-{
-    std::vector<std::vector<structures::TaggedPropval> > entries;
-};
-
-template<>
-struct Response<exmdbpp::requests::CreateFolderByPropertiesRequest::callId>
+struct FolderResponse
 {
     uint64_t folderId;
 };
 
-template<>
-struct Response<exmdbpp::requests::GetAllStorePropertiesRequest::callId>
+struct ProptagResponse
 {
     std::vector<uint32_t> proptags;
 };
@@ -124,16 +113,20 @@ struct SuccessResponse
 
 struct ProblemsResponse
 {
-    std::vector<structures::PropertyProblem> problems; ///< List of problems that occured when setting store values
+    std::vector<structures::PropertyProblem> problems;
 };
+
+struct TableResponse
+{
+    std::vector<std::vector<structures::TaggedPropval> > entries;
+};
+
 
 
 %clearnodefaultctor;
 
 %template(QueryTableResponse) requests::Response<exmdbpp::requests::QueryTableRequest::callId>;
 %template(CreateFolderByPropertiesResponse) requests::Response<exmdbpp::requests::CreateFolderByPropertiesRequest::callId>;
-%template(GetAllStorePropertiesRequest) requests::Response<exmdbpp::requests::GetAllStorePropertiesRequest::callId>;
-
 }
 
 namespace queries
@@ -154,7 +147,7 @@ struct Folder
 
 struct FolderListResponse
 {
-    FolderListResponse(const requests::Response<requests::QueryTableRequest::callId>&);
+    FolderListResponse(const requests::TableResponse&);
 
     std::vector<queries::Folder> folders;
 };
@@ -175,10 +168,12 @@ struct FolderOwnerListResponse
         uint32_t memberRights;
     };
 
-    FolderOwnerListResponse(const requests::Response<requests::QueryTableRequest::callId>&);
+    FolderOwnerListResponse(const requests::TableResponse&);
 
     std::vector<queries::Owner> owners;
 };
+
+using SyncData = std::unordered_map<std::string, std::string>;
 
 class ExmdbQueries
 {
@@ -188,17 +183,18 @@ public:
     static const std::vector<uint32_t> defaultFolderProps;
 
     requests::NullResponse addFolderOwner(const std::string& homedir, uint64_t folderID, const std::string& username) throw (ExmdbError, std::runtime_error, std::out_of_range);
-    requests::Response<requests::CreateFolderByPropertiesRequest::callId> createFolder(const std::string& homedir, uint32_t domainID, const std::string& folderName, const std::string& container, const std::string& comment) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::FolderResponse createFolder(const std::string& homedir, uint32_t domainID, const std::string& folderName, const std::string& container, const std::string& comment) throw (ExmdbError, std::runtime_error, std::out_of_range);
     requests::SuccessResponse deleteFolder(const std::string& homedir, uint64_t folderID) throw (ExmdbError, std::runtime_error, std::out_of_range);
     requests::NullResponse deleteFolderOwner(const std::string& homedir, uint64_t folderID, uint64_t memberID) throw (ExmdbError, std::runtime_error, std::out_of_range);
-    requests::Response<requests::GetAllStorePropertiesRequest::callId> getAllStoreProperties(const std::string& homedir) throw (ExmdbError, std::runtime_error, std::out_of_range);
-    requests::Response<requests::QueryTableRequest::callId> getFolderList(const std::string& homedir, const std::vector<uint32_t>& proptags = defaultFolderProps) throw (ExmdbError, std::range_error, std::runtime_error, std::out_of_range);
-    requests::Response<requests::QueryTableRequest::callId> getFolderOwnerList(const std::string& homedir, uint64_t folderID) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::ProptagResponse getAllStoreProperties(const std::string& homedir) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    requests::TableResponse getFolderList(const std::string& homedir, const std::vector<uint32_t>& proptags = defaultFolderProps) throw (ExmdbError, std::range_error, std::runtime_error, std::out_of_range);
+    requests::TableResponse getFolderOwnerList(const std::string& homedir, uint64_t folderID) throw (ExmdbError, std::runtime_error, std::out_of_range);
     requests::PropvalResponse getFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderId, const std::vector<uint32_t>& proptags = defaultFolderProps) throw (ExmdbError, std::range_error, std::runtime_error, std::out_of_range);
     requests::PropvalResponse getStoreProperties(const std::string& homedir, uint32_t cpid, const std::vector<uint32_t>& proptags) throw (ExmdbError, std::range_error, std::runtime_error, std::out_of_range);
     requests::NullResponse removeStoreProperties(const std::string&, const std::vector<uint32_t>&) throw (ExmdbError, std::runtime_error, std::out_of_range);
     requests::ProblemsResponse setFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderId, const std::vector<structures::TaggedPropval>& propvals) throw (ExmdbError, std::range_error, std::runtime_error, std::out_of_range);
     requests::ProblemsResponse setStoreProperties(const std::string& homedir, uint32_t cpid, const std::vector<structures::TaggedPropval>& propvals) throw (ExmdbError, std::range_error, std::runtime_error, std::out_of_range);
+    SyncData getSyncData(const std::string& homedir, const std::string& syncStateFolder) throw (ExmdbError, std::runtime_error, std::out_of_range);
     requests::NullResponse unloadStore(const std::string& homedir) throw (ExmdbError, std::runtime_error, std::out_of_range);
 };
 

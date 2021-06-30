@@ -179,7 +179,7 @@ SuccessResponse ExmdbQueries::deleteFolder(const std::string& homedir, uint64_t 
  *
  * @return     Response containing the owners. Can be converted to FolderOwnerListResponse for easier access.
  */
-Response<QueryTableRequest::callId> ExmdbQueries::getFolderOwnerList(const std::string& homedir, uint64_t folderId)
+TableResponse ExmdbQueries::getFolderOwnerList(const std::string& homedir, uint64_t folderId)
 {
     auto lptResponse = send<LoadPermissionTableRequest>(homedir, folderId, 0);
     uint32_t proptags[] = {PropTag::MEMBERID, PropTag::MEMBERNAME, PropTag::MEMBERRIGHTS};
@@ -310,5 +310,51 @@ Response_t<GetAllStorePropertiesRequest> ExmdbQueries::getAllStoreProperties(con
  */
 NullResponse ExmdbQueries::removeStoreProperties(const std::string& homedir, const std::vector<uint32_t>& proptags)
 {return send<RemoveStorePropertiesRequest>(homedir, proptags);}
+
+
+/**
+ * @brief       Get grammm-sync state for user
+ *
+ * @param       homedir     Home directory path of the user
+ * @param       folderName  Name of the folder containing sync data
+ *
+ * @return      Map of devices and their state
+ */
+SyncData ExmdbQueries::getSyncData(const std::string& homedir, const std::string& folderName)
+{
+    uint64_t parentFolderID = util::makeEidEx(1, PublicFid::ROOT);
+    uint32_t fidTag[] = {PropTag::FOLDERID, PropTag::DISPLAYNAME};
+    uint32_t bodyTag[] = {PropTag::BODY};
+    uint32_t midTag[] = {PropTag::MID};
+    Restriction ddFilter = Restriction::PROPERTY(Restriction::EQ, 0, TaggedPropval(PropTag::DISPLAYNAME, "devicedata"));
+
+    SyncData data;
+
+    auto folder = send<GetFolderByNameRequest>(homedir, parentFolderID, folderName);
+    auto subfolders = send<LoadHierarchyTableRequest>(homedir, folder.folderId, "", 0);
+    data.reserve(subfolders.rowCount);
+    auto subfolderIDs = send<QueryTableRequest>(homedir, "", 0, subfolders.tableId, fidTag, 0, subfolders.rowCount);
+    send<UnloadTableRequest>(homedir, subfolders.tableId);
+    for(const auto& subfolder: subfolderIDs.entries)
+    {
+        if(subfolder.size() != 2 || subfolder[0].tag != PropTag::FOLDERID || subfolder[1].tag != PropTag::DISPLAYNAME)
+            continue;
+        auto content = send<LoadContentTableRequest>(homedir, 0, subfolder[0].value.u64, "", 2, ddFilter);
+        auto table = send<QueryTableRequest>(homedir, "", 0, content.tableId, midTag, 0, content.rowCount);
+        send<UnloadTableRequest>(homedir, content.tableId);
+        if(table.entries.empty())
+            continue;
+        if(table.entries.empty())
+            continue;
+        auto& msgobject = table.entries[0];
+        if(msgobject.size() != 1 || msgobject[0].tag != PropTag::MID)
+            continue;
+        auto message = send<GetMessagePropertiesRequest>(homedir, "", 0, msgobject[0].value.u64, bodyTag);
+        if(message.propvals.size() != 1 || message.propvals[0].tag != PropTag::BODY)
+            continue;
+        data.emplace(subfolder[1].value.str, message.propvals[0].value.str);
+    }
+    return data;
+}
 
 }
