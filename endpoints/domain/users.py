@@ -25,6 +25,7 @@ import shutil
 
 from orm import DB
 if DB is not None:
+    from orm.domains import Domains
     from orm.users import Users, UserProperties
     from orm.roles import AdminUserRoleRelation, AdminRoles
 
@@ -236,11 +237,11 @@ def getUserSyncData(domainID, userID):
     if user is None:
         return jsonify(message="User not found"), 404
     try:
-        devices = dict()
+        devices = []
         options = Config["options"]
         client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], user.maildir, True)
         data = client.getSyncData(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState")).asdict()
-        props = ("devicetype", "useragent", "deviceuser", "firstsynctime", "lastupdatetime", "asversion")
+        props = ("deviceid", "devicetype", "useragent", "deviceuser", "firstsynctime", "lastupdatetime", "asversion")
         for device, state in data.items():
             try:
                 decoded = loadPSO(b64decode(state), decode_strings=True)
@@ -248,7 +249,7 @@ def getUserSyncData(domainID, userID):
                 syncstate = {prop: stateobj[prop] for prop in props}
                 syncstate["foldersSyncable"] = len(stateobj["contentdata"])
                 syncstate["foldersSynced"] = len([folder for folder in stateobj["contentdata"].values() if 1 in folder])
-                devices[device] = syncstate
+                devices.append(syncstate)
             except Exception as err:
                 API.logger.warn("Failed to decode sync state: {}({})".format(type(err).__name__, ", ".join(str(arg) for arg in err.args)))
         return jsonify(data=devices)
