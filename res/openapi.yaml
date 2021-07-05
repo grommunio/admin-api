@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.23.2
+  version: 0.23.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -119,6 +119,7 @@ paths:
       summary: Change current users password
       tags:
         - Misc
+        - Service
       requestBody:
         content:
           application/json:
@@ -148,6 +149,31 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/DatabaseError'
+
+  /service/syncPolicy/{username}:
+    get:
+      summary: Get sync policy for specific user
+      tags:
+        - Service
+      security:
+        - JWTCookie: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: E-mail address of the user
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Policy returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/syncPolicy'
 
   /system/dashboard:
     get:
@@ -3089,6 +3115,8 @@ components:
         inactiveUsers:
           type: integer
           readOnly: true
+        syncPolicy:
+          $ref: '#/components/schemas/syncPolicy'
     org:
       type: object
       properties:
@@ -3164,6 +3192,8 @@ components:
           description: List of fetchmail entries for this user
           items:
             $ref: '#/components/schemas/fetchmailEntry'
+        syncPolicy:
+          $ref: '#/components/schemas/syncPolicy'
     userInit:
       type: object
       additionalProperties: false
@@ -3209,6 +3239,8 @@ components:
           description: List of fetchmail entries for this user
           items:
             $ref: '#/components/schemas/fetchmailEntry'
+        syncPolicy:
+          $ref: '#/components/schemas/syncPolicy'
     userUpdate:
       type: object
       additionalProperties: false
@@ -3253,6 +3285,8 @@ components:
           description: List of fetchmail entries for this user
           items:
             $ref: '#/components/schemas/fetchmailEntry'
+        syncPolicy:
+          $ref: '#/components/schemas/syncPolicy'
     publicFolder:
       type: object
       properties:
@@ -3656,6 +3690,224 @@ components:
           description: Additional fetchmail options
           type: string
           nullable: true
+    syncPolicy:
+      type: object
+      nullable: true
+      description: Active Sync Policy overrides
+      properties:
+        allowbluetooth:
+          type: integer
+          enum: [0, 1, 2]
+          default: 2
+          description: Whether Bluetooth and hands-free profiles are allowed on the device (0=disabled, 1=allow only HFP, 2=allow)
+        allowbrowser:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device allows the use of a web browser.
+        allowcam:
+          type: integer
+          default: 1
+          enum: [0, 1]
+          description: Whether the device allows the use of the built-in camera.
+        allowconsumeremail:
+          type: integer
+          default: 1
+          enum: [0, 1]
+          description: Whether the device allows the use of personal email.
+        allowdesktopsync:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device allows synchronization with Desktop ActiveSync.
+        allowhtmlemail:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device uses HTML-formatted email.
+        allowinternetsharing:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device allows the use of Internet Sharing.
+        allowirda:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device allows the use of IrDA (infrared) connections.
+        allowpopimapemail:
+          type: integer
+          default: 1
+          enum: [0, 1]
+          description: Whether the device allows access to POP/IMAP email.
+        allowremotedesk:
+          type: integer
+          default: 1
+          enum: [0, 1]
+          description: Whether the device allows the use of Remote Desktop.
+        allowsimpledevpw:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device allows simple passwords.
+        allowsmimeencalgneg:
+          type: integer
+          enum: [0, 1, 2]
+          default: 2
+          description: Whether the device can negotiate the encryption algorithm to be used for signing (0=not allowed, 1=only strong, 2=any)
+        allowsmimesoftcerts:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device uses soft certificates to sign outgoing messages.
+        allowstoragecard:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device allows the use of the storage card.
+        allowtextmessaging:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device allows Short Message Service (SMS)/text messaging.
+        allowunsignedapps:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device allows unsigned applications to execute.
+        allowunsigninstallpacks:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device allows unsigned cabinet (.cab) files to be installed.
+        allowwifi:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Whether the device allows the use of Wi-Fi connections.
+        alphanumpwreq:
+          type: integer
+          enum: [0, 1]
+          default: 0
+          description: Indicates whether a client device requires an alphanumeric password.
+        approvedapplist:
+          type: array
+          description: A list of in-RAM applications that are approved for execution.
+          default: []
+          items:
+            type: string
+        attenabled:
+          type: integer
+          enum: [0, 1]
+          default: 1
+          description: Indicates whether email attachments are enabled.
+        devencenabled:
+          type: integer
+          default: 0
+          enum: [0, 1]
+          description: Deprecated, kept for backwards compatibility
+        devpwenabled:
+          type: integer
+          enum: [0, 1]
+          default: 0
+          description: Indicates whether a client device requires a password.
+        devpwexpiration:
+          type: integer
+          default: 0
+          description: Whether the password expires after the specified number of days, as determined by the policy (0=unlimited).
+        devpwhistory:
+          type: integer
+          default: 0
+          description: The minimum number of previously used passwords the client device stores to prevent reuse (0=no storage).
+        maxattsize:
+          oneOf:
+            - type: string
+              default: ''
+              enum: ['']
+              description: Unlimited attachment size
+            - type: integer
+              description: The maximum attachment size, as determined by the security policy.
+        maxcalagefilter:
+          type: integer
+          enum: [0, 4, 5, 6, 7]
+          default: 0
+          description: The maximum number of calendar days that can be synchronized (0=unlimited, 4=2 weeks, 5=1 month, 6=3 months, 7=6 months)
+        maxdevpwfailedattempts:
+          type: integer
+          minimum: 4
+          maximum: 16
+          default: 8
+          description: The number of password failures that are permitted before the device is wiped.
+        maxemailagefilter:
+          type: integer
+          default: 0
+          enum: [0, 1, 2, 3, 4, 5]
+          description: The email age limit for synchronization (0=all, 1=1 day, 2=3 days, 3=1 week, 4=2 weeks, 5=1 month)
+        maxemailbodytruncsize:
+          type: integer
+          default: -1
+          description: The truncation size for plain text–formatted email messages (-1=unlimited, 0=header only, >0=truncate to size)
+        maxemailhtmlbodytruncsize:
+          type: integer
+          default: -1
+          description: The truncation size for HTML-formatted email messages (-1=unlimited, 0=header only, >0=truncate to size)
+        maxinacttimedevlock:
+          type: integer
+          default: 900
+          description: The number of seconds of inactivity before the device locks itself (>9999=unlimited)
+        mindevcomplexchars:
+          type: integer
+          minimum: 1
+          maximum: 4
+          default: 3
+          description: The minimum number of character classes (lower case, upper case, numbers and symbols) contained within the password.
+        mindevpwlenngth:
+          type: integer
+          minimum: 1
+          maximum: 16
+          default: 4
+          description: The minimum device password length that the user can enter (1=unlimited).
+        pwrecoveryenabled:
+          type: integer
+          enum: [0, 1]
+          default: 0
+          description: Indicates whether to enable a recovery password to be sent to the server by using the Settings command.
+        reqdevenc:
+          type: integer
+          enum: [0, 1]
+          default: 0
+          description: Whether the device uses encryption.
+        reqencsmimealgorithm:
+          type: integer
+          enum: [0, 1, 2, 3, 4]
+          default: 0
+          description: The algorithm to be used when encrypting a message (0=TripleDES, 1=DES, 2=RC2128bit, 3=RC264bit, 4=RC240bit)
+        reqencsmimemessages:
+          type: integer
+          enum: [0, 1]
+          default: 0
+          description: Whether the device is required to send encrypted messages.
+        reqmansyncroam:
+          type: integer
+          enum: [0, 1]
+          default: 0
+          description: Whether the device requires manual synchronization when the device is roaming.
+        reqsignedsmimealgorithm:
+          type: integer
+          enum: [0, 1]
+          default: 0
+          description: The algorithm to be used when signing a message (0=SHA1, 1=MD5)
+        reqsignedsmimemessages:
+          type: integer
+          enum: [0, 1]
+          default: 0
+          description: Whether the device is required to send signed S/MIME messages.
+        unapprovedinromapplist:
+          type: array
+          description: A list of in-ROM applications that are not approved for execution.
+          default: []
+          items:
+            type: string
     syncStatus:
       type: array
       description: List of updated/imported users
@@ -3755,5 +4007,7 @@ tags:
     description: Endpoints for user management
   - name: LDAP
     description: Endpoints for LDAP operations
+  - name: Service
+    description: Endpoints intended for other services
   - name: Misc
     description: Miscellaneous and organizational endpoints

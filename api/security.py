@@ -30,6 +30,8 @@ def getUser():
     str
         Error message or None if successful.
     """
+    if not hasattr(request, "auth"):
+        return "Not authenticated"
     if "user" in request.auth:
         return
     try:

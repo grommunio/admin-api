@@ -79,7 +79,7 @@ def _clean(cli, path, used, maxdepth, du=False, delete=True):
                     shutil.rmtree(dp, ignore_errors=True)
         if len(dirnames)-removed <= 0 and depth != 0:
             size += os.path.getsize(pathname)
-            cli.print("Removing empty directory "+cli.col(pathname, attrs=["bold"]))
+            cli.print("Remov{} empty directory {}".format("ing" if delete else "e", cli.col(pathname, attrs=["bold"])))
             if delete:
                 try: os.rmdir(pathname)
                 except: pass

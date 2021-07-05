@@ -17,6 +17,7 @@ from sqlalchemy.orm import relationship, selectinload, validates
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 import crypt
+import json
 import time
 from datetime import datetime
 
@@ -32,6 +33,7 @@ class Users(DataModel, DB.Base):
     addressStatus = Column("address_status", TINYINT, nullable=False, server_default="0")
     privilegeBits = Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     externID = Column("externid", VARBINARY(64))
+    _syncPolicy = Column("sync_policy", TEXT)
     _deprecated_maxSize = Column("max_size", INTEGER(10), nullable=False, default=0)
     _deprecated_addressType = Column("address_type", TINYINT, nullable=False, server_default="0")
     _deprecated_subType = Column("sub_type", TINYINT, nullable=False, server_default="0")
@@ -54,7 +56,8 @@ class Users(DataModel, DB.Base):
                       RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
                       RefProp("fetchmail", flags="managed, patch", link="ID", qopt=selectinload),
                       RefProp("properties", flags="patch, managed", link="name", flat="val", qopt=selectinload),
-                      RefProp("roles", qopt=selectinload)),
+                      RefProp("roles", qopt=selectinload),
+                      {"attr": "syncPolicy", "flags": "patch"}),
                      ({"attr": "password", "flags": "init, hidden"},))
 
     POP3_IMAP = 1 << 0
@@ -191,6 +194,17 @@ class Users(DataModel, DB.Base):
     @property
     def propmap_id(self):
         return {p.tag: p.val for p in self.properties.values()}
+
+    @property
+    def syncPolicy(self):
+        try:
+            return json.loads(self._syncPolicy)
+        except:
+            return None
+
+    @syncPolicy.setter
+    def syncPolicy(self, value):
+        self._syncPolicy = json.dumps(value, separators=(",",":")) if value is not None else None
 
     def _setPB(self, bit, val):
         self.privilegeBits = (self.privilegeBits or 0) | bit if val else (self.privilegeBits or 0) & ~bit

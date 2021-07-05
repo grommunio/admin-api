@@ -9,6 +9,7 @@ import idna
 
 from api.core import API, secure
 from api.security import loginUser, refreshToken, getSecurityContext
+
 from orm import DB
 
 from tools import formats, ldap

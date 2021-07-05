@@ -96,7 +96,7 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic"):
 
             if requireAuth:
                 error = getSecurityContext(authLevel)
-                if error is not None:
+                if error is not None and requireAuth != "optional":
                     return jsonify(message="Access denied", error=error), 401
             valid, message, errors = validateRequest(request)
             if not valid:

@@ -8,9 +8,10 @@ from tools.DataModel import DataModel, Id, Text, Int, Date
 from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
 
 import idna
+import json
 
 from sqlalchemy import Column, func, select
-from sqlalchemy.dialects.mysql import DATE, INTEGER, TINYINT, VARCHAR
+from sqlalchemy.dialects.mysql import DATE, INTEGER, TEXT, TINYINT, VARCHAR
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import column_property
@@ -57,6 +58,7 @@ class Domains(DataModel, DB.Base):
     tel = Column("tel", VARCHAR(64), nullable=False, server_default="")
     endDay = Column("end_day", DATE, nullable=False, default="3333-03-03")
     domainStatus = Column("domain_status", TINYINT, nullable=False, server_default="0")
+    _syncPolicy = Column("sync_policy", TEXT)
 
     activeUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus == 0)).as_scalar())
     inactiveUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus != 0)).as_scalar())
@@ -71,7 +73,8 @@ class Domains(DataModel, DB.Base):
                       Text("adminName", flags="patch"),
                       Text("tel", flags="patch"),
                       Date("endDay", flags="patch"),
-                      Int("domainStatus", flags="patch", filter="set")))
+                      Int("domainStatus", flags="patch", filter="set")),
+                     ({"attr": "syncPolicy", "flags": "patch"},))
 
     NORMAL = 0
     SUSPENDED = 1
@@ -82,6 +85,17 @@ class Domains(DataModel, DB.Base):
         if "password" in props:
             self.password = props.pop("password")
         DataModel.__init__(self, props, args, kwargs)
+
+    @property
+    def syncPolicy(self):
+        try:
+            return json.loads(self._syncPolicy)
+        except:
+            return None
+
+    @syncPolicy.setter
+    def syncPolicy(self, value):
+        self._syncPolicy = json.dumps(value, separators=(",",":")) if value is not None else None
 
     @hybrid_property
     def domainname(self):

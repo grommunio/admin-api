@@ -257,3 +257,20 @@ def getUserSyncData(domainID, userID):
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
     except RuntimeError as err:
         return jsonify(message="exmdb query failed: "+err.args[0]), 500
+
+
+@API.route(api.BaseRoute+"/service/syncPolicy/<username>", methods=["GET"])
+@secure(requireDB=True, requireAuth="optional")
+def getUserSyncPolicy(username):
+    request.remote_addr in Config["sync"]["policyHosts"] or checkPermissions(DomainAdminPermission("*"))
+    user = Users.query.filter(Users.username == username).first()
+    if user is None:
+        return jsonify(data=Config["sync"]["defaultPolicy"])
+    request.remote_addr in Config["sync"]["policyHosts"] or checkPermissions(DomainAdminPermission(user.domainID))
+    domain = Domains.query.filter(Domains.ID == user.domainID, Domains._syncPolicy != None).first()
+    policy = dict(Config["sync"]["defaultPolicy"])
+    if domain is not None:
+        policy.update(domain.syncPolicy)
+    if user.syncPolicy is not None:
+        policy.update(user.syncPolicy)
+    return jsonify(data=policy)

@@ -7,6 +7,50 @@ import logging
 import logging.config
 from os import scandir
 
+_defaultSyncPolicy = {
+  "allowbluetooth": 2,
+  "allowbrowser": 1,
+  "allowcam": 1,
+  "allowconsumeremail": 1,
+  "allowdesktopsync": 1,
+  "allowhtmlemail": 1,
+  "allowinternetsharing": 1,
+  "allowirda": 1,
+  "allowpopimapemail": 1,
+  "allowremotedesk": 1,
+  "allowsimpledevpw": 1,
+  "allowsmimeencalgneg": 2,
+  "allowsmimesoftcerts": 1,
+  "allowstoragecard": 1,
+  "allowtextmessaging": 1,
+  "allowunsignedapps": 1,
+  "allowunsigninstallpacks": 1,
+  "allowwifi": 1,
+  "alphanumpwreq": 0,
+  "approvedapplist": [],
+  "attenabled": 1,
+  "devencenabled": 0,
+  "devpwenabled": 0,
+  "devpwexpiration": 0,
+  "devpwhistory": 0,
+  "maxattsize": "",
+  "maxcalagefilter": 0,
+  "maxdevpwfailedattempts": 8,
+  "maxemailagefilter": 0,
+  "maxemailbodytruncsize": -1,
+  "maxemailhtmlbodytruncsize": -1,
+  "maxinacttimedevlock": 900,
+  "mindevcomplexchars": 3,
+  "mindevpwlenngth": 4,
+  "pwrecoveryenabled": 0,
+  "reqdevenc": 0,
+  "reqencsmimealgorithm": 0,
+  "reqencsmimemessages": 0,
+  "reqmansyncroam": 0,
+  "reqsignedsmimealgorithm": 0,
+  "reqsignedsmimemessages": 0,
+  "unapprovedinromapplist": []
+}
 
 _defaultConfig_ = {"openapi": {
                      "validateRequest": True,
@@ -36,7 +80,10 @@ _defaultConfig_ = {"openapi": {
                    },
                    "mconf": {},
                    "logs": {},
-                   "sync": {},
+                   "sync": {
+                     "defaultPolicy": _defaultSyncPolicy,
+                     "policyHosts": ["127.0.0.1", "localhost"]
+                     },
                    }
 
 

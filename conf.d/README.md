@@ -66,6 +66,8 @@ Possible parameters:
 - `topExpireEnded` (`int`, default `20`): Time (in seconds) after which ended processes are removed
 - `topExpireUpdate` (`int`, default `120`): Time (in seconds) since the last update after which processes are removed
 - `syncStateFolder` (`string`, default `GS-SyncState`): Sub-folder containing the device sync states
+- `policyHosts` (`list of strings`, default `["127.0.0.1", "localhost"]`): List of hosts that have unauthenticated access to user policies
+- `defaultPolicy` (`object`): Overrides for the default Active Sync policy. For available values and defaults see `res/config.yaml`.
 
 ### Options ###
 Further parameters can be set in the `options` object:
