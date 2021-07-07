@@ -12,14 +12,10 @@ from tools.permissions import SystemAdminPermission, DomainAdminPermission, OrgA
 from flask import request
 from sqlalchemy import or_
 
-from orm import DB
-if DB is not None:
-    from orm.domains import Domains
-
-
 @API.route(api.BaseRoute+"/domains", methods=["GET"])
 @secure(requireDB=True, authLevel="user")
 def getAvailableDomains():
+    from orm.domains import Domains
     permissions = request.auth["user"].permissions()
     if SystemAdminPermission() in permissions:
         domainFilters = ()

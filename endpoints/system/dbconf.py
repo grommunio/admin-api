@@ -12,14 +12,12 @@ from tools import dbconf
 from tools.permissions import SystemAdminPermission
 
 from orm import DB
-if DB is not None:
-    from orm.misc import DBConf
-
 
 @API.route(api.BaseRoute+"/system/dbconf/", methods=["GET"])
 @secure(requireDB=True)
 def getDbconfServices():
     checkPermissions(SystemAdminPermission())
+    from orm.misc import DBConf
     data = [entry[0] for entry in DBConf.query.with_entities(DBConf.service.distinct()).order_by(DBConf.service)]
     return jsonify(data=data)
 
@@ -28,6 +26,7 @@ def getDbconfServices():
 @secure(requireDB=True)
 def getDbconfFiles(service):
     checkPermissions(SystemAdminPermission())
+    from orm.misc import DBConf
     data = [entry[0] for entry in DBConf.query.filter(DBConf.service == service)
                                               .with_entities(DBConf.file.distinct())
                                               .order_by(DBConf.file)]
@@ -38,6 +37,7 @@ def getDbconfFiles(service):
 @secure(requireDB=True)
 def renameDbconfService(service):
     checkPermissions(SystemAdminPermission())
+    from orm.misc import DBConf
     data = request.get_json(silent=True)
     if data is None or "name" not in data:
         return jsonify(message="Missing or incomplete data"), 400
@@ -53,6 +53,7 @@ def renameDbconfService(service):
 @secure(requireDB=True)
 def deleteDbconfService(service):
     checkPermissions(SystemAdminPermission())
+    from orm.misc import DBConf
     count = DBConf.query.filter(DBConf.service == service).delete()
     if count == 0:
         DB.session.rollback()
@@ -65,6 +66,7 @@ def deleteDbconfService(service):
 @secure(requireDB=True)
 def updateDbconfFile(service, file):
     checkPermissions(SystemAdminPermission())
+    from orm.misc import DBConf
     data = request.get_json(silent=True)
     if data is None:
         return jsonify(message="Missing data"), 400
@@ -93,6 +95,7 @@ def updateDbconfFile(service, file):
 @secure(requireDB=True)
 def deleteDbconfFile(service, file):
     checkPermissions(SystemAdminPermission())
+    from orm.misc import DBConf
     count = DBConf.query.filter(DBConf.service == service, DBConf.file == file).delete()
     if count == 0:
         return jsonify(message="File not found"), 404
@@ -104,6 +107,7 @@ def deleteDbconfFile(service, file):
 @secure(requireDB=True)
 def getDbconfFile(service, file):
     checkPermissions(SystemAdminPermission())
+    from orm.misc import DBConf
     data = {entry.key: entry.value for entry in DBConf.query.filter(DBConf.service == service, DBConf.file == file)}
     return jsonify(data=data)
 

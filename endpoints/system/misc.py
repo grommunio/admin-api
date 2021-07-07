@@ -26,10 +26,6 @@ from dbus import DBusException
 from flask import jsonify, make_response, request
 from io import StringIO
 
-from orm import DB
-if DB is not None:
-    from orm.users import Users
-
 
 @API.route(api.BaseRoute+"/system/dashboard", methods=["GET"])
 @secure()
@@ -133,11 +129,16 @@ def signalDashboardService(unit, action):
 
 def dumpLicense():
     License = getLicense()
+    try:
+        from orm.users import Users
+        currentUsers = Users.count()
+    except:
+        currentUsers = None
     return jsonify(product=License.product,
                    maxUsers=License.users,
                    notBefore=License.notBefore.strftime("%Y-%m-%d %H:%M:%S"),
                    notAfter=License.notAfter.strftime("%Y-%m-%d %H:%M:%S"),
-                   currentUsers=Users.query.count(),
+                   currentUsers=currentUsers,
                    certificate="/api/v1/system/license/certificate.pem" if License.cert is not None else None)
 
 @API.route(api.BaseRoute+"/system/license", methods=["GET"])

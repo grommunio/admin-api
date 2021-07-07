@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grammm GmbH
 
-from . import DB
+from . import DB, OptionalC
 from tools import formats
 from tools.DataModel import DataModel, Id, Text, Int, Date
 from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
@@ -58,7 +58,7 @@ class Domains(DataModel, DB.Base):
     tel = Column("tel", VARCHAR(64), nullable=False, server_default="")
     endDay = Column("end_day", DATE, nullable=False, default="3333-03-03")
     domainStatus = Column("domain_status", TINYINT, nullable=False, server_default="0")
-    _syncPolicy = Column("sync_policy", TEXT)
+    _syncPolicy = OptionalC(77, "NULL", Column("sync_policy", TEXT))
 
     activeUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus == 0)).as_scalar())
     inactiveUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus != 0)).as_scalar())

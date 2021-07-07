@@ -24,16 +24,12 @@ from tools.rop import nxTime
 import shutil
 
 from orm import DB
-if DB is not None:
-    from orm.domains import Domains
-    from orm.users import Users, UserProperties
-    from orm.roles import AdminUserRoleRelation, AdminRoles
-
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["GET"])
 @secure(requireDB=True)
 def getUsers(domainID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users, UserProperties
     verbosity = int(request.args.get("level", 1))
     query, limit, offset, count = defaultListHandler(Users, filters=(Users.domainID == domainID,), result="query")
     sorts = request.args.getlist("sort")
@@ -59,6 +55,7 @@ def getUsers(domainID):
 @secure(requireDB=True)
 def createUser(domainID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
     data = request.get_json(silent=True) or {}
     data["domainID"] = domainID
     result, code = Users.create(data, reloadGromoxHttp=True)
@@ -71,6 +68,7 @@ def createUser(domainID):
 @secure(requireDB=True)
 def userObjectEndpoint(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
     return defaultObjectHandler(Users, userID, "User", filters=(Users.domainID == domainID,))
 
 
@@ -78,6 +76,7 @@ def userObjectEndpoint(domainID, userID):
 @secure(requireDB=True)
 def deleteUserEndpoint(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User #{} not found".format(userID)), 404
@@ -110,6 +109,7 @@ def deleteUser(user):
 @secure(requireDB=True, authLevel="user")
 def setUserPassword(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
     if userID == request.auth["user"].ID:
         return jsonify(message="Cannot reset own password, use '/passwd' endpoint instead"), 400
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
@@ -129,6 +129,7 @@ def setUserPassword(domainID, userID):
 @secure(requireDB=True)
 def updateUserRoles(domainID, userID):
     checkPermissions(SystemAdminPermission())
+    from orm.roles import AdminUserRoleRelation, AdminRoles
     data = request.get_json(silent=True)
     if data is None or "roles" not in data:
         return jsonify(message="Missing roles array"), 400
@@ -152,6 +153,7 @@ def updateUserRoles(domainID, userID):
 @secure(requireDB=True)
 def rdUserStoreProps(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
     if user is None:
         return jsonify(message="User not found"), 404
@@ -187,6 +189,7 @@ def rdUserStoreProps(domainID, userID):
 @secure(requireDB=True)
 def setUserStoreProps(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
     data = request.get_json(silent=True)
     if data is None or len(data) == 0:
@@ -233,6 +236,7 @@ def setUserStoreProps(domainID, userID):
 @secure(requireDB=True)
 def getUserSyncData(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
     if user is None:
         return jsonify(message="User not found"), 404
@@ -263,6 +267,8 @@ def getUserSyncData(domainID, userID):
 @secure(requireDB=True, requireAuth="optional")
 def getUserSyncPolicy(username):
     request.remote_addr in Config["sync"]["policyHosts"] or checkPermissions(DomainAdminPermission("*"))
+    from orm.domains import Domains
+    from orm.users import Users
     user = Users.query.filter(Users.username == username).first()
     if user is None:
         return jsonify(data=Config["sync"]["defaultPolicy"])

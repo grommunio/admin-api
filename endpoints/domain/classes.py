@@ -14,17 +14,14 @@ from tools.permissions import DomainAdminPermission
 
 from .. import defaultListHandler, defaultObjectHandler
 
-
 from orm import DB
-if DB is not None:
-    from orm.classes import Classes
-    from orm.users import Users
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/classes", methods=["GET", "POST"])
-@secure()
+@secure(requireDB=True)
 def classListEndpoint(domainID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.classes import Classes
     if request.method == "POST":
         data = request.get_json(silent=True, cache=True) or {}
         data["domainID"] = domainID
@@ -32,16 +29,18 @@ def classListEndpoint(domainID):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/classes/<int:ID>", methods=["GET", "PATCH", "DELETE"])
-@secure()
+@secure(requireDB=True)
 def classObjectEndpoint(domainID, ID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.classes import Classes
     return defaultObjectHandler(Classes, ID, "Class", filters=(Classes.domainID == domainID,))
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/classes/tree", methods=["GET"])
-@secure()
+@secure(requireDB=True)
 def classTreeEndpoint(domainID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.classes import Classes
     try:
         return jsonify(data=Classes.refTree(domainID))
     except ValueError as err:
@@ -49,9 +48,10 @@ def classTreeEndpoint(domainID):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/classes/testFilter", methods=["POST"])
-@secure()
+@secure(requireDB=True)
 def testClassFilter(domainID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.classes import Classes
     data = request.get_json(silent=True)
     if data is None:
         return jsonify(message="No filter provided"), 400

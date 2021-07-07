@@ -7,8 +7,6 @@ from api.core import API, secure
 from api.security import checkPermissions
 
 from flask import request, jsonify
-from sqlalchemy import or_
-from sqlalchemy.exc import IntegrityError
 
 from tools.config import Config
 from tools.constants import Permissions, ExmdbCodes, PropTags, EcErrors
@@ -18,15 +16,11 @@ from tools.rop import nxTime
 
 from datetime import datetime
 
-from orm import DB
-if DB is not None:
-    from orm.domains import Domains
-
-
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["GET"])
 @secure(requireDB=True)
 def getPublicFoldersList(domainID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
@@ -49,6 +43,7 @@ def getPublicFoldersList(domainID):
 @secure(requireDB=True)
 def createPublicFolder(domainID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
     options = Config["options"]
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
@@ -72,6 +67,7 @@ def createPublicFolder(domainID):
 @secure(requireDB=True)
 def getPublicFolder(domainID, folderID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
     options = Config["options"]
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
@@ -91,6 +87,7 @@ def getPublicFolder(domainID, folderID):
 @secure(requireDB=True)
 def updatePublicFolder(domainID, folderID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
     options = Config["options"]
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
@@ -118,6 +115,7 @@ def updatePublicFolder(domainID, folderID):
 @secure(requireDB=True)
 def deletePublicFolder(domainID, folderID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
     options = Config["options"]
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
@@ -136,6 +134,7 @@ def deletePublicFolder(domainID, folderID):
 @secure(requireDB=True)
 def getPublicFolderOwnerList(domainID, folderID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
     options = Config["options"]
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
@@ -155,6 +154,7 @@ def getPublicFolderOwnerList(domainID, folderID):
 @secure(requireDB=True)
 def addPublicFolderOwner(domainID, folderID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
     options = Config["options"]
     data = request.get_json(silent=True)
     if data is None or "username" not in data:
@@ -164,7 +164,7 @@ def addPublicFolderOwner(domainID, folderID):
         return jsonify(message="Domain not found"), 404
     try:
         client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["domainPrefix"], False)
-        response = client.addFolderOwner(domain.homedir, folderID, data["username"])
+        client.addFolderOwner(domain.homedir, folderID, data["username"])
     except pyexmdb.ExmdbError as err:
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
     return jsonify(message="Success"), 201
@@ -174,13 +174,14 @@ def addPublicFolderOwner(domainID, folderID):
 @secure(requireDB=True)
 def deletePublicFolderOwner(domainID, folderID, memberID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
     options = Config["options"]
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
     try:
         client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["domainPrefix"], False)
-        response = client.deleteFolderOwner(domain.homedir, folderID, memberID)
+        client.deleteFolderOwner(domain.homedir, folderID, memberID)
     except pyexmdb.ExmdbError as err:
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
     return jsonify(message="Success"), 200

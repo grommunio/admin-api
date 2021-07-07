@@ -29,7 +29,7 @@ def chkState():
 @secure(requireAuth=False)
 def getAbout(requireAuth=False):
     """Retrieve version information."""
-    return jsonify(API=api.apiVersion, backend=api.backendVersion)
+    return jsonify(API=api.apiVersion, backend=api.backendVersion, schema=DB.version if DB is not None else None)
 
 
 @API.route(api.BaseRoute+"/login", methods=["POST"])

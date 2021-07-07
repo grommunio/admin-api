@@ -59,6 +59,17 @@ def validateRequest(flask_request):
     return True, None, None
 
 
+def reloadORM():
+    """Reload all active orm modules."""
+    import importlib
+    import sys
+    API.logger.warn("Database schema version updated detected - reloading ORM")
+    DB.initVersion()
+    for name, module in sys.modules.items():
+        if name.startswith("orm."):
+            importlib.reload(module)
+
+
 def secure(requireDB=False, requireAuth=True, authLevel="basic"):
     """Decorator securing API functions.
 
@@ -109,6 +120,8 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic"):
             if requireDB:
                 if DB is None:
                     return jsonify(message="Database not available."), 503
+                if DB.requireReload():
+                    reloadORM()
             try:
                 return call()
             except DatabaseError as err:

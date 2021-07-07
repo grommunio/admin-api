@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020-2021 grammm GmbH
 
-from . import DB
+from . import DB, OptionalC, OptionalNC
 from tools import formats
 from tools.constants import PropTags, PropTypes
 from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp, Bool, Date
@@ -12,6 +12,7 @@ from tools.rop import ntTime, nxTime
 from sqlalchemy import Column, ForeignKey, func
 from sqlalchemy.dialects.mysql import ENUM, INTEGER, TEXT, TIMESTAMP, TINYINT, VARBINARY, VARCHAR
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, selectinload, validates
 from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -33,7 +34,7 @@ class Users(DataModel, DB.Base):
     addressStatus = Column("address_status", TINYINT, nullable=False, server_default="0")
     privilegeBits = Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     externID = Column("externid", VARBINARY(64))
-    _syncPolicy = Column("sync_policy", TEXT)
+    _syncPolicy = OptionalC(76, "NULL", Column("sync_policy", TEXT))
     _deprecated_maxSize = Column("max_size", INTEGER(10), nullable=False, default=0)
     _deprecated_addressType = Column("address_type", TINYINT, nullable=False, server_default="0")
     _deprecated_subType = Column("sub_type", TINYINT, nullable=False, server_default="0")
@@ -43,7 +44,8 @@ class Users(DataModel, DB.Base):
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True,
                               collection_class=attribute_mapped_collection("name"), passive_deletes=True)
     aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True, passive_deletes=True)
-    fetchmail = relationship("Fetchmail", cascade="all, delete-orphan", single_parent=True, order_by="Fetchmail.active.desc()")
+    fetchmail = OptionalNC(75, [],
+                           relationship("Fetchmail", cascade="all, delete-orphan", single_parent=True, order_by="Fetchmail.active.desc()"))
 
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("domainID", flags="init"),
@@ -210,7 +212,7 @@ class Users(DataModel, DB.Base):
         self.privilegeBits = (self.privilegeBits or 0) | bit if val else (self.privilegeBits or 0) & ~bit
 
     def _getPB(self, bit):
-        return bool((self.privilegeBits or 0) & bit) if isinstance(self, Users) else self.privilegeBits
+        return (self.privilegeBits) if isinstance(self, DeclarativeMeta) else bool((self.privilegeBits or 0) & bit)
 
     @hybrid_property
     def pop3_imap(self):
@@ -222,7 +224,7 @@ class Users(DataModel, DB.Base):
 
     @pop3_imap.expression
     def pop3_imap(cls):
-        return cls.privilegeBits.op("&")(cls.POP3_IMAP)
+        return cls.privilegeBits.op("&")(cls.POP3_IMAP) != 0
 
     @hybrid_property
     def smtp(self):
@@ -234,7 +236,7 @@ class Users(DataModel, DB.Base):
 
     @smtp.expression
     def smtp(cls):
-        return cls.privilegeBits.op("&")(cls.SMTP)
+        return cls.privilegeBits.op("&")(cls.SMTP) != 0
 
     @hybrid_property
     def changePassword(self):
@@ -246,7 +248,7 @@ class Users(DataModel, DB.Base):
 
     @changePassword.expression
     def changePassword(cls):
-        return cls.privilegeBits.op("&")(cls.CHGPASSWD)
+        return cls.privilegeBits.op("&")(cls.CHGPASSWD) != 0
 
     @hybrid_property
     def publicAddress(self):
@@ -258,7 +260,7 @@ class Users(DataModel, DB.Base):
 
     @publicAddress.expression
     def publicAddress(cls):
-        return cls.privilegeBits.op("&")(cls.PUBADDR)
+        return cls.privilegeBits.op("&")(cls.PUBADDR) != 0
 
     @property
     def ldapID(self):

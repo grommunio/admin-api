@@ -13,14 +13,13 @@ from .. import defaultListHandler, defaultObjectHandler
 from tools.permissions import DomainAdminPermission
 
 from orm import DB
-if DB is not None:
-    from orm.mlists import MLists
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/mlists", methods=["GET"])
 @secure(requireDB=True)
 def mlistListEndpoint(domainID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.mlists import MLists
     return defaultListHandler(MLists, (MLists.domainID == domainID,))
 
 
@@ -28,6 +27,7 @@ def mlistListEndpoint(domainID):
 @secure(requireDB=True)
 def createMlist(domainID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.mlists import MLists
     data = request.get_json(silent=True, cache=True) or {}
     data["domainID"] = domainID
     return defaultListHandler(MLists)
@@ -37,6 +37,7 @@ def createMlist(domainID):
 @secure(requireDB=True)
 def mlistObjectEndpoint(domainID, ID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.mlists import MLists
     return defaultObjectHandler(MLists, ID, "Mailing list", filters=(MLists.domainID == domainID,))
 
 
@@ -44,6 +45,7 @@ def mlistObjectEndpoint(domainID, ID):
 @secure(requireDB=True)
 def mlistDeleteEndpoint(domainID, ID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.mlists import MLists
     mlist = MLists.query.filter(MLists.ID == ID, MLists.domainID == domainID).first()
     if mlist is None:
         return jsonify(message="Mailing list not found"), 404

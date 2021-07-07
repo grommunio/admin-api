@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.23.3
+  version: 0.23.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -49,6 +49,10 @@ paths:
                   backend:
                     description: Version of the implementation
                     type: string
+                  schema:
+                    description: Database schema version
+                    type: integer
+                    nullable: true
 
   /login:
     post:
@@ -3388,6 +3392,7 @@ components:
           $ref: '#/components/schemas/dateTime'
         currentUsers:
           type: integer
+          nullable: true
           description: Number of currently existing users
         certificate:
           type: string

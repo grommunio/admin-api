@@ -14,15 +14,12 @@ from api.security import checkPermissions
 from tools.permissions import SystemAdminPermission, DomainAdminPermission, OrgAdminPermission, DomainPurgePermission
 
 from orm import DB
-if DB is not None:
-    from orm.domains import Domains, Orgs
-    from orm.users import Users
-
 
 @API.route(api.BaseRoute+"/system/orgs", methods=["GET", "POST"])
 @secure(requireDB=True)
 def orgListEndpoint():
     checkPermissions(SystemAdminPermission())
+    from orm.domains import Orgs
     return defaultListHandler(Orgs)
 
 
@@ -30,6 +27,7 @@ def orgListEndpoint():
 @secure(requireDB=True)
 def orgObjectEndpoint(ID):
     checkPermissions(SystemAdminPermission())
+    from orm.domains import Orgs
     return defaultObjectHandler(Orgs, ID, "Organization")
 
 
@@ -37,6 +35,7 @@ def orgObjectEndpoint(ID):
 @secure(requireDB=True)
 def orgDeleteEndpoint(ID):
     checkPermissions(SystemAdminPermission())
+    from orm.domains import Domains, Orgs
     Domains.query.filter(Domains.orgID == ID).update({Domains.orgID: 0}, synchronize_session=False)
     return defaultObjectHandler(Orgs, ID, "Organization")
 
@@ -48,6 +47,7 @@ def orgDeleteEndpoint(ID):
 @secure(requireDB=True)
 def domainListEndpoint():
     checkPermissions(SystemAdminPermission())
+    from orm.domains import Domains
     return defaultListHandler(Domains)
 
 
@@ -55,6 +55,7 @@ def domainListEndpoint():
 @secure(requireDB=True)
 def domainCreate():
     checkPermissions(SystemAdminPermission())
+    from orm.domains import Domains
     data = request.get_json(silent=True)
     if data is None:
         return jsonify(message="Missing data"), 400
@@ -68,6 +69,7 @@ def domainCreate():
 @secure(requireDB=True)
 def getDomain(domainID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
     return defaultObjectHandler(Domains, domainID, "Domain")
 
 
@@ -75,6 +77,8 @@ def getDomain(domainID):
 @secure(requireDB=True)
 def updateDomain(domainID):
     checkPermissions(OrgAdminPermission("*"))
+    from orm.domains import Domains
+    from orm.users import Users
     domain: Domains = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
@@ -99,6 +103,7 @@ def updateDomain(domainID):
 @secure(requireDB=True)
 def deleteDomain(domainID):
     checkPermissions(OrgAdminPermission("*"))
+    from orm.domains import Domains
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404

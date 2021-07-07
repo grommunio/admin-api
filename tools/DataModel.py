@@ -427,7 +427,11 @@ class DataModel:
                 setattr(self, prop.attr, value)
             else:
                 attr = getattr(self, prop.attr)
-                Element = inspecc(getattr(type(self), prop.attr)).property.mapper.entity
+                try:
+                    Element = inspecc(getattr(type(self), prop.attr)).property.mapper.entity
+                except:
+                    logging.warn("Failed to inspect attribute '{}' - ignored".format(prop.attr))
+                    continue
                 if prop.mask is not None and "managed" not in prop.flags:
                     setattr(self, prop.mask, value)
                 elif isinstance(attr, dict) and isinstance(value, dict):
@@ -634,7 +638,7 @@ def Bool(attr, **kwargs):
 def BoolP(attr, **kwargs):
     """Create a bool property."""
     _addFlags(kwargs, "sort")
-    return DataModel.Prop(attr, arg_tf=_str2bool, **kwargs)
+    return DataModel.Prop(attr, arg_tf=_str2bool, filter="set", **kwargs)
 
 
 def Proxy(attr, proxy, **kwargs):

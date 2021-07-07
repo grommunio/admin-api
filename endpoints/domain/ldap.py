@@ -22,16 +22,12 @@ from tools.storage import UserSetup
 from tools.systemd import Systemd
 
 from orm import DB
-if DB is not None:
-    from orm.domains import Domains
-    from orm.users import Users
-    import orm.roles
-
 
 @API.route(api.BaseRoute+"/domains/ldap/search", methods=["GET"])
 @secure(requireDB=True, authLevel="user")
 def searchLdap():
     checkPermissions(DomainAdminPermission("*"))
+    from orm.domains import Domains
     if not ldap.LDAP_available:
         return jsonify(message="LDAP is not available"), 503
     if "query" not in request.args or len(request.args["query"]) < 3:
@@ -58,6 +54,8 @@ def ldapDownsyncDomains(domains):
     domains : list of orm.domains.Domains
         Domain objects providing ID and domainname. If None, synchronize all domains.
     """
+    from orm.domains import Domains
+    from orm.users import Users
     domainFilters = () if domains is None else (Domains.ID.in_(domain.ID for domain in domains),)
     if not ldap.LDAP_available:
         return jsonify(message="LDAP is not available"), 503
@@ -132,6 +130,7 @@ def ldapDownsyncAll():
 @secure(requireDB=True, authLevel="user")
 def ldapDownsyncDomain(domainID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
     domain = Domains.query.with_entities(Domains.ID, Domains.domainname).filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
@@ -142,13 +141,15 @@ def ldapDownsyncDomain(domainID):
 @secure(requireDB=True, authLevel="user")
 def downloadLdapUser():
     checkPermissions(DomainAdminPermission("*"))
+    from orm.domains import Domains
+    from orm.users import Users
     if not ldap.LDAP_available:
         return jsonify(message="LDAP is not available"), 503
     if "ID" not in request.args:
         return jsonify(message="Missing ID"), 400
     try:
         ID = ldap.unescapeFilterChars(request.args["ID"])
-    except BaseException as err:
+    except BaseException:
         return jsonify(message="Invalid ID"), 400
     force = request.args.get("force")
     userinfo = ldap.getUserInfo(ID)
@@ -203,6 +204,7 @@ def downloadLdapUser():
 @secure(requireDB=True, authLevel="user")
 def updateLdapUser(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
     if not ldap.LDAP_available:
         return jsonify(message="LDAP is not available"), 503
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
@@ -224,6 +226,7 @@ def updateLdapUser(domainID, userID):
 @secure(requireDB=True, authLevel="user")
 def checkLdapUsers():
     checkPermissions(DomainAdminPermission("*"))
+    from orm.users import Users
     if not ldap.LDAP_available:
         return jsonify(message="LDAP is not available"), 503
     permissions = request.auth["user"].permissions()
@@ -269,7 +272,7 @@ def dumpLdapUsers():
         return jsonify(message="LDAP is not available"), 503
     try:
         ID = ldap.unescapeFilterChars(request.args["ID"])
-    except BaseException as err:
+    except BaseException:
         return jsonify(message="Invalid ID"), 400
     ldapuser = ldap.dumpUser(ID)
     if ldapuser is None:
