@@ -263,6 +263,25 @@ def getUserSyncData(domainID, userID):
         return jsonify(message="exmdb query failed: "+err.args[0]), 500
 
 
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<ID>", methods=["DELETE"])
+@secure(requireDB=True)
+def resyncDevice(domainID, userID, ID):
+    checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    try:
+        options = Config["options"]
+        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], user.maildir, True)
+        client.resyncDevice(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState"), ID)
+        return jsonify(message="Success")
+    except pyexmdb.ExmdbError as err:
+        return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
+    except RuntimeError as err:
+        return jsonify(message="exmdb query failed: "+err.args[0]), 500
+
+
 @API.route(api.BaseRoute+"/service/syncPolicy/<username>", methods=["GET"])
 @secure(requireDB=True, requireAuth="optional")
 def getUserSyncPolicy(username):

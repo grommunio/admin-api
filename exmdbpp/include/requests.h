@@ -389,6 +389,35 @@ struct response_map<DeleteFolderRequest::callId>
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
+ * @brief   Empty a folder
+ *
+ * @param   string      homedir
+ * @param   uint32_t    cpid
+ * @param   string      username
+ * @param   uint64_t    folderId
+ * @param   bool        hard
+ * @param   bool        normal
+ * @param   bool        associated
+ * @param   bool        sub
+ *
+ * @return  Response<EmptyFolderRequest::callId>
+ */
+struct EmptyFolderRequest : public Request<constants::CallId::EMPTY_FOLDER,
+        uint32_t, std::string, uint64_t, bool, bool, bool, bool>
+{};
+
+template<>
+struct Response<EmptyFolderRequest::callId>
+{
+    explicit Response(IOBuffer&);
+
+    bool partial; ///< Whether the folder was only partially emptied
+};
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+/**
  * @brief   Get all store proptags request
  *
  * @param   string      homedir
@@ -429,7 +458,7 @@ struct response_map<GetAllStorePropertiesRequest::callId>
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief   Got folder ID from folder name
+ * @brief   Get folder ID from folder name
  *
  * @param   uint64_t    parent
  * @param   string      name

@@ -192,6 +192,7 @@ public:
     requests::PropvalResponse getFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderId, const std::vector<uint32_t>& proptags = defaultFolderProps) throw (ExmdbError, std::range_error, std::runtime_error, std::out_of_range);
     requests::PropvalResponse getStoreProperties(const std::string& homedir, uint32_t cpid, const std::vector<uint32_t>& proptags) throw (ExmdbError, std::range_error, std::runtime_error, std::out_of_range);
     requests::NullResponse removeStoreProperties(const std::string&, const std::vector<uint32_t>&) throw (ExmdbError, std::runtime_error, std::out_of_range);
+    void resyncDevice(const std::string& homedir, const std::string& syncStateFolder, const std::string& deviceID) throw (ExmdbError, std::runtime_error, std::out_of_range);
     requests::ProblemsResponse setFolderProperties(const std::string& homedir, uint32_t cpid, uint64_t folderId, const std::vector<structures::TaggedPropval>& propvals) throw (ExmdbError, std::range_error, std::runtime_error, std::out_of_range);
     requests::ProblemsResponse setStoreProperties(const std::string& homedir, uint32_t cpid, const std::vector<structures::TaggedPropval>& propvals) throw (ExmdbError, std::range_error, std::runtime_error, std::out_of_range);
     SyncData getSyncData(const std::string& homedir, const std::string& syncStateFolder) throw (ExmdbError, std::runtime_error, std::out_of_range);

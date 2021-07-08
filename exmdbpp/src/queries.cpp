@@ -357,4 +357,21 @@ SyncData ExmdbQueries::getSyncData(const std::string& homedir, const std::string
     return data;
 }
 
+/**
+ * @brief       Initiate device resync
+ *
+ * Deletes the device sync folder, causing the device to re-sync.
+ *
+ * @param       homedir     Home directory path of the user
+ * @param       folderName  Name of the folder containing sync data
+ * @param       deviceId    Device ID string
+ */
+void ExmdbQueries::resyncDevice(const std::string& homedir, const std::string& folderName, const std::string& deviceId)
+{
+    uint64_t rootFolderId = util::makeEidEx(1, PublicFid::ROOT);
+    auto syncFolder = send<GetFolderByNameRequest>(homedir, rootFolderId, folderName);
+    auto deviceFolder = send<GetFolderByNameRequest>(homedir, syncFolder.folderId, deviceId);
+    send<EmptyFolderRequest>(homedir, 0, "", deviceFolder.folderId, true, false, true, false);
+}
+
 }

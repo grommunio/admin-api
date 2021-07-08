@@ -203,6 +203,13 @@ void LoadHierarchyTableRequest::write(IOBuffer& buff, const std::string& homedir
 Response<AllocateCnRequest::callId>::Response(IOBuffer& buff) : changeNum(buff.pop<uint64_t>())
 {}
 
+/**
+ * @brief      Deserialize result of clearing a folder
+ *
+ * @param      buff  Buffer containing the data
+ */
+Response<EmptyFolderRequest::callId>::Response(IOBuffer& buff) : partial(buff.pop<bool>())
+{}
 
 /**
  * @brief      Deserialize ID of loaded instance
@@ -218,6 +225,7 @@ Response<LoadMessageInstanceRequest::callId>::Response(IOBuffer& buff) : instanc
 template struct Request<constants::CallId::ALLOCATE_CN>;
 template struct Request<constants::CallId::CREATE_FOLDER_BY_PROPERTIES, uint32_t, Collection<uint16_t, structures::TaggedPropval>>;
 template struct Request<constants::CallId::DELETE_FOLDER, uint32_t, uint64_t, bool>;
+template struct Request<constants::CallId::EMPTY_FOLDER, uint32_t, std::string, uint64_t, bool, bool, bool, bool>;
 template struct Request<constants::CallId::GET_FOLDER_ALL_PROPTAGS, uint64_t>;
 template struct Request<constants::CallId::GET_FOLDER_BY_NAME, uint64_t, std::string>;
 template struct Request<constants::CallId::GET_FOLDER_PROPERTIES, uint32_t, uint64_t, Collection<uint16_t, uint32_t>>;

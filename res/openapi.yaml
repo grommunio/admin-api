@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.23.4
+  version: 0.23.5
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -178,6 +178,10 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/syncPolicy'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
 
   /system/dashboard:
     get:
@@ -1637,6 +1641,34 @@ paths:
                         foldersSynced:
                           type: integer
                           description: Number of folders that were actually synced
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/users/{userID}/sync/{ID}:
+    delete:
+      summary: Remove device (issue a resync)
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+        - name: ID
+          in: path
+          required: true
+          description: Device ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device resync queued
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':

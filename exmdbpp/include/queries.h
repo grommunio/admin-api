@@ -92,6 +92,7 @@ public:
     requests::TableResponse getFolderList(const std::string&, const std::vector<uint32_t>& = defaultFolderProps);
     requests::TableResponse getFolderOwnerList(const std::string&, uint64_t);
     requests::PropvalResponse getFolderProperties(const std::string&, uint32_t, uint64_t, const std::vector<uint32_t>& = defaultFolderProps);
+    void resyncDevice(const std::string&, const std::string&, const std::string&);
     SyncData getSyncData(const std::string&, const std::string&);
     requests::PropvalResponse getStoreProperties(const std::string&, uint32_t, const std::vector<uint32_t>&);
     requests::NullResponse removeStoreProperties(const std::string&, const std::vector<uint32_t>&);
