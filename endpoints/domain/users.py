@@ -282,6 +282,21 @@ def resyncDevice(domainID, userID, ID):
         return jsonify(message="exmdb query failed: "+err.args[0]), 500
 
 
+@API.route(api.BaseRoute+"/domains/<int:domainID>/syncPolicy", methods=["GET"])
+@secure(requireDB=True, requireAuth="optional")
+def getDomainSyncPolicy(domainID):
+    checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
+    domain = Domains.query.filter(Domains.ID == domainID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    if domain.syncPolicy is None:
+        return jsonify(data=Config["sync"]["defaultPolicy"])
+    policy = dict(Config["sync"]["defaultPolicy"])
+    policy.update(domain.syncPolicy)
+    return jsonify(data=policy)
+
+
 @API.route(api.BaseRoute+"/service/syncPolicy/<username>", methods=["GET"])
 @secure(requireDB=True, requireAuth="optional")
 def getUserSyncPolicy(username):

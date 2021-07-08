@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.23.5
+  version: 0.23.6
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1743,6 +1743,33 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
+  /domains/{domainID}/syncPolicy:
+    get:
+      summary: Get effective domain sync policy
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: Domain sync policy returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/syncPolicy'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /domains/{domainID}/users/{userID}/roles:
     patch:
