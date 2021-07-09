@@ -20,6 +20,7 @@ class DBConn:
         self.session = scoped_session(sessionmaker(self.engine))
         self.__version = None
         self.__maxversion = 0
+        self.initVersion()
 
     def __reinit(self):
         outerself = self
@@ -162,8 +163,6 @@ else:
         err = DB.testConnection(verbose=True)
         if err is not None:
             logging.warning(err)
-        else:
-            DB.initVersion()
     else:
         logging.warning("Database configuration failed. No data will be available")
         DB = None
