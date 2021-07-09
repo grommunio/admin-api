@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.23.6
+  version: 0.23.7
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1275,6 +1275,17 @@ paths:
         -  Misc
       security:
         - JWTCookie: []
+      parameters:
+        - name: filterUpdated
+          in: query
+          description: Maximum number of seconds since the last update
+          schema:
+            type: integer
+        - name: filterEnded
+          in: query
+          description: Maximum number of seconds since the process ended
+          schema:
+            type: integer
       responses:
         '200':
           description: Data returned
@@ -1283,6 +1294,12 @@ paths:
               schema:
                 type: object
                 properties:
+                  maxUpdated:
+                    type: integer
+                    description: Maximum effective value for `filterUpdated`
+                  maxEnded:
+                    type: integer
+                    description: Maximum effective value for `filterEnded`
                   data:
                     type: array
                     items:

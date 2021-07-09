@@ -220,27 +220,31 @@ def syncTop():
     checkPermissions(SystemAdminPermission)
     sync = Config["sync"]
     try:
+        expUpd = sync.get("topExpireUpdate", 120)
+        expEnd = sync.get("topExpireEnded", 20)
+        fupd = int(request.args.get("filterUpdated", expUpd))
+        fend = int(request.args.get("filterEnded", expEnd))
         r = redis.Redis(sync.get("host", "localhost"), sync.get("port", 6379), sync.get("db", 0), sync.get("password"),
                                  decode_responses=True)
         now = int(time.mktime(time.localtime()))
         r.set(sync.get("topTimestampKey", "grammm-sync:topenabledat"), now)
         hdata = r.hgetall(sync.get("topdataKey", "grammm-sync:topdata"))
         if hdata is None:
-            return jsonify(data=[])
+            return jsonify(data=[], maxUpdated=expUpd, maxEnded=expEnd)
         data = []
         remove = []
         for key, value in hdata.items():
             try:
                 value = json.loads(value)
-                if (value["ended"] != 0 and now-value["ended"] > sync.get("topExpireEnded", 20)) or \
-                    now-value["update"] > sync.get("topExpireUpdate", 120):
+                if (value["ended"] != 0 and now-value["ended"] > expEnd) or \
+                    now-value["update"] > expUpd:
                     remove.append(key)
-                else:
+                elif not (value["ended"] != 0 and now-value["ended"] > fend or now-value["update"] > fupd):
                     data.append(value)
             except Exception as err:
                 API.logger.info(type(err).__name__+": "+str(err.args))
         if len(remove) > 0:
             r.hdel(sync.get("topdataKey", "grammm-sync:topdata"), *remove)
-        return jsonify(data=data)
+        return jsonify(data=data, maxUpdated=expUpd, maxEnded=expEnd)
     except redis.exceptions.ConnectionError as err:
         return jsonify(message="Redis connection failed: "+err.args[0]), 503
