@@ -11,19 +11,19 @@ from flask import jsonify, request
 
 from tools.config import Config
 from tools.logs import LogReader
-from tools.permissions import SystemAdminPermission
+from tools.permissions import SystemAdminROPermission
 
 @API.route(api.BaseRoute+"/system/logs", methods=["GET"])
 @secure()
 def getLogs():
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     return jsonify(data=sorted(Config["logs"]))
 
 
 @API.route(api.BaseRoute+"/system/logs/<file>", methods=["GET"])
 @secure()
 def getLog(file):
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     log = Config["logs"].get(file)
     if log is None:
         return jsonify(message="Log file not found"), 404

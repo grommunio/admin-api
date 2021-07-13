@@ -16,7 +16,7 @@ from tools import ldap
 from tools.config import Config
 from tools.constants import ExmdbCodes
 from tools.DataModel import InvalidAttributeError, MismatchROError
-from tools.permissions import SystemAdminPermission, DomainAdminPermission
+from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission
 from tools.pyexmdb import pyexmdb
 from tools.storage import UserSetup
 from tools.systemd import Systemd
@@ -26,7 +26,7 @@ from orm import DB
 @API.route(api.BaseRoute+"/domains/ldap/search", methods=["GET"])
 @secure(requireDB=True, authLevel="user")
 def searchLdap():
-    checkPermissions(DomainAdminPermission("*"))
+    checkPermissions(DomainAdminROPermission("*"))
     from orm.domains import Domains
     if not ldap.LDAP_available:
         return jsonify(message="LDAP is not available"), 503
@@ -36,7 +36,7 @@ def searchLdap():
     if SystemAdminPermission() in permissions:
         domainFilters = ()
     else:
-        domainIDs = {permission.domainID for permission in permissions if isinstance(permission, DomainAdminPermission)}
+        domainIDs = {permission.domainID for permission in permissions if isinstance(permission, DomainAdminROPermission)}
         if len(domainIDs) == 0:
             return jsonify(data=[])
         domainFilters = () if "*" in domainIDs else (Domains.ID.in_(domainIDs),)
@@ -225,7 +225,7 @@ def updateLdapUser(domainID, userID):
 @API.route(api.BaseRoute+"/domains/ldap/check", methods=["GET", "DELETE"])
 @secure(requireDB=True, authLevel="user")
 def checkLdapUsers():
-    checkPermissions(DomainAdminPermission("*"))
+    checkPermissions(DomainAdminROPermission("*") if request.method == "GET" else DomainAdminPermission("*"))
     from orm.users import Users
     if not ldap.LDAP_available:
         return jsonify(message="LDAP is not available"), 503
@@ -233,7 +233,7 @@ def checkLdapUsers():
     if SystemAdminPermission in permissions:
         domainFilter = ()
     else:
-        domainIDs = {permission.domainID for permission in permissions if isinstance(permission, DomainAdminPermission)}
+        domainIDs = {permission.domainID for permission in permissions if isinstance(permission, DomainAdminROPermission)}
         domainFilter = (Users.domainID == domainID for domainID in domainIDs)
     users = Users.query.filter(Users.externID != None, *domainFilter)\
                        .with_entities(Users.ID, Users.username, Users.externID, Users.maildir)\
@@ -267,7 +267,7 @@ def checkLdapUsers():
 @API.route(api.BaseRoute+"/domains/ldap/dump", methods=["GET"])
 @secure(requireDB=True, authLevel="user")
 def dumpLdapUsers():
-    checkPermissions(DomainAdminPermission("*"))
+    checkPermissions(DomainAdminROPermission("*"))
     if not ldap.LDAP_available:
         return jsonify(message="LDAP is not available"), 503
     try:

@@ -7,7 +7,7 @@ from .. import defaultListHandler
 import api
 from api.core import API, secure
 
-from tools.permissions import SystemAdminPermission, DomainAdminPermission, OrgAdminPermission
+from tools.permissions import SystemAdminPermission, DomainAdminROPermission, OrgAdminPermission
 
 from flask import request
 from sqlalchemy import or_
@@ -20,9 +20,8 @@ def getAvailableDomains():
     if SystemAdminPermission() in permissions:
         domainFilters = ()
     else:
-        domainIDs = {permission.domainID for permission in permissions if isinstance(permission, DomainAdminPermission)}
+        domainIDs = {permission.domainID for permission in permissions if isinstance(permission, DomainAdminROPermission)}
         orgIDs = {permission.orgID for permission in permissions if isinstance(permission, OrgAdminPermission)}
-        print(domainIDs, orgIDs)
         domainFilters = () if "*" in domainIDs or "*" in orgIDs else \
                         (or_(Domains.ID.in_(domainIDs), Domains.orgID.in_(orgIDs)),)
     return defaultListHandler(Domains, filters=domainFilters)

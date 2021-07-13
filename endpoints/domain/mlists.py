@@ -10,7 +10,7 @@ from flask import request, jsonify
 
 from .. import defaultListHandler, defaultObjectHandler
 
-from tools.permissions import DomainAdminPermission
+from tools.permissions import DomainAdminPermission, DomainAdminROPermission
 
 from orm import DB
 
@@ -18,7 +18,7 @@ from orm import DB
 @API.route(api.BaseRoute+"/domains/<int:domainID>/mlists", methods=["GET"])
 @secure(requireDB=True)
 def mlistListEndpoint(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID))
     from orm.mlists import MLists
     return defaultListHandler(MLists, (MLists.domainID == domainID,))
 
@@ -36,7 +36,7 @@ def createMlist(domainID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/mlists/<int:ID>", methods=["GET", "PATCH"])
 @secure(requireDB=True)
 def mlistObjectEndpoint(domainID, ID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID) if request.method == "GET" else DomainAdminPermission(domainID))
     from orm.mlists import MLists
     return defaultObjectHandler(MLists, ID, "Mailing list", filters=(MLists.domainID == domainID,))
 

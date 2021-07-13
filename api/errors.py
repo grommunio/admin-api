@@ -29,7 +29,7 @@ def method_not_allowed(error):
 @API.after_request
 def logError(response):
     if response.status_code // 100 in (4, 5):
-        API.logger.warning("{} {} from {} -> {} {}".format(request.method, request.full_path, request.host,
+        API.logger.warning("{} {} from {} -> {} {}".format(request.method, request.full_path, request.remote_addr,
                                                              response.status_code, repr(str(response.data, "utf-8"))
                                                              if response.is_json else "<data>"))
     return response

@@ -272,13 +272,75 @@ class SystemAdminPermission:
         Returns
         -------
         set
-            Set containg "SystemAdmin" capability.
+            Set containing "SystemAdmin" capability.
         """
         return {"SystemAdmin"}
 
 
+@Permissions.register("DomainAdminRO")
+class DomainAdminROPermission(PermissionBase):
+    """Permission class representing read only permissions for a domain.
+
+    Can represent permission for a specific domain, or domains in general (when parameter is '*').
+
+    Note that the special parameter '*' is permissive in both directions:
+    Requesting a DomainAdminPermission with parameter '*' and
+    requesting DomainAdminPermission for a specific domain from a permission with parameter '*' will both return True.
+    """
+    def __init__(self, domainID):
+        """Initialize domain admin permission.
+
+        Parameters
+        ----------
+        domainID : int or '*'
+            Domain ID this permission is for, or '*' to match all domains
+
+        Raises
+        ------
+        ValueError
+            `domainID` is neither an integer nor special identifier '*'
+        """
+        if domainID != "*" and not isinstance(domainID, int):
+            raise ValueError("DomainAdminROPermission parameter must be integer or '*'")
+        self.__domain = domainID
+
+    def _permits(self, permission):
+        """Check if permission is represented.
+
+        Parameters
+        ----------
+        permission : DomainAdminPermission
+            Permission to check for equality
+
+        Returns
+        -------
+        bool
+            True if domain IDs match or either is a wildcard domain, False otherwise
+        """
+        return "*" in (self.__domain, permission.__domain) or self.__domain == permission.__domain
+
+    def __repr__(self):
+        """Return string representation."""
+        return "DomainAdminROPermission({})".format(repr(self.__domain))
+
+    def capabilities(self):
+        """Get a set of capabilities provided by this permission.
+
+        Returns
+        -------
+        set
+            Set containing "DomainAdmin" capability.
+        """
+        return {"DomainAdminRead"} | super().capabilities()
+
+    @property
+    def domainID(self):
+        """Return domain parameter."""
+        return self.__domain
+
+
 @Permissions.register("DomainAdmin")
-class DomainAdminPermission(PermissionBase):
+class DomainAdminPermission(DomainAdminROPermission):
     """Permission class representing admin permissions for a domain.
 
     Can represent permission for a specific domain, or domains in general (when parameter is '*').
@@ -303,26 +365,11 @@ class DomainAdminPermission(PermissionBase):
         """
         if domainID != "*" and not isinstance(domainID, int):
             raise ValueError("DomainAdminPermission parameter must be integer or '*'")
-        self.__domain = domainID
-
-    def _permits(self, permission):
-        """Check if permission is represented.
-
-        Parameters
-        ----------
-        permission : DomainAdminPermission
-            Permission to check for equality
-
-        Returns
-        -------
-        bool
-            True if domain IDs match or either is a wildcard domain, False otherwise
-        """
-        return "*" in (self.__domain, permission.__domain) or self.__domain == permission.__domain
+        DomainAdminROPermission.__init__(self, domainID)
 
     def __repr__(self):
         """Return string representation."""
-        return "DomainAdminPermission({})".format(repr(self.__domain))
+        return "DomainAdminPermission({})".format(repr(self.domainID))
 
     def capabilities(self):
         """Get a set of capabilities provided by this permission.
@@ -332,12 +379,41 @@ class DomainAdminPermission(PermissionBase):
         set
             Set containing "DomainAdmin" capability.
         """
-        return {"DomainAdmin"}
+        return {"DomainAdminWrite"} | super().capabilities()
 
-    @property
-    def domainID(self):
-        """Return domain parameter."""
-        return self.__domain
+
+@Permissions.register("SystemAdminRO")
+class SystemAdminROPermission(DomainAdminROPermission):
+    """Permission class representing read-only system admin permissions.
+
+    The read-only system admin has access to all the data a normal system admin has,
+    but cannot modify anything.
+    """
+    def __init__(self, *args, **kwargs):
+        """Initialize permission.
+
+        Parameters
+        ----------
+        *args : Any
+            Ignored.
+        **kwargs : Any
+            Ignored.
+        """
+        DomainAdminROPermission.__init__(self, "*")
+
+    def __repr__(self):
+        """Return string representation."""
+        return "SystemAdminROPermission()"
+
+    def capabilities(self):
+        """Get a set of capabilities provided by the permission.
+
+        Returns
+        -------
+        set
+            Set containing "SystemAdminRO" and "DomainAdminRO" capabilities.
+        """
+        return {"SystemAdminRead"} | super().capabilities()
 
 
 @Permissions.register("OrgAdmin")
@@ -416,7 +492,7 @@ class OrgAdminPermission(PermissionBase):
         set
             Set containing "DomainAdmin" and "OrgAdmin" capabilities.
         """
-        return {"DomainAdmin", "OrgAdmin"}
+        return {"DomainAdminRead", "DomainAdminWrite", "OrgAdmin"} | super().capabilities()
 
     @property
     def orgID(self):
@@ -439,4 +515,4 @@ class DomainPurgePermission(PermissionBase):
         set
             Set containing "DomainPurge" capability.
         """
-        return {"DomainPurge"}
+        return {"DomainPurge"} | super().capabilities()

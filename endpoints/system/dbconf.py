@@ -9,14 +9,14 @@ from api.core import API, secure
 from api.security import checkPermissions
 
 from tools import dbconf
-from tools.permissions import SystemAdminPermission
+from tools.permissions import SystemAdminPermission, SystemAdminROPermission
 
 from orm import DB
 
 @API.route(api.BaseRoute+"/system/dbconf/", methods=["GET"])
 @secure(requireDB=True)
 def getDbconfServices():
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     from orm.misc import DBConf
     data = [entry[0] for entry in DBConf.query.with_entities(DBConf.service.distinct()).order_by(DBConf.service)]
     return jsonify(data=data)
@@ -25,7 +25,7 @@ def getDbconfServices():
 @API.route(api.BaseRoute+"/system/dbconf/<service>/", methods=["GET"])
 @secure(requireDB=True)
 def getDbconfFiles(service):
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     from orm.misc import DBConf
     data = [entry[0] for entry in DBConf.query.filter(DBConf.service == service)
                                               .with_entities(DBConf.file.distinct())
@@ -106,7 +106,7 @@ def deleteDbconfFile(service, file):
 @API.route(api.BaseRoute+"/system/dbconf/<service>/<file>/", methods=["GET"])
 @secure(requireDB=True)
 def getDbconfFile(service, file):
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     from orm.misc import DBConf
     data = {entry.key: entry.value for entry in DBConf.query.filter(DBConf.service == service, DBConf.file == file)}
     return jsonify(data=data)
@@ -115,5 +115,5 @@ def getDbconfFile(service, file):
 @API.route(api.BaseRoute+"/system/dbconf/commands", methods=["GET"])
 @secure()
 def getDbconfCommands():
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     return jsonify(key=list(dbconf.keyCommits), file=list(dbconf.fileCommits), service=list(dbconf.serviceCommits))

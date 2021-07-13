@@ -11,14 +11,15 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
-from tools.permissions import SystemAdminPermission, DomainAdminPermission, OrgAdminPermission, DomainPurgePermission
+from tools.permissions import SystemAdminPermission, SystemAdminROPermission
+from tools.permissions import DomainAdminROPermission, OrgAdminPermission, DomainPurgePermission
 
 from orm import DB
 
 @API.route(api.BaseRoute+"/system/orgs", methods=["GET", "POST"])
 @secure(requireDB=True)
 def orgListEndpoint():
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission() if request.method == "GET" else SystemAdminPermission())
     from orm.domains import Orgs
     return defaultListHandler(Orgs)
 
@@ -26,7 +27,7 @@ def orgListEndpoint():
 @API.route(api.BaseRoute+"/system/orgs/<int:ID>", methods=["GET", "PATCH"])
 @secure(requireDB=True)
 def orgObjectEndpoint(ID):
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission() if request.method == "GET" else SystemAdminPermission())
     from orm.domains import Orgs
     return defaultObjectHandler(Orgs, ID, "Organization")
 
@@ -46,7 +47,7 @@ def orgDeleteEndpoint(ID):
 @API.route(api.BaseRoute+"/system/domains", methods=["GET"])
 @secure(requireDB=True)
 def domainListEndpoint():
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     from orm.domains import Domains
     return defaultListHandler(Domains)
 
@@ -68,7 +69,7 @@ def domainCreate():
 @API.route(api.BaseRoute+"/system/domains/<int:domainID>", methods=["GET"])
 @secure(requireDB=True)
 def getDomain(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID))
     from orm.domains import Domains
     return defaultObjectHandler(Domains, domainID, "Domain")
 

@@ -17,7 +17,7 @@ from .. import defaultListHandler, defaultObjectHandler
 from tools.config import Config
 from tools.constants import PropTags, PropTypes, ExchangeErrors, ExmdbCodes
 from tools.misc import createMapping, loadPSO
-from tools.permissions import SystemAdminPermission, DomainAdminPermission
+from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission
 from tools.pyexmdb import pyexmdb
 from tools.rop import nxTime
 
@@ -28,7 +28,7 @@ from orm import DB
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["GET"])
 @secure(requireDB=True)
 def getUsers(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID))
     from orm.users import Users, UserProperties
     verbosity = int(request.args.get("level", 1))
     query, limit, offset, count = defaultListHandler(Users, filters=(Users.domainID == domainID,), result="query")
@@ -67,7 +67,7 @@ def createUser(domainID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["GET", "PATCH"])
 @secure(requireDB=True)
 def userObjectEndpoint(domainID, userID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID) if request.method == "GET" else DomainAdminPermission(domainID))
     from orm.users import Users
     return defaultObjectHandler(Users, userID, "User", filters=(Users.domainID == domainID,))
 
@@ -152,7 +152,7 @@ def updateUserRoles(domainID, userID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeProps", methods=["GET", "DELETE"])
 @secure(requireDB=True)
 def rdUserStoreProps(domainID, userID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID) if request.method == "GET" else DomainAdminPermission(domainID))
     from orm.users import Users
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
     if user is None:
@@ -235,7 +235,7 @@ def setUserStoreProps(domainID, userID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync", methods=["GET"])
 @secure(requireDB=True)
 def getUserSyncData(domainID, userID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID))
     from orm.users import Users
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
     if user is None:
@@ -285,7 +285,7 @@ def resyncDevice(domainID, userID, ID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/syncPolicy", methods=["GET"])
 @secure(requireDB=True, requireAuth="optional")
 def getDomainSyncPolicy(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID))
     from orm.domains import Domains
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
@@ -300,13 +300,13 @@ def getDomainSyncPolicy(domainID):
 @API.route(api.BaseRoute+"/service/syncPolicy/<username>", methods=["GET"])
 @secure(requireDB=True, requireAuth="optional")
 def getUserSyncPolicy(username):
-    request.remote_addr in Config["sync"]["policyHosts"] or checkPermissions(DomainAdminPermission("*"))
+    request.remote_addr in Config["sync"]["policyHosts"] or checkPermissions(DomainAdminROPermission("*"))
     from orm.domains import Domains
     from orm.users import Users
     user = Users.query.filter(Users.username == username).first()
     if user is None:
         return jsonify(data=Config["sync"]["defaultPolicy"])
-    request.remote_addr in Config["sync"]["policyHosts"] or checkPermissions(DomainAdminPermission(user.domainID))
+    request.remote_addr in Config["sync"]["policyHosts"] or checkPermissions(DomainAdminROPermission(user.domainID))
     domain = Domains.query.filter(Domains.ID == user.domainID, Domains._syncPolicy != None).first()
     policy = dict(Config["sync"]["defaultPolicy"])
     if domain is not None:

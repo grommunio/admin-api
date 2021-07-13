@@ -10,7 +10,7 @@ from cli import Cli
 
 from tools.config import Config
 from tools.license import getLicense, updateCertificate
-from tools.permissions import SystemAdminPermission
+from tools.permissions import SystemAdminPermission, SystemAdminROPermission
 from tools.systemd import Systemd
 
 import json
@@ -30,7 +30,7 @@ from io import StringIO
 @API.route(api.BaseRoute+"/system/dashboard", methods=["GET"])
 @secure()
 def getDashboard():
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     disks = []
     for disk in psutil.disk_partitions():
         try:
@@ -61,7 +61,7 @@ def getDashboard():
 @API.route(api.BaseRoute+"/system/dashboard/services", methods=["GET"])
 @secure()
 def getDashboardServices():
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     if len(Config["options"]["dashboard"]["services"]) == 0:
         return jsonify(services=[])
     sysd = Systemd(system=True)
@@ -81,7 +81,7 @@ def getDashboardServices():
 @API.route(api.BaseRoute+"/system/dashboard/services/<unit>", methods=["GET"])
 @secure()
 def getDashboardService(unit):
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     for service in Config["options"]["dashboard"]["services"]:
         if service["unit"] == unit:
             break
@@ -141,10 +141,11 @@ def dumpLicense():
                    currentUsers=currentUsers,
                    certificate="/api/v1/system/license/certificate.pem" if License.cert is not None else None)
 
+
 @API.route(api.BaseRoute+"/system/license", methods=["GET"])
 @secure()
 def getLicenseInfo():
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     return dumpLicense()
 
 
@@ -173,7 +174,7 @@ def updateLicense():
 @API.route(api.BaseRoute+"/system/antispam/<path:path>", methods=["GET"])
 @secure()
 def rspamdProxy(path):
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission())
     conf = Config["options"]
     if path not in conf.get("antispamEndpoints", ("stat", "graph", "errors")):
         return jsonify(message="Endpoint not allowed"), 403
@@ -217,7 +218,7 @@ def cliOverRest():
 @API.route(api.BaseRoute+"/system/sync/top", methods=["GET"])
 @secure()
 def syncTop():
-    checkPermissions(SystemAdminPermission)
+    checkPermissions(SystemAdminROPermission)
     sync = Config["sync"]
     try:
         expUpd = sync.get("topExpireUpdate", 120)

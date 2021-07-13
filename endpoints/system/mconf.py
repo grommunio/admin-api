@@ -9,13 +9,13 @@ from api.core import API, secure
 from api.security import checkPermissions
 
 from tools import ldap, mconf
-from tools.permissions import SystemAdminPermission
+from tools.permissions import SystemAdminPermission, SystemAdminROPermission
 
 
 @API.route(api.BaseRoute+"/system/mconf/ldap", methods=["GET", "DELETE"])
 @secure(requireDB=True, authLevel="user")
 def getLdapConfig():
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission() if request.method == "GET" else SystemAdminPermission())
     if request.method == "DELETE":
         ldap.disable()
         mconf.dumpLdap({})
@@ -47,7 +47,7 @@ def setLdapConfig():
 @API.route(api.BaseRoute+"/system/mconf/authmgr", methods=["GET", "DELETE"])
 @secure(requireDB=True, authLevel="user")
 def getAuthmgrConfig():
-    checkPermissions(SystemAdminPermission())
+    checkPermissions(SystemAdminROPermission() if request.method == "GET" else SystemAdminPermission())
     if request.method == "DELETE":
         mconf.dumpAuthmgr({})
         return jsonify(message="authmgr configuration set to default")

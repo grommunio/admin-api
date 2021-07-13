@@ -10,7 +10,7 @@ from api.security import checkPermissions
 
 from tools.classfilters import ClassFilter
 from tools.constants import PropTags
-from tools.permissions import DomainAdminPermission
+from tools.permissions import DomainAdminPermission, DomainAdminROPermission
 
 from .. import defaultListHandler, defaultObjectHandler
 
@@ -20,7 +20,7 @@ from orm import DB
 @API.route(api.BaseRoute+"/domains/<int:domainID>/classes", methods=["GET", "POST"])
 @secure(requireDB=True)
 def classListEndpoint(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID) if request.method == "GET" else DomainAdminPermission(domainID))
     from orm.classes import Classes
     if request.method == "POST":
         data = request.get_json(silent=True, cache=True) or {}
@@ -31,7 +31,7 @@ def classListEndpoint(domainID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/classes/<int:ID>", methods=["GET", "PATCH", "DELETE"])
 @secure(requireDB=True)
 def classObjectEndpoint(domainID, ID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID) if request.method == "GET" else DomainAdminPermission(domainID))
     from orm.classes import Classes
     return defaultObjectHandler(Classes, ID, "Class", filters=(Classes.domainID == domainID,))
 
@@ -39,7 +39,7 @@ def classObjectEndpoint(domainID, ID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/classes/tree", methods=["GET"])
 @secure(requireDB=True)
 def classTreeEndpoint(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID))
     from orm.classes import Classes
     try:
         return jsonify(data=Classes.refTree(domainID))

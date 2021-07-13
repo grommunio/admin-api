@@ -10,7 +10,7 @@ from flask import request, jsonify
 
 from tools.config import Config
 from tools.constants import Permissions, ExmdbCodes, PropTags, EcErrors
-from tools.permissions import DomainAdminPermission
+from tools.permissions import DomainAdminPermission, DomainAdminROPermission
 from tools.pyexmdb import pyexmdb
 from tools.rop import nxTime
 
@@ -19,7 +19,7 @@ from datetime import datetime
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["GET"])
 @secure(requireDB=True)
 def getPublicFoldersList(domainID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID))
     from orm.domains import Domains
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
@@ -66,7 +66,7 @@ def createPublicFolder(domainID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>", methods=["GET"])
 @secure(requireDB=True)
 def getPublicFolder(domainID, folderID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID))
     from orm.domains import Domains
     options = Config["options"]
     domain = Domains.query.filter(Domains.ID == domainID).first()
@@ -133,7 +133,7 @@ def deletePublicFolder(domainID, folderID):
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners", methods=["GET"])
 @secure(requireDB=True)
 def getPublicFolderOwnerList(domainID, folderID):
-    checkPermissions(DomainAdminPermission(domainID))
+    checkPermissions(DomainAdminROPermission(domainID))
     from orm.domains import Domains
     options = Config["options"]
     domain = Domains.query.filter(Domains.ID == domainID).first()
