@@ -42,6 +42,8 @@ def login():
         return jsonify(message="Incomplete login form"), 400
     success, val = loginUser(request.form["user"], request.form["pass"])
     if not success:
+        API.logger.warning("Failed login attempt for user '{}' from '{}': {}"
+                           .format(request.form["user"], request.remote_addr, val))
         return jsonify(message="Login failed", error=val), 401
     return jsonify({"grammmAuthJwt": val})
 
