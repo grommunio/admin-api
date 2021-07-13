@@ -20,6 +20,7 @@ from tools.misc import createMapping, loadPSO
 from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission
 from tools.pyexmdb import pyexmdb
 from tools.rop import nxTime
+from tools.storage import setDirectoryOwner, setDirectoryPermission
 
 import shutil
 
@@ -261,6 +262,49 @@ def getUserSyncData(domainID, userID):
         return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
     except RuntimeError as err:
         return jsonify(message="exmdb query failed: "+err.args[0]), 500
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/delegates", methods=["GET"])
+@secure(requireDB=True)
+def getUserDelegates(domainID, userID):
+    checkPermissions(DomainAdminROPermission(domainID))
+    from orm.users import Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    try:
+        with open(user.maildir+"/config/delegates.txt") as file:
+            delegates = [line.strip() for line in file if line.strip != ""]
+    except (FileNotFoundError, PermissionError, TypeError):
+        delegates = []
+    return jsonify(data=delegates)
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/delegates", methods=["PUT"])
+@secure(requireDB=True)
+def setUserDelegates(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
+    data = request.get_json(silent=True)
+    if not isinstance(data, list):
+        return jsonify(message="Invalid or missing data"), 400
+    from orm.users import Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    try:
+        delegateFile = user.maildir+"/config/delegates.txt"
+        with open(delegateFile, "w") as file:
+            file.write("\n".join(data))
+    except (FileNotFoundError, PermissionError) as err:
+        return jsonify(message="Failed to write delegates: "+" - ".join(str(arg) for arg in err.args)), 500
+    except TypeError:
+        return jsonify(message="User does not support delegates"), 400
+    try:
+        setDirectoryOwner(delegateFile, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
+        setDirectoryPermission(delegateFile, Config["options"].get("filePermissions"))
+    except:
+        pass
+    return jsonify(message="Delegates updated")
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<ID>", methods=["DELETE"])
