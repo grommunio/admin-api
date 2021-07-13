@@ -204,7 +204,7 @@ bool parseCommandLine(char** argv)
 MYSQL* getMysql()
 {
     fstream file;
-    string host, user, passwd, db, port, line;
+    string host = "127.0.0.1", user, passwd, db, port="3306", line;
     if(verbosity >= 2)
         cerr << "Opening 'mysql_adaptor.cfg'...\n";
     file.open("mysql_adaptor.cfg");
@@ -230,15 +230,16 @@ MYSQL* getMysql()
         value = line.substr(eqpos+1);
         key.erase(remove_if(key.begin(), key.end(), iswspace), key.end());
         value.erase(remove_if(value.begin(), value.end(), iswspace), value.end());
-        if(key == "MYSQL_HOST")
+        for_each(key.begin(), key.end(), [](char& c){c=tolower(c);});
+        if(key == "mysql_host")
             host = std::move(value);
-        else if(key =="MYSQL_PORT")
+        else if(key =="mysql_port")
             port = std::move(value);
-        else if(key == "MYSQL_USERNAME")
+        else if(key == "mysql_username")
             user = std::move(value);
-        else if(key == "MYSQL_PASSWORD")
+        else if(key == "mysql_password")
             passwd = std::move(value);
-        else if(key == "MYSQL_DBNAME")
+        else if(key == "mysql_dbname")
             db = std::move(value);
     }
     unsigned int iport;
