@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2021 grammm GmbH
+# SPDX-FileCopyrightText: 2021 grommunio GmbH
 
 from .misc import createMapping
 
@@ -94,7 +94,7 @@ def commit(service, file=None, key=None):
         Error message or None if successful
     """
     from orm.misc import DBConf
-    exprs = DBConf.query.filter(DBConf.service == "grammm-dbconf", DBConf.file == service, DBConf.key.like("commit_%"))\
+    exprs = DBConf.query.filter(DBConf.service == "grommunio-dbconf", DBConf.file == service, DBConf.key.like("commit_%"))\
                         .with_entities(DBConf.key, DBConf.value).all()
     if len(exprs) == 0:
         return None

@@ -40,7 +40,7 @@ Possible parameters:
 - `jwtPublicKeyFile` (`string`, default: `res/jwt-pubkey.pem`): Path to the public RSA key file
 
 ### Managed Configurations ###
-Some configurations can be managed by grammm-admin. Parameters can be configured by the `mconf` object.  
+Some configurations can be managed by grommunio-admin. Parameters can be configured by the `mconf` object.  
 Possible parameters:
 - `fileUid` (`string` or `int`): If set, change ownership of created configuration files to this user. Defaults to `options.fileUid` if omitted
 - `fileGid` (`string` or `int`): If set, change ownership of created configuration files to this group. Defaults to `options.fileGid` if omitted
@@ -49,20 +49,20 @@ Possible parameters:
 - `authmgrPath` (`string`): Path to the authmgr configuration file
 
 ### Logs ###
-grammm-admin can provide access to journald logs through the API. Accessible log files can be configured in the `logs` object.  
+grommunio-admin can provide access to journald logs through the API. Accessible log files can be configured in the `logs` object.  
 Each entry in the `logs` object describes a log file. The name of the entry is the name used to acces the file throught the API.  
 Possible parameters for each entry:
 - `source` (`string`, required): Name of the systemd unit  
 
 ### Sync ###
-Some parameters determining how grammm-admin connects to grammm-sync can be adjusted in the `sync` object.  
+Some parameters determining how grommunio-admin connects to grommunio-sync can be adjusted in the `sync` object.  
 Possible parameters:
 - `host` (`string`, default `127.0.0.1`): Host running the Redis instance
 - `port` (`int`, default `6379`): Port the Redis instance is listening on
 - `db` (`string`, default `0`): Name of the Redis database
 - `password` (`string`, default ``): Password to connect with
-- `topTimestampKey` (`string`, default `grammm-sync:topenabledat`): Key to write the current timestamp to
-- `topdataKey` (`string`, default `grammm-sync:topdata`): Key containing the top data hash
+- `topTimestampKey` (`string`, default `grommunio-sync:topenabledat`): Key to write the current timestamp to
+- `topdataKey` (`string`, default `grommunio-sync:topdata`): Key containing the top data hash
 - `topExpireEnded` (`int`, default `20`): Time (in seconds) after which ended processes are removed
 - `topExpireUpdate` (`int`, default `120`): Time (in seconds) since the last update after which processes are removed
 - `syncStateFolder` (`string`, default `GS-SyncState`): Sub-folder containing the device sync states
@@ -71,7 +71,7 @@ Possible parameters:
 
 ### Options ###
 Further parameters can be set in the `options` object:
-- `dataPath` (`string`, default: `/usr/share/grammm/common`): Directory where shared resources used by Grammm modules are stored
+- `dataPath` (`string`, default: `/usr/share/grommunio/common`): Directory where shared resources used by grommunio modules are stored
 - `propnames` (`string`, default: `propnames.txt`): File containing the list of named properties, relative to `dataPath`
 - `portrait` (`string`, default: `admin/api/portrait.jpg`): File containing the default portrait image, relative to `dataPath`
 - `domainStoreRatio` (`int`, default: `10`): Mysterious storage factor for `domain.maxSize`
@@ -82,6 +82,6 @@ Further parameters can be set in the `options` object:
 - `fileUid` (`string` or `int`): If set, change ownership of created files to this user
 - `fileGid` (`string` or `int`): If set, change ownership of created files to this group
 - `filePermissions` (`int`): If set, change file permissions of any created files to this bitmask
-- `antispamUrl` (`string`, default: `http://127.0.0.1:11334`): URL of the grammm-antispam backend
-- `antispamEndpoints` (`list of strings`, default: `["stat", "graph", "errors"]`): List of allowed endpoints to proxy to grammm-antispam
+- `antispamUrl` (`string`, default: `http://127.0.0.1:11334`): URL of the grommunio-antispam backend
+- `antispamEndpoints` (`list of strings`, default: `["stat", "graph", "errors"]`): List of allowed endpoints to proxy to grommunio-antispam
 - `vhosts` (`object`, default: `{}`): Name -> URL mapping of nginx VHost status endpoints

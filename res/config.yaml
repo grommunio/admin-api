@@ -53,7 +53,7 @@ properties:
       dataPath:
         type: string
         description: Path containing shared resources
-        default: /usr/share/grammm/common
+        default: /usr/share/grommunio/common
       propnames:
         type: string
         description: File containing list of named properties. Path is relative to `dataPath`.
@@ -146,10 +146,10 @@ properties:
       antispamUrl:
           type: string
           default: 'http://127.0.0.1:11334'
-          description: URL of the grammm-antispam backend
+          description: URL of the grommunio-antispam backend
       antispamEndpoints:
           type: array
-          description: List of allowed endpoints to proxy to grammm-antispam
+          description: List of allowed endpoints to proxy to grommunio-antispam
           default: ["stat", "graph", "errors"]
           items:
             type: string
@@ -203,7 +203,7 @@ properties:
           type: string
           description: Name of the journald unit
   sync:
-    description: Options for grammm-sync access
+    description: Options for grommunio-sync access
     type: object
     properties:
       host:
@@ -225,11 +225,11 @@ properties:
       topTimestampKey:
         type: string
         description: Key to write the current timestamp to
-        default: grammm-sync:topenabledat
+        default: grommunio-sync:topenabledat
       topdataKey:
         type: string
         description: Key containing the top data hash
-        default: grammm-sync:topdata
+        default: grommunio-sync:topdata
       topExpireEnded:
         type: integer
         description: Time (in seconds) after which ended processes are removed

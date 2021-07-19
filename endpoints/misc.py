@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2020 grommunio GmbH
 
 from flask import jsonify, request
 
@@ -38,14 +38,14 @@ def login():
     if "user" not in request.form or "pass" not in request.form:
         refreshed = refreshToken()
         if refreshed is not None:
-            return jsonify(grammmAuthJwt=refreshed)
+            return jsonify(grommunioAuthJwt=refreshed)
         return jsonify(message="Incomplete login form"), 400
     success, val = loginUser(request.form["user"], request.form["pass"])
     if not success:
         API.logger.warning("Failed login attempt for user '{}' from '{}': {}"
                            .format(request.form["user"], request.remote_addr, val))
         return jsonify(message="Login failed", error=val), 401
-    return jsonify({"grammmAuthJwt": val})
+    return jsonify({"grommunioAuthJwt": val})
 
 
 @API.route(api.BaseRoute+"/profile", methods=["GET"])

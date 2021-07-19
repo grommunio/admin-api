@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2021 grammm GmbH
+# SPDX-FileCopyrightText: 2021 grommunio GmbH
 
 import argcomplete
 import logging
@@ -184,7 +184,7 @@ class Cli:
                                   for p in a.choices.values()):
                     redirect(subparser)
 
-        self.parser = ArgumentParser(description="grammm admin cli")
+        self.parser = ArgumentParser(description="grommunio admin cli")
         subparsers = self.parser.add_subparsers()
         for name, handler, parserSetup, kwargs in self.funcs:
             subp = subparsers.add_parser(name, **kwargs)

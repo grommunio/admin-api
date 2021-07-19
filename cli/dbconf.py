@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2021 grammm GmbH
+# SPDX-FileCopyrightText: 2021 grommunio GmbH
 
 from . import Cli
 
@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 
 
 _commitHelp = "Commit configuration changes to the service. Commit actions can be configured for a service by setting "\
-              "`commit_service`, `commit_file`, `commit_key` and `commit_any` parameters in `grammm-dbconf/<service>`. "
+              "`commit_service`, `commit_file`, `commit_key` and `commit_any` parameters in `grommunio-dbconf/<service>`. "
 
 
 def _autocompService(prefix, **kwargs):

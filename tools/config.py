@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2020 grommunio GmbH
 
 import yaml
 import logging
@@ -58,7 +58,7 @@ _defaultConfig_ = {"openapi": {
                    },
                    "options": {
                      "disableDB": False,
-                     "dataPath": "/usr/share/grammm/common",
+                     "dataPath": "/usr/share/grommunio/common",
                      "propnames": "propnames.txt",
                      "portrait": "admin/api/portrait.jpg",
                      "domainStoreRatio": 10,

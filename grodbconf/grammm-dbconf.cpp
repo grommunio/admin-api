@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: AGPL-3.0-or-later
- * SPDX-FileCopyrightText: 2021 grammm GmbH
+ * SPDX-FileCopyrightText: 2021 grommunio GmbH
  */
 #include <algorithm>
 #include <array>
@@ -74,7 +74,7 @@ inline int cmdLevel(const char* target)
  */
 [[noreturn]] void printHelp(const char* name)
 {
-    cerr << "grammm database configuration management tool\n"
+    cerr << "grommunio database configuration management tool\n"
             "Usage:\n"
          "\t" << name << " set [(-b | --batch)] [(-i | --init)] [(-v | --verbose)] [--] <service> <file> <key> [<value>]\n"
          "\t" << name << " get [(-v | --verbose)] [--] <service> <file> [<key>]\n"
@@ -378,7 +378,7 @@ string subVars(const string& command, const unordered_map<string, string>& vars)
 /**
  * @brief      Commit configuration changes
  *
- * Searches for an appropriate command in grammm-dbconf/<service> according
+ * Searches for an appropriate command in grommunio-dbconf/<service> according
  * to the number of arguments provided.
  *
  * If no command is found,
@@ -394,7 +394,7 @@ int commit(mysqlconn_t& mconn)
     MYSQL* conn = mconn.get();
     CmdLevel target = hasArg(Key)? CMD_KEY : hasArg(File)? CMD_FILE : CMD_SERVICE;
     if(snprintf(query, QLEN, "SELECT `key`, `value` FROM `configs` "
-                "WHERE `service`=\"grammm-dbconf\" AND `file`=\"%s\" AND `key` LIKE \"commit_%%\"",
+                "WHERE `service`=\"grommunio-dbconf\" AND `file`=\"%s\" AND `key` LIKE \"commit_%%\"",
                  args[Service].c_str()) >= QLEN)
         return 501;
     if(mysql_query(conn, query))
@@ -469,7 +469,7 @@ int commit(mysqlconn_t& mconn)
 }
 
 
-int grammmConfSet(mysqlconn_t& mconn)
+int grommunioConfSet(mysqlconn_t& mconn)
 {
     static const int QLEN = 4096, FLEN = 2048;
     char query[QLEN];
@@ -509,7 +509,7 @@ int grammmConfSet(mysqlconn_t& mconn)
 }
 
 
-int grammmConfGet(mysqlconn_t& conn)
+int grommunioConfGet(mysqlconn_t& conn)
 {
     static const int QLEN = 4096;
     char query[QLEN];
@@ -531,7 +531,7 @@ int grammmConfGet(mysqlconn_t& conn)
 }
 
 
-int grammmConfDel(mysqlconn_t& conn)
+int grommunioConfDel(mysqlconn_t& conn)
 {
     static const int QLEN = 4096;
     char query[QLEN];
@@ -572,11 +572,11 @@ int main(int argc, char** argv)
     prepareArgs(conn);
     int res = 1000;
     if(args[Command] =="set")
-        res = grammmConfSet(conn);
+        res = grommunioConfSet(conn);
     else if(args[Command] == "get")
-        res =  grammmConfGet(conn);
+        res =  grommunioConfGet(conn);
     else if(args[Command] == "delete")
-        res = grammmConfDel(conn);
+        res = grommunioConfDel(conn);
     else if(args[Command] == "commit")
         res = commit(conn);
     if(verbosity)

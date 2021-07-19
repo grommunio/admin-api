@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2020 grommunio GmbH
 
 from flask import request
 import time
@@ -58,7 +58,7 @@ def getSecurityContext(authLevel):
         Error message or None if successful
 
     """
-    cookie = request.cookies.get("grammmAuthJwt")
+    cookie = request.cookies.get("grommunioAuthJwt")
     if cookie is None:
         return "No token provided"
     success, val = checkToken(cookie)
@@ -129,9 +129,9 @@ def refreshToken():
     Check if the current token is valid and if the current user still is allowed to login.
     """
     from orm.users import Users
-    if "grammmAuthJwt" not in request.cookies:
+    if "grommunioAuthJwt" not in request.cookies:
         return
-    success, claims = checkToken(request.cookies["grammmAuthJwt"])
+    success, claims = checkToken(request.cookies["grommunioAuthJwt"])
     if not success:
         return
     user = Users.query.filter(Users.username == claims["usr"]).first()

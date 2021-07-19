@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: AGPL-3.0-or-later
- * SPDX-FileCopyrightText: 2020 grammm GmbH
+ * SPDX-FileCopyrightText: 2020 grommunio GmbH
  */
 #include "queries.h"
 #include "util.h"
@@ -313,7 +313,7 @@ NullResponse ExmdbQueries::removeStoreProperties(const std::string& homedir, con
 
 
 /**
- * @brief       Get grammm-sync state for user
+ * @brief       Get grommunio-sync state for user
  *
  * @param       homedir     Home directory path of the user
  * @param       folderName  Name of the folder containing sync data

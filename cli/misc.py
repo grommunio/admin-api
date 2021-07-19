@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2021 grammm GmbH
+# SPDX-FileCopyrightText: 2021 grommunio GmbH
 
 from . import Cli, CliError, ArgumentParser
 
@@ -147,9 +147,9 @@ def cliShell(args):
     rlAvail = False
     interactive = cli.stdin.isatty()
     if interactive:
-        cli.print("\x1b]2;grammm-admin\x07", end="")
+        cli.print("\x1b]2;grommunio-admin\x07", end="")
         if cli.host is None:
-            cli.print("grammm-admin shell. Type exit or press CTRL+D to exit.")
+            cli.print("grommunio-admin shell. Type exit or press CTRL+D to exit.")
         else:
             cli.print("Starting remote admin shell. Type exit or press CTRL+D to exit.")
         try:
@@ -171,7 +171,7 @@ def cliShell(args):
             try:
                 prompt = ""
                 if interactive:
-                    prompt += cli.col("grammm-admin", "cyan", attrs=["bold", "dark"])
+                    prompt += cli.col("grommunio-admin", "cyan", attrs=["bold", "dark"])
                     prompt += "@"+cli.col(cli.host, "red", attrs=["bold", "dark"]) if cli.host is not None else ""
                     prompt += "> "
                 command = cli.input(prompt).strip()

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2020 grommunio GmbH
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
@@ -18,7 +18,7 @@ class CertificateError(BaseException):
     pass
 
 
-class GrammmLicense(GenericObject):
+class GrommunioLicense(GenericObject):
     @staticmethod
     def validate(cert):
         if cert is not None and not cert.not_valid_before <= datetime.now() <= cert.not_valid_after:
@@ -33,7 +33,7 @@ class GrammmLicense(GenericObject):
 
 
 def _defaultLicense():
-    return GrammmLicense(cert=None,
+    return GrommunioLicense(cert=None,
                          file=None,
                          users=5,
                          product="Community",
@@ -44,9 +44,9 @@ def _defaultLicense():
 def _processCertificate(data):
     try:
         cert = x509.load_pem_x509_certificate(data, default_backend())
-        GrammmLicense.validate(cert)
+        GrommunioLicense.validate(cert)
         exts = createMapping(cert.extensions, lambda x: x.oid.dotted_string, lambda x: x.value.value)
-        lic = GrammmLicense(cert=cert, file=data)
+        lic = GrommunioLicense(cert=cert, file=data)
         lic.users = int(exts.get("1.3.6.1.4.1.56504.1.1"))
         lic.product = exts.get("1.3.6.1.4.1.56504.1.2").decode("utf-8") if "1.3.6.1.4.1.56504.1.2" in exts else None
         lic.notBefore = cert.not_valid_before

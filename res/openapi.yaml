@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
-  title: grammm Admin API
-  version: 0.24.4
+  title: grommunio Admin API
+  version: 1.0.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -78,7 +78,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  grammmAuthJwt:
+                  grommunioAuthJwt:
                     type: string
                     description: API access token
         '400':
@@ -1133,8 +1133,8 @@ paths:
 
   /system/antispam/{path}:
     get:
-      summary: Make call to grammm-antispam
-      description: Proxies any request including query parameters to the grammm-antispam backend
+      summary: Make call to grommunio-antispam
+      description: Proxies any request including query parameters to the grommunio-antispam backend
       tags:
         - System Admin/Proxies
       security:
@@ -1142,7 +1142,7 @@ paths:
       parameters:
         - name: path
           in: path
-          description: grammm-antispam endpoint to query
+          description: grommunio-antispam endpoint to query
           required: true
           schema:
             type: string
@@ -1150,9 +1150,9 @@ paths:
         '403':
           description: Insufficient privileges or endpoint not allowed
         '503':
-          description: Connection to grammm-antispam failed
+          description: Connection to grommunio-antispam failed
         default:
-          description: Response returned by the grammm-antispam backend
+          description: Response returned by the grommunio-antispam backend
 
   /system/vhostStatus:
     get:
@@ -1341,7 +1341,7 @@ paths:
 
   /system/sync/top:
     get:
-      summary: Get grammm-sync usage information
+      summary: Get grommunio-sync usage information
       description: Get current usage. Should be called at least twice to provide useful information.
       tags:
         -  Misc
@@ -3141,7 +3141,7 @@ components:
     JWTCookie:
       type: apiKey
       in: cookie
-      name: grammmAuthJwt
+      name: grommunioAuthJwt
   parameters:
     ID:
       name: ID

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2020 grommunio GmbH
 
 import api
 from api.core import API, secure
@@ -251,8 +251,8 @@ def syncTop():
         r = redis.Redis(sync.get("host", "localhost"), sync.get("port", 6379), sync.get("db", 0), sync.get("password"),
                                  decode_responses=True)
         now = int(time.mktime(time.localtime()))
-        r.set(sync.get("topTimestampKey", "grammm-sync:topenabledat"), now)
-        hdata = r.hgetall(sync.get("topdataKey", "grammm-sync:topdata"))
+        r.set(sync.get("topTimestampKey", "grommunio-sync:topenabledat"), now)
+        hdata = r.hgetall(sync.get("topdataKey", "grommunio-sync:topdata"))
         if hdata is None:
             return jsonify(data=[], maxUpdated=expUpd, maxEnded=expEnd)
         data = []
@@ -268,8 +268,8 @@ def syncTop():
             except Exception as err:
                 API.logger.info(type(err).__name__+": "+str(err.args))
         if len(remove) > 0:
-            r.hdel(sync.get("topdataKey", "grammm-sync:topdata"), *remove)
-        return jsonify(data=data, maxUpdated=expUpd, maxEnded=expEnd)
+            r.hdel(sync.get("topdataKey", "grommunio-sync:topdata"), *remove)
+        return jsonify(data=data)
     except redis.exceptions.ConnectionError as err:
         return jsonify(message="Redis connection failed: "+err.args[0]), 503
 

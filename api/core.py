@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2020 grammm GmbH
+# SPDX-FileCopyrightText: 2020 grommunio GmbH
 
 from flask import Flask, jsonify, request, make_response
 
@@ -28,7 +28,7 @@ apiSpec = openapi_core.create_spec(apiSpec)
 requestValidator, responseValidator = RequestValidator(apiSpec), ResponseValidator(apiSpec)
 
 
-API = Flask("grammm Admin API")  # Core API object
+API = Flask("grommunio Admin API")  # Core API object
 API.config["JSON_SORT_KEYS"] = False  # Do not sort response fields. Crashes when returning lists...
 if DB is not None:
     DB.enableFlask(API)

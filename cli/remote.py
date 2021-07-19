@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2021 grammm GmbH
+# SPDX-FileCopyrightText: 2021 grommunio GmbH
 
 
 from cli import Cli, ArgumentParser
@@ -74,9 +74,9 @@ def _login(target, user, passwd, args):
         data = response.json() or {}
         if response.status_code != 200:
             return False, "{}{}".format(data.get("message", "Login failed"), ": "+data["error"] if "error" in data else "")
-        if "grammmAuthJwt" not in data:
+        if "grommunioAuthJwt" not in data:
             return False, "Login failed: invalid response"
-        token = data["grammmAuthJwt"]
+        token = data["grommunioAuthJwt"]
         code, response = _remoteExec(None, target, token, "version", cparm=args._cparm)
         if code is None:
             return False, response
@@ -88,7 +88,7 @@ def _login(target, user, passwd, args):
             if "message" in response:
                 return False, "Remote execution failed: "+response["message"]
             return False, "Remote execution failed with code "+str(code)
-        return True, data["grammmAuthJwt"]
+        return True, data["grommunioAuthJwt"]
     except Exception as err:
         return False, "Login failed ({})".format(type(err).__name__)
 
@@ -104,7 +104,7 @@ def _remoteExec(cli, target, token, command, mode="exec", redirectFs=False, cpar
         colored = cli.colored if cli is not None else False
         data = {"command": command, "mode": mode, "color": colored, "fs": {} if redirectFs else None}
         headers = {"Content-Type": "application/json"}
-        response = requests.post(target+"system/cli", json=data, cookies={"grammmAuthJwt": token}, headers=headers, **cparm)
+        response = requests.post(target+"system/cli", json=data, cookies={"grommunioAuthJwt": token}, headers=headers, **cparm)
         return response.status_code, response.json()
     except Exception as err:
         return None, "Remote execution failed ({})".format(type(err).__name__)

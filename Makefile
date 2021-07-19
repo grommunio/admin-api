@@ -1,16 +1,16 @@
-.PHONY: tools/pyexmdb clean grammm-dbconf
+.PHONY: tools/pyexmdb clean grodbconf
 
-all: tools/pyexmdb grammm-dbconf
+all: tools/pyexmdb grodbconf
 
 tools/pyexmdb:
 	make -C exmdbpp exmdbpp-python
 	mkdir -p tools/pyexmdb
 	cp exmdbpp/pyexmdb/_pyexmdb.so exmdbpp/pyexmdb/pyexmdb.py tools/pyexmdb
 
-grammm-dbconf:
-	make -C grammm-dbconf build
+grodbconf:
+	make -C grodbconf build
 
 clean:
 	rm -rf tools/pyexmdb
 	make -C exmdbpp clean
-	make -C grammm-dbconf clean
+	make -C grodbconf clean
