@@ -378,7 +378,7 @@ string subVars(const string& command, const unordered_map<string, string>& vars)
 /**
  * @brief      Commit configuration changes
  *
- * Searches for an appropriate command in grommunio-dbconf/<service> according
+ * Searches for an appropriate command in grodbconf/<service> according
  * to the number of arguments provided.
  *
  * If no command is found,
@@ -394,7 +394,7 @@ int commit(mysqlconn_t& mconn)
     MYSQL* conn = mconn.get();
     CmdLevel target = hasArg(Key)? CMD_KEY : hasArg(File)? CMD_FILE : CMD_SERVICE;
     if(snprintf(query, QLEN, "SELECT `key`, `value` FROM `configs` "
-                "WHERE `service`=\"grommunio-dbconf\" AND `file`=\"%s\" AND `key` LIKE \"commit_%%\"",
+                "WHERE `service`=\"grodbconf\" AND `file`=\"%s\" AND `key` LIKE \"commit_%%\"",
                  args[Service].c_str()) >= QLEN)
         return 501;
     if(mysql_query(conn, query))
