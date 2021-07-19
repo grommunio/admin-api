@@ -40,7 +40,7 @@ Possible parameters:
 - `jwtPublicKeyFile` (`string`, default: `res/jwt-pubkey.pem`): Path to the public RSA key file
 
 ### Managed Configurations ###
-Some configurations can be managed by grommunio-admin. Parameters can be configured by the `mconf` object.  
+Some configurations can be managed by groadmin. Parameters can be configured by the `mconf` object.
 Possible parameters:
 - `fileUid` (`string` or `int`): If set, change ownership of created configuration files to this user. Defaults to `options.fileUid` if omitted
 - `fileGid` (`string` or `int`): If set, change ownership of created configuration files to this group. Defaults to `options.fileGid` if omitted
@@ -49,13 +49,13 @@ Possible parameters:
 - `authmgrPath` (`string`): Path to the authmgr configuration file
 
 ### Logs ###
-grommunio-admin can provide access to journald logs through the API. Accessible log files can be configured in the `logs` object.  
+groadmin can provide access to journald logs through the API. Accessible log files can be configured in the `logs` object.
 Each entry in the `logs` object describes a log file. The name of the entry is the name used to acces the file throught the API.  
 Possible parameters for each entry:
 - `source` (`string`, required): Name of the systemd unit  
 
 ### Sync ###
-Some parameters determining how grommunio-admin connects to grommunio-sync can be adjusted in the `sync` object.  
+Some parameters determining how groadmin connects to grommunio-sync can be adjusted in the `sync` object.
 Possible parameters:
 - `host` (`string`, default `127.0.0.1`): Host running the Redis instance
 - `port` (`int`, default `6379`): Port the Redis instance is listening on
