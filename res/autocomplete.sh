@@ -42,4 +42,4 @@ _grommunio_admin() {
         compopt -o nospace
     fi
 }
-complete -o nospace -o default -o bashdefault -F _groadmin groadmin
+complete -o nospace -o default -o bashdefault -F _grommunio-admin grommunio-admin
