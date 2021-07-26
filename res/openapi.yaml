@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grammm Admin API
-  version: 0.24.1
+  version: 0.24.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1136,7 +1136,7 @@ paths:
       summary: Make call to grammm-antispam
       description: Proxies any request including query parameters to the grammm-antispam backend
       tags:
-        - Misc
+        - System Admin/Proxies
       security:
         - JWTCookie: []
       parameters:
@@ -1152,7 +1152,53 @@ paths:
         '503':
           description: Connection to grammm-antispam failed
         default:
-          description: Response returned by the grammm-admin backend
+          description: Response returned by the grammm-antispam backend
+
+  /system/vhostStatus:
+    get:
+      summary: Get list of vhosts
+      tags:
+        - System Admin/Proxies
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: List returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /system/vhostStatus/{host}:
+    get:
+      summary: Make call nginx vhost status endpoint
+      tags:
+        - System Admin/Proxies
+      security:
+        - JWTCookie: []
+      parameters:
+        - name: host
+          in: path
+          description: Host to query
+          required: true
+          schema:
+            type: string
+      responses:
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Connection to vhost failed
+        default:
+          description: Response returned by the vhost status endpoint
 
   /chkFormat:
     get:
@@ -4127,6 +4173,8 @@ tags:
     description: Endpoints for accessing managed configurations
   - name: System Admin/Organizations
     description: Endpoints for organization management
+  - name: System Admin/Proxies
+    description: Proxy endpoints to internal services
   - name: System Admin/Roles
     description: Endpoints for user role and permission management
   - name: Domain Admin/Classes

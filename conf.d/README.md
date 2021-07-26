@@ -84,3 +84,4 @@ Further parameters can be set in the `options` object:
 - `filePermissions` (`int`): If set, change file permissions of any created files to this bitmask
 - `antispamUrl` (`string`, default: `http://127.0.0.1:11334`): URL of the grammm-antispam backend
 - `antispamEndpoints` (`list of strings`, default: `["stat", "graph", "errors"]`): List of allowed endpoints to proxy to grammm-antispam
+- `vhosts` (`object`, default: `{}`): Name -> URL mapping of nginx VHost status endpoints

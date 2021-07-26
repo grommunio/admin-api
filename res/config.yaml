@@ -153,6 +153,12 @@ properties:
           default: ["stat", "graph", "errors"]
           items:
             type: string
+      vhosts:
+        type: object
+        description: Mapping of (freely defined) names to URLS
+        additionalProperties:
+          description: URL of the vhost status endpoint
+          type: string
   mconf:
     description: Options for managed configurations
     type: object

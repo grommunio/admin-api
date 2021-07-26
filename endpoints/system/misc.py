@@ -186,6 +186,28 @@ def rspamdProxy(path):
     return res.raw.read(), res.status_code, res.headers.items()
 
 
+@API.route(api.BaseRoute+"/system/vhostStatus", methods=["GET"])
+@secure()
+def vhostStatusList():
+    checkPermissions(SystemAdminROPermission())
+    return jsonify(data=list(Config["options"].get("vhosts", {}).keys()))
+
+
+@API.route(api.BaseRoute+"/system/vhostStatus/<path:host>", methods=["GET"])
+@secure()
+def vhostStatus(host):
+    checkPermissions(SystemAdminROPermission())
+    conf = Config["options"].get("vhosts", {})
+    if host not in conf:
+        return jsonify(message="VHost not found"), 404
+    try:
+        res = requests.get(conf[host], stream=True)
+    except BaseException as err:
+        API.logger.error(type(err).__name__+": "+" - ".join(str(arg) for arg in err.args))
+        return jsonify(message="Failed to connect to vhost"), 503
+    return res.raw.read(), res.status_code, res.headers.items()
+
+
 @API.route(api.BaseRoute+"/system/cli", methods=["POST"])
 @secure()
 def cliOverRest():
