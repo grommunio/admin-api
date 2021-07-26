@@ -287,5 +287,5 @@ def getMailqData():
         gromoxMailq = subprocess.run("gromox-mailq", stdout=subprocess.PIPE, universal_newlines=True).stdout
     except Exception as err:
         API.logger.error("Failed to run gromox-mailq: {} ({})".format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
-        gromoxMailq = "Failed to run gromox-mailq."
+        gromoxMailq = ""
     return jsonify(postfixMailq=postfixMailq, gromoxMailq=gromoxMailq)
