@@ -19,6 +19,7 @@ import psutil
 import redis
 import requests
 import shlex
+import subprocess
 import time
 
 from datetime import datetime
@@ -211,7 +212,7 @@ def vhostStatus(host):
 @API.route(api.BaseRoute+"/system/cli", methods=["POST"])
 @secure()
 def cliOverRest():
-    checkPermissions(SystemAdminPermission)
+    checkPermissions(SystemAdminPermission())
     if Config["options"].get("disableRemoteCli"):
         return jsonify(message="Remote CLI disabled by config"), 400
     params = request.get_json(silent=True)
@@ -240,7 +241,7 @@ def cliOverRest():
 @API.route(api.BaseRoute+"/system/sync/top", methods=["GET"])
 @secure()
 def syncTop():
-    checkPermissions(SystemAdminROPermission)
+    checkPermissions(SystemAdminROPermission())
     sync = Config["sync"]
     try:
         expUpd = sync.get("topExpireUpdate", 120)
@@ -271,3 +272,20 @@ def syncTop():
         return jsonify(data=data, maxUpdated=expUpd, maxEnded=expEnd)
     except redis.exceptions.ConnectionError as err:
         return jsonify(message="Redis connection failed: "+err.args[0]), 503
+
+
+@API.route(api.BaseRoute+"/system/mailq", methods=["GET"])
+@secure()
+def getMailqData():
+    checkPermissions(SystemAdminROPermission())
+    try:
+        postfixMailq = subprocess.run("mailq", stdout=subprocess.PIPE, universal_newlines=True).stdout
+    except Exception as err:
+        API.logger.error("Failed to run mailq: {} ({})".format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
+        postfixMailq = "Failed to run mailq."
+    try:
+        gromoxMailq = subprocess.run("gromox-mailq", stdout=subprocess.PIPE, universal_newlines=True).stdout
+    except Exception as err:
+        API.logger.error("Failed to run gromox-mailq: {} ({})".format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
+        gromoxMailq = "Failed to run gromox-mailq."
+    return jsonify(postfixMailq=postfixMailq, gromoxMailq=gromoxMailq)
