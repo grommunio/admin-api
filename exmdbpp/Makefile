@@ -8,7 +8,7 @@ OBJ=$(SRC:.cpp=.o)
 PYEXMDB_DIR=pyexmdb
 
 INCLUDE=-I include
-PYTHON_INCLUDE=-I/usr/include/python3.6 -I/usr/include/python3.6m
+PYTHON_INCLUDE=-I$(shell python3 -c 'import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))')
 
 .PHONY: clean all libexmdbpp exmdbpp-python doc
 
