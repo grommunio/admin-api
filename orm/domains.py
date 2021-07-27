@@ -176,12 +176,23 @@ class Domains(DataModel, DB.Base):
         DB.session.delete(self)
 
     @staticmethod
-    def create(props, createRole=True, *args, **kwargs):
+    def reloadServices(*services):
         import logging
+        from tools.systemd import Systemd, dbus
+        systemd = Systemd(system=True)
+        for service in services:
+            try:
+                result = systemd.reloadService(service)
+                if result != "done":
+                    logging.warning("Failed to reload {}: {}".format(service, result))
+            except dbus.DBusException as err:
+                logging.warning("Failed to reload {}: {}".format(service, " - ".join(str(arg) for arg in err.args)))
+
+    @staticmethod
+    def create(props, createRole=True, *args, **kwargs):
         from .roles import AdminRoles
         from tools.storage import DomainSetup
         from tools.misc import AutoClean
-        from tools.systemd import Systemd, dbus
         error = Domains.checkCreateParams(props)
         if error is not None:
             return error, 400
@@ -198,13 +209,7 @@ class Domains(DataModel, DB.Base):
                 if not ds.success:
                     return "Error during domain setup: "+ds.error, ds.errorCode
                 DB.session.commit()
-            try:
-                systemd = Systemd(system=True)
-                result = systemd.reloadService("gromox-adaptor.service")
-                if result != "done":
-                    logging.warning("Failed to reload gromox-adaptor.service: "+result)
-            except dbus.DBusException as err:
-                logging.warning("Failed to reload gromox-adaptor.service: "+" - ".join(str(arg) for arg in err.args))
+            Domains.reloadServices("gromox-adaptor.service", "gromox-delivery.service", "gromox-smtp.service")
             domainAdminRoleName = "Domain Admin ({})".format(domain.domainname)
             if createRole and AdminRoles.query.filter(AdminRoles.name == domainAdminRoleName).count() == 0:
                 DB.session.add(AdminRoles({"name": domainAdminRoleName,
