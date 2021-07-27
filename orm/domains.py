@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
-from . import DB, OptionalC
+from . import DB, OptionalC, NotifyTable
 from tools import formats
 from tools.DataModel import DataModel, Id, Text, Int, Date
 from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
@@ -29,7 +29,7 @@ class Orgs(DataModel, DB.Base):
     _dictmapping_ = ((Id(), Text("name", flags="patch")), (Text("description", flags="patch"),))
 
 
-class Domains(DataModel, DB.Base):
+class Domains(DataModel, DB.Base, NotifyTable):
     class DomainName(TypeDecorator):
         """Custom column type to allow comparisons to work with unicode names."""
         impl = VARCHAR
@@ -176,19 +176,6 @@ class Domains(DataModel, DB.Base):
         DB.session.delete(self)
 
     @staticmethod
-    def reloadServices(*services):
-        import logging
-        from tools.systemd import Systemd, dbus
-        systemd = Systemd(system=True)
-        for service in services:
-            try:
-                result = systemd.reloadService(service)
-                if result != "done":
-                    logging.warning("Failed to reload {}: {}".format(service, result))
-            except dbus.DBusException as err:
-                logging.warning("Failed to reload {}: {}".format(service, " - ".join(str(arg) for arg in err.args)))
-
-    @staticmethod
     def create(props, createRole=True, *args, **kwargs):
         from .roles import AdminRoles
         from tools.storage import DomainSetup
@@ -209,7 +196,6 @@ class Domains(DataModel, DB.Base):
                 if not ds.success:
                     return "Error during domain setup: "+ds.error, ds.errorCode
                 DB.session.commit()
-            Domains.reloadServices("gromox-adaptor.service", "gromox-delivery.service", "gromox-smtp.service")
             domainAdminRoleName = "Domain Admin ({})".format(domain.domainname)
             if createRole and AdminRoles.query.filter(AdminRoles.name == domainAdminRoleName).count() == 0:
                 DB.session.add(AdminRoles({"name": domainAdminRoleName,
@@ -219,3 +205,12 @@ class Domains(DataModel, DB.Base):
             return domain, 201
         except IntegrityError as err:
             return "Object violates database constraints ({})".format(err.orig.args[1]), 400
+
+    @classmethod
+    def _commit(cls, *args, **kwargs):
+        from tools.systemd import Systemd
+        Systemd.fafReload("gromox-adaptor.service", "gromox-delivery.service", "gromox-smtp.service", "gromox-http.service",
+                          system=True)
+
+
+Domains.NTregister()

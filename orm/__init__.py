@@ -4,7 +4,7 @@
 
 __all__ = ["domains", "misc", "users", "ext"]
 
-from sqlalchemy import create_engine, select, text
+from sqlalchemy import create_engine, event, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker, class_mapper, Query, column_property
@@ -214,3 +214,44 @@ def OptionalC(version, default, column):
         Column definition to return if version check passes
     """
     return column if DB.minVersion(version) else column_property(select([text(default)]).as_scalar())
+
+
+
+class NotifyTable:
+    """Helper class tracking inserts and deletes.
+
+    Automatically calls derived classes `_commit` method to react accordingly"""
+    _changed = False
+    _active = True
+
+    @classmethod
+    def NTtouch(cls, *args, **kwargs):
+        """Mark table as changed."""
+        cls._changed = True
+
+    @classmethod
+    def NTclear(cls, *args, **kwargs):
+        """Mark table as unchanged."""
+        cls._changed = False
+
+    @classmethod
+    def NTcommit(cls, *args, **kwargs):
+        """Call `_commit` if tbale was changed and tracking is active."""
+        if cls._active and cls._changed and hasattr(cls, "_commit"):
+            cls._commit(*args, **kwargs)
+            cls._changed = False
+
+    @classmethod
+    def NTregister(cls):
+        """Register SQLAlchemy event handlers."""
+        event.listen(cls, "after_delete", cls.NTtouch)
+        event.listen(cls, "after_insert", cls.NTtouch)
+        event.listen(DB.session, "after_commit", cls.NTcommit)
+        event.listen(DB.session, "after_rollback", cls.NTclear)
+
+    @classmethod
+    def NTactive(cls, state, clear=False):
+        """(De-)activate tracking, optionally clearing state."""
+        cls._active = state
+        if clear:
+            cls.NTclear()

@@ -55,10 +55,12 @@ def ldapDownsyncDomains(domains):
         Domain objects providing ID and domainname. If None, synchronize all domains.
     """
     from orm.domains import Domains
-    from orm.users import Users
+    from orm.users import Users, Aliases
     domainFilters = () if domains is None else (Domains.ID.in_(domain.ID for domain in domains),)
     if not ldap.LDAP_available:
         return jsonify(message="LDAP is not available"), 503
+    Users.NTactive(False)
+    Aliases.NTactive(False)
     users = Users.query.filter(Users.externID != None, *domainFilters).all()
     syncStatus = []
     for user in users:
@@ -116,6 +118,9 @@ def ldapDownsyncDomains(domains):
                 API.logger.error(traceback.format_exc())
                 DB.session.rollback()
                 syncStatus.append({"username": candidate.email, "code": 503, "message": "Database error"})
+    Users.NTactive(False)
+    Aliases.NTactive(False)
+    Users.NTcommit()
     return jsonify(data=syncStatus)
 
 

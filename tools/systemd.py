@@ -296,3 +296,17 @@ class Systemd:
         while cls.eventThread.is_alive():
             pass
         cls.eventLoop = cls.eventThread = None
+
+    @staticmethod
+    def fafReload(*services, **sysdArgs):
+        import logging
+        sysd = Systemd(**sysdArgs)
+        results = []
+        for service in services:
+            try:
+                results.append(sysd._addQuery(sysd.manager.ReloadUnit(service, "replace")))
+            except dbus.DBusException as err:
+                logging.warning("Failed to reload {}: {}".format(service, " - ".join(str(arg) for arg in err.args)))
+        for result in results:
+            if str(result.get()) != "done":
+                logging.warning("Failed to reload {}: {}".format(service, result))

@@ -145,7 +145,6 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
         return ERR_DB
     from orm.domains import Domains
     from orm.users import Users
-    from orm import roles
     from tools.DataModel import MismatchROError, InvalidAttributeError
 
     if "@" not in candidate.email:
@@ -186,13 +185,13 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
     if userdata is None:
         cli.print(cli.col("Error retrieving user", "red"))
         return ERR_NO_USER
-    result, code = Users.create(userdata, reloadGromoxHttp=False)
+    result, code = Users.create(userdata, reloadGromoxHttp=False, externID=candidate.ID)
     if code != 201:
         cli.print(cli.col("Failed to create user: "+result, "red"))
         return ERR_COMMIT
     cli.print("User '{}' created with ID {}.".format(cli.col(result.username, attrs=["bold"]), cli.col(result.ID, attrs=["bold"])))
     if reloadHttp:
-        _reloadGromoxHttp(cli)
+        Users.NTcommit()
     return SUCCESS
 
 
@@ -200,6 +199,7 @@ def cliLdapDownsync(args):
     cli = args._cli
     cli.require("DB", "LDAP")
     from tools import ldap
+    from orm.users import Aliases, Users
     error = False
     if args.user is not None and len(args.user) != 0:
         for expr in args.user:
@@ -221,11 +221,15 @@ def cliLdapDownsync(args):
             return SUCCESS
         cli.print("Synchronizing {} user{}...".format(len(candidates), "" if len(candidates) == 1 else "s"))
         error = False
+        Aliases.NTactive(False)
+        Users.NTactive(False)
         for candidate in candidates:
             result = _downsyncUser(cli, candidate, args.yes, args.auto, args.force, False)
             error = error or result != SUCCESS
             if result == ERR_USR_ABRT:
                 break
+        Aliases.NTactive(True, True)
+        Users.NTactive(True, True)
         _reloadGromoxHttp(cli)
         return ERR_GENERIC if error else SUCCESS
     from orm.users import Users
@@ -241,11 +245,16 @@ def cliLdapDownsync(args):
         return SUCCESS
     error = False
     cli.print("Synchronizing {} user{}...".format(len(candidates), "" if len(candidates) == 1 else "s"))
+    Aliases.NTactive(False)
+    Users.NTactive(False)
     for candidate in candidates:
         result = _downsyncUser(cli, candidate, args.yes, args.auto, args.force, False)
         error = error or result != SUCCESS
         if result == ERR_USR_ABRT:
             break
+    Aliases.NTactive(True, True)
+    Users.NTactive(True, True)
+    _reloadGromoxHttp(cli)
     return ERR_GENERIC if error else SUCCESS
 
 
@@ -470,4 +479,3 @@ def cliLdap(args):
         return args._handle(args) or 0
     else:
         return cliLdapInfo(args)
-

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020-2021 grommunio GmbH
 
-from . import DB, OptionalC, OptionalNC
+from . import DB, OptionalC, OptionalNC, NotifyTable
 from tools import formats
 from tools.constants import PropTags, PropTypes
 from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp, Bool, Date
@@ -23,7 +23,7 @@ import time
 from datetime import datetime
 
 
-class Users(DataModel, DB.Base):
+class Users(DataModel, DB.Base, NotifyTable):
     __tablename__ = "users"
 
     ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
@@ -334,8 +334,7 @@ class Users(DataModel, DB.Base):
         DB.session.delete(self)
 
     @staticmethod
-    def create(props, reloadGromoxHttp=True, *args, **kwargs):
-        import logging
+    def create(props, reloadGromoxHttp=True, externID=None, *args, **kwargs):
         from tools.misc import AutoClean
         from tools.storage import UserSetup
         error = Users.checkCreateParams(props)
@@ -343,6 +342,7 @@ class Users(DataModel, DB.Base):
             return error, 400
         try:
             user = Users(props)
+            user.externID = externID
         except (InvalidAttributeError, MismatchROError, MissingRequiredAttributeError, ValueError) as err:
             return err.args[0], 400
         try:
@@ -354,18 +354,14 @@ class Users(DataModel, DB.Base):
                 if not us.success:
                     return "Error during user setup: "+us.error, us.errorCode
                 DB.session.commit()
-                if reloadGromoxHttp:
-                    try:
-                        from tools.systemd import Systemd, dbus
-                        systemd = Systemd(system=True)
-                        result = systemd.reloadService("gromox-http.service")
-                        if result != "done":
-                            logging.warning("Failed to reload gromox-http.service: "+result)
-                    except dbus.DBusException as err:
-                        logging.warning("Failed to reload gromox-http.service: "+" - ".join(str(arg) for arg in err.args))
                 return user, 201
         except IntegrityError as err:
             return "Object violates database constraints "+err.orig.args[1], 400
+
+    @classmethod
+    def _commit(*args, **kwargs):
+        from tools.systemd import Systemd
+        Systemd.fafReload("gromox-http.service", system=True)
 
 
 class UserProperties(DataModel, DB.Base):
@@ -434,7 +430,7 @@ class UserProperties(DataModel, DB.Base):
             self._propvalstr = str(value)
 
 
-class Aliases(DataModel, DB.Base):
+class Aliases(DataModel, DB.Base, NotifyTable):
     __tablename__ = "aliases"
 
     aliasname = Column("aliasname", VARCHAR(128), nullable=False, unique=True, primary_key=True)
@@ -457,6 +453,11 @@ class Aliases(DataModel, DB.Base):
             raise ValueError("'{}' is not a valid email address".format(aliasname))
         self.aliasname = aliasname
         return self
+
+    @classmethod
+    def _commit(*args, **kwargs):
+        from tools.systemd import Systemd
+        Systemd.fafReload("gromox-http.service", system=True)
 
 
 class Fetchmail(DataModel, DB.Base):
@@ -541,3 +542,6 @@ class Fetchmail(DataModel, DB.Base):
             .format(self.srcServer, self.protocol, self.srcUser, srcFolder, self.srcPassword, self.mailbox, fetchoptions)
 
 from . import roles
+
+Users.NTregister()
+Aliases.NTregister()
