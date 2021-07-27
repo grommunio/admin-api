@@ -205,7 +205,8 @@ class PermissionBase:
         """
         return True
 
-    def capabilities(self):
+    @classmethod
+    def capabilities(cls):
         """Get a set of capabilities provided by this permission.
 
         Returns
@@ -234,6 +235,8 @@ class SystemAdminPermission:
 
     Permits every action by default.
     """
+
+    __capcache = None
 
     def __init__(self, *args, **kwargs):
         """Initialize permission.
@@ -266,15 +269,20 @@ class SystemAdminPermission:
         """Return string representation."""
         return "SystemAdminPermission()"
 
-    def capabilities(self):
+    @classmethod
+    def capabilities(cls):
         """Get a set of capabilities provided by this permission.
 
         Returns
         -------
         set
-            Set containing "SystemAdmin" capability.
+            Set containing all known capabilities.
         """
-        return {"SystemAdmin"}
+        if cls.__capcache is None:
+            cls.__capcache = {"SystemAdminWrite"}
+            for permission in Permissions.preg.values():
+                cls.__capcache |= permission.capabilities()
+        return cls.__capcache
 
 
 @Permissions.register("DomainAdminRO")
@@ -323,7 +331,8 @@ class DomainAdminROPermission(PermissionBase):
         """Return string representation."""
         return "DomainAdminROPermission({})".format(repr(self.__domain))
 
-    def capabilities(self):
+    @classmethod
+    def capabilities(cls):
         """Get a set of capabilities provided by this permission.
 
         Returns
@@ -371,7 +380,8 @@ class DomainAdminPermission(DomainAdminROPermission):
         """Return string representation."""
         return "DomainAdminPermission({})".format(repr(self.domainID))
 
-    def capabilities(self):
+    @classmethod
+    def capabilities(cls):
         """Get a set of capabilities provided by this permission.
 
         Returns
@@ -405,7 +415,8 @@ class SystemAdminROPermission(DomainAdminROPermission):
         """Return string representation."""
         return "SystemAdminROPermission()"
 
-    def capabilities(self):
+    @classmethod
+    def capabilities(cls):
         """Get a set of capabilities provided by the permission.
 
         Returns
@@ -484,7 +495,8 @@ class OrgAdminPermission(PermissionBase):
         """Return string representation."""
         return "OrgAdminPermission({})".format(repr(self.__org))
 
-    def capabilities(self):
+    @classmethod
+    def capabilities(cls):
         """Get a set of capabilities provided by this permission.
 
         Returns
@@ -504,10 +516,10 @@ class OrgAdminPermission(PermissionBase):
 class DomainPurgePermission(PermissionBase):
     """Permission to purge domains.
 
-    Does not grant permission to delete a domain on its own an is only effective if combined with an OrgAdmin permission.
+    Does not grant permission to delete a domain on its own and is only effective if combined with an OrgAdmin permission.
     """
-
-    def capabilities(self):
+    @classmethod
+    def capabilities(cls):
         """Get a set of capabilities provided by this permission.
 
         Returns
