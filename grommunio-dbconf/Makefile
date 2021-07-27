@@ -6,4 +6,4 @@ grommunio-dbconf: grommunio-dbconf.cpp
 	$(CPP) grommunio-dbconf.cpp -o grommunio-dbconf -lmysqlclient
 
 clean:
-	rm grommunio-dbconf
+	rm -f grommunio-dbconf
