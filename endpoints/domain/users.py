@@ -14,6 +14,7 @@ from sqlalchemy.orm import aliased
 
 from .. import defaultListHandler, defaultObjectHandler
 
+from tools import formats
 from tools.config import Config
 from tools.constants import PropTags, PropTypes, ExchangeErrors, ExmdbCodes
 from tools.misc import createMapping, loadPSO
@@ -299,6 +300,9 @@ def setUserDelegates(domainID, userID):
     data = request.get_json(silent=True)
     if not isinstance(data, list):
         return jsonify(message="Invalid or missing data"), 400
+    for entry in data:
+        if not formats.email.match(entry):
+            return jsonify(message="Invalid delegate e-mail '{}'".format(entry))
     from orm.users import Users
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
     if user is None:
