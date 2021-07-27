@@ -22,6 +22,7 @@ from tools.pyexmdb import pyexmdb
 from tools.rop import nxTime
 from tools.storage import setDirectoryOwner, setDirectoryPermission
 
+import json
 import shutil
 
 from orm import DB
@@ -233,10 +234,21 @@ def setUserStoreProps(domainID, userID):
         return jsonify(message="exmdb query failed: "+err.args[0]), 500
 
 
+def decodeSyncState(data, username):
+    data = b64decode(data)
+    if len(data) >= 2 and data[1] == ord(":"):
+        API.logger.warning("Loading PHP serialize objects is deprecated")
+        return loadPSO(data, decode_strings=True)["StateObject"][1]["devices"][username]["ASDevice"][1]
+    elif len(data) >= 1 and data[0] == ord("{"):
+        return json.loads(data)["data"]["devices"][username]["data"]
+    return None
+
+
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync", methods=["GET"])
 @secure(requireDB=True)
 def getUserSyncData(domainID, userID):
     checkPermissions(DomainAdminROPermission(domainID))
+    props = ("deviceid", "devicetype", "useragent", "deviceuser", "firstsynctime", "lastupdatetime", "asversion")
     from orm.users import Users
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
     if user is None:
@@ -246,11 +258,11 @@ def getUserSyncData(domainID, userID):
         options = Config["options"]
         client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], user.maildir, True)
         data = client.getSyncData(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState")).asdict()
-        props = ("deviceid", "devicetype", "useragent", "deviceuser", "firstsynctime", "lastupdatetime", "asversion")
         for device, state in data.items():
             try:
-                decoded = loadPSO(b64decode(state), decode_strings=True)
-                stateobj = decoded["StateObject"][1]["devices"][user.username]["ASDevice"][1]
+                stateobj = decodeSyncState(state, user.username)
+                if stateobj is None:
+                    continue
                 syncstate = {prop: stateobj[prop] for prop in props}
                 syncstate["foldersSyncable"] = len(stateobj["contentdata"])
                 syncstate["foldersSynced"] = len([folder for folder in stateobj["contentdata"].values() if 1 in folder])
