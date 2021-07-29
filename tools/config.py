@@ -120,20 +120,26 @@ def _loadConfig_():
     which are recursively merged into the config.
     """
     config = _defaultConfig_
+    errors = []
     try:
         with open("config.yaml", "r") as file:
             _recursiveMerge_(config, yaml.load(file, Loader=yaml.SafeLoader))
         if "confdir" in config:
             configFiles = sorted([file.path for file in scandir(config["confdir"]) if file.name.endswith(".yaml")])
             for configFile in configFiles:
-                with open(configFile) as file:
-                    confd = yaml.load(file, Loader=yaml.SafeLoader)
-                if confd is not None:
-                    _recursiveMerge_(config, confd)
-    except FileNotFoundError:
-        pass
+                try:
+                    with open(configFile) as file:
+                        confd = yaml.load(file, Loader=yaml.SafeLoader)
+                    if confd is not None:
+                        _recursiveMerge_(config, confd)
+                except Exception as err:
+                    errors.append((configFile, err))
+    except Exception as err:
+        errors.append(("config.yaml", err))
     if "logging" in config:
         logging.config.dictConfig(config["logging"])
+    for error in errors:
+        logging.error("Failed to load '{}': {}".format(error[0], " - ".join(str(arg) for arg in error[1].args)))
     return config
 
 
