@@ -208,9 +208,9 @@ class Domains(DataModel, DB.Base, NotifyTable):
 
     @classmethod
     def _commit(cls, *args, **kwargs):
-        from tools.systemd import Systemd
-        Systemd.fafReload("gromox-adaptor.service", "gromox-delivery.service", "gromox-smtp.service", "gromox-http.service",
-                          system=True)
+        from tools.systemd2 import Systemd
+        Systemd(system=True)\
+            .reloadService("gromox-adaptor.service", "gromox-delivery.service", "gromox-smtp.service", "gromox-http.service")
 
 
 Domains.NTregister()

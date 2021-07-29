@@ -221,25 +221,25 @@ class NotifyTable:
     """Helper class tracking inserts and deletes.
 
     Automatically calls derived classes `_commit` method to react accordingly"""
-    _changed = False
-    _active = True
+    __changed = False
+    __active = True
 
     @classmethod
     def NTtouch(cls, *args, **kwargs):
         """Mark table as changed."""
-        cls._changed = True
+        cls.__changed = True
 
     @classmethod
     def NTclear(cls, *args, **kwargs):
         """Mark table as unchanged."""
-        cls._changed = False
+        cls.__changed = False
 
     @classmethod
     def NTcommit(cls, *args, **kwargs):
         """Call `_commit` if tbale was changed and tracking is active."""
-        if cls._active and cls._changed and hasattr(cls, "_commit"):
+        if cls.__active and cls.__changed and hasattr(cls, "_commit"):
             cls._commit(*args, **kwargs)
-            cls._changed = False
+            cls.__changed = False
 
     @classmethod
     def NTregister(cls):
@@ -252,6 +252,6 @@ class NotifyTable:
     @classmethod
     def NTactive(cls, state, clear=False):
         """(De-)activate tracking, optionally clearing state."""
-        cls._active = state
+        cls.__active = state
         if clear:
             cls.NTclear()

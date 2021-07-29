@@ -10,7 +10,7 @@ import logging
 
 from .config import Config
 from .misc import setDirectoryOwner, setDirectoryPermission
-from .systemd import Systemd
+from .systemd2 import Systemd
 
 LDAP = {}
 AUTHMGR = {}
@@ -58,14 +58,10 @@ def _addIfDef(dc, d, sc, s, all=False, type=None):
 
 
 def _reloadServices(*services):
-    sysd = Systemd(system=True)
     for service in services:
-        try:
-            res = sysd.tryReloadRestartService(service)
-            if res != "done":
-                logging.warn("Failed to reload/restart '{}': {}".format(service, res))
-        except dbus.DBusException as err:
-            logging.warn("Failed to reload/restart '{}': {}".format(service, " - ".join(str(arg) for arg in err.args)))
+        _, msg = Systemd(system=True).tryReloadRestartService(service)
+        if msg:
+            logging.warn("Failed to reload/restart '{}': {}".format(service, msg))
 
 
 ###############################################################################

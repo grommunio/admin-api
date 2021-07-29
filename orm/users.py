@@ -360,8 +360,8 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @classmethod
     def _commit(*args, **kwargs):
-        from tools.systemd import Systemd
-        Systemd.fafReload("gromox-http.service", system=True)
+        from tools.systemd2 import Systemd
+        Systemd(system=True).reloadService("gromox-http.service")
 
 
 class UserProperties(DataModel, DB.Base):
@@ -456,8 +456,8 @@ class Aliases(DataModel, DB.Base, NotifyTable):
 
     @classmethod
     def _commit(*args, **kwargs):
-        from tools.systemd import Systemd
-        Systemd.fafReload("gromox-http.service", system=True)
+        from tools.systemd2 import Systemd
+        Systemd(system=True).reloadService("gromox-http.service")
 
 
 class Fetchmail(DataModel, DB.Base):

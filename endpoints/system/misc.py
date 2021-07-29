@@ -11,7 +11,7 @@ from cli import Cli
 from tools.config import Config
 from tools.license import getLicense, updateCertificate
 from tools.permissions import SystemAdminPermission, SystemAdminROPermission
-from tools.systemd import Systemd
+from tools.systemd2 import Systemd
 
 import json
 import os
@@ -23,7 +23,6 @@ import subprocess
 import time
 
 from datetime import datetime
-from dbus import DBusException
 from flask import jsonify, make_response, request
 from io import StringIO
 
@@ -63,20 +62,15 @@ def getDashboard():
 @secure()
 def getDashboardServices():
     checkPermissions(SystemAdminROPermission())
-    if len(Config["options"]["dashboard"]["services"]) == 0:
+    known = Config["options"]["dashboard"]["services"]
+    if len(known) == 0:
         return jsonify(services=[])
-    sysd = Systemd(system=True)
-    services = []
-    for service in Config["options"]["dashboard"]["services"]:
-        try:
-            unit = sysd.getService(service["unit"])
-        except DBusException as err:
-            API.logger.error("Could not retrieve info about '{}': {}".format(service["unit"], err.args[0]))
-            unit = {"state": "error", "substate": "dbus error", "description": None, "since": None}
-        unit["name"] = service.get("name", service["unit"].replace(".service", ""))
-        unit["unit"] = service["unit"]
-        services.append(unit)
-    return jsonify(services=services)
+    units = Systemd(system=True).getServices(*(service["unit"] for service in known))
+    for service in known:
+        if service["unit"] not in units:
+            continue
+        units[service["unit"]]["name"] = service.get("name", service["unit"].replace(".service", ""))
+    return jsonify(services=list(units.values()))
 
 
 @API.route(api.BaseRoute+"/system/dashboard/services/<unit>", methods=["GET"])
@@ -88,12 +82,7 @@ def getDashboardService(unit):
             break
     else:
         return jsonify(message="Unknown unit '{}'".format(unit)), 400
-    sysd = Systemd(system=True)
-    try:
-        unit = sysd.getService(service["unit"])
-    except DBusException as err:
-        API.logger.error("Could not retrieve info about '{}': {}".format(service["unit"], err.args[0]))
-        unit = {"state": "error", "substate": "dbus error", "description": None, "since": None}
+    unit = Systemd(system=True).getServices(service["unit"])[service["unit"]]
     unit["name"] = service.get("name", service["unit"].replace(".service", ""))
     unit["unit"] = service["unit"]
     return jsonify(unit)
@@ -103,29 +92,12 @@ def getDashboardService(unit):
 @secure()
 def signalDashboardService(unit, action):
     checkPermissions(SystemAdminPermission())
-    if action == "start":
-        command = Systemd.startService
-    elif action == "stop":
-        command = Systemd.stopService
-    elif action == "restart":
-        command = Systemd.restartService
-    elif action == "reload":
-        command = Systemd.reloadService
-    elif action == "enable":
-        command = Systemd.enableService
-    elif action == "disable":
-        command = Systemd.disableService
-    else:
+    if action not in ("start", "stop", "restart", "reload", "enable", "disable"):
         return jsonify(message="Invalid action"), 400
     if unit not in (service["unit"] for service in Config["options"]["dashboard"]["services"]):
         return jsonify(message="Unknown unit '{}'".format(unit)), 400
-    sysd = Systemd(system=True)
-    try:
-        result = command(sysd, unit)
-    except DBusException as exc:
-        errMsg = exc.args[0] if len(exc.args) > 0 else "Unknown "
-        return jsonify(message="Could not {} unit '{}': {}".format(action, unit, errMsg)), 500
-    return jsonify(message=result), 201 if result == "done" or action in ("enable", "disable") else 500
+    _, msg = Systemd(system=True).run(action, unit)
+    return jsonify(message=msg or "Success"), 201 if msg else 500
 
 
 def dumpLicense():

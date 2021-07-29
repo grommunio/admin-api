@@ -61,16 +61,11 @@ def _getl(cli, prompt="", defaults=[]):
 
 
 def _reloadGromoxHttp(cli):
-    from tools.systemd import Systemd
-    from dbus import DBusException
-    try:
-        sysd = Systemd(system=True)
-        res = sysd.reloadService("gromox-http.service")
-        if res != "done":
-            cli.print(cli.col("Failed to reload gromox-http: "+res, "yellow"))
-    except DBusException as err:
-        cli.print(cli.col("Failed to reload gromox-http.service: "+" - ".join(str(arg) for arg in err.args), "yellow"))
-    Systemd.quitLoop()
+    from tools.systemd2 import Systemd
+    sysd = Systemd(system=True)
+    _, msg = sysd.reloadService("gromox-http.service")
+    if msg:
+        cli.print(cli.col("Failed to reload gromox-http: "+msg, "yellow"))
 
 
 def cliLdapInfo(args):
