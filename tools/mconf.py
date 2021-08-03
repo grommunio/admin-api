@@ -17,7 +17,7 @@ AUTHMGR = {}
 
 
 _ldapDepServices = ("gromox-http.service", "gromox-midb.service", "gromox-zcore.service", "gromox-delivery.service",
-                    "gromox-smtp.service", "gromox-imap.service", "gromox-pop3.service")
+                    "gromox-delivery-queue.service", "gromox-imap.service", "gromox-pop3.service")
 
 def _loadConf(path):
     from multidict import MultiDict
