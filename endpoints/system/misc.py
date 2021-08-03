@@ -97,7 +97,7 @@ def signalDashboardService(unit, action):
     if unit not in (service["unit"] for service in Config["options"]["dashboard"]["services"]):
         return jsonify(message="Unknown unit '{}'".format(unit)), 400
     _, msg = Systemd(system=True).run(action, unit)
-    return jsonify(message=msg or "Success"), 201 if msg else 500
+    return jsonify(message=msg or "Success"), 500 if msg else 201
 
 
 def dumpLicense():
