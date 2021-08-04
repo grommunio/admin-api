@@ -24,7 +24,7 @@ class Systemd:
         return "--system" if self.__system else "--user"
 
     def getServices(self, *services):
-        args = ("systemctl", self.__mode, "show",
+        args = ("systemctl", "-q", self.__mode, "show",
                 "--property="+",".join(self.valmap), *services)
         print(args)
         result = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True)
@@ -44,7 +44,7 @@ class Systemd:
 
     def run(self, command, *targets):
         try:
-            result = subprocess.run(("systemctl", self.__mode, command, *targets),
+            result = subprocess.run(("systemctl", "-q", self.__mode, command, *targets),
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
             return result.returncode, result.stdout
         except Exception as err:
