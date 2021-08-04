@@ -14,7 +14,7 @@ from sqlalchemy import Column, func, select
 from sqlalchemy.dialects.mysql import DATE, INTEGER, TEXT, TINYINT, VARCHAR
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import column_property
+from sqlalchemy.orm import column_property, validates
 from sqlalchemy.types import TypeDecorator
 
 from .users import Users
@@ -114,6 +114,24 @@ class Domains(DataModel, DB.Base, NotifyTable):
     @property
     def displayname(self):
         return idna.decode(self._domainname)
+
+    @validates("_syncPolicy")
+    def triggerSyncPolicyUpdate(self, key, value, *args):
+        if value != self._syncPolicy:
+            try:
+                from redis import Redis
+                from tools.config import Config
+                users = [user.username for user in Users.query.with_entities(Users.username).filter(Users.domainID == self.ID)]
+                if len(users) > 0:
+                    sync = Config["sync"]
+                    r = Redis(sync.get("host", "localhost"), sync.get("port", 6379), sync.get("db", 0), sync.get("password"),
+                              decode_responses=True)
+                    r.delete(*users)
+            except Exception as err:
+                import logging
+                logging.warning("Failed to invalidate sync policy cache for domain '{}': {} ({})"
+                                .format(self.domainname, type(err).__name__, " - ".join(str(arg) for arg in err.args)))
+        return value
 
     @staticmethod
     def checkCreateParams(data):

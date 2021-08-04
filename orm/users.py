@@ -292,6 +292,22 @@ class Users(DataModel, DB.Base, NotifyTable):
     def status(self, val):
         self.addressStatus = (self.addressStatus & ~0x30) | (val << 4 & 0x30)
 
+    @validates("_syncPolicy")
+    def triggerSyncPolicyUpdate(self, key, value, *args):
+        if value != self._syncPolicy:
+            try:
+                from redis import Redis
+                from tools.config import Config
+                sync = Config["sync"]
+                r = Redis(sync.get("host", "localhost"), sync.get("port", 6379), sync.get("db", 0), sync.get("password"),
+                          decode_responses=True)
+                r.delete(self.username)
+            except Exception as err:
+                import logging
+                logging.warning("Failed to invalidate sync policy cache for user '{}': {} ({})"
+                                .format(self.username, type(err).__name__, " - ".join(str(arg) for arg in err.args)))
+        return value
+
     @staticmethod
     def count(*filters):
         """Count users.
