@@ -6,8 +6,5 @@ tools/pyexmdb
 
 conf.d/*.yaml
 res/*.pem
-doc/*
-!doc/Makefile
-!doc/rst
 
 __pycache__

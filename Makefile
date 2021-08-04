@@ -1,6 +1,6 @@
 .PHONY: tools/pyexmdb clean grommunio-dbconf
 
-all: tools/pyexmdb grommunio-dbconf man
+all: tools/pyexmdb grommunio-dbconf
 
 tools/pyexmdb:
 	make -C exmdbpp exmdbpp-python
