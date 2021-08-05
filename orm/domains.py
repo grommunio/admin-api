@@ -121,7 +121,8 @@ class Domains(DataModel, DB.Base, NotifyTable):
             try:
                 from redis import Redis
                 from tools.config import Config
-                users = [user.username for user in Users.query.with_entities(Users.username).filter(Users.domainID == self.ID)]
+                users = ["grommunio-sync:policycache-"+user.username
+                         for user in Users.query.with_entities(Users.username).filter(Users.domainID == self.ID)]
                 if len(users) > 0:
                     sync = Config["sync"]
                     r = Redis(sync.get("host", "localhost"), sync.get("port", 6379), sync.get("db", 0), sync.get("password"),

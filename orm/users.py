@@ -301,7 +301,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                 sync = Config["sync"]
                 r = Redis(sync.get("host", "localhost"), sync.get("port", 6379), sync.get("db", 0), sync.get("password"),
                           decode_responses=True)
-                r.delete(self.username)
+                r.delete("grommunio-sync:policycache-"+self.username)
             except Exception as err:
                 import logging
                 logging.warning("Failed to invalidate sync policy cache for user '{}': {} ({})"
