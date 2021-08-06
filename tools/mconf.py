@@ -5,7 +5,6 @@
 Module containing admin Managed CONFigurations
 """
 
-import dbus
 import logging
 
 from .config import Config
