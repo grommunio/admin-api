@@ -97,10 +97,14 @@ def setUserPassword(args):
     elif args.password is not None:
         password = args.password
     else:
-        password = getpass("Password: ")
-        if getpass("Retype password: ") != password:
-            cli.print(cli.col("Passwords do not match, aborting.", "yellow"))
-            return 3
+        try:
+            password = cli.input("Password: ", secret=True)
+            if cli.input("Retype password: ", secret=True) != password:
+                cli.print(cli.col("Passwords do not match, aborting.", "yellow"))
+                return 3
+        except (KeyboardInterrupt, EOFError):
+            cli.print(cli.col("\nAborted.", "yellow"))
+            return 4
     user.password = password
     DB.session.commit()
     cli.print("Password updated")
