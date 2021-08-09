@@ -325,8 +325,7 @@ class Users(DataModel, DB.Base, NotifyTable):
             Number of users
         """
         return Users.query.with_entities(Users.ID)\
-                          .join(UserProperties, (UserProperties.userID == Users.ID) & (UserProperties.tag == 0x39050003))\
-                          .filter(Users.ID != 0, UserProperties._propvalstr == "0", *filters)\
+                          .filter(Users.ID != 0, Users.maildir != "", *filters)\
                           .count()
 
     def delete(self):
