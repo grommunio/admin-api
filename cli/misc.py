@@ -53,37 +53,6 @@ def cliVersion(args):
             cli.print("{}{:+}".format(apiVersion, vdiff))
 
 
-def _cliConfigCheck(args):
-    from tools.config import validate
-    cli = args._cli
-    result = validate()
-    if result is None:
-        cli.print("Configuration schema valid")
-        return 0
-    else:
-        cli.print(cli.col(result, "red"))
-        return 1
-
-
-def _cliConfigDump(args):
-    from tools.config import Config
-    import yaml
-    args._cli.print(yaml.dump(Config))
-
-
-def _setupCliConfigParser(subp: ArgumentParser):
-    sub = subp.add_subparsers()
-    check = sub.add_parser("check", help="Check if configuration is valid")
-    check.set_defaults(_handle=_cliConfigCheck)
-    dump = sub.add_parser("dump", help="Dump configuration to stdout")
-    dump.set_defaults(_handle=_cliConfigDump)
-
-
-@Cli.command("config", _setupCliConfigParser, help="Show or check configuration")
-def cliConfigStub(args):
-    pass
-
-
 def _cliTaginfoCompleter(prefix, **kwargs):
     from tools.constants import PropTags
     PropTags.lookup(None)

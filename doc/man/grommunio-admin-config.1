@@ -4,30 +4,121 @@
 .hy
 .SH Name
 .PP
-grommunio-admin config \[em] Show or check grommunio-admin configuration
+grommunio-admin config \[em] grommunio-admin config introspection
 .SH Synopsis
 .PP
-\f[B]grommunio-admin config\f[R] (\f[I]check\f[R] | \f[I]dump\f[R])
-[\f[I]-h\f[R]]
+\f[B]grommunio-admin config\f[R] \f[I]check\f[R]
+.PD 0
+.P
+.PD
+\f[B]grommunio-admin config\f[R] (\f[I]dump\f[R]|\f[I]get\f[R])
+[\f[I]KEY\f[R]]
+.PD 0
+.P
+.PD
+\f[B]grommunio-admin config\f[R] \f[I]trace\f[R] \f[I][-s]\f[R]
+(\f[I]files\f[R]|\f[I]values\f[R]) [\f[I]KEY\f[R]]
 .SH Commands
 .SS check
 .PP
-Checks the structural validity of the configuration.
+Check the structural validity of the configuration.
 .PD 0
 .P
 .PD
 Does currently not validate the semantic integrity, i.e.
 existence of referenced files, LDAP or database connectivity etc.,
 although this functionality may be added in the future.
-.SS dump
+.SS dump, get
 .PP
-Prints the complete configuration.
+Print the complete configuration.
 .PD 0
 .P
 .PD
 As the grommunio-admin configuration can (and probably will) be
-distributed over multiple files, the dump command provides an easy way
-to see the effective configuration.
+distributed over multiple files, the get command provides an easy way to
+see the effective configuration.
+.PD 0
+.P
+.PD
+The output can be reduced to a single \f[I]KEY\f[R], if specified.
+Sub-levels can be specified in dotted notation
+(e.g.\ \f[C]sync.defaultPolicy\f[R])
+.PD 0
+.P
+.PD
+The \f[I]dump\f[R] command is an alias for \f[I]get\f[R] and remains for
+backward compatibility.
+.SS trace
+.PP
+Trace source of effective configuration.
+.PD 0
+.P
+.PD
+Results can be presented either by file (\f[C]files\f[R]), showing which
+parts of a file are actually used, or by value (\f[C]values\f[R]),
+showing which file each value originates from.
+.PD 0
+.P
+.PD
+Installation of the Python \f[C]termcolor\f[R] package is advised for a
+more readable output.
+See section \f[I]Tracing\f[R] for more information.
+.SH Options
+.TP
+\f[B]\f[CB]KEY\f[B]\f[R]
+Only view specified key.
+.TP
+\f[B]\f[CB]-s\f[B]\f[R], \f[B]\f[CB]--show-history\f[B]\f[R]
+Display more value history (see section \f[I]Tracing\f[R] for more
+information)
+.SH Tracing
+.SS By-File
+.PP
+Print annotated contents of each file.
+.PD 0
+.P
+.PD
+Each line is marked and color coded to show its status.
+The following annotations are used:
+.IP \[bu] 2
+\f[I]+\f[R], green: The value is part of the final configuration
+.IP \[bu] 2
+\f[I]x\f[R], red: The value is overwritten by a later file
+.IP \[bu] 2
+\f[I]*\f[R], yellow: The object or list is extended by a later file
+.IP \[bu] 2
+\f[I]\[ti]\f[R], grey: The value is overwritten with the same value
+.PP
+Additionally, lines overwriting or extending previous entries are
+printed in boldface.
+.PD 0
+.P
+.PD
+When specifying \f[I]--show-history\f[R], each value that is overwritten
+or extended is annotated with the files doing so (each being color coded
+with the effect it has on the value).
+.SS By-Value
+.PP
+Print annotated effective configuration.
+.PD 0
+.P
+.PD
+Each line is annotated with the file it originates from.
+In case of objects and lists, all contributing files are listed.
+.PD 0
+.P
+.PD
+When specifying \f[I]--show-history\f[R], overwritten files containing
+that value are listed as well.
+The effective source file is underlined.
+.PD 0
+.P
+.PD
+For better visualization, color coding is done on a per-file basis: Each
+file is assigned an individual style which is used for its
+contributions.
+Objects and lists originating from multiple files are always shown in
+boldface white.
 .SH See Also
 .PP
 \f[B]grommunio-admin\f[R](1), \f[B]grommunio-admin-dbconf\f[R](1),

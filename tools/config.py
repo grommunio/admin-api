@@ -7,84 +7,85 @@ import logging
 import logging.config
 from os import scandir
 
-_defaultSyncPolicy = {
-  "allowbluetooth": 2,
-  "allowbrowser": 1,
-  "allowcam": 1,
-  "allowconsumeremail": 1,
-  "allowdesktopsync": 1,
-  "allowhtmlemail": 1,
-  "allowinternetsharing": 1,
-  "allowirda": 1,
-  "allowpopimapemail": 1,
-  "allowremotedesk": 1,
-  "allowsimpledevpw": 1,
-  "allowsmimeencalgneg": 2,
-  "allowsmimesoftcerts": 1,
-  "allowstoragecard": 1,
-  "allowtextmessaging": 1,
-  "allowunsignedapps": 1,
-  "allowunsigninstallpacks": 1,
-  "allowwifi": 1,
-  "alphanumpwreq": 0,
-  "approvedapplist": [],
-  "attenabled": 1,
-  "devencenabled": 0,
-  "devpwenabled": 0,
-  "devpwexpiration": 0,
-  "devpwhistory": 0,
-  "maxattsize": "",
-  "maxcalagefilter": 0,
-  "maxdevpwfailedattempts": 8,
-  "maxemailagefilter": 0,
-  "maxemailbodytruncsize": -1,
-  "maxemailhtmlbodytruncsize": -1,
-  "maxinacttimedevlock": 900,
-  "mindevcomplexchars": 3,
-  "mindevpwlenngth": 4,
-  "pwrecoveryenabled": 0,
-  "reqdevenc": 0,
-  "reqencsmimealgorithm": 0,
-  "reqencsmimemessages": 0,
-  "reqmansyncroam": 0,
-  "reqsignedsmimealgorithm": 0,
-  "reqsignedsmimemessages": 0,
-  "unapprovedinromapplist": []
-}
-
-_defaultConfig_ = {"openapi": {
-                     "validateRequest": True,
-                     "validateResponse": True
-                   },
-                   "options": {
-                     "disableDB": False,
-                     "dataPath": "/usr/share/grommunio/common",
-                     "propnames": "propnames.txt",
-                     "portrait": "admin/api/portrait.jpg",
-                     "domainStoreRatio": 10,
-                     "domainPrefix": "/d-data/",
-                     "userPrefix": "/u-data/",
-                     "exmdbHost": "::1",
-                     "exmdbPort": "5000",
-                     "domainStorageLevels": 1,
-                     "userStorageLevels": 2,
-                     "domainAcceleratedStorage": None,
-                     "userAcceleratedStorage": None,
-                     "dashboard": {
-                       "services": []
-                     }
-                   },
-                   "security": {
-                     "jwtPrivateKeyFile": "res/jwt-privkey.pem",
-                     "jwtPublicKeyFile": "res/jwt-pubkey.pem"
-                   },
-                   "mconf": {},
-                   "logs": {},
-                   "sync": {
-                     "defaultPolicy": _defaultSyncPolicy,
-                     "policyHosts": ["127.0.0.1", "localhost"]
-                     },
-                   }
+def _defaultConfig():
+    _defaultSyncPolicy = {
+      "allowbluetooth": 2,
+      "allowbrowser": 1,
+      "allowcam": 1,
+      "allowconsumeremail": 1,
+      "allowdesktopsync": 1,
+      "allowhtmlemail": 1,
+      "allowinternetsharing": 1,
+      "allowirda": 1,
+      "allowpopimapemail": 1,
+      "allowremotedesk": 1,
+      "allowsimpledevpw": 1,
+      "allowsmimeencalgneg": 2,
+      "allowsmimesoftcerts": 1,
+      "allowstoragecard": 1,
+      "allowtextmessaging": 1,
+      "allowunsignedapps": 1,
+      "allowunsigninstallpacks": 1,
+      "allowwifi": 1,
+      "alphanumpwreq": 0,
+      "approvedapplist": [],
+      "attenabled": 1,
+      "devencenabled": 0,
+      "devpwenabled": 0,
+      "devpwexpiration": 0,
+      "devpwhistory": 0,
+      "maxattsize": "",
+      "maxcalagefilter": 0,
+      "maxdevpwfailedattempts": 8,
+      "maxemailagefilter": 0,
+      "maxemailbodytruncsize": -1,
+      "maxemailhtmlbodytruncsize": -1,
+      "maxinacttimedevlock": 900,
+      "mindevcomplexchars": 3,
+      "mindevpwlenngth": 4,
+      "pwrecoveryenabled": 0,
+      "reqdevenc": 0,
+      "reqencsmimealgorithm": 0,
+      "reqencsmimemessages": 0,
+      "reqmansyncroam": 0,
+      "reqsignedsmimealgorithm": 0,
+      "reqsignedsmimemessages": 0,
+      "unapprovedinromapplist": []
+    }
+    return {
+        "openapi": {
+            "validateRequest": True,
+            "validateResponse": True
+            },
+        "options": {
+            "disableDB": False,
+            "dataPath": "/usr/share/grommunio-admin-common",
+            "propnames": "propnames.txt",
+            "portrait": "portrait.jpg",
+            "domainStoreRatio": 10,
+            "domainPrefix": "/var/lib/gromox/domain/",
+            "userPrefix": "/var/lib/gromox/user/",
+            "exmdbHost": "::1",
+            "exmdbPort": "5000",
+            "domainStorageLevels": 1,
+            "userStorageLevels": 2,
+            "domainAcceleratedStorage": None,
+            "userAcceleratedStorage": None,
+            "dashboard": {
+                "services": []
+                }
+            },
+        "security": {
+            "jwtPrivateKeyFile": "res/jwt-privkey.pem",
+            "jwtPublicKeyFile": "res/jwt-pubkey.pem"
+            },
+        "mconf": {},
+        "logs": {},
+        "sync": {
+            "defaultPolicy": _defaultSyncPolicy,
+            "policyHosts": ["127.0.0.1", "localhost", "::1"]
+            },
+        }
 
 
 def _recursiveMerge_(dst, add):
@@ -119,7 +120,7 @@ def _loadConfig_():
     the specified directory is searched for further YAML files,
     which are recursively merged into the config.
     """
-    config = _defaultConfig_
+    config = _defaultConfig()
     errors = []
     try:
         with open("config.yaml", "r") as file:

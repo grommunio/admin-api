@@ -10,8 +10,8 @@ grommunio-admin connect — Connect to remote CLI
 Synopsis
 ========
 
-**grommunio-admin connect** [-c COMMAND] [--no-verify] [--redirect-fs
-[--auto-save (local\|remote\|discard\|print)]] [-v] HOST [USER [PASSWORD]]
+**grommunio-admin connect** [*-c COMMAND*] [*--no-verify*] [*--redirect-fs*
+[*--auto-save (local\|remote\|discard\|print)*]] [*-v*] *HOST* [*USER* [*PASSWORD*]]
 
 Description
 ===========
