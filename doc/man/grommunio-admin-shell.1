@@ -7,14 +7,24 @@
 grommunio-admin shell \[em] Start interactive shell
 .SH Synopsis
 .PP
-\f[B]grommunio-admin shell\f[R] [\f[I]-x\f[R]]
+\f[B]grommunio-admin shell\f[R] [\f[I]-d\f[R]] [\f[I]-n\f[R]]
+[\f[I]-x\f[R]]
 .SH Description
 .PP
 The interactive shell mode allows execution of multiple (new line
 separated) commands in a single session.
 Command syntax is identical to the CLI arguments, with addition of the
 \f[I]exit\f[R] command which ends the interactive shell.
+.PP
+If possible, typed history will be saved in
+\f[I]\[ti]/.grommunio-admin.history\f[R].
 .SH Options
+.TP
+\f[B]\f[CB]-d\f[B]\f[R], \f[B]\f[CB]--debug\f[B]\f[R]
+Enable more verbose debug output
+.TP
+\f[B]\f[CB]-n\f[B]\f[R], \f[B]\f[CB]--no-history\f[B]\f[R]
+Disable loading/saving of the typed history
 .TP
 \f[B]\f[CB]-x\f[B]\f[R], \f[B]\f[CB]--exit\f[B]\f[R]
 Exit immediately if a command results in a non-zero exit code

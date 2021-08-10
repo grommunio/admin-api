@@ -281,11 +281,14 @@ def _traceKeys(args):
 def _printByFile(args):
     cli = args._cli
     files, confdir = _traceFiles(args)
-    dispfiles = len([f for f in files if args.key in f[1]])
-    hist = max(f[1][args.key].maxwidth() for f in files if args.key in f[1])+4 if args.show_history and dispfiles else 0
+    files = [f for f in files if args.key in f[1]]
+    if len(files) == 0:
+        cli.print(cli.col("No matching files", "yellow"))
+        return
+    if any(f[0].startswith("$CONFD") for f in files):
+        cli.print("Note: $CONFD evaluates to '{}'\n".format(cli.col(confdir, attrs=["underline"])))
+    hist = max(f[1][args.key].maxwidth() for f in files if args.key in f[1])+4 if args.show_history and len(files) else 0
     for file in files:
-        if args.key not in file[1]:
-            continue
         cli.print("<"+cli.col(file[0], attrs=["bold"])+">")
         file[1][args.key].printFile(args, hist)
         cli.print()
@@ -335,7 +338,7 @@ def _setupCliConfigParser(subp: ArgumentParser):
     trace = sub.add_parser("trace", help="Analyse where effective configuration values are set")
     trace.set_defaults(_handle=cliConfigTrace)
     trace.add_argument("mode", choices=("files", "values"), help="Display trace by file or by key")
-    trace.add_argument("key", nargs="?", help="Only show trace for specific key")
+    trace.add_argument("key", nargs="?", help="Only show trace for specific key").completer = _configKeyspecCompleter
     trace.add_argument("-s", "--show-history", action="store_true", help="Show which files overwrite a value")
 
 

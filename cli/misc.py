@@ -95,6 +95,8 @@ def cliTaginfo(args):
 
 def _setupCliShell(subp: ArgumentParser):
     subp.description = "Start shell to process multiple CLI calls in a single session"
+    subp.add_argument("-d", "--debug", action="store_true", help="Print more information")
+    subp.add_argument("-n", "--no-history", action="store_true", help="Disable shell history")
     subp.add_argument("-x", "--exit", action="store_true", help="Exit on error")
 
 
@@ -105,7 +107,6 @@ def cliShell(args):
         if rlAvail:
             readline.set_completer(cli.complete if state else lambda *args: None)
             readline.set_auto_history(state)
-
 
     if cli.stdin is None:
         cli.print(cli.col("No input available - aborting", "red"))
@@ -123,13 +124,24 @@ def cliShell(args):
             cli.print("Starting remote admin shell. Type exit or press CTRL+D to exit.")
         try:
             import readline
-            import argcomplete
-            completer = argcomplete.CompletionFinder(cli.parser, always_complete_options=False)
             readline.set_completer_delims("")
             readline.parse_and_bind("tab: complete")
-            readline.set_history_length(100)
+            readline.set_history_length(1000)
+            if not args.no_history:
+                try:
+                    import os
+                    readline.read_history_file(os.path.expanduser("~/.grommunio-admin.history"))
+                    if args.debug:
+                        cli.print(cli.col("Loaded {} history entries".format(readline.get_current_history_length()), attrs=["dark"]))
+                except Exception as err:
+                    if args.debug:
+                        cli.print(cli.col("Failed to read history file: "+type(err).__name__+
+                                          " - ".join(str(arg) for arg in err.args), attrs=["dark"]))
             rlAvail = True
-        except:
+        except Exception as err:
+            if args.debug:
+                cli.print(cli.col("Failed to initialize readline: "+type(err).__name__+
+                                  " - ".join(str(arg) for arg in err.args), attrs=["dark"]))
             cli.print("Install readline module to enable autocompletion")
     elif cli.mode == "standalone":
         cli.print(cli.col("WARNING: The CLI is still under development and subject to changes. Be careful when using scripts.\n",
@@ -158,19 +170,28 @@ def cliShell(args):
                     return result
             except SystemExit:
                 pass
-            except AttributeError as err:
-                cli.print(cli.col("Caught AttributeError: "+"-".join(str(arg) for arg in err.args), "blue", attrs=["dark"]))
             except KeyboardInterrupt:
                 cli.print("^C")
                 continue
             except EOFError:
                 raise
             except BaseException as err:
+                if args.debug:
+                    import traceback
+                    cli.print(cli.col(traceback.format_exc(), attrs=["dark"]))
                 cli.print(cli.col("An exception occured ({}): {}".format(type(err).__name__,
-                                                                         "-".join(str(arg) for arg in err.args)),
+                                                                         " - ".join(str(arg) for arg in err.args)),
                                   "red"))
     except EOFError:
         cli.print()
+    if rlAvail and not args.no_history:
+        try:
+            import os
+            readline.write_history_file(os.path.expanduser("~/.grommunio-admin.history"))
+        except Exception as err:
+            if args.debug:
+                cli.print(cli.col("Failed to write history file: "+type(err).__name__+
+                                  " - ".join(str(arg) for arg in err.args), attrs=["dark"]))
 
 
 @Cli.command("shrek")

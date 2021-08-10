@@ -35,7 +35,7 @@ Commands
 config
 ------
 
-Show or check configuration. See *grommunio-admin-config(1)*.
+Configuration introspection. See *grommunio-admin-config(1)*.
 
 connect
 -------
