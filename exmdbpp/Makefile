@@ -30,7 +30,7 @@ $(PYEXMDB_DIR)/pyexmdb_wrap.cxx: pyexmdb.i | $(PYEXMDB_DIR)
 	$(SWIG) -o $(PYEXMDB_DIR)/pyexmdb_wrap.cxx pyexmdb.i
 
 $(PYEXMDB_DIR):
-	mkdir pyexmdb
+	mkdir -p pyexmdb
 
 %.o: %.cpp
 	$(CPP) $(INCLUDE) -c $< -o $@

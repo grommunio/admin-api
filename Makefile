@@ -3,18 +3,18 @@
 all: tools/pyexmdb grommunio-dbconf
 
 tools/pyexmdb:
-	make -C exmdbpp exmdbpp-python
+	${MAKE} -C exmdbpp exmdbpp-python
 	mkdir -p tools/pyexmdb
 	cp exmdbpp/pyexmdb/_pyexmdb.so exmdbpp/pyexmdb/pyexmdb.py tools/pyexmdb
 
 grommunio-dbconf:
-	make -C grommunio-dbconf build
+	${MAKE} -C grommunio-dbconf build
 
 man:
-	make -C doc doc
+	${MAKE} -C doc doc
 
 clean:
 	rm -rf tools/pyexmdb
-	make -C exmdbpp clean
-	make -C grommunio-dbconf clean
-	make -C doc clean
+	${MAKE} -C exmdbpp clean
+	${MAKE} -C grommunio-dbconf clean
+	${MAKE} -C doc clean
