@@ -202,6 +202,12 @@ properties:
         source:
           type: string
           description: Name of the journald unit
+  chat:
+    type: object
+    properties:
+      connection:
+        type: object
+        additionalProperties: true
   sync:
     description: Options for grommunio-sync access
     type: object

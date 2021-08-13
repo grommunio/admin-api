@@ -40,7 +40,6 @@ class MissingRequiredAttributeError(BaseException):
     pass
 
 
-# flags: ref, call, patch
 class DataModel:
     """Central class for data structuring.
 

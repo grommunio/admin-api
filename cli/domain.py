@@ -25,6 +25,7 @@ def _domainQuery(args):
 
 
 def _dumpDomain(cli, domain):
+    import tools.chat  # Prevent output interruptions when loading this module
     displayname = domain.displayname if domain.displayname != domain.domainname else None
     cli.print(cli.col("{} ({}):".format(domain.domainname, domain.ID), attrs=["bold"]))
     cli.print("  ID: "+str(domain.ID))
@@ -35,6 +36,8 @@ def _dumpDomain(cli, domain):
     cli.print("  inactiveUsers: "+str(domain.inactiveUsers))
     cli.print("  maxUser: "+str(domain.maxUser))
     cli.print("  homedir: "+domain.homedir)
+    cli.print("  chatID: "+(domain.chatID or cli.col("(none)", attrs=["dark"]))+
+              (" ("+cli.col("inactive", "red")+")" if domain.chatID and not domain.chat else ""))
     cli.print("  endDay: "+str(domain.endDay))
     cli.print("  title: "+domain.title)
     cli.print("  address: "+domain.address)

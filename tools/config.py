@@ -85,6 +85,9 @@ def _defaultConfig():
             "defaultPolicy": _defaultSyncPolicy,
             "policyHosts": ["127.0.0.1", "localhost", "::1"]
             },
+        "chat": {
+            "connection": {},
+            },
         }
 
 

@@ -96,7 +96,7 @@ def cliTaginfo(args):
 def _setupCliShell(subp: ArgumentParser):
     subp.description = "Start shell to process multiple CLI calls in a single session"
     subp.add_argument("-d", "--debug", action="store_true", help="Print more information")
-    subp.add_argument("-n", "--no-history", action="store_true", help="Disable shell history")
+    subp.add_argument("-n", "--no-history", action="store_true", help="Disable typed history")
     subp.add_argument("-x", "--exit", action="store_true", help="Exit on error")
 
 

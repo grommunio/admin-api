@@ -19,6 +19,7 @@ from sqlalchemy.types import TypeDecorator
 
 from .users import Users
 
+
 class Orgs(DataModel, DB.Base):
     __tablename__ = "orgs"
 
@@ -58,6 +59,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
     tel = Column("tel", VARCHAR(64), nullable=False, server_default="")
     endDay = Column("end_day", DATE, nullable=False, default="3333-03-03")
     domainStatus = Column("domain_status", TINYINT, nullable=False, server_default="0")
+    chatID = OptionalC(79, "NULL", Column("chat_id", VARCHAR(26)))
     _syncPolicy = OptionalC(77, "NULL", Column("sync_policy", TEXT))
 
     activeUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus == 0)).as_scalar())
@@ -74,12 +76,15 @@ class Domains(DataModel, DB.Base, NotifyTable):
                       Text("tel", flags="patch"),
                       Date("endDay", flags="patch"),
                       Int("domainStatus", flags="patch", filter="set")),
-                     ({"attr": "syncPolicy", "flags": "patch"},))
+                     ({"attr": "syncPolicy", "flags": "patch"},
+                      {"attr": "chat", "flags": "patch"}))
 
     NORMAL = 0
     SUSPENDED = 1
     OUTOFDATE = 2
     DELETED = 3
+
+    _team = None
 
     def __init__(self, props: dict, *args, **kwargs):
         if "password" in props:
@@ -110,6 +115,40 @@ class Domains(DataModel, DB.Base, NotifyTable):
         if not formats.domain.match(idn):
             raise ValueError("'{}' is not a valid domain name".format(idn))
         self._domainname = idn
+
+    @property
+    def chat(self):
+        if not self.chatID:
+            return False
+        if self._team is None:
+            from tools import chat
+            self._team = chat.getTeam(self.chatID)
+        return self._team["delete_at"] == 0 if self._team else False
+
+    @chat.setter
+    def chat(self, value):
+        if value == self.chat or not DB.minVersion(79):
+            return
+        from tools import chat
+        import logging
+        if isinstance(value, str):
+            tmp = chat.getTeam(value)
+            if tmp is None:
+                logging.warning("Team not found")
+            self.chatID = value
+            self._team = tmp
+        if self._team:
+            tmp = chat.activateTeam(self, value)
+            if tmp:
+                self._team["delete_at"] = not value
+            err = "Failed to "+("" if value else "de")+"activate team"
+        else:
+            tmp = chat.createTeam(self)
+            if tmp:
+                self._team = tmp
+            err = "Failed to create team"
+        if not tmp:
+            logging.warning(err)
 
     @property
     def displayname(self):

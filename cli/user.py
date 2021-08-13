@@ -27,6 +27,7 @@ def _mkStatus(cli, status):
 
 def _dumpUser(cli, user, indent=0):
     from ldap3.utils.conv import escape_filter_chars
+    import tools.chat  # Prevent output interruptions when loading this module
     for attr in ("ID", "username", "domainID", "maildir", "privilegeBits"):
         v = getattr(user, attr, None)
         cli.print("{}{}: {}".format(" "*indent, attr, v if v is not None else ""))
@@ -34,6 +35,10 @@ def _dumpUser(cli, user, indent=0):
                                                    _mkStatus(cli, user.domainStatus), _mkStatus(cli, user.status)))
     cli.print(" "*indent+"externID: "+(escape_filter_chars(user.externID) if user.externID is not None else
                                        cli.col("(none)", attrs=["dark"])))
+    cli.print(" "*indent+"chatID: "+(user.chatID if user.chatID else cli.col("(none)", attrs=["dark"]))+
+              (" ("+cli.col("inactive", "red")+")" if user.chatID and not user.chat else ""))
+    if user.chat:
+        cli.print(" "*indent+"chatAdmin: "+(cli.col("yes", "yellow") if user.chatAdmin else "no"))
     cli.print(" "*indent+"aliases:"+(cli.col(" (none)", attrs=["dark"]) if len(user.aliases) == 0 else ""))
     for alias in user.aliases:
         cli.print(" "*indent+"  "+alias.aliasname)

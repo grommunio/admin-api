@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.0.1
+  version: 1.1.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3327,6 +3327,9 @@ components:
           readOnly: true
         syncPolicy:
           $ref: '#/components/schemas/syncPolicy'
+        chat:
+          type: boolean
+          description: Whether chat is enabled for this domain
     org:
       type: object
       properties:
@@ -3404,6 +3407,12 @@ components:
             $ref: '#/components/schemas/fetchmailEntry'
         syncPolicy:
           $ref: '#/components/schemas/syncPolicy'
+        chat:
+          type: boolean
+          description: Whether chat is enabled for this user
+        chatAdmin:
+          type: boolean
+          description: Whether this user has grommunio-chat admin permissions
     userInit:
       type: object
       additionalProperties: false
@@ -3451,6 +3460,12 @@ components:
             $ref: '#/components/schemas/fetchmailEntry'
         syncPolicy:
           $ref: '#/components/schemas/syncPolicy'
+        chat:
+          type: boolean
+          description: Whether chat is enabled for this user
+        chatAdmin:
+          type: boolean
+          description: Whether this user has grommunio-chat admin permissions
     userUpdate:
       type: object
       additionalProperties: false
@@ -3497,6 +3512,12 @@ components:
             $ref: '#/components/schemas/fetchmailEntry'
         syncPolicy:
           $ref: '#/components/schemas/syncPolicy'
+        chat:
+          type: boolean
+          description: Whether chat is enabled for this user
+        chatAdmin:
+          type: boolean
+          description: Whether this user has grommunio-chat admin permissions
     publicFolder:
       type: object
       properties:

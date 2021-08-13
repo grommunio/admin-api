@@ -16,6 +16,7 @@ ldap3 = "*"
 argcomplete = "*"
 systemd-python = "*"
 idna = "*"
+mattermostdriver = "*"
 
 [dev-packages]
 

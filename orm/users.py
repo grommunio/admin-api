@@ -34,12 +34,14 @@ class Users(DataModel, DB.Base, NotifyTable):
     addressStatus = Column("address_status", TINYINT, nullable=False, server_default="0")
     privilegeBits = Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     externID = Column("externid", VARBINARY(64))
+    chatID = OptionalC(78, "NULL", Column("chat_id", VARCHAR(26)))
     _syncPolicy = OptionalC(76, "NULL", Column("sync_policy", TEXT))
     _deprecated_maxSize = Column("max_size", INTEGER(10), nullable=False, default=0)
     _deprecated_addressType = Column("address_type", TINYINT, nullable=False, server_default="0")
     _deprecated_subType = Column("sub_type", TINYINT, nullable=False, server_default="0")
     _deprecated_groupID = Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
 
+    domain = relationship("Domains", foreign_keys=domainID, primaryjoin="Users.domainID == Domains.ID")
     roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True,
                               collection_class=attribute_mapped_collection("name"), passive_deletes=True)
@@ -59,8 +61,10 @@ class Users(DataModel, DB.Base, NotifyTable):
                       RefProp("fetchmail", flags="managed, patch", link="ID", qopt=selectinload),
                       RefProp("properties", flags="patch, managed", link="name", flat="val", qopt=selectinload),
                       RefProp("roles", qopt=selectinload),
-                      {"attr": "syncPolicy", "flags": "patch"}),
-                     ({"attr": "password", "flags": "init, hidden"},))
+                      {"attr": "syncPolicy", "flags": "patch"},
+                      {"attr": "chat", "flags": "patch"},
+                      {"attr": "chatAdmin", "flags": "patch"}),
+                     ({"attr": "password", "flags": "init, hidden"}))
 
     POP3_IMAP = 1 << 0
     SMTP = 1 << 1
@@ -86,6 +90,8 @@ class Users(DataModel, DB.Base, NotifyTable):
     SUSPENDED = 1
     OUTOFDATE = 2
     DELETED = 3
+
+    _chatUser = None
 
     @staticmethod
     def checkCreateParams(data):
@@ -144,6 +150,9 @@ class Users(DataModel, DB.Base, NotifyTable):
         displaytype = self.propmap.get("displaytypeex", 0)
         if displaytype in (0, 1, 7, 8):
             self._deprecated_addressType, self._deprecated_subType = self._decodeDisplayType(displaytype)
+        if self.chatID:
+            from tools import chat
+            chat.updateUser(self, False)
 
     @staticmethod
     def _decodeDisplayType(displaytype):
@@ -291,6 +300,65 @@ class Users(DataModel, DB.Base, NotifyTable):
     @status.setter
     def status(self, val):
         self.addressStatus = (self.addressStatus & ~0x30) | (val << 4 & 0x30)
+
+    @property
+    def chat(self):
+        if not self.chatID:
+            return False
+        if self._chatUser is None:
+            from tools import chat
+            self._chatUser = chat.getUser(self.chatID)
+        return self.domain.chat and self._chatUser["delete_at"] == 0 if self._chatUser else False
+
+    @chat.setter
+    def chat(self, value):
+        if value == self.chat or not DB.minVersion(78):
+            return
+        import logging
+        err_prefix = "Could not enable chat for user '{}': ".format(self.username)
+        if not self.domain.chat:
+            logging.warning(err_prefix+"chat is not enabled for domain")
+            return
+        from tools import chat
+        if isinstance(value, str):
+            tmp = chat.getUser(value)
+            if tmp is None:
+                logging.warning(err_prefix+"chat user not found")
+                return
+            self.chatID = value
+            self._chatUser = tmp
+            return
+        if self._chatUser:
+            tmp = chat.activateUser(self, value)
+            if tmp:
+                self._chatUser["delete_at"] = not value
+            err = "Failed to "+("" if value else "de")+"activate chat user"
+        else:
+            tmp = chat.createUser(self)
+            if tmp:
+                self._chatUser = tmp
+            err = err_prefix+"Failed to create user"
+        if tmp is None:
+            logging.warning(err)
+
+    @property
+    def chatAdmin(self):
+        return self.chat and "system_admin" in self._chatUser["roles"].split(" ")
+
+    @chatAdmin.setter
+    def chatAdmin(self, value):
+        if not self.chat or self.chatAdmin == bool(value):
+            return
+        if value:
+            tmpRoles = " ".join(self._chatUser["roles"].split(" ")+["system_admin"])
+        else:
+            tmpRoles = " ".join(role for role in self._chatUser["roles"].split(" ") if role != "system_admin")
+        from tools import chat
+        tmp = chat.setUserRoles(self.chatID, tmpRoles)
+        if tmp is None:
+            import logging
+            logging.warning("Failed to update chat user")
+        self._chatUser["roles"] = tmpRoles
 
     @validates("_syncPolicy")
     def triggerSyncPolicyUpdate(self, key, value, *args):
@@ -556,7 +624,7 @@ class Fetchmail(DataModel, DB.Base):
         return "poll {} with proto {} user {}{} there with password {} is {} here {}\n"\
             .format(self.srcServer, self.protocol, self.srcUser, srcFolder, self.srcPassword, self.mailbox, fetchoptions)
 
-from . import roles
+from . import domains, roles
 
 Users.NTregister()
 Aliases.NTregister()
