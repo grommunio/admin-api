@@ -64,7 +64,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                       {"attr": "syncPolicy", "flags": "patch"},
                       {"attr": "chat", "flags": "patch"},
                       {"attr": "chatAdmin", "flags": "patch"}),
-                     ({"attr": "password", "flags": "init, hidden"}))
+                     ({"attr": "password", "flags": "init, hidden"},))
 
     POP3_IMAP = 1 << 0
     SMTP = 1 << 1
