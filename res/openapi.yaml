@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.1.1
+  version: 1.1.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1841,7 +1841,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: false
               properties:
                 new:
                   type: string
@@ -2391,7 +2390,6 @@ paths:
             schema:
               type: object
               required: [displayname, container, comment]
-              additionalProperties: false
               properties:
                 displayname:
                   type: string
@@ -2457,7 +2455,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: false
               properties:
                 displayname:
                   type: string
@@ -2560,7 +2557,6 @@ paths:
             schema:
               type: object
               required: [username]
-              additionalProperties: false
               properties:
                 username:
                   type: string
@@ -3276,7 +3272,6 @@ components:
       pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,6}$'
     domain:
       type: object
-      additionalProperties: false
       properties:
         ID:
           $ref: '#/components/schemas/ID'
@@ -3355,7 +3350,6 @@ components:
       enum: [0, 1, 2, 3]
     user:
       type: object
-      additionalProperties: false
       properties:
         ID:
           $ref: '#/components/schemas/ID'
@@ -3416,7 +3410,6 @@ components:
           description: Whether this user has grommunio-chat admin permissions
     userInit:
       type: object
-      additionalProperties: false
       properties:
         username:
           type: string
@@ -3469,7 +3462,6 @@ components:
           description: Whether this user has grommunio-chat admin permissions
     userUpdate:
       type: object
-      additionalProperties: false
       properties:
         username:
           type: string
