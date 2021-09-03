@@ -5,18 +5,19 @@
 Module containing admin Managed CONFigurations
 """
 
-import logging
-
 from .config import Config
 from .misc import setDirectoryOwner, setDirectoryPermission
-from .systemd2 import Systemd
+from services import Service
+
+import logging
+logger = logging.getLogger("mconf")
 
 LDAP = {}
 AUTHMGR = {}
 
-
 _ldapDepServices = ("gromox-http.service", "gromox-midb.service", "gromox-zcore.service", "gromox-delivery.service",
                     "gromox-delivery-queue.service", "gromox-imap.service", "gromox-pop3.service")
+
 
 def _loadConf(path):
     from multidict import MultiDict
@@ -57,11 +58,8 @@ def _addIfDef(dc, d, sc, s, all=False, type=None):
 
 
 def _reloadServices(*services):
-    for service in services:
-        _, msg = Systemd(system=True).tryReloadRestartService(service)
-        if msg:
-            logging.warn("Failed to reload/restart '{}': {}".format(service, msg))
-
+    with Service("systemd", Service.SUPPRESS_ALL) as sysd:
+        sysd.tryReloadRestartService(*services)
 
 ###############################################################################
 
@@ -153,10 +151,10 @@ def dumpLdap(conf=None, file=None, reloadServices=True):
             LDAP = conf
         if file is None:
             _dumpConf(Config["mconf"]["ldapPath"], _flattenLdap(LDAP))
-            if reloadServices:
-                _reloadServices(*_ldapDepServices)
         else:
             _fDumpConf(file, _flattenLdap(LDAP))
+        if reloadServices:
+            _reloadServices(*_ldapDepServices)
     except Exception as err:
         return " - ".join((str(arg) for arg in err.args))
 
@@ -218,9 +216,10 @@ def dumpAuthmgr(conf=None, file=None, reloadServices=False):
 def load():
     error = loadLdap()
     if error:
-        logging.warn("[MCONF] Could not load ldap config: "+error)
+        logger.warn("Could not load ldap config: "+error)
     error = loadAuthmgr()
     if error:
-        logging.warn("[MCONF] Could not load authmgr config: "+error)
+        logger.warn("Could not load authmgr config: "+error)
+
 
 load()

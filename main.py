@@ -17,9 +17,11 @@ if __name__ == '__main__':
     res = Cli().execute(secure=False)
     sys.exit(res)
 else:
-    from api.core import API
-    from endpoints import *
+    from api.core import API  # Export to uwsgi server
+    from cli import Cli
+    from endpoints import *  # Register all endpoints
     from tools import config
+    Cli.initLogging()
     error = config.validate()
     if error:
         raise TypeError("Invalid configuration found - aborting ({})".format(error))

@@ -7,8 +7,8 @@ from argparse import ArgumentParser
 
 from . import Cli
 
-
 _configs = ("authmgr", "ldap")
+
 
 def _getConfig(cli, name):
     if name not in _configs:
@@ -74,9 +74,9 @@ def _cliMconfSave(args):
     from tools import mconf
     try:
         if args.config == "authmgr":
-            error = mconf.dumpAuthmgr(file=cli.open("mconf.authmgrPath", "w", True))
+            error = mconf.dumpAuthmgr(file=cli.open("mconf.authmgrPath", "w", cli.fs is None))
         elif args.config == "ldap":
-            error = mconf.dumpLdap(file=cli.open("mconf.ldapPath", "w", True))
+            error = mconf.dumpLdap(file=cli.open("mconf.ldapPath", "w", cli.fs is None))
         else:
             cli.print(cli.col("Unknown config '{}'".format(args.config), "red"))
             return 1
@@ -136,6 +136,21 @@ def _cliMconfModify(args):
         _cliMconfSave(args)
 
 
+def _mconfKeyCompleter(prefix, parsed_args, **kwargs):
+    from .common import getKey
+    config = _getConfig(None, parsed_args.config)
+    if config is None:
+        return ()
+    split = prefix.split(".")
+    path, prefix = split[:-1], split[-1]
+    parent = getKey(config, path)
+    if isinstance(parent, dict):
+        path = ".".join(path)+"." if path else ""
+        return list(path+key for key in parent.keys()
+                    if parsed_args.action not in ("add", "remove") or isinstance(parent[key], (list, dict)))
+    return ()
+
+
 def _setupCliMconfAddValue(parser: ArgumentParser):
     typearg = parser.add_mutually_exclusive_group()
     typearg.add_argument("-i", "--int", action="store_true", help="Cast value to integer")
@@ -155,19 +170,19 @@ def _setupCliMconf(subp: ArgumentParser):
     modifysub = modify.add_subparsers()
     modifyadd = modifysub.add_parser("add", help="Add value to configuration list")
     modifyadd.set_defaults(action="add")
-    modifyadd.add_argument("key")
+    modifyadd.add_argument("key").completer = _mconfKeyCompleter
     _setupCliMconfAddValue(modifyadd)
     modifyremove = modifysub.add_parser("remove", help="Remove value from configuration list")
     modifyremove.set_defaults(action="remove")
-    modifyremove.add_argument("key")
+    modifyremove.add_argument("key").completer = _mconfKeyCompleter
     _setupCliMconfAddValue(modifyremove)
     modifyset = modifysub.add_parser("set", help="Set configuration value")
     modifyset.set_defaults(action="set")
-    modifyset.add_argument("key")
+    modifyset.add_argument("key").completer = _mconfKeyCompleter
     _setupCliMconfAddValue(modifyset)
     modifyunset = modifysub.add_parser("unset", help="Unset configuration value")
     modifyunset.set_defaults(action="unset")
-    modifyunset.add_argument("key")
+    modifyunset.add_argument("key").completer = _mconfKeyCompleter
     printConf = sub.add_parser("print", help="Show configuration")
     printConf.set_defaults(_handle=_cliMconfPrint)
     printConf.help = "Print current configuration"

@@ -8,15 +8,15 @@ from api.security import checkPermissions
 
 from cli import Cli
 
+from services import Service
+
 from tools.config import Config
 from tools.license import getLicense, updateCertificate
 from tools.permissions import SystemAdminPermission, SystemAdminROPermission
-from tools.systemd2 import Systemd
 
 import json
 import os
 import psutil
-import redis
 import requests
 import shlex
 import subprocess
@@ -65,12 +65,13 @@ def getDashboardServices():
     known = Config["options"]["dashboard"]["services"]
     if len(known) == 0:
         return jsonify(services=[])
-    units = Systemd(system=True).getServices(*(service["unit"] for service in known))
-    for service in known:
-        if service["unit"] not in units:
-            continue
-        units[service["unit"]]["name"] = service.get("name", service["unit"].replace(".service", ""))
-    return jsonify(services=list(units.values()))
+    with Service("systemd") as sysd:
+        units = sysd.getServices(*(service["unit"] for service in known))
+        for service in known:
+            if service["unit"] not in units:
+                continue
+            units[service["unit"]]["name"] = service.get("name", service["unit"].replace(".service", ""))
+        return jsonify(services=list(units.values()))
 
 
 @API.route(api.BaseRoute+"/system/dashboard/services/<unit>", methods=["GET"])
@@ -82,10 +83,11 @@ def getDashboardService(unit):
             break
     else:
         return jsonify(message="Unknown unit '{}'".format(unit)), 400
-    unit = Systemd(system=True).getServices(service["unit"])[service["unit"]]
-    unit["name"] = service.get("name", service["unit"].replace(".service", ""))
-    unit["unit"] = service["unit"]
-    return jsonify(unit)
+    with Service("systemd") as sysd:
+        unit = sysd.getServices(service["unit"])[service["unit"]]
+        unit["name"] = service.get("name", service["unit"].replace(".service", ""))
+        unit["unit"] = service["unit"]
+        return jsonify(unit)
 
 
 @API.route(api.BaseRoute+"/system/dashboard/services/<unit>/<action>", methods=["POST"])
@@ -96,8 +98,9 @@ def signalDashboardService(unit, action):
         return jsonify(message="Invalid action"), 400
     if unit not in (service["unit"] for service in Config["options"]["dashboard"]["services"]):
         return jsonify(message="Unknown unit '{}'".format(unit)), 400
-    _, msg = Systemd(system=True).run(action, unit)
-    return jsonify(message=msg or "Success"), 500 if msg else 201
+    with Service("systemd") as sysd:
+        _, msg = sysd.run(action, unit)
+        return jsonify(message=msg or "Success"), 500 if msg else 201
 
 
 def dumpLicense():
@@ -215,14 +218,12 @@ def cliOverRest():
 def syncTop():
     checkPermissions(SystemAdminROPermission())
     sync = Config["sync"]
-    try:
-        expUpd = sync.get("topExpireUpdate", 120)
-        expEnd = sync.get("topExpireEnded", 20)
-        fupd = int(request.args.get("filterUpdated", expUpd))
-        fend = int(request.args.get("filterEnded", expEnd))
-        r = redis.Redis(sync.get("host", "localhost"), sync.get("port", 6379), sync.get("db", 0), sync.get("password"),
-                                 decode_responses=True)
-        now = int(time.mktime(time.localtime()))
+    expUpd = sync.get("topExpireUpdate", 120)
+    expEnd = sync.get("topExpireEnded", 20)
+    fupd = int(request.args.get("filterUpdated", expUpd))
+    fend = int(request.args.get("filterEnded", expEnd))
+    now = int(time.mktime(time.localtime()))
+    with Service("redis") as r:
         r.set(sync.get("topTimestampKey", "grommunio-sync:topenabledat"), now)
         hdata = r.hgetall(sync.get("topdataKey", "grommunio-sync:topdata"))
         if hdata is None:
@@ -241,9 +242,7 @@ def syncTop():
                 API.logger.info(type(err).__name__+": "+str(err.args))
         if len(remove) > 0:
             r.hdel(sync.get("topdataKey", "grommunio-sync:topdata"), *remove)
-        return jsonify(data=data)
-    except redis.exceptions.ConnectionError as err:
-        return jsonify(message="Redis connection failed: "+err.args[0]), 503
+    return jsonify(data=data)
 
 
 @API.route(api.BaseRoute+"/system/mailq", methods=["GET"])

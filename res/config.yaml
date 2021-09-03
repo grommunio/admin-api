@@ -208,6 +208,23 @@ properties:
       connection:
         type: object
         additionalProperties: true
+  logging:
+    type: object
+    description: Configuration for logging output
+    properties:
+      level:
+        oneOf:
+          - type: integer
+            minimum: 0
+          - type: string
+            enum: ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+      loggers:
+        additionalProperties:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: string
+              enum: ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
   sync:
     description: Options for grommunio-sync access
     type: object

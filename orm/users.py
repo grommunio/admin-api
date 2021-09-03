@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020-2021 grommunio GmbH
 
-from . import DB, OptionalC, OptionalNC, NotifyTable
+from . import DB, OptionalC, OptionalNC, NotifyTable, logger
+from services import Service
 from tools import formats
 from tools.constants import PropTags, PropTypes
 from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp, Bool, Date
@@ -151,8 +152,8 @@ class Users(DataModel, DB.Base, NotifyTable):
         if displaytype in (0, 1, 7, 8):
             self._deprecated_addressType, self._deprecated_subType = self._decodeDisplayType(displaytype)
         if self.chatID:
-            from tools import chat
-            chat.updateUser(self, False)
+            with Service("chat", Service.SUPPRESS_INOP) as chat:
+                chat.updateUser(self, False)
 
     @staticmethod
     def _decodeDisplayType(displaytype):
@@ -273,13 +274,13 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @property
     def ldapID(self):
-        from tools.ldap import escape_filter_chars
-        return None if self.externID is None else escape_filter_chars(self.externID)
+        from services.ldap import LdapService
+        return None if self.externID is None else LdapService.escape_filter_chars(self.externID)
 
     @ldapID.setter
     def ldapID(self, value):
-        from tools.ldap import unescapeFilterChars
-        self.externID = None if value is None else unescapeFilterChars(value)
+        from services.ldap import LdapService
+        self.externID = None if value is None else LdapService.unescapeFilterChars(value)
 
     @hybrid_property
     def status(self):
@@ -306,40 +307,39 @@ class Users(DataModel, DB.Base, NotifyTable):
         if not self.chatID:
             return False
         if self._chatUser is None:
-            from tools import chat
-            self._chatUser = chat.getUser(self.chatID)
+            with Service("chat", Service.SUPPRESS_INOP) as chat:
+                self._chatUser = chat.getUser(self.chatID)
         return self.domain.chat and self._chatUser["delete_at"] == 0 if self._chatUser else False
 
     @chat.setter
     def chat(self, value):
         if value == self.chat or not DB.minVersion(78):
             return
-        import logging
         err_prefix = "Could not enable chat for user '{}': ".format(self.username)
         if not self.domain.chat:
-            logging.warning(err_prefix+"chat is not enabled for domain")
+            logger.warning(err_prefix+"chat is not enabled for domain")
             return
-        from tools import chat
-        if isinstance(value, str):
-            tmp = chat.getUser(value)
-            if tmp is None:
-                logging.warning(err_prefix+"chat user not found")
-                return
-            self.chatID = value
-            self._chatUser = tmp
-            return
-        if self._chatUser:
-            tmp = chat.activateUser(self, value)
-            if tmp:
-                self._chatUser["delete_at"] = not value
-            err = "Failed to "+("" if value else "de")+"activate chat user"
-        else:
-            tmp = chat.createUser(self)
-            if tmp:
+        with Service("chat") as chat:
+            if isinstance(value, str):
+                tmp = chat.getUser(value)
+                if tmp is None:
+                    logger.warning(err_prefix+"chat user not found")
+                    return
+                self.chatID = value
                 self._chatUser = tmp
-            err = err_prefix+"Failed to create user"
-        if tmp is None:
-            logging.warning(err)
+                return
+            if self._chatUser:
+                tmp = chat.activateUser(self, value)
+                if tmp:
+                    self._chatUser["delete_at"] = not value
+                err = "Failed to "+("" if value else "de")+"activate chat user"
+            else:
+                tmp = chat.createUser(self)
+                if tmp:
+                    self._chatUser = tmp
+                err = err_prefix+"Failed to create user"
+            if tmp is None:
+                logger.warning(err)
 
     @property
     def chatAdmin(self):
@@ -353,27 +353,17 @@ class Users(DataModel, DB.Base, NotifyTable):
             tmpRoles = " ".join(self._chatUser["roles"].split(" ")+["system_admin"])
         else:
             tmpRoles = " ".join(role for role in self._chatUser["roles"].split(" ") if role != "system_admin")
-        from tools import chat
-        tmp = chat.setUserRoles(self.chatID, tmpRoles)
+        with Service("chat") as chat:
+            tmp = chat.setUserRoles(self.chatID, tmpRoles)
         if tmp is None:
-            import logging
-            logging.warning("Failed to update chat user")
+            logger.warning("Failed to update chat user")
         self._chatUser["roles"] = tmpRoles
 
     @validates("_syncPolicy")
     def triggerSyncPolicyUpdate(self, key, value, *args):
         if value != self._syncPolicy:
-            try:
-                from redis import Redis
-                from tools.config import Config
-                sync = Config["sync"]
-                r = Redis(sync.get("host", "localhost"), sync.get("port", 6379), sync.get("db", 0), sync.get("password"),
-                          decode_responses=True)
+            with Service("redis", Service.SUPPRESS_INOP) as r:
                 r.delete("grommunio-sync:policycache-"+self.username)
-            except Exception as err:
-                import logging
-                logging.warning("Failed to invalidate sync policy cache for user '{}': {} ({})"
-                                .format(self.username, type(err).__name__, " - ".join(str(arg) for arg in err.args)))
         return value
 
     @staticmethod
@@ -443,8 +433,8 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @classmethod
     def _commit(*args, **kwargs):
-        from tools.systemd2 import Systemd
-        Systemd(system=True).reloadService("gromox-http.service")
+        with Service("systemd", Service.SUPPRESS_ALL) as sysd:
+            sysd.reloadService("gromox-http.service")
 
 
 class UserProperties(DataModel, DB.Base):
@@ -539,8 +529,8 @@ class Aliases(DataModel, DB.Base, NotifyTable):
 
     @classmethod
     def _commit(*args, **kwargs):
-        from tools.systemd2 import Systemd
-        Systemd(system=True).reloadService("gromox-http.service")
+        with Service("systemd", Service.SUPPRESS_ALL) as sysd:
+            sysd.reloadService("gromox-http.service")
 
 
 class Fetchmail(DataModel, DB.Base):

@@ -14,12 +14,13 @@ from sqlalchemy.orm import aliased
 
 from .. import defaultListHandler, defaultObjectHandler
 
+from services import Service
+
 from tools import formats
 from tools.config import Config
-from tools.constants import PropTags, PropTypes, ExchangeErrors, ExmdbCodes
+from tools.constants import PropTags, PropTypes, ExchangeErrors
 from tools.misc import createMapping, loadPSO
 from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission
-from tools.pyexmdb import pyexmdb
 from tools.rop import nxTime
 from tools.storage import setDirectoryOwner, setDirectoryPermission
 
@@ -27,6 +28,7 @@ import json
 import shutil
 
 from orm import DB
+
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["GET"])
 @secure(requireDB=True)
@@ -93,16 +95,11 @@ def deleteUser(user):
     user.delete()
     try:
         DB.session.commit()
-    except:
+    except Exception:
         return jsonify(message="Cannot delete user: Database commit failed."), 500
-    try:
-        options = Config["options"]
-        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["domainPrefix"], True)
+    with Service("exmdb", Service.SUPPRESS_INOP) as exmdb:
+        client = exmdb.ExmdbQueries(exmdb.host, exmdb.host, user.maildir, True)
         client.unloadStore(maildir)
-    except pyexmdb.ExmdbError as err:
-        API.logger.error("Could not unload exmdb store: "+ExmdbCodes.lookup(err.code, hex(err.code)))
-    except RuntimeError as err:
-        API.logger.error("Could not unload exmdb store: "+err.args[0])
     if request.args.get("deleteFiles") == "true":
         shutil.rmtree(maildir, ignore_errors=True)
     return jsonify(message="isded")
@@ -167,17 +164,12 @@ def rdUserStoreProps(domainID, userID):
         if not hasattr(PropTags, props[i].upper()) or not isinstance(getattr(PropTags, props[i].upper()), int):
             return jsonify(message="Unknown property '{}'".format(props[i])), 400
         props[i] = getattr(PropTags, props[i].upper())
-    try:
-        options = Config["options"]
-        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
+    with Service("exmdb") as exmdb:
+        client = exmdb.ExmdbQueries(exmdb.host, exmdb.host, user.maildir, True)
         if request.method == "DELETE":
             client.removeStoreProperties(user.maildir, props)
             return jsonify(message="Success.")
         response = client.getStoreProperties(user.maildir, 0, props)
-    except pyexmdb.ExmdbError as err:
-        return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
-    except RuntimeError as err:
-        return jsonify(message="exmdb query failed: "+err.args[0]), 500
     respData = {}
     for propval in response.propvals:
         propname = PropTags.lookup(propval.tag).lower()
@@ -203,24 +195,24 @@ def setUserStoreProps(domainID, userID):
         return jsonify(message="User has no store"), 400
     errors = {}
     propvals = []
-    for prop, val in data.items():
-        tag = getattr(PropTags, prop.upper(), None)
-        if tag is None:
-            errors[prop] = "Unknown tag"
-            continue
-        tagtype = tag & 0xFFFF
-        if not isinstance(val, PropTypes.pyType(tagtype)):
+    with Service("exmdb") as exmdb:
+        for prop, val in data.items():
+            tag = getattr(PropTags, prop.upper(), None)
+            if tag is None:
+                errors[prop] = "Unknown tag"
+                continue
+            tagtype = tag & 0xFFFF
+            if not isinstance(val, PropTypes.pyType(tagtype)):
                 errors[prop] = "Invalid type"
                 continue
-        if tagtype in (PropTypes.STRING, PropTypes.WSTRING):
-            propvals.append(pyexmdb.TaggedPropval_str(tag, val))
-        elif tagtype in PropTypes.intTypes:
-            propvals.append(pyexmdb.TaggedPropval_u64(tag, val))
-        else:
-            errors[prop] = "Unsupported type"
-    try:
-        options = Config["options"]
-        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], user.maildir, True)
+            if tagtype in (PropTypes.STRING, PropTypes.WSTRING):
+                propvals.append(exmdb.TaggedPropval_str(tag, val))
+            elif tagtype in PropTypes.intTypes:
+                propvals.append(exmdb.TaggedPropval_u64(tag, val))
+            else:
+                errors[prop] = "Unsupported type"
+
+        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
         result = client.setStoreProperties(user.maildir, 0, propvals)
         for entry in result.problems:
             tag = PropTags.lookup(entry.proptag, hex(entry.proptag)).lower()
@@ -229,10 +221,6 @@ def setUserStoreProps(domainID, userID):
         if len(errors) != 0:
             API.logger.warn("Failed to set proptags: "+", ".join("{} ({})".format(tag, err) for tag, err in errors.items()))
         return jsonify(message="Great success!" if len(errors) == 0 else "Some tags could not be set", errors=errors)
-    except pyexmdb.ExmdbError as err:
-        return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
-    except RuntimeError as err:
-        return jsonify(message="exmdb query failed: "+err.args[0]), 500
 
 
 def decodeSyncState(data, username):
@@ -254,10 +242,9 @@ def getUserSyncData(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
     if user is None:
         return jsonify(message="User not found"), 404
-    try:
+    with Service("exmdb") as exmdb:
         devices = []
-        options = Config["options"]
-        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], user.maildir, True)
+        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
         data = client.getSyncData(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState")).asdict()
         for device, state in data.items():
             try:
@@ -271,10 +258,6 @@ def getUserSyncData(domainID, userID):
             except Exception as err:
                 API.logger.warn("Failed to decode sync state: {}({})".format(type(err).__name__, ", ".join(str(arg) for arg in err.args)))
         return jsonify(data=devices)
-    except pyexmdb.ExmdbError as err:
-        return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
-    except RuntimeError as err:
-        return jsonify(message="exmdb query failed: "+err.args[0]), 500
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/delegates", methods=["GET"])
@@ -318,7 +301,7 @@ def setUserDelegates(domainID, userID):
     try:
         setDirectoryOwner(delegateFile, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
         setDirectoryPermission(delegateFile, Config["options"].get("filePermissions"))
-    except:
+    except Exception:
         pass
     return jsonify(message="Delegates updated")
 
@@ -331,15 +314,10 @@ def resyncDevice(domainID, userID, ID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
     if user is None:
         return jsonify(message="User not found"), 404
-    try:
-        options = Config["options"]
-        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], user.maildir, True)
+    with Service("exmdb") as exmdb:
+        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
         client.resyncDevice(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState"), ID)
         return jsonify(message="Success")
-    except pyexmdb.ExmdbError as err:
-        return jsonify(message="exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code))), 500
-    except RuntimeError as err:
-        return jsonify(message="exmdb query failed: "+err.args[0]), 500
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/syncPolicy", methods=["GET"])

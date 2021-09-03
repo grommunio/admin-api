@@ -4,8 +4,6 @@
 
 from . import Cli, ArgumentParser
 
-class _NotFound(dict):
-    pass
 
 class CTrace:
     UNUSED = 0
@@ -111,12 +109,13 @@ class CTrace:
         if hist == 0:
             ovstr = ""
         elif stylemap is None:
-            ovstr = "["+", ".join(cli.col(ov[0], **self._style[ov[1]]) for ov in self.overwritten)+"]" if self.state != self.USED else ""
+            ovstr = "["+", ".join(cli.col(ov[0], **self._style[ov[1]]) for ov in self.overwritten)+"]" \
+                    if self.state != self.USED else ""
         elif args.show_history or self.type in (self.DICT, self.LIST):
             sfile = cli.col(self.filename, **stylemap.get(self.filename, self._fbStyle))
             if self.overwritten and self.type == self.KEY:
                 sfile = cli.col(sfile, attrs=["underline"])
-            ovstr = "["+", ".join(cli.col(ov[0], **stylemap.get(ov[0], self._fbStyle)) for ov in self.overwritten)+\
+            ovstr = "["+", ".join(cli.col(ov[0], **stylemap.get(ov[0], self._fbStyle)) for ov in self.overwritten) +\
                     (", " if self.overwritten else "")+sfile+"]"
         else:
             ovstr = "["+cli.col(self.filename, **stylemap.get(self.filename, self._fbStyle))+"]"
@@ -125,7 +124,7 @@ class CTrace:
             for value, filename in self.value:
                 style = stylemap.get(filename, self._fbStyle) if stylemap else\
                         {"color": "red" if self.state == self.UNUSED else "green"}
-                data = "\n"+("" if stylemap else self.mark[self.state])+" "*(indent+3)+ "- "
+                data = "\n"+("" if stylemap else self.mark[self.state])+" "*(indent+3)+"- "
                 ov = "["+cli.col(filename, **stylemap.get(filename, self._fbStyle))+"]" if stylemap else ""
                 if isinstance(value, (dict, list)):
                     import yaml
@@ -172,19 +171,12 @@ class CTrace:
         """Return maximum line width when printing."""
         if self.type == self.DICT:
             if len(self.value):
-                return max(max(len(key)+1+value.inlwidth() for key , value in self.value.items())+indent,
+                return max(max(len(key)+1+value.inlwidth() for key, value in self.value.items())+indent,
                            max(value.maxwidth(indent+2) for value in self.value.values()))
         elif self.type == self.LIST and len(self.value):
             import yaml
             return max(len(self.mark[self.state]+" "*(indent+2)+rep) for rep in yaml.dump(self.value).split("\n") if rep)
         return len(str(self.value)) if indent == 0 else 0
-
-
-def _getKey(c, keyspec):
-    if keyspec:
-        for key in keyspec:
-            c = c.get(key, _NotFound()) if key else c
-    return c
 
 
 def cliConfigCheck(args):
@@ -201,9 +193,10 @@ def cliConfigCheck(args):
 
 def cliConfigGet(args):
     from tools.config import Config
+    from .common import getKey, NotFound
     keyspec = getattr(args, "key", "")
-    c = _getKey(Config, keyspec.split("."))
-    if isinstance(c, _NotFound):
+    c = getKey(Config, keyspec.split("."))
+    if isinstance(c, NotFound):
         rep = "\n"
     elif isinstance(c, (dict, list)):
         import yaml
@@ -260,7 +253,7 @@ def _traceKeys(args):
     except Exception as err:
         cli.print(cli.col("Failed to open main config file: "+" - ".join(str(arg) for arg in err.args), "yellow"))
         return 1
-    config.merge( CTrace(fconf, "./config.yaml"))
+    config.merge(CTrace(fconf, "./config.yaml"))
     confdir = fconf.get("confdir")
     if not confdir:
         return config, []
@@ -300,12 +293,13 @@ def _printByKey(args):
     config, files = _traceKeys(args)
     hist = config[args.key].maxwidth()+4 if args.key in config else 0
     colors = ("yellow", "green", "red", "cyan", "magenta")
-    attrs = [[("dark", "bold", "underline")[i] for i in (0,1,2) if index&(1<<i)] for index in range(8)]
-    styles = {filename: {"color": style[1], "attrs": style[0]} for filename, style in zip(files, cycle(product(attrs, colors)))}
+    attrs = [[("dark", "bold", "underline")[i] for i in (0, 1, 2) if index & (1 << i)] for index in range(8)]
+    styles = {filename: {"color": style[1], "attrs": style[0]}
+              for filename, style in zip(files, cycle(product(attrs, colors)))}
     styles["default"] = styles["./config.yaml"] = {}
     if len(files):
-        cli.print("Configuration resulting from "+
-                  ", ".join(cli.col(file, **styles.get(file, {"attrs": ["dark"]})) for file in files)+".\n"+
+        cli.print("Configuration resulting from " +
+                  ", ".join(cli.col(file, **styles.get(file, {"attrs": ["dark"]})) for file in files)+".\n" +
                   "$CONFD evaluates to '{}'".format(cli.col(config["confdir"].value, attrs=["underline"]))+".\n")
     if args.key in config:
         config[args.key].printConfig(args, hist, styles)
@@ -319,9 +313,10 @@ def cliConfigTrace(args):
 
 def _configKeyspecCompleter(prefix, **kwargs):
     from tools.config import Config
+    from .common import getKey
     split = prefix.split(".")
     path, prefix = split[:-1], split[-1]
-    parent = _getKey(Config, path)
+    parent = getKey(Config, path)
     if isinstance(parent, dict):
         path = ".".join(path)+"." if path else ""
         return list(path+key for key in parent.keys())

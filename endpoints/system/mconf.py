@@ -8,7 +8,9 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
-from tools import ldap, mconf
+from services import Service, ServiceHub
+from services.ldap import LdapService
+from tools import mconf
 from tools.permissions import SystemAdminPermission, SystemAdminROPermission
 
 
@@ -17,10 +19,10 @@ from tools.permissions import SystemAdminPermission, SystemAdminROPermission
 def getLdapConfig():
     checkPermissions(SystemAdminROPermission() if request.method == "GET" else SystemAdminPermission())
     if request.method == "DELETE":
-        ldap.disable()
         mconf.dumpLdap({})
+        ServiceHub.load("ldap", force_reload=True)
         return jsonify(message="LDAP deactivated")
-    return jsonify(ldapAvailable=ldap.LDAP_available, data=mconf.LDAP)
+    return jsonify(ldapAvailable=Service.available("ldap"), data=mconf.LDAP)
 
 
 @API.route(api.BaseRoute+"/system/mconf/ldap", methods=["PUT"])
@@ -30,17 +32,17 @@ def setLdapConfig():
     data = request.get_json(silent=True)
     if data is None:
         return jsonify(message="Missing configuration"), 400
-    error = ldap.reloadConfig(data)
+    error = LdapService.testConfig(data)
     forced = False
     if error:
         if request.args.get("force") == "true":
             forced = True
-            ldap.disable()
         else:
             return jsonify(message=error), 400
     error = mconf.dumpLdap(data)
     if error:
         return jsonify(message="Configuration updated, but save to disk failed: "+error), 500
+    ServiceHub.load("ldap", force_reload=True)
     return jsonify(message="Force updated LDAP configuration" if forced else "LDAP configuration updated")
 
 

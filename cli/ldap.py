@@ -61,70 +61,71 @@ def _getl(cli, prompt="", defaults=[]):
 
 
 def _reloadGromoxHttp(cli):
-    from tools.systemd2 import Systemd
-    sysd = Systemd(system=True)
-    _, msg = sysd.reloadService("gromox-http.service")
-    if msg:
-        cli.print(cli.col("Failed to reload gromox-http: "+msg, "yellow"))
+    from services import Service
+    with Service("systemd", Service.SUPPRESS_ALL) as sysd:
+        sysd.reloadService("gromox-http.service")
 
 
 def cliLdapInfo(args):
     cli = args._cli
     cli.require("LDAP")
-    from tools import ldap
-    cli.print("Successfully connected to {}:{} as {}".format(cli.col(ldap.LDAPConn.server.host, attrs=["bold"]),
-                                                             cli.col(ldap.LDAPConn.server.port, attrs=["dark"]),
-                                                             ldap.ldapconf["connection"].get("bindUser", "anonymous")))
+    from services import Service
+    with Service("ldap", Service.SUPPRESS_INOP) as ldap:
+        cli.print("Successfully connected to {}:{} as {}".format(cli.col(ldap.conn.server.host, attrs=["bold"]),
+                                                                 cli.col(ldap.conn.server.port, attrs=["dark"]),
+                                                                 ldap._config["connection"].get("bindUser", "<anonymous>")))
 
 
 def _getCandidate(cli, expr, auto):
-    from tools import ldap
-    try:
-        candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
-    except:
-        candidate = None
-    if candidate is None:
-        matches = ldap.searchUsers(expr)
-        if len(matches) == 0:
-            cli.print(cli.col("Could not find user matching '{}'".format(expr), "red"))
-            return ERR_NO_USER
-        if len(matches) == 1:
-            candidate = matches[0]
-        else:
-            if auto:
-                cli.print(cli.col("Multiple candidates for '{}' found - aborting".format(expr), "red"))
-                return ERR_AMBIG
-            cli.print("Found {} users matching '{}':".format(len(matches), expr))
-            for i in range(len(matches)):
-                cli.print("{: 2d}: {} ({})".format(i+1, matches[i].name, matches[i].email))
+    from services import Service
+    with Service("ldap") as ldap:
+        try:
+            candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
+        except Exception:
             candidate = None
-            while candidate == None:
-                try:
-                    selected = _getc(cli, "Choose index of user (1-{}) or CTRL+C to exit".format(len(matches)),
-                                     choices=range(len(matches)), getter=_geti)
-                    index = int(selected)-1
-                    if not 0 <= index < len(matches):
+        if candidate is None:
+            matches = ldap.searchUsers(expr)
+            if len(matches) == 0:
+                cli.print(cli.col("Could not find user matching '{}'".format(expr), "red"))
+                return ERR_NO_USER
+            if len(matches) == 1:
+                candidate = matches[0]
+            else:
+                if auto:
+                    cli.print(cli.col("Multiple candidates for '{}' found - aborting".format(expr), "red"))
+                    return ERR_AMBIG
+                cli.print("Found {} users matching '{}':".format(len(matches), expr))
+                for i in range(len(matches)):
+                    cli.print("{: 2d}: {} ({})".format(i+1, matches[i].name, matches[i].email))
+                candidate = None
+                while candidate is None:
+                    try:
+                        selected = _getc(cli, "Choose index of user (1-{}) or CTRL+C to exit".format(len(matches)),
+                                         choices=range(len(matches)), getter=_geti)
+                        index = int(selected)-1
+                        if not 0 <= index < len(matches):
+                            continue
+                        candidate = matches[index]
+                    except (EOFError, KeyboardInterrupt):
+                        cli.print("k bye.")
+                        return ERR_USR_ABRT
+                    except ValueError:
                         continue
-                    candidate = matches[index]
-                except (EOFError, KeyboardInterrupt):
-                    cli.print("k bye.")
-                    return ERR_USR_ABRT
-                except ValueError:
-                    continue
-    return candidate
+        return candidate
 
 
 def _getCandidates(expr):
-    from tools import ldap
-    try:
-        candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
-    except:
-        candidate = None
-    return [candidate] if candidate is not None else ldap.searchUsers(expr)
+    from services import Service
+    with Service("ldap") as ldap:
+        try:
+            candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
+            return [candidate]
+        except Exception:
+            ldap.searchUsers(expr)
 
 
 def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
-    from tools import ldap
+    from services import Service
     if yes or auto:
         cli.print("Synchronizing user '{}' ({})".format(candidate.name, candidate.email))
     else:
@@ -155,7 +156,7 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
         if user.externID != candidate.ID and not force:
             if auto:
                 cli.print(cli.col("Cannot import user: User exists " +
-                              ("locally" if user.externID is None else "and is associated with another LDAP object"), "red"))
+                          ("locally" if user.externID is None else "and is associated with another LDAP object"), "red"))
                 return ERR_CONFLICT
             else:
                 result = cli.confirm("Force update "+("local only user" if user.externID is None else
@@ -164,7 +165,8 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
                     if result == Cli.ERR_USR_ABRT:
                         cli.print("Aborted.")
                     return result
-        userdata = ldap.downsyncUser(candidate.ID, user.propmap)
+        with Service("ldap") as ldap:
+            userdata = ldap.downsyncUser(candidate.ID, user.propmap)
         try:
             user.fromdict(userdata)
             user.externID = candidate.ID
@@ -176,7 +178,8 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
             cli.print(cli.col("Failed to update user: "+err.args[0], "red"))
             return ERR_COMMIT
 
-    userdata = ldap.downsyncUser(candidate.ID)
+    with Service("ldap") as ldap:
+        userdata = ldap.downsyncUser(candidate.ID)
     if userdata is None:
         cli.print(cli.col("Error retrieving user", "red"))
         return ERR_NO_USER
@@ -184,7 +187,8 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
     if code != 201:
         cli.print(cli.col("Failed to create user: "+result, "red"))
         return ERR_COMMIT
-    cli.print("User '{}' created with ID {}.".format(cli.col(result.username, attrs=["bold"]), cli.col(result.ID, attrs=["bold"])))
+    cli.print("User '{}' created with ID {}.".format(cli.col(result.username, attrs=["bold"]),
+                                                     cli.col(result.ID, attrs=["bold"])))
     if reloadHttp:
         Users.NTcommit()
     return SUCCESS
@@ -193,7 +197,7 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
 def cliLdapDownsync(args):
     cli = args._cli
     cli.require("DB", "LDAP")
-    from tools import ldap
+    from services import Service
     from orm.users import Aliases, Users
     error = False
     if args.user is not None and len(args.user) != 0:
@@ -210,7 +214,8 @@ def cliLdapDownsync(args):
             error = error or result != SUCCESS
         return ERR_GENERIC if error else SUCCESS
     elif args.complete:
-        candidates = ldap.searchUsers(None, limit=None)
+        with Service("ldap") as ldap:
+            candidates = ldap.searchUsers(None, limit=None)
         if len(candidates) == 0:
             cli.print(cli.col("No LDAP users found.", "yellow"))
             return SUCCESS
@@ -232,7 +237,8 @@ def cliLdapDownsync(args):
     if len(users) == 0:
         cli.print(cli.col("No imported users found", "yellow"))
         return SUCCESS
-    candidates = ldap.getAll(user.externID for user in users)
+    with Service("ldap") as ldap:
+        candidates = ldap.getAll(user.externID for user in users)
     if len(candidates) != len(users):
         cli.print(cli.col("Some ldap references seem to be broken - please run ldap check", "yellow"))
     if len(candidates) == 0:
@@ -256,21 +262,22 @@ def cliLdapDownsync(args):
 def cliLdapSearch(args):
     cli = args._cli
     cli.require("LDAP")
-    from tools import ldap
-    matches = ldap.searchUsers(args.query, limit=args.max_results or None)
-    if len(matches) == 0:
-        cli.print(cli.col("No "+("matches" if args.query else "entries"), "yellow"))
-        return ERR_NO_USER
-    for match in matches:
-        cli.print("{}: {} ({})".format(cli.col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), match.name,
-                                       match.email if match.email else cli.col("N/A", "red")))
-    cli.print("({} match{})".format(len(matches), "" if len(matches) == 1 else "es"))
+    from services import Service
+    with Service("ldap") as ldap:
+        matches = ldap.searchUsers(args.query, limit=args.max_results or None)
+        if len(matches) == 0:
+            cli.print(cli.col("No "+("matches" if args.query else "entries"), "yellow"))
+            return ERR_NO_USER
+        for match in matches:
+            cli.print("{}: {} ({})".format(cli.col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), match.name,
+                                           match.email if match.email else cli.col("N/A", "red")))
+        cli.print("({} match{})".format(len(matches), "" if len(matches) == 1 else "es"))
 
 
 def cliLdapCheck(args):
     cli = args._cli
     cli.require("DB", "LDAP")
-    from tools import ldap
+    from services import Service
     from time import time
     from orm import DB
     from orm.users import Users
@@ -282,13 +289,15 @@ def cliLdapCheck(args):
     cli.print("Checking {} user{}...".format(len(users), "" if len(users) == 1 else "s"))
     count, last = 0, time()
     orphaned = []
-    for user in users:
-        if ldap.getUserInfo(user.externID) is None:
-            orphaned.append(user)
-        count += 1
-        if time()-last > 1:
-            last = time()
-            cli.print("\t{}/{} checked ({:.0f}%), {} orphaned".format(count, len(users), count/len(users)*100, len(orphaned)))
+    with Service("ldap") as ldap:
+        for user in users:
+            if ldap.getUserInfo(user.externID) is None:
+                orphaned.append(user)
+            count += 1
+            if time()-last > 1:
+                last = time()
+                cli.print("\t{}/{} checked ({:.0f}%), {} orphaned"
+                          .format(count, len(users), count/len(users)*100, len(orphaned)))
     if len(orphaned) == 0:
         cli.print("Everything is ok")
         return
@@ -297,19 +306,12 @@ def cliLdapCheck(args):
         cli.print("\t"+user.username)
     if args.remove:
         if args.yes or cli.confirm("Delete all orphaned users? [y/N]: ") == Cli.SUCCESS:
-            from tools.config import Config
-            from tools.constants import ExmdbCodes
-            from tools.pyexmdb import pyexmdb
             cli.print("Unloading exmdb stores...")
-            try:
-                options = Config["options"]
-                client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
-                for user in orphaned:
-                    client.unloadStore(user.maildir)
-            except pyexmdb.ExmdbError as err:
-                cli.print(cli.col("Could not unload exmdb store: "+ExmdbCodes.lookup(err.code, hex(err.code)), "yellow"))
-            except RuntimeError as err:
-                cli.print(cli.col("Could not unload exmdb store: "+err.args[0], "yellow"))
+            if len(orphaned):
+                with Service("exmdb", Service.SUPPRESS_INOP) as exmdb:
+                    client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, orphaned[0].maildir, True)
+                    for user in orphaned:
+                        client.unloadStore(user.maildir)
             if args.remove_maildirs:
                 import shutil
                 cli.print("Removing mail directories...")
@@ -324,21 +326,22 @@ def cliLdapCheck(args):
 def cliLdapDump(args):
     cli = args._cli
     cli.require("LDAP")
-    from tools import ldap
-    for expr in args.user:
-        for candidate in _getCandidates(expr):
-            cli.print(cli.col("ID: "+ldap.escape_filter_chars(candidate.ID), attrs=["bold"]))
-            cli.print(str(ldap.dumpUser(candidate.ID)))
+    from services import Service
+    with Service("ldap") as ldap:
+        for expr in args.user:
+            for candidate in _getCandidates(expr):
+                cli.print(cli.col("ID: "+ldap.escape_filter_chars(candidate.ID), attrs=["bold"]))
+                cli.print(str(ldap.dumpUser(candidate.ID)))
 
 
 def _applyTemplate(index, conf):
     conf["users"] = conf.get("users", {})
-    if index == 1: # AD
+    if index == 1:  # AD
         conf["objectID"] = "objectGUID"
         conf["users"]["aliases"] = "proxyAddresses"
         conf["users"]["displayName"] = "displayName"
         conf["users"]["username"] = "mail"
-    elif index == 2: # OpenLDAP
+    elif index == 2:  # OpenLDAP
         conf["objectID"] = "entryUUID"
         conf["users"]["aliases"] = "mailAlternativeAddress"
         conf["users"]["displayName"] = "displayname"
@@ -346,21 +349,18 @@ def _applyTemplate(index, conf):
 
 
 def _checkConn(cli, connfig):
-    from tools import ldap
     cli.print(cli.col("Checking connectivity...", attrs=["dark"]), end="", flush=True)
+    from services.ldap import LdapService
     try:
-        conn = ldap.LDAPGuard(connfig["server"], connfig["bindUser"], connfig["bindPass"], connfig["starttls"])
-        err = conn.error
+        LdapService.testConnection({"connection": connfig}, active=False)
     except Exception as exc:
-        err = exc
-    if err is None:
-        cli.print(cli.col("success!", attrs=["dark"]))
-        return True
-    cli.print(cli.col("\nConnection check failed: "+" - ".join(str(arg) for arg in err.args), "red"))
-    res = cli.choice("(a)bort, (c)ontinue anyway, (e)dit configuration? [e]: ", "ace", "e")
-    if res in (None, "a"):
-        raise KeyboardInterrupt
-    return res == "c"
+        cli.print(cli.col("\nConnection check failed: "+" - ".join(str(arg) for arg in exc.args), "red"))
+        res = cli.choice("(a)bort, (c)ontinue anyway, (e)dit configuration? [e]: ", "ace", "e")
+        if res in (None, "a"):
+            raise KeyboardInterrupt
+        return res == "c"
+    cli.print(cli.col("success!", "green", attrs=["dark"]))
+    return True
 
 
 def _getConf(cli, old):
@@ -373,7 +373,7 @@ def _getConf(cli, old):
         connfig["bindUser"] = _getv(cli, "Username for access", connfig.get("bindUser"), )
         connfig["bindPass"] = _getv(cli, "Password for access "+oldpw, None, True) or connfig.get("bindPass")
         connfig["starttls"] = _getc(cli, "Use StartTLS connection",
-                                               "y" if connfig.get("starttls") else "n", ("y", "n")) == "y"
+                                    "y" if connfig.get("starttls") else "n", ("y", "n")) == "y"
         connected = _checkConn(cli, connfig)
     conf["connection"] = connfig
     conf["baseDn"] = _getv(cli, "DN for user lookup/searches", old.get("baseDn", ""))
@@ -401,12 +401,14 @@ def _getConf(cli, old):
 def _cliLdapConfigure(args):
     cli = args._cli
     try:
-        from tools import mconf, ldap
+        from services.ldap import LdapService
+        from tools import mconf
+        LdapService.init()
         old = mconf.LDAP
         while True:
             new = _getConf(cli, old)
             cli.print("Checking new configuration...")
-            error = ldap.reloadConfig(new)
+            error = LdapService.testConfig(new)
             if error is None:
                 cli.print("Configuration successful.")
                 error = mconf.dumpLdap(new)
@@ -426,14 +428,16 @@ def _cliLdapConfigure(args):
     except (KeyboardInterrupt, EOFError):
         cli.print(cli.col("\nAborted."))
         return 1
+    from services import ServiceHub
+    ServiceHub.load("ldap", force_reload=True)
 
 
 def cliLdapReload(args):
     cli = args._cli
-    from tools import ldap
-    error = ldap.reloadConfig()
-    cli.print("Reload successful" if error is None else cli.col(error, "red"))
-    return 0 if error is None else 1
+    from services import ServiceHub
+    ServiceHub.load("ldap", force_reload=True)
+    cli.print("Reload successful" if ServiceHub["ldap"].state == ServiceHub.LOADED else cli.col("Reload failed", "red"))
+    return int(ServiceHub["ldap"].state != ServiceHub.LOADED)
 
 
 def _cliLdapParserSetup(subp: ArgumentParser):

@@ -89,6 +89,11 @@ run
 
 Run the REST API. See *grommunio-admin-run(1)*.
 
+service
+-------
+
+Control external services interface. See *grommunio-admin-service(1)*
+
 shell
 -----
 

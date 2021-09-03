@@ -3,12 +3,15 @@
 # SPDX-FileCopyrightText: 2020 grommunio GmbH
 
 from flask import request
+import logging
 import time
 import jwt
 
-from tools import ldap
+from services import Service
 from tools.config import Config
 
+
+logger = logging.getLogger("security")
 _priFile = Config["security"]["jwtPrivateKeyFile"]
 _pubFile = Config["security"]["jwtPublicKeyFile"]
 try:
@@ -16,9 +19,9 @@ try:
         jwtPrivkey = file.read()
     with open(_pubFile, "rb") as file:  # Public key for JWT signature verification
         jwtPubkey = file.read()
-except:
+except Exception:
     import logging
-    logging.error("Could not load JWT RSA keys ('{}', '{}'), authentication will not work".format(_priFile, _pubFile))
+    logger.error("Could not load JWT RSA keys ('{}', '{}'), authentication will not work".format(_priFile, _pubFile))
     jwtPrivkey = jwtPubkey = None
 
 
@@ -37,7 +40,7 @@ def getUser():
     try:
         from orm.users import Users
         user = Users.query.filter(Users.username == request.auth["claims"]["usr"]).first()
-    except:
+    except Exception:
         return "Database error"
     if user is None:
         return "Invalid user"
@@ -113,7 +116,7 @@ def checkToken(token):
         return False, "Token has expired"
     except jwt.InvalidSignatureError:
         return False, "Invalid token signature"
-    except:
+    except Exception:
         return False, "invalid token"
     return True, claims
 
@@ -165,16 +168,17 @@ def loginUser(username, password):
     if user is None:
         return False, "Invalid username or password"
     if user.externID is not None:
-        error = ldap.authUser(user.externID, password)
-        if error:
-            return False, error
+        with Service("ldap") as ldap:
+            error = ldap.authUser(user.externID, password)
+            if error:
+                return False, error
     elif not user.chkPw(password):
         return False, "Invalid username or password"
     if not userLoginAllowed(user):
         return False, "Access denied"
     try:
         token = mkJWT({"usr": user.username})
-    except:
+    except Exception:
         return False, "Token generation failed"
     return True, (token.decode("ascii") if isinstance(token, bytes) else token)
 

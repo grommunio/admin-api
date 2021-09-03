@@ -4,8 +4,10 @@
 
 import yaml
 import logging
-import logging.config
 from os import scandir
+
+logger = logging.getLogger("config")
+
 
 def _defaultConfig():
     _defaultSyncPolicy = {
@@ -91,6 +93,15 @@ def _defaultConfig():
         }
 
 
+def initLoggers():
+    if "logging" not in Config:
+        return
+    logconf = Config["logging"]
+    logging.getLogger().setLevel(logconf.get("level", logging.WARNING))
+    for logger, conf in logconf.get("loggers", {}).items():
+        logging.getLogger(logger).setLevel(conf.get("level", logging.NOTSET))
+
+
 def _recursiveMerge_(dst, add):
     """Recursively merge two dictionaries.
 
@@ -124,7 +135,6 @@ def _loadConfig_():
     which are recursively merged into the config.
     """
     config = _defaultConfig()
-    errors = []
     try:
         with open("config.yaml", "r") as file:
             _recursiveMerge_(config, yaml.load(file, Loader=yaml.SafeLoader))
@@ -137,13 +147,9 @@ def _loadConfig_():
                     if confd is not None:
                         _recursiveMerge_(config, confd)
                 except Exception as err:
-                    errors.append((configFile, err))
+                    logger.error("Failed to load '{}': {}".format(configFile, " - ".join(str(arg) for arg in err.args)))
     except Exception as err:
-        errors.append(("config.yaml", err))
-    if "logging" in config:
-        logging.config.dictConfig(config["logging"])
-    for error in errors:
-        logging.error("Failed to load '{}': {}".format(error[0], " - ".join(str(arg) for arg in error[1].args)))
+        logger.error("Failed to load 'config.yaml': {}".format(" - ".join(str(arg) for arg in err.args)))
     return config
 
 
@@ -163,7 +169,7 @@ def validate():
     try:
         with open("res/config.yaml") as file:
             configSchema = yaml.load(file, yaml.loader.SafeLoader)
-    except:
+    except Exception:
         return "Could not open schema file"
     validator = OAS30Validator(configSchema)
     try:

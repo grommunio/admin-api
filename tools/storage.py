@@ -12,11 +12,13 @@ from .config import Config
 from .constants import PropTags, ConfigIDs, PublicFIDs, PrivateFIDs, Misc
 from .rop import ntTime
 
-import logging
 import traceback
 
 import sqlite3
 import time
+
+import logging
+logger = logging.getLogger("storage")
 
 
 def genPath(index: int, depth: int):
@@ -93,6 +95,7 @@ def createPath(parent: str, index: int, depth: int):
     os.makedirs(path)
     return path
 
+
 class SetupContext:
     def __enter__(self):
         """Enter context."""
@@ -109,7 +112,7 @@ class SetupContext:
             for d in self._dirs:
                 try:
                     shutil.rmtree(d)
-                except:
+                except Exception:
                     pass
         if getattr(self, "exmdb", None) is not None:
             self.exmdb.rollback()
@@ -185,14 +188,14 @@ class DomainSetup(SetupContext):
                 setDirectoryOwner(self.domain.homedir, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
                 setDirectoryPermission(self.domain.homedir, Config["options"].get("filePermissions"))
             except Exception as err:
-                logging.warn("Could not set domain directory ownership: "+" - ".join(str(arg) for arg in err.args))
+                logger.warn("Could not set domain directory ownership: "+" - ".join(str(arg) for arg in err.args))
             self.success = True
         except PermissionError as err:
-            logging.error(traceback.format_exc())
+            logger.error(traceback.format_exc())
             self.error = "Could not create home directory ({})".format(err.args[1])
             self.errorCode = 500
-        except:
-            logging.error(traceback.format_exc())
+        except Exception:
+            logger.debug(traceback.format_exc())
             self.error = "Unknown error"
             self.errorCode = 500
 
@@ -277,14 +280,14 @@ class UserSetup(SetupContext):
                 setDirectoryOwner(self.user.maildir, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
                 setDirectoryPermission(self.user.maildir, Config["options"].get("filePermissions"))
             except Exception as err:
-                logging.warn("Could not set user directory ownership: "+" - ".join(str(arg) for arg in err.args))
+                logger.warn("Could not set user directory ownership: "+" - ".join(str(arg) for arg in err.args))
             self.success = True
         except PermissionError as err:
-            logging.error(traceback.format_exc())
+            logger.error(traceback.format_exc())
             self.error = "Could not create home directory ({})".format(err.args[1])
             self.errorCode = 500
-        except:
-            logging.error(traceback.format_exc())
+        except Exception:
+            logger.error(traceback.format_exc())
             self.error = "Unknown error"
             self.errorCode = 500
 

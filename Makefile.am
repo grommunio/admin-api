@@ -5,13 +5,14 @@ SUBDIRS = exmdbpp grommunio-dbconf
 
 xxdir = ${libexecdir}/grommunio-admin-api
 xx_DATA = data/api-config.ini data/config.yaml
-nobase_xx_DATA = ${apifiles} ${clifiles} ${endpfiles} ${ormfiles} ${resfiles} ${toolfiles}
+nobase_xx_DATA = ${apifiles} ${clifiles} ${endpfiles} ${ormfiles} ${resfiles} ${srvfiles} ${toolfiles}
 apifiles = api/__init__.py api/core.py api/errors.py api/security.py
 clifiles = cli/__init__.py cli/common.py cli/config.py cli/dbconf.py cli/dbtools.py cli/domain.py cli/fetchmail.py cli/fs.py cli/ldap.py cli/mconf.py cli/misc.py cli/mlist.py cli/remote.py cli/user.py
 endpfiles = endpoints/__init__.py endpoints/misc.py endpoints/domain/__init__.py endpoints/domain/classes.py endpoints/domain/folders.py endpoints/domain/ldap.py endpoints/domain/misc.py endpoints/domain/mlists.py endpoints/domain/users.py endpoints/system/__init__.py endpoints/system/dbconf.py endpoints/system/domains.py endpoints/system/logs.py endpoints/system/mconf.py endpoints/system/misc.py endpoints/system/roles.py
 ormfiles = orm/__init__.py orm/classes.py orm/domains.py orm/misc.py orm/mlists.py orm/roles.py orm/users.py
 resfiles = res/config.yaml res/domain.sqlite3 res/ldapTemplates.yaml res/midb.sqlite3 res/openapi.yaml res/user.sqlite3
-toolfiles = tools/DataModel.py tools/chat.py tools/classfilters.py tools/config.py tools/constants.py tools/dbconf.py tools/formats.py tools/ldap.py tools/license.py tools/logs.py tools/mconf.py tools/misc.py tools/permissions.py tools/rop.py tools/storage.py tools/structures.py tools/systemd2.py main.py
+srvfiles = services/chat.py services/exmdb.py services/__init__.py services/ldap.py services/redis.py services/systemd.py
+toolfiles = tools/DataModel.py tools/classfilters.py tools/config.py tools/constants.py tools/dbconf.py tools/formats.py tools/license.py tools/logs.py tools/mconf.py tools/misc.py tools/permissions.py tools/rop.py tools/storage.py tools/structures.py main.py
 
 compldir = ${datadir}/bash-completion/completions
 compl_DATA = res/autocomplete.sh

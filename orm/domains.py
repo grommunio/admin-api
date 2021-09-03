@@ -6,6 +6,7 @@ from . import DB, OptionalC, NotifyTable
 from tools import formats
 from tools.DataModel import DataModel, Id, Text, Int, Date
 from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
+from services import Service
 
 import idna
 import json
@@ -121,34 +122,27 @@ class Domains(DataModel, DB.Base, NotifyTable):
         if not self.chatID:
             return False
         if self._team is None:
-            from tools import chat
-            self._team = chat.getTeam(self.chatID)
+            with Service("chat", Service.SUPPRESS_ALL) as grochat:
+                self._team = grochat.getTeam(self.chatID)
         return self._team["delete_at"] == 0 if self._team else False
 
     @chat.setter
     def chat(self, value):
         if value == self.chat or not DB.minVersion(79):
             return
-        from tools import chat
-        import logging
-        if isinstance(value, str):
-            tmp = chat.getTeam(value)
-            if tmp is None:
-                logging.warning("Team not found")
-            self.chatID = value
-            self._team = tmp
-        if self._team:
-            tmp = chat.activateTeam(self, value)
-            if tmp:
-                self._team["delete_at"] = not value
-            err = "Failed to "+("" if value else "de")+"activate team"
-        else:
-            tmp = chat.createTeam(self)
-            if tmp:
+        with Service("chat") as chat:
+            if isinstance(value, str):
+                tmp = chat.getTeam(value)
+                self.chatID = value
                 self._team = tmp
-            err = "Failed to create team"
-        if not tmp:
-            logging.warning(err)
+            if self._team:
+                tmp = chat.activateTeam(self, value)
+                if tmp:
+                    self._team["delete_at"] = not value
+            else:
+                tmp = chat.createTeam(self)
+                if tmp:
+                    self._team = tmp
 
     @property
     def displayname(self):
@@ -157,20 +151,11 @@ class Domains(DataModel, DB.Base, NotifyTable):
     @validates("_syncPolicy")
     def triggerSyncPolicyUpdate(self, key, value, *args):
         if value != self._syncPolicy:
-            try:
-                from redis import Redis
-                from tools.config import Config
-                users = ["grommunio-sync:policycache-"+user.username
-                         for user in Users.query.with_entities(Users.username).filter(Users.domainID == self.ID)]
-                if len(users) > 0:
-                    sync = Config["sync"]
-                    r = Redis(sync.get("host", "localhost"), sync.get("port", 6379), sync.get("db", 0), sync.get("password"),
-                              decode_responses=True)
+            users = ["grommunio-sync:policycache-"+user.username
+                     for user in Users.query.with_entities(Users.username).filter(Users.domainID == self.ID)]
+            if len(users) > 0:
+                with Service("redis", Service.SUPPRESS_INOP) as r:
                     r.delete(*users)
-            except Exception as err:
-                import logging
-                logging.warning("Failed to invalidate sync policy cache for domain '{}': {} ({})"
-                                .format(self.domainname, type(err).__name__, " - ".join(str(arg) for arg in err.args)))
         return value
 
     @staticmethod
@@ -266,9 +251,9 @@ class Domains(DataModel, DB.Base, NotifyTable):
 
     @classmethod
     def _commit(cls, *args, **kwargs):
-        from tools.systemd2 import Systemd
-        Systemd(system=True)\
-            .reloadService("gromox-adaptor.service", "gromox-delivery.service", "gromox-delivery-queue.service", "gromox-http.service")
+        with Service("systemd", Service.SUPPRESS_ALL) as sysd:
+            sysd.reloadService("gromox-adaptor.service", "gromox-delivery.service",
+                               "gromox-delivery-queue.service", "gromox-http.service")
 
 
 Domains.NTregister()

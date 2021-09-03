@@ -11,8 +11,11 @@ Files are read in alphabetical order. The parameters are updated using the follo
 
 ## Available parameters ##
 ### Logging ###
-The Python Logging module can be configured by the `logging` object. The object is forwarded to the `logging.config.dictConfig` function, see the Python documentation for available options.
-A formatter named `mi-default` is already provided by the default configuration.
+(Changed in version `1.2`: The old, direct, configuration of the python logging has been removed.)  
+Options regarding logging can be specified in the logging object. Currently only the log levels can be adjusted.  
+Possible parameters:
+- `level` (`int` or `string`, default: `WARNING`): Default log level (possible values are `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`)
+- `loggers` (`object`, default: `{}`): Associative array containing options for specific loggers
 
 ### Chat ###
 Parameters necessary to make the grommunio-chat management work can be configured in the `chat` object.  

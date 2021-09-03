@@ -4,6 +4,7 @@
 
 SERIAL_ENDIAN = "little"  # Endianess used for binary serialization
 
+
 class _ReverseLookup:
     @classmethod
     def lookup(cls, value, default=None):
@@ -12,6 +13,10 @@ class _ReverseLookup:
             cls._lookup = {getattr(cls, key): key for key in dir(cls) if not key.startswith("_")
                            if isinstance(getattr(cls, key), collections.Hashable)}
         return cls._lookup.get(value, default)
+
+    @classmethod
+    def str(cls, value):
+        return cls.lookup(value, hex(value))
 
 
 class PropTypes(_ReverseLookup):

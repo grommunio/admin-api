@@ -12,6 +12,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker, class_mapper, Query, co
 from tools.config import Config
 
 import logging
+logger = logging.getLogger("mysql")
 
 
 class DBConn:
@@ -67,11 +68,11 @@ class DBConn:
         try:
             version = int(self.session.execute("SELECT `value` FROM `options` WHERE `key` = 'schemaversion'").fetchone()[0])
             if verbose:
-                logging.info("Detected database schema version n"+str(version))
+                logger.info("Detected database schema version n"+str(version))
             return version
-        except:
+        except Exception:
             if verbose:
-                logging.warn("Failed to detect schema version, assuming up-to-date schema")
+                logger.warning("Failed to detect schema version, assuming up-to-date schema")
 
     def initVersion(self):
         self.__version = self._fetchVersion(True)
@@ -133,17 +134,17 @@ def _loadDBConfig():
 
     """
     if "DB" not in Config:
-        logging.error("No database configuration found")
+        logger.error("No database configuration found")
         return None
     DBconf = Config["DB"]
     if "user" not in DBconf or "pass" not in DBconf:
-        logging.error("Database user or password missing")
+        logger.error("Database user or password missing")
         return None
     if "database" not in DBconf:
-        logging.error("No database specified.")
+        logger.error("No database specified.")
         return None
     if "host" not in DBconf and "port" not in DBconf:
-        logging.info("Database connection not specified. Using default '127.0.0.1:3306'")
+        logger.info("Database connection not specified. Using default '127.0.0.1:3306'")
     host = DBconf.get("host", "127.0.0.1")
     port = DBconf.get("port", 3306)
     return "mysql+mysqldb://{user}:{password}@{host}:{port}/{db}".format(user=DBconf["user"],
@@ -155,16 +156,16 @@ def _loadDBConfig():
 
 if Config["options"]["disableDB"]:
     DB = None
-    logging.warn("Database disabled in configuration")
+    logger.warning("Database disabled in configuration")
 else:
     DB_uri = _loadDBConfig()
     if DB_uri is not None:
         DB = DBConn(DB_uri)
         err = DB.testConnection(verbose=True)
         if err is not None:
-            logging.warning(err)
+            logger.warning(err)
     else:
-        logging.warning("Database configuration failed. No data will be available")
+        logger.warning("Database configuration failed. No data will be available")
         DB = None
 
 

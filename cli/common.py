@@ -36,3 +36,14 @@ def userspecAutocomp(prefix, **kwargs):
         return (user.username for user in userCandidates(prefix).with_entities(Users.username))
     else:
         return ()
+
+
+class NotFound(dict):
+    pass
+
+
+def getKey(c, keyspec):
+    if keyspec:
+        for key in keyspec:
+            c = c.get(key, NotFound()) if key else c
+    return c

@@ -11,8 +11,8 @@ from api.core import API, secure
 from api.security import loginUser, refreshToken, getSecurityContext
 
 from orm import DB
-
-from tools import formats, ldap
+from services import Service
+from tools import formats
 
 
 @API.route(api.BaseRoute+"/status", methods=["GET"])
@@ -21,8 +21,7 @@ def chkState():
     """Check status of the API."""
     return jsonify(message="API is operational",
                    database=DB is not None and DB.testConnection() is None,
-                   ldap=ldap.LDAP_available)
-
+                   ldap=Service.available("ldap"))
 
 
 @API.route(api.BaseRoute+"/about", methods=["GET"])
@@ -58,14 +57,14 @@ def getProfile():
 
 def updatePasswordUnauth(data):
     from orm.users import Users
-    from tools import ldap
     user = Users.query.filter(Users.ID != 0, Users.username == data["user"]).first()
     if user is None:
         return jsonify(message="Invalid username or password"), 401
     if user.externID is not None:
-        error = ldap.authUser(user.externID, data["old"])
-        if error is not None:
-            return jsonify(message=error), 401
+        with Service("ldap") as ldap:
+            error = ldap.authUser(user.externID, data["old"])
+            if error is not None:
+                return jsonify(message=error), 401
         return jsonify(message="Cannot modify LDAP imported user"), 400
     if not user.chkPw(data["old"]):
         return jsonify(message="Invalid username or password"), 401

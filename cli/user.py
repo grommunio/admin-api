@@ -27,7 +27,6 @@ def _mkStatus(cli, status):
 
 def _dumpUser(cli, user, indent=0):
     from ldap3.utils.conv import escape_filter_chars
-    import tools.chat  # Prevent output interruptions when loading this module
     for attr in ("ID", "username", "domainID", "maildir", "privilegeBits"):
         v = getattr(user, attr, None)
         cli.print("{}{}: {}".format(" "*indent, attr, v if v is not None else ""))
@@ -111,18 +110,12 @@ def cliUserDelete(args):
         cli.print("No user files to delete.")
         return 0
     cli.print("Unloading store...", end="", flush=True)
-    try:
-        from tools.config import Config
-        from tools.constants import ExmdbCodes
-        from tools.pyexmdb import pyexmdb
-        options = Config["options"]
-        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["userPrefix"], True)
+
+    from services import Service
+    with Service("exmdb") as exmdb:
+        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, maildir, True)
         client.unloadStore(maildir)
         cli.print("Done.")
-    except pyexmdb.ExmdbError as err:
-        cli.print(cli.col("Failed.\n  Exmdb query failed with code "+ExmdbCodes.lookup(err.code, hex(err.code)), "yellow"))
-    except RuntimeError as err:
-        cli.print(cli.col("Failed.\n  "+err.args[0],"yellow"))
     if args.keep_files or (not args.yes and cli.confirm("Delete user directory from disk? [y/N]: ") != Cli.SUCCESS):
         cli.print(cli.col("Files remain in "+maildir, attrs=["bold"]))
         return 0

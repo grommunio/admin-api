@@ -103,6 +103,7 @@ def _setupCliShell(subp: ArgumentParser):
 @Cli.command("shell", _setupCliShell, help="Start interactive shell")
 def cliShell(args):
     cli = args._cli
+
     def rlEnable(state):
         if rlAvail:
             readline.set_completer(cli.complete if state else lambda *args: None)
@@ -114,6 +115,7 @@ def cliShell(args):
 
     import shlex
     import sys
+    from services import ServiceUnavailableError
     rlAvail = False
     interactive = cli.stdin.isatty()
     if interactive:
@@ -175,6 +177,8 @@ def cliShell(args):
                 continue
             except EOFError:
                 raise
+            except ServiceUnavailableError as err:
+                cli.print(cli.col(err.args[0], "red"))
             except BaseException as err:
                 if args.debug:
                     import traceback

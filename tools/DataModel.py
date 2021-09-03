@@ -8,6 +8,9 @@ from sqlalchemy.orm import joinedload, aliased
 
 from collections.abc import Iterable
 
+import logging
+logger = logging.getLogger("DataModel")
+
 
 def _isCollection(obj):
     """Determine if whether an object is a collection."""
@@ -119,8 +122,7 @@ class DataModel:
             self.arg_tf = arg_tf
             self.match = match
             if len(unknown):
-                import  logging
-                logging.warn("Unknown DataModel parameters: "+", ".join(unknown.keys()))
+                logger.warn("Unknown DataModel parameters: "+", ".join(unknown.keys()))
 
         def __repr__(self):
             """Return string representation."""
@@ -406,12 +408,10 @@ class DataModel:
         Instance
             The updated object (self)
         """
-        import logging
         self._init()
         reverse = self._meta.lookup
         for key, value in patches.items():
             if key not in reverse or reverse[key].proxy is not None:
-                logging.warn("Unknown attribute '{}'".format(key))
                 raise InvalidAttributeError("Unknown attribute '{}'".format(key))
             prop = reverse[key]
             if not prop.writable(self) and prop.value(self) != patches[key]:
@@ -428,8 +428,8 @@ class DataModel:
                 attr = getattr(self, prop.attr)
                 try:
                     Element = inspecc(getattr(type(self), prop.attr)).property.mapper.entity
-                except:
-                    logging.warn("Failed to inspect attribute '{}' - ignored".format(prop.attr))
+                except Exception:
+                    logger.warn("Failed to inspect attribute '{}' - ignored".format(prop.attr))
                     continue
                 if prop.mask is not None and "managed" not in prop.flags:
                     setattr(self, prop.mask, value)

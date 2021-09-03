@@ -15,7 +15,7 @@ def _domainStatus(cli, status):
 
 def _domainQuery(args):
     from .common import domainCandidates
-    from orm.domains import DB, Domains
+    from orm.domains import Domains
     query = domainCandidates(args.domainspec)
     if "filter" in args and args.filter is not None:
         query = Domains.autofilter(query, {f.split("=", 1)[0]: f.split("=", 1)[1] for f in args.filter if "=" in f})
@@ -25,7 +25,6 @@ def _domainQuery(args):
 
 
 def _dumpDomain(cli, domain):
-    import tools.chat  # Prevent output interruptions when loading this module
     displayname = domain.displayname if domain.displayname != domain.domainname else None
     cli.print(cli.col("{} ({}):".format(domain.domainname, domain.ID), attrs=["bold"]))
     cli.print("  ID: "+str(domain.ID))

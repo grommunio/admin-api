@@ -5,16 +5,16 @@
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 
-from datetime import datetime, MINYEAR, MAXYEAR
-
-import logging
-
+from datetime import datetime, MAXYEAR
 
 from .config import Config
 from .misc import GenericObject, createMapping
 
+import logging
+logger = logging.getLogger("license")
 
-class CertificateError(BaseException):
+
+class CertificateError(Exception):
     pass
 
 
@@ -34,11 +34,11 @@ class GrommunioLicense(GenericObject):
 
 def _defaultLicense():
     return GrommunioLicense(cert=None,
-                         file=None,
-                         users=5,
-                         product="Community",
-                         notBefore=datetime(1000, 1, 1),
-                         notAfter=datetime(MAXYEAR, 12, 31, 23, 59, 59))
+                            file=None,
+                            users=5,
+                            product="Community",
+                            notBefore=datetime(1000, 1, 1),
+                            notAfter=datetime(MAXYEAR, 12, 31, 23, 59, 59))
 
 
 def _processCertificate(data):
@@ -57,7 +57,7 @@ def _processCertificate(data):
     except CertificateError as err:
         return False, err.args[0]
     except BaseException as err:
-        logging.error(str(err))
+        logger.error(str(err))
         return False, "Unknown error"
 
 
@@ -67,13 +67,13 @@ def loadCertificate():
             data = file.read()
         success, val = _processCertificate(data)
         if not success:
-            logging.error("Failed to load license: "+val)
+            logger.error("Failed to load license: "+val)
         else:
             return val
     except KeyError:
-        logging.warn("Could not load license: location not configured")
+        logger.warn("Could not load license: location not configured")
     except FileNotFoundError as err:
-        logging.warn("Could not load license: "+err.args[1])
+        logger.warn("Could not load license: "+err.args[1])
 
 
 _license = loadCertificate() or _defaultLicense()

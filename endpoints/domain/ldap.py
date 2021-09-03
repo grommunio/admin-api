@@ -11,24 +11,19 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
-from tools import ldap
-from tools.config import Config
-from tools.constants import ExmdbCodes
+from services import Service
 from tools.DataModel import InvalidAttributeError, MismatchROError
 from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission
-from tools.pyexmdb import pyexmdb
 from tools.storage import UserSetup
-from tools.systemd2 import Systemd
 
 from orm import DB
 
+
 @API.route(api.BaseRoute+"/domains/ldap/search", methods=["GET"])
-@secure(requireDB=True, authLevel="user")
-def searchLdap():
+@secure(requireDB=True, authLevel="user", service="ldap")
+def searchLdap(ldap):
     checkPermissions(DomainAdminROPermission("*"))
     from orm.domains import Domains
-    if not ldap.LDAP_available:
-        return jsonify(message="LDAP is not available"), 503
     if "query" not in request.args or len(request.args["query"]) < 3:
         return jsonify(message="Missing or too short query"), 400
     permissions = request.auth["user"].permissions()
@@ -45,7 +40,7 @@ def searchLdap():
     return jsonify(data=[{"ID": ldap.escape_filter_chars(u.ID), "name": u.name, "email": u.email} for u in ldapusers])
 
 
-def ldapDownsyncDomains(domains):
+def ldapDownsyncDomains(ldap, domains):
     """Synchronize ldap domains.
 
     Parameters
@@ -56,8 +51,6 @@ def ldapDownsyncDomains(domains):
     from orm.domains import Domains
     from orm.users import Users, Aliases
     domainFilters = () if domains is None else (Domains.ID.in_(domain.ID for domain in domains),)
-    if not ldap.LDAP_available:
-        return jsonify(message="LDAP is not available"), 503
     Users.NTactive(False)
     Aliases.NTactive(False)
     users = Users.query.filter(Users.externID != None, *domainFilters).all()
@@ -75,15 +68,14 @@ def ldapDownsyncDomains(domains):
             API.logger.error(traceback.format_exc())
             syncStatus.append({"ID": user.ID, "username": user.username, "code": 500, "message": "Synchronization error"})
             DB.session.rollback()
-        except:
+        except Exception:
             API.logger.error(traceback.format_exc())
             syncStatus.append({"ID": user.ID, "username": user.username, "code": 503, "message": "Database error"})
             DB.session.rollback()
     if request.args.get("import") == "true":
         synced = {user.externID for user in users}
         candidates = ldap.searchUsers(None,
-                                      domains=(d.domainname for d in domains) if domains is not None else None,
-                                      limit=None)
+                                      domains=(d.domainname for d in domains) if domains is not None else None, limit=None)
         for candidate in candidates:
             if candidate.ID in synced:
                 continue
@@ -113,7 +105,7 @@ def ldapDownsyncDomains(domains):
                     continue
                 DB.session.commit()
                 syncStatus.append({"ID": user.ID, "username": user.username, "code": 201, "message": "User created"})
-            except:
+            except Exception:
                 API.logger.error(traceback.format_exc())
                 DB.session.rollback()
                 syncStatus.append({"username": candidate.email, "code": 503, "message": "Database error"})
@@ -124,36 +116,34 @@ def ldapDownsyncDomains(domains):
 
 
 @API.route(api.BaseRoute+"/domains/ldap/downsync", methods=["POST"])
-@secure(requireDB=True, authLevel="user")
-def ldapDownsyncAll():
+@secure(requireDB=True, authLevel="user", service="ldap")
+def ldapDownsyncAll(ldap):
     checkPermissions(SystemAdminPermission())
-    return ldapDownsyncDomains(None)
+    return ldapDownsyncDomains(ldap, None)
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/ldap/downsync", methods=["POST"])
-@secure(requireDB=True, authLevel="user")
-def ldapDownsyncDomain(domainID):
+@secure(requireDB=True, authLevel="user", service="ldap")
+def ldapDownsyncDomain(ldap, domainID):
     checkPermissions(DomainAdminPermission(domainID))
     from orm.domains import Domains
     domain = Domains.query.with_entities(Domains.ID, Domains.domainname).filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    return ldapDownsyncDomains((domain,))
+    return ldapDownsyncDomains(ldap, (domain,))
 
 
 @API.route(api.BaseRoute+"/domains/ldap/importUser", methods=["POST"])
-@secure(requireDB=True, authLevel="user")
-def downloadLdapUser():
+@secure(requireDB=True, authLevel="user", service="ldap")
+def downloadLdapUser(ldap):
     checkPermissions(DomainAdminPermission("*"))
     from orm.domains import Domains
     from orm.users import Users
-    if not ldap.LDAP_available:
-        return jsonify(message="LDAP is not available"), 503
     if "ID" not in request.args:
         return jsonify(message="Missing ID"), 400
     try:
         ID = ldap.unescapeFilterChars(request.args["ID"])
-    except BaseException:
+    except Exception:
         return jsonify(message="Invalid ID"), 400
     force = request.args.get("force")
     userinfo = ldap.getUserInfo(ID)
@@ -168,7 +158,7 @@ def downloadLdapUser():
            Users.query.filter(Users.username == userinfo.email).first()
     if user is not None:
         if user.externID != ID and not force == "true":
-            return jsonify(message="Cannot import user: User exists "+
+            return jsonify(message="Cannot import user: User exists " +
                            ("locally" if user.externID is None else "and is associated with another LDAP object")), 409
         checkPermissions(DomainAdminPermission(user.domainID))
         userdata = ldap.downsyncUser(ID, user.propmap)
@@ -194,19 +184,16 @@ def downloadLdapUser():
     if not us.success:
         return jsonify(message="Error during user setup", error=us.error), us.errorCode
     DB.session.commit()
-    _, msg = Systemd(system=True).reloadService("gromox-http.service")
-    if msg:
-        API.logger.warn("Failed to reload gromox-http.service: "+msg)
+    with Service("systemd", Service.SUPPRESS_ALL) as sysd:
+        sysd.reloadService("gromox-http.service")
     return jsonify(user.fulldesc()), 201
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/downsync", methods=["PUT"])
-@secure(requireDB=True, authLevel="user")
-def updateLdapUser(domainID, userID):
+@secure(requireDB=True, authLevel="user", service="ldap")
+def updateLdapUser(ldap, domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     from orm.users import Users
-    if not ldap.LDAP_available:
-        return jsonify(message="LDAP is not available"), 503
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
@@ -223,12 +210,10 @@ def updateLdapUser(domainID, userID):
 
 
 @API.route(api.BaseRoute+"/domains/ldap/check", methods=["GET", "DELETE"])
-@secure(requireDB=True, authLevel="user")
-def checkLdapUsers():
+@secure(requireDB=True, authLevel="user", service="ldap")
+def checkLdapUsers(ldap):
     checkPermissions(DomainAdminROPermission("*") if request.method == "GET" else DomainAdminPermission("*"))
     from orm.users import Users
-    if not ldap.LDAP_available:
-        return jsonify(message="LDAP is not available"), 503
     permissions = request.auth["user"].permissions()
     if SystemAdminPermission in permissions:
         domainFilter = ()
@@ -247,15 +232,11 @@ def checkLdapUsers():
     if request.method == "GET":
         return jsonify(orphaned=orphanedData)
     deleteMaildirs = request.args.get("deleteFiles") == "true"
-    try:
-        options = Config["options"]
-        client = pyexmdb.ExmdbQueries(options["exmdbHost"], options["exmdbPort"], options["domainPrefix"], True)
-        for user in orphaned:
-            client.unloadStore(user.maildir)
-    except pyexmdb.ExmdbError as err:
-        API.logger.error("Could not unload exmdb store: "+ExmdbCodes.lookup(err.code, hex(err.code)))
-    except RuntimeError as err:
-        API.logger.error("Could not unload exmdb store: "+err.args[0])
+    if len(orphaned):
+        with Service("exmdb", Service.SUPPRESS_INOP) as exmdb:
+            client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, orphaned[0].maildir, True)
+            for user in orphaned:
+                client.unloadStore(user.maildir)
     if deleteMaildirs:
         for user in orphaned:
             shutil.rmtree(user.maildir, ignore_errors=True)
@@ -265,11 +246,9 @@ def checkLdapUsers():
 
 
 @API.route(api.BaseRoute+"/domains/ldap/dump", methods=["GET"])
-@secure(requireDB=True, authLevel="user")
-def dumpLdapUsers():
+@secure(requireDB=True, authLevel="user", service="ldap")
+def dumpLdapUsers(ldap):
     checkPermissions(DomainAdminROPermission("*"))
-    if not ldap.LDAP_available:
-        return jsonify(message="LDAP is not available"), 503
     try:
         ID = ldap.unescapeFilterChars(request.args["ID"])
     except BaseException:
