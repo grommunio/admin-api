@@ -42,7 +42,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     _deprecated_groupID = Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
 
     domain = relationship("Domains", foreign_keys=domainID, primaryjoin="Users.domainID == Domains.ID")
-    roles = relationship("AdminRoles", secondary="admin_user_role_relation", cascade="all, delete")
+    roles = relationship("AdminRoles", secondary="admin_user_role_relation")
     properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True,
                               collection_class=attribute_mapped_collection("name"), passive_deletes=True)
     aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True, passive_deletes=True)
@@ -210,12 +210,12 @@ class Users(DataModel, DB.Base, NotifyTable):
     def syncPolicy(self):
         try:
             return json.loads(self._syncPolicy)
-        except:
+        except Exception:
             return None
 
     @syncPolicy.setter
     def syncPolicy(self, value):
-        self._syncPolicy = json.dumps(value, separators=(",",":")) if value is not None else None
+        self._syncPolicy = json.dumps(value, separators=(",", ":")) if value is not None else None
 
     def _setPB(self, bit, val):
         self.privilegeBits = (self.privilegeBits or 0) | bit if val else (self.privilegeBits or 0) & ~bit
@@ -559,7 +559,7 @@ class Fetchmail(DataModel, DB.Base):
     srcFolder = Column("src_folder", VARCHAR(255), nullable=False, default="")
     fetchall = Column("fetchall", TINYINT(1, unsigned=True), nullable=False, server_default="0")
     keep = Column("keep", TINYINT(1, unsigned=True), nullable=False, server_default="1")
-    protocol = Column("protocol", ENUM("POP3", "IMAP", "POP2", "ETRN", "AUTO"), nullable=False, server_default= 'IMAP')
+    protocol = Column("protocol", ENUM("POP3", "IMAP", "POP2", "ETRN", "AUTO"), nullable=False, server_default='IMAP')
     useSSL = Column("usessl", TINYINT(1, unsigned=True), nullable=False, server_default="1")
     sslCertCheck = Column("sslcertck", TINYINT(1, unsigned=True), nullable=False, server_default="0")
     sslCertPath = Column("sslcertpath", VARCHAR(255, charset="utf8"))
