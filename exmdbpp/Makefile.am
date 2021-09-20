@@ -19,6 +19,7 @@ pyexmdb/pyexmdb_wrap.h: pyexmdb/pyexmdb_wrap.cxx
 
 pyexmdb/pyexmdb_wrap.cxx: pyexmdb.i
 	@if test "x$(SWIG_EXEC)" = "x"; then echo "swig is required for 'make dist'"; exit 1; fi
+	${MKDIR_P} pyexmdb
 	${AM_V_GEN}${SWIG_EXEC} -I${srcdir}/include ${SWIG_CXXFLAGS} -o $@ $<
 
 doc:
