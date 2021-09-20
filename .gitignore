@@ -8,3 +8,21 @@ conf.d/*.yaml
 res/*.pem
 
 __pycache__
+
+*.o
+*.so
+.deps/
+.libs/
+.dirstamp
+*.la
+*.ldd
+*.lo
+Makefile
+Makefile.in
+/aclocal.m4
+/autom4te.cache/
+/build-aux/
+/config.*
+/configure
+/libtool
+/stamp-h1
