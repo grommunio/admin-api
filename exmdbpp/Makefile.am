@@ -28,3 +28,12 @@ doc:
 
 clean-local:
 	rm -Rf doc
+
+# extend all-am, don't override its commands
+all-am: copy-exmdbpp
+
+copy-exmdbpp: _pyexmdb.la
+	${MKDIR_P} ${top_srcdir}/tools/pyexmdb/
+	cp -avf .libs/_pyexmdb.so pyexmdb/pyexmdb.py ${top_srcdir}/tools/pyexmdb/
+
+.PHONY: copy-exmdbpp
