@@ -2,10 +2,9 @@ Pipfile.lock
 
 .spyproject
 .venv
-tools/pyexmdb
 
-conf.d/*.yaml
-res/*.pem
+/conf.d/*.yaml
+/res/*.pem
 
 __pycache__
 

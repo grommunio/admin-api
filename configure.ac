@@ -64,6 +64,14 @@ PKG_CHECK_MODULES([python], [python-$PYTHON_MAJOR_VERSION.$PYTHON_MINOR_VERSION-
 	PKG_CHECK_MODULES([python], [python-$PYTHON_MAJOR_VERSION.$PYTHON_MINOR_VERSION], [], [:])
 ])
 AS_IF([test -n "$python_LIBS" || test -n "$PYTHON"], [AM_PATH_PYTHON([3.6])])
+
+unitdir=$("$PKG_CONFIG" systemd --variable systemd_system_unit_dir 2>/dev/null)
+tmpfilesdir=$("$PKG_CONFIG" systemd --variable tmpfilesdir 2>/dev/null)
+AS_IF([test -z "$unitdir"], [unitdir='${prefix}/lib/systemd/system'])
+AS_IF([test -z "$tmpfilesdir"], [tmpfilesdir='${prefix}/lib/tmpfiles.d'])
+AC_SUBST([unitdir])
+AC_SUBST([tmpfilesdir])
+
 AC_DEFUN([MYSQL_WITH_MYSQL_CONFIG],[
 	AC_PATH_PROGS([MYSQL_CONFIG], [mysql_config mariadb_config])
 	AC_ARG_WITH([mysql-config], AS_HELP_STRING([--with-mysql-config=PATH], [path to the mysql-config script of mysql]),

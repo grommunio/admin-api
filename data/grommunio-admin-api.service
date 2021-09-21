@@ -1,0 +1,17 @@
+[Unit]
+Description=grommunio admin api
+After=grommunio-admin-api.socket
+Requires=grommunio-admin-api.socket
+
+[Service]
+WorkingDirectory=/usr/libexec/grommunio-admin-api/
+ExecStart=/usr/sbin/uwsgi --ini /usr/libexec/grommunio-admin-api/api-config.ini 
+User=grommunio
+Group=nginx
+Restart=on-failure
+KillSignal=SIGINT
+Type=notify
+NotifyAccess=all
+
+[Install]
+WantedBy=multi-user.target
