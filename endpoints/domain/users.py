@@ -165,13 +165,13 @@ def rdUserStoreProps(domainID, userID):
             return jsonify(message="Unknown property '{}'".format(props[i])), 400
         props[i] = getattr(PropTags, props[i].upper())
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.host, user.maildir, True)
+        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
         if request.method == "DELETE":
             client.removeStoreProperties(user.maildir, props)
             return jsonify(message="Success.")
-        response = client.getStoreProperties(user.maildir, 0, props)
+        propvals = client.getStoreProperties(user.maildir, 0, props)
     respData = {}
-    for propval in response.propvals:
+    for propval in propvals:
         propname = PropTags.lookup(propval.tag).lower()
         if propval.tag & 0xFFFF == PropTypes.FILETIME:
             respData[propname] = datetime.fromtimestamp(nxTime(int(propval.toString()))).strftime("%Y-%m-%d %H:%M:%S")
@@ -205,16 +205,14 @@ def setUserStoreProps(domainID, userID):
             if not isinstance(val, PropTypes.pyType(tagtype)):
                 errors[prop] = "Invalid type"
                 continue
-            if tagtype in (PropTypes.STRING, PropTypes.WSTRING):
-                propvals.append(exmdb.TaggedPropval_str(tag, val))
-            elif tagtype in PropTypes.intTypes:
-                propvals.append(exmdb.TaggedPropval_u64(tag, val))
-            else:
+            try:
+                propvals.append(exmdb.TaggedPropval(tag, val))
+            except TypeError:
                 errors[prop] = "Unsupported type"
 
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        result = client.setStoreProperties(user.maildir, 0, propvals)
-        for entry in result.problems:
+        problems = client.setStoreProperties(user.maildir, 0, propvals)
+        for entry in problems:
             tag = PropTags.lookup(entry.proptag, hex(entry.proptag)).lower()
             err = ExchangeErrors.lookup(entry.err, hex(entry.err))
             errors[tag] = err
@@ -311,7 +309,8 @@ def setUserDelegates(domainID, userID):
 def resyncDevice(domainID, userID, ID):
     checkPermissions(DomainAdminPermission(domainID))
     from orm.users import Users
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID)\
+                      .with_entities(Users.username, Users.maildir).first()
     if user is None:
         return jsonify(message="User not found"), 404
     with Service("exmdb") as exmdb:

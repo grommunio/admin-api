@@ -1,5 +1,6 @@
 Pipfile.lock
 
+build
 .spyproject
 .venv
 
@@ -8,20 +9,3 @@ Pipfile.lock
 
 __pycache__
 
-*.o
-*.so
-.deps/
-.libs/
-.dirstamp
-*.la
-*.ldd
-*.lo
-Makefile
-Makefile.in
-/aclocal.m4
-/autom4te.cache/
-/build-aux/
-/config.*
-/configure
-/libtool
-/stamp-h1

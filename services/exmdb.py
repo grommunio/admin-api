@@ -6,18 +6,17 @@ from . import ServiceHub
 
 
 def exmdbHandleException(service, error):
-    if isinstance(error, RuntimeError):
+    if isinstance(error, ExmdbService.ExmdbError):
+        return 0, error.args[0]
+    elif isinstance(error, RuntimeError):
         return ServiceHub.UNAVAILABLE
-    elif isinstance(error, ExmdbService.ExmdbError):
-        from tools.constants import ExmdbCodes
-        return 0, "exmdb query failed with code "+ExmdbCodes.lookup(error.code, hex(error.code))
 
 
 @ServiceHub.register("exmdb", exmdbHandleException)
 class ExmdbService:
     __loaded = False
-    __symbols = ("ExmdbError", "ExmdbQueries", "Folder", "FolderListResponse", "FolderOwnerListResponse")
-    __methods = ("TaggedPropval_u64", "TaggedPropval_str")
+    __symbols = ("ExmdbError", "ExmdbQueries", "Folder", )
+    __methods = ("TaggedPropval", "FolderList", "FolderOwnerList")
 
     def __init__(self):
         self.loadPyexmdb()
@@ -30,7 +29,7 @@ class ExmdbService:
             return
         try:
             from tools.config import Config
-            from tools.pyexmdb import pyexmdb
+            import pyexmdb
             for symbol in cls.__symbols:
                 setattr(cls, symbol, getattr(pyexmdb, symbol))
         except Exception:
