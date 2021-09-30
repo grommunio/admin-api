@@ -138,18 +138,22 @@ def _loadConfig_():
     try:
         with open("config.yaml", "r") as file:
             _recursiveMerge_(config, yaml.load(file, Loader=yaml.SafeLoader))
-        if "confdir" in config:
-            configFiles = sorted([file.path for file in scandir(config["confdir"]) if file.name.endswith(".yaml")])
-            for configFile in configFiles:
-                try:
-                    with open(configFile) as file:
-                        confd = yaml.load(file, Loader=yaml.SafeLoader)
-                    if confd is not None:
-                        _recursiveMerge_(config, confd)
-                except Exception as err:
-                    logger.error("Failed to load '{}': {}".format(configFile, " - ".join(str(arg) for arg in err.args)))
     except Exception as err:
         logger.error("Failed to load 'config.yaml': {}".format(" - ".join(str(arg) for arg in err.args)))
+    if "confdir" in config:
+        try:
+            configFiles = sorted([file.path for file in scandir(config["confdir"]) if file.name.endswith(".yaml")])
+        except Exception as err:
+            logger.error("Failed to stat '{}': ".format(config["confdir"])+" - ".join(str(arg) for arg in err.args))
+            configFiles = ()
+        for configFile in configFiles:
+            try:
+                with open(configFile) as file:
+                    confd = yaml.load(file, Loader=yaml.SafeLoader)
+                if confd is not None:
+                    _recursiveMerge_(config, confd)
+            except Exception as err:
+                logger.error("Failed to load '{}': {}".format(configFile, " - ".join(str(arg) for arg in err.args)))
     return config
 
 

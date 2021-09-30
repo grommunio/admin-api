@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(grommunio-admin VERSION 1.2.0 LANGUAGES NONE)
+project(grommunio-admin VERSION 1.2 LANGUAGES NONE)
 
 include(GNUInstallDirs)
 include(data/gzip.cmake)
