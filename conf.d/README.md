@@ -76,7 +76,6 @@ Possible parameters:
 ### Options ###
 Further parameters can be set in the `options` object:  
 - `dataPath` (`string`, default: `/usr/share/grommunio/common`): Directory where shared resources used by grommunio modules are stored
-- `propnames` (`string`, default: `propnames.txt`): File containing the list of named properties, relative to `dataPath`
 - `portrait` (`string`, default: `admin/api/portrait.jpg`): File containing the default portrait image, relative to `dataPath`
 - `domainStoreRatio` (`int`, default: `10`): Mysterious storage factor for `domain.maxSize`
 - `domainPrefix` (`string`, default: `/d-data/`): Prefix used for domain exmdb connections

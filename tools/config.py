@@ -62,7 +62,6 @@ def _defaultConfig():
         "options": {
             "disableDB": False,
             "dataPath": "/usr/share/grommunio-admin-common",
-            "propnames": "propnames.txt",
             "portrait": "portrait.jpg",
             "domainStoreRatio": 10,
             "domainPrefix": "/var/lib/gromox/domain/",

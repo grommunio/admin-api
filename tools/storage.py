@@ -224,8 +224,6 @@ class DomainSetup(SetupContext):
         """Create exchange SQLite database for domain.
 
         Database is placed under <homedir>/exmdb/exchange.sqlite3.
-
-        Propnames are filled automatically if the file `dataPath`/`propnames` file is found.
         """
         dbPath = os.path.join(self.domain.homedir, "exmdb", "exchange.sqlite3")
         shutil.copy("res/domain.sqlite3", dbPath)
@@ -344,8 +342,6 @@ class UserSetup(SetupContext):
         """Create exchange SQLite database for user.
 
         Database is placed under <homedir>/exmdb/exchange.sqlite3.
-
-        Propnames are filled automatically if the file `dataPath`/`propnames` file is found.
         """
         dbPath = os.path.join(self.user.maildir, "exmdb", "exchange.sqlite3")
         shutil.copy("res/user.sqlite3", dbPath)

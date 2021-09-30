@@ -54,10 +54,6 @@ properties:
         type: string
         description: Path containing shared resources
         default: /usr/share/grommunio/common
-      propnames:
-        type: string
-        description: File containing list of named properties. Path is relative to `dataPath`.
-        default: propnames.txt
       portrait:
         type: string
         description: File containing default portrait image. Path is relative to `dataPath`.
