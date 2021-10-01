@@ -41,10 +41,10 @@ class Domains(DataModel, DB.Base, NotifyTable):
             try:
                 xfix = "%" if value[0] == "%" else "", "%" if value[-1] == "%" else ""
                 return xfix[0]+idna.encode(value.strip("%")).decode("ascii")+xfix[1]
-            except:
+            except Exception:
                 try:
                     return value.encode("ascii")
-                except:
+                except Exception:
                     return None
 
     __tablename__ = "domains"
@@ -92,16 +92,22 @@ class Domains(DataModel, DB.Base, NotifyTable):
             self.password = props.pop("password")
         DataModel.__init__(self, props, args, kwargs)
 
+    def fromdict(self, patches, *args, **kwargs):
+        DataModel.fromdict(self, patches, args, kwargs)
+        if self.chatID:
+            with Service("chat", Service.SUPPRESS_INOP) as chat:
+                self._team = chat.updateTeam(self)
+
     @property
     def syncPolicy(self):
         try:
             return json.loads(self._syncPolicy)
-        except:
+        except Exception:
             return None
 
     @syncPolicy.setter
     def syncPolicy(self, value):
-        self._syncPolicy = json.dumps(value, separators=(",",":")) if value is not None else None
+        self._syncPolicy = json.dumps(value, separators=(",", ":")) if value is not None else None
 
     @hybrid_property
     def domainname(self):
@@ -111,7 +117,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
     def domainname(self, value):
         try:
             idn = idna.encode(value).decode("ascii")
-        except:
+        except Exception:
             idn = value
         if not formats.domain.match(idn):
             raise ValueError("'{}' is not a valid domain name".format(idn))
@@ -128,8 +134,12 @@ class Domains(DataModel, DB.Base, NotifyTable):
 
     @chat.setter
     def chat(self, value):
-        if value == self.chat or not DB.minVersion(79):
+        if value == self.chat:
             return
+        if not DB.minVersion(79):
+            raise ValueError("Cannot activate chat - please upgrade database schema to at least 79")
+        if value and self.domainStatus:
+            raise ValueError("Cannot activate chat for deactivated domain")
         with Service("chat") as chat:
             if isinstance(value, str):
                 tmp = chat.getTeam(value)
@@ -176,7 +186,6 @@ class Domains(DataModel, DB.Base, NotifyTable):
         Users.query.filter(Users.domainID == self.ID)\
                    .update({Users.addressStatus: Users.addressStatus.op("&")(0xF) + (self.NORMAL << 4)},
                            synchronize_session=False)
-
 
     def purge(self, deleteFiles=False, printStatus=False):
         from .classes import Classes, Hierarchy, Members

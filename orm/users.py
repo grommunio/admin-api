@@ -139,7 +139,7 @@ class Users(DataModel, DB.Base, NotifyTable):
             username = patches.pop("username")
             domain = patches.pop("domain", None) or Domains.query.filter(Domains.ID == self.domainID).first()
             if "@" in username:
-                uname, dname = username.split("@",1)
+                uname, dname = username.split("@", 1)
                 if dname != domain.domainname and dname != domain.displayname:
                     raise ValueError("Domain specifications mismatch.")
                 self.username = uname+"@"+domain.domainname
@@ -153,7 +153,7 @@ class Users(DataModel, DB.Base, NotifyTable):
             self._deprecated_addressType, self._deprecated_subType = self._decodeDisplayType(displaytype)
         if self.chatID:
             with Service("chat", Service.SUPPRESS_INOP) as chat:
-                chat.updateUser(self, False)
+                self._chatUser = chat.updateUser(self, False)
 
     @staticmethod
     def _decodeDisplayType(displaytype):
@@ -166,7 +166,6 @@ class Users(DataModel, DB.Base, NotifyTable):
         elif displaytype == 8:
             return 0, 2
         raise ValueError("Unknown display type "+str(displaytype))
-
 
     def baseName(self):
         return self.username.rsplit("@", 1)[0]
@@ -313,8 +312,12 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @chat.setter
     def chat(self, value):
-        if value == self.chat or not DB.minVersion(78):
+        if value == self.chat:
             return
+        if not DB.minVersion(78):
+            raise ValueError("Cannot activate chat - please upgrade database schema to at least 78")
+        if value and self.addressStatus:
+            raise ValueError("Cannot activate chat for locked user")
         err_prefix = "Could not enable chat for user '{}': ".format(self.username)
         if not self.domain.chat:
             logger.warning(err_prefix+"chat is not enabled for domain")

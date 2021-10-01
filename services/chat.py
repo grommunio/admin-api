@@ -88,12 +88,18 @@ class GrochatService:
         except HTTPError:
             return None
 
+    def domainToData(self, domain):
+        teamname = "".join(c.lower() if c.isalnum() else hex(ord(c)) for c in domain.domainname)
+        teamdata = {"name": teamname, "display_name": domain.title or domain.domainname, "type": "I"}
+        if domain.chatID:
+            teamdata["id"] = domain.chatID
+        return teamdata
+
     def createTeam(self, domain):
         """Create team for domain."""
         if domain.chatID:
             return self.driver.teams.get_team(domain.chatID)
-        teamname = "".join(c.lower() if c.isalnum() else hex(ord(c)) for c in domain.domainname)
-        teamdata = {"name": teamname, "display_name": domain.title or domain.domainname, "type": "I"}
+        teamdata = self.domainToData(domain)
         gcTeam = self.driver.teams.create_team(teamdata)
         domain.chatID = gcTeam["id"]
         return gcTeam
@@ -112,3 +118,9 @@ class GrochatService:
         if not teamID:
             return None
         return self.driver.teams.get_team(teamID)
+
+    def updateTeam(self, domain):
+        if not domain.chatID:
+            return None
+        teamdata = self.domainToData(domain)
+        return self.driver.teams.update_team(domain.chatID, teamdata)
