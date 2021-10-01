@@ -8,6 +8,7 @@ from mattermostdriver import Driver
 from mattermostdriver.exceptions import InvalidOrMissingParameters, ResourceNotFound, ContentTooLarge
 from requests.exceptions import ConnectionError, HTTPError
 
+import hashlib
 import random
 import string
 
@@ -89,7 +90,7 @@ class GrochatService:
             return None
 
     def domainToData(self, domain):
-        teamname = "".join(c.lower() if c.isalnum() else hex(ord(c)) for c in domain.domainname)
+        teamname = hashlib.md5(domain.domainname.encode("ascii")).hexdigest()
         teamdata = {"name": teamname, "display_name": domain.title or domain.domainname, "type": "I"}
         if domain.chatID:
             teamdata["id"] = domain.chatID
