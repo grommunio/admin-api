@@ -91,6 +91,9 @@ class Users(DataModel, DB.Base, NotifyTable):
     SUSPENDED = 1
     OUTOFDATE = 2
     DELETED = 3
+    SHARED = 4
+    USER_MASK = 0x07
+    DOMAIN_MASK = 0x30
 
     _chatUser = None
 
@@ -98,7 +101,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     def checkCreateParams(data):
         from orm.domains import Domains
         from tools.license import getLicense
-        if Users.count() >= getLicense().users:
+        if data.get("status", 0) != Users.SHARED and Users.count() >= getLicense().users:
             return "License user limit exceeded"
         if "domainID" in data:
             domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
@@ -283,23 +286,27 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @hybrid_property
     def status(self):
-        return self.addressStatus & 0x3
+        return self.addressStatus & self.USER_MASK
 
     @status.setter
     def status(self, val):
-        self.addressStatus = (self.addressStatus & ~0x3) | (val & 0x3)
+        self.addressStatus = ((self.addressStatus or 0) & ~self.USER_MASK) | (val & self.USER_MASK)
 
     @status.expression
     def status(cls):
-        return cls.addressStatus.op("&")(0x3)
+        return cls.addressStatus.op("&")(cls.USER_MASK)
 
     @hybrid_property
     def domainStatus(self):
-        return self.addressStatus >> 4 & 0x3
+        return (self.addressStatus & self.DOMAIN_MASK) >> 4
 
-    @status.setter
-    def status(self, val):
-        self.addressStatus = (self.addressStatus & ~0x30) | (val << 4 & 0x30)
+    @domainStatus.setter
+    def domainStatus(self, val):
+        self.addressStatus = (self.addressStatus & ~self.DOMAIN_MASK) | (val << 4 & self.DOMAIN_MASK)
+
+    @domainStatus.expression
+    def domainStatus(cls):
+        return cls.addressStatus.op("&")(cls.DOMAIN_MASK).op(">>")(4)
 
     @property
     def chat(self):
@@ -386,7 +393,7 @@ class Users(DataModel, DB.Base, NotifyTable):
             Number of users
         """
         return Users.query.with_entities(Users.ID)\
-                          .filter(Users.ID != 0, Users.maildir != "", *filters)\
+                          .filter(Users.ID != 0, Users.maildir != "", Users.status != Users.SHARED, *filters)\
                           .count()
 
     def delete(self):

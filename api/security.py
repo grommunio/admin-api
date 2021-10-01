@@ -123,7 +123,8 @@ def checkToken(token):
 
 def userLoginAllowed(user):
     from orm.roles import AdminUserRoleRelation
-    return user.ID == 0 or AdminUserRoleRelation.query.filter(AdminUserRoleRelation.userID == user.ID).count() != 0
+    return user.ID == 0 or (AdminUserRoleRelation.query.filter(AdminUserRoleRelation.userID == user.ID).count() != 0 and
+                            user.addressStatus == 0)
 
 
 def refreshToken():
@@ -203,6 +204,9 @@ def checkPermissions(*requested):
     from .errors import InsufficientPermissions
     if getUser() is not None:
         raise InsufficientPermissions()
-    permissions = request.auth["user"].permissions()
+    user = request.auth["user"]
+    if user.ID != 0 and user.addressStatus != 0:
+        raise InsufficientPermissions()
+    permissions = user.permissions()
     if not all(permission in permissions for permission in requested):
         raise InsufficientPermissions()
