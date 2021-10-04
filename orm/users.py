@@ -28,7 +28,8 @@ class Users(DataModel, DB.Base, NotifyTable):
     __tablename__ = "users"
 
     ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
-    username = Column("username", VARCHAR(128), nullable=False, unique=True)
+    username = Column("username", VARCHAR(320, charset="ascii"), nullable=False, unique=True)
+    primaryEmail = OptionalC(89, "NULL", Column("primary_email", VARCHAR(320, charset="ascii"), unique=True))
     _password = Column("password", VARCHAR(40), nullable=False, server_default="")
     domainID = Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     maildir = Column("maildir", VARCHAR(128), nullable=False, server_default="")
@@ -447,6 +448,11 @@ class Users(DataModel, DB.Base, NotifyTable):
     def _commit(*args, **kwargs):
         with Service("systemd", Service.SUPPRESS_ALL) as sysd:
             sysd.reloadService("gromox-http.service")
+
+    @validates("username")
+    def usernameUpdateHook(self, key, value, *args):
+        self.primaryEmail = value
+        return value
 
 
 class UserProperties(DataModel, DB.Base):

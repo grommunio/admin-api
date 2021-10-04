@@ -174,8 +174,10 @@ else:
 class Stub:
     def __init__(self, value):
         self.__value__ = value
+
     def __get__(self, *args):
         return self.__value__
+
     def __set__(self, *args):
         pass
 
@@ -217,7 +219,6 @@ def OptionalC(version, default, column):
         Column definition to return if version check passes
     """
     return column if DB.minVersion(version) else column_property(select([text(default)]).as_scalar())
-
 
 
 class NotifyTable:
