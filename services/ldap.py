@@ -52,7 +52,7 @@ class LdapService:
         from tools import mconf
         self.init()
         self._config = config or mconf.LDAP
-        self._checkConfig(self._config)
+        self._userAttributes = self._checkConfig(self._config)
         if self._config.get("disabled"):
             raise ServiceDisabledError("Service disabled by configuration")
         try:
@@ -88,8 +88,9 @@ class LdapService:
                 raise ValueError("Unknown template '{}'".format(_template))
             userAttributes.update(cls._templates.get(_template, {}))
         userAttributes.update(config["users"].get("attributes", {}))
-        if config.get("disabled", False):
-            return userAttributes
+        if "displayname" not in userAttributes.values():
+            userAttributes[config["users"]["displayName"]] = "displayname"
+        return userAttributes
 
     def _matchFilters(self, ID):
         """Generate match filters string.
@@ -265,7 +266,7 @@ class LdapService:
         userdata = dict(username=ldapuser[self._config["users"]["username"]].value)
         userdata["properties"] = props or self._defaultProps.copy()
         userdata["properties"].update({prop: ldapuser[attr].value
-                                       for attr, prop in self._defaultProps.items() if attr in ldapuser})
+                                       for attr, prop in self._userAttributes.items() if attr in ldapuser})
         if self._config["users"].get("aliases"):
             aliasattr = self._config["users"]["aliases"]
             if aliasattr in ldapuser and ldapuser[aliasattr].value is not None:
