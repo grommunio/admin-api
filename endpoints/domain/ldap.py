@@ -27,6 +27,10 @@ def searchLdap(ldap):
     if "query" not in request.args or len(request.args["query"]) < 3:
         return jsonify(message="Missing or too short query"), 400
     permissions = request.auth["user"].permissions()
+    if "domain" in request.args:
+        domainIDs = [int(ID) for ID in request.args["domain"].split(",") if DomainAdminROPermission(int(ID)) in permissions]
+        if len(domainIDs) == 0:
+            return jsonify(data=[])
     if SystemAdminPermission() in permissions:
         domainFilters = ()
     else:
