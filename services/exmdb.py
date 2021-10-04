@@ -16,7 +16,7 @@ def exmdbHandleException(service, error):
 class ExmdbService:
     __loaded = False
     __symbols = ("ExmdbError", "ExmdbQueries", "Folder", )
-    __methods = ("TaggedPropval", "FolderList", "FolderOwnerList")
+    __methods = ("TaggedPropval", "FolderList", "FolderMemberList")
 
     def __init__(self):
         self.loadPyexmdb()

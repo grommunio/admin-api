@@ -1090,7 +1090,7 @@ class Permissions:
     NONE = 0x00000000
     READANY = 0x00000001
     CREATE = 0x00000002
-    SENDAS = 0x00000004 #  self defined
+    SENDAS = 0x00000004  # self defined
     EDITOWNED = 0x00000008
     DELETEOWNED = 0x00000010
     EDITANY = 0x00000020
@@ -1101,10 +1101,12 @@ class Permissions:
     FOLDERVISIBLE = 0x00000400
     FREEBUSYSIMPLE = 0x00000800
     FREEBUSYDETAILED = 0x00001000
+    STOREOWNER = 0x00002000
 
     @classmethod
     def domainDefault(cls):
         return cls.READANY | cls.CREATE | cls.FOLDERVISIBLE | cls.EDITOWNED | cls.DELETEOWNED
+
 
 class Misc:
     ALLOCATED_EID_RANGE = 0x10000

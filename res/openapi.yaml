@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.2.1
+  version: 1.3.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1826,6 +1826,88 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/{domainID}/users/{userID}/storeAccess:
+    get:
+      summary: Get list of users that can access the users store
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: List of users with store access returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/folderMemberList'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Grant store access to another user
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: Mail address of the user to grant access to
+      responses:
+        '201':
+          description: User added
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/users/{userID}/storeAccess/{ID}:
+    delete:
+      summary: Remove user from store access list
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: User removed
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+
   /domains/{domainID}/users/{userID}/password:
     put:
       summary: Set user password
@@ -2523,16 +2605,7 @@ paths:
                 type: object
                 properties:
                   data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        memberID:
-                          type: integer
-                          description: Member ID of the owner list
-                        displayName:
-                          type: string
-                          description: Name of member
+                    $ref: '#/components/schemas/folderMemberList'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -3915,6 +3988,17 @@ components:
           description: Additional fetchmail options
           type: string
           nullable: true
+    folderMemberList:
+      type: array
+      items:
+        type: object
+        properties:
+          memberID:
+            type: integer
+            description: Member ID of the owner list
+          displayName:
+            type: string
+            description: Name of member
     syncPolicy:
       type: object
       nullable: true

@@ -18,10 +18,10 @@ from services import Service
 
 from tools import formats
 from tools.config import Config
-from tools.constants import PropTags, PropTypes, ExchangeErrors
+from tools.constants import PropTags, PropTypes, ExchangeErrors, PrivateFIDs, Permissions
 from tools.misc import createMapping, loadPSO
 from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission
-from tools.rop import nxTime
+from tools.rop import nxTime, makeEidEx
 from tools.storage import setDirectoryOwner, setDirectoryPermission
 
 import json
@@ -351,3 +351,57 @@ def getUserSyncPolicy(username):
     if user.syncPolicy is not None:
         policy.update(user.syncPolicy)
     return jsonify(data=policy)
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeAccess", methods=["POST", "PATCH"])
+@secure(requireDB=True)
+def setUserStoreAccess(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    if user.maildir is None:
+        return jsonify(message="User has no store"), 400
+    data = request.get_json(silent=True)
+    if data is None or "username" not in data:
+        return jsonify(message="Invalid data"), 400
+    with Service("exmdb") as exmdb:
+        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
+        client.setFolderMember(user.maildir, makeEidEx(0, PrivateFIDs.IPMSUBTREE), data["username"],
+                               data.get("rights", Permissions.STOREOWNER), request.method == "POST")
+    return jsonify(message="Success."), 201 if request.method == "POST" else 200
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeAccess", methods=["GET"])
+@secure(requireDB=True)
+def getUserStoreAccess(domainID, userID):
+    checkPermissions(DomainAdminROPermission(domainID))
+    from orm.users import Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    if user.maildir is None:
+        return jsonify(message="User has no store"), 400
+    with Service("exmdb") as exmdb:
+        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
+        memberList = exmdb.FolderMemberList(client.getFolderMemberList(user.maildir, makeEidEx(0, PrivateFIDs.IPMSUBTREE)))
+        members = [{"ID": member.id, "displayName": member.name} for member in memberList.members
+                   if member.rights & Permissions.STOREOWNER]
+        return jsonify(data=members)
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeAccess/<int:ID>", methods=["DELETE"])
+@secure(requireDB=True)
+def deleteUserStoreAccess(domainID, userID, ID):
+    checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    if user.maildir is None:
+        return jsonify(message="User has no store"), 400
+    with Service("exmdb") as exmdb:
+        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
+        client.deleteFolderMember(user.maildir, makeEidEx(0, PrivateFIDs.IPMSUBTREE), ID)
+    return jsonify(message="Success")
