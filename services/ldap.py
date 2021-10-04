@@ -28,6 +28,14 @@ class LdapService:
     _templates = {}
     _unescapeRe = re.compile(rb"\\(?P<value>[a-fA-F0-9]{2})")
 
+    _configMap = {"baseDn": "ldap_search_base",
+                  "objectID": "ldap_object_id",
+                  "users": "ldap_mail_attr",
+                  "connection": "ldap_host",
+                  "username": "ldap_mail_attr",
+                  "searchAttributes": "ldap_user_search_attrs",
+                  "displayName": "ldap_user_displayname"}
+
     @classmethod
     def init(cls):
         if cls.__initialized:
@@ -66,13 +74,13 @@ class LdapService:
     def _checkConfig(cls, config):
         for required in ("baseDn", "objectID", "users", "connection"):
             if required not in config or config[required] is None or len(config[required]) == 0:
-                raise KeyError("Missing required config value '{}'".format(required))
+                raise KeyError("Missing required config value '{}'".format(cls._configMap.get(required, required)))
         if "server" not in config["connection"] or config["connection"]["server"] is None or\
            len(config["connection"]["server"]) == 0:
-            raise KeyError("Missing required config value 'connection.server'")
+            raise KeyError("Missing required config value 'ldap_host'")
         for required in ("username", "searchAttributes", "displayName"):
             if required not in config["users"] or config["users"][required] is None or len(config["users"][required]) == 0:
-                raise KeyError("Missing required config value 'users.{}'".format(required))
+                raise KeyError("Missing required config value '{}'".format(cls._configMap.get(required, "user."+required)))
         _templatesEnabled = config["users"].get("templates", [])
         userAttributes = {}
         for _template in _templatesEnabled:
