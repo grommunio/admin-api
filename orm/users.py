@@ -38,8 +38,8 @@ class Users(DataModel, DB.Base, NotifyTable):
     chatID = OptionalC(78, "NULL", Column("chat_id", VARCHAR(26)))
     _syncPolicy = OptionalC(76, "NULL", Column("sync_policy", TEXT))
     _deprecated_maxSize = Column("max_size", INTEGER(10), nullable=False, default=0)
-    _deprecated_addressType = Column("address_type", TINYINT, nullable=False, server_default="0")
-    _deprecated_subType = Column("sub_type", TINYINT, nullable=False, server_default="0")
+    _deprecated_addressType = OptionalC(-86, "NULL", Column("address_type", TINYINT, nullable=False, server_default="0"))
+    _deprecated_subType = OptionalC(-85, "NULL", Column("sub_type", TINYINT, nullable=False, server_default="0"))
     _deprecated_groupID = Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
 
     domain = relationship("Domains", foreign_keys=domainID, primaryjoin="Users.domainID == Domains.ID")

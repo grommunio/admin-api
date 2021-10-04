@@ -118,8 +118,10 @@ class DBConn:
         bool
             Whether the required version is satisfied
         """
-        self.__maxversion = max(v, self.__maxversion)
-        return self.__version is not None and self.__version >= v
+        def sign(x):
+            return -1 if x < 0 else 1 if x > 0 else 0
+        self.__maxversion = max(abs(v), self.__maxversion)
+        return self.__version is not None and sign(v)*self.__version >= v
 
 
 def _loadDBConfig():
