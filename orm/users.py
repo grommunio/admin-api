@@ -36,6 +36,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     privilegeBits = Column("privilege_bits", INTEGER(10, unsigned=True), nullable=False, default=0)
     externID = Column("externid", VARBINARY(64))
     chatID = OptionalC(78, "NULL", Column("chat_id", VARCHAR(26)))
+    lang = Column("lang", VARCHAR(32), nullable=False, server_default="")
     _syncPolicy = OptionalC(76, "NULL", Column("sync_policy", TEXT))
     _deprecated_maxSize = Column("max_size", INTEGER(10), nullable=False, default=0)
     _deprecated_addressType = OptionalC(-86, "NULL", Column("address_type", TINYINT, nullable=False, server_default="0"))
@@ -54,6 +55,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                      (Id("domainID", flags="init"),
                       {"attr": "ldapID", "flags": "patch"}),
                      (Int("status", flags="patch"),
+                      Text("lang", flags="patch"),
                       BoolP("pop3_imap", flags="patch"),
                       BoolP("smtp", flags="patch"),
                       BoolP("changePassword", flags="patch"),
