@@ -216,10 +216,10 @@ def dumpAuthmgr(conf=None, file=None, reloadServices=False):
 def load():
     error = loadLdap()
     if error:
-        logger.warn("Could not load ldap config: "+error)
+        logger.info("Could not load ldap config: "+error)
     error = loadAuthmgr()
     if error:
-        logger.warn("Could not load authmgr config: "+error)
+        logger.info("Could not load authmgr config: "+error)
 
 
 load()
