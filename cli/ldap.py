@@ -117,11 +117,8 @@ def _getCandidate(cli, expr, auto):
 def _getCandidates(expr):
     from services import Service
     with Service("ldap") as ldap:
-        try:
-            candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
-            return [candidate]
-        except Exception:
-            ldap.searchUsers(expr)
+        candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
+        return [candidate] if candidate is not None else ldap.searchUsers(expr)
 
 
 def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
