@@ -243,7 +243,7 @@ def getUserSyncData(domainID, userID):
     with Service("exmdb") as exmdb:
         devices = []
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        data = client.getSyncData(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState")).asdict()
+        data = client.getSyncData(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState"))
         for device, state in data.items():
             try:
                 stateobj = decodeSyncState(state, user.username)
