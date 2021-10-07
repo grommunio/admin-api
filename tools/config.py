@@ -77,10 +77,13 @@ def _defaultConfig():
                 }
             },
         "security": {
-            "jwtPrivateKeyFile": "res/jwt-privkey.pem",
-            "jwtPublicKeyFile": "res/jwt-pubkey.pem"
+            "jwtPrivateKeyFile": "/etc/grommunio-admin-api/jwt-privkey.pem",
+            "jwtPublicKeyFile": "/etc/grommunio-admin-api/jwt-pubkey.pem"
             },
-        "mconf": {},
+        "mconf": {
+          "ldapPath": "/etc/gromox/ldap_adaptor.cfg",
+          "authmgrPath": "/etc/gromox/authmgr.cfg"
+          },
         "logs": {},
         "sync": {
             "defaultPolicy": _defaultSyncPolicy,

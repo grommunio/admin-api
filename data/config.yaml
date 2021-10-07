@@ -4,12 +4,8 @@ logging:
     mi-default:
       format: '[%(asctime)s] [%(levelname)s] (%(module)s): "%(message)s"'
 options:
-  dataPath: '/usr/share/grommunio-admin-common'
   systemAdminDir: '/usr/share/grommunio-admin-common'
   licenseFile: '/etc/grommunio-admin-common/license/license.crt'
-  domainPrefix: '/var/lib/gromox/domain/'
-  userPrefix: '/var/lib/gromox/user/'
-  portrait: 'portrait.jpg'
   filePermissions: 0o660
   fileUid: 'grommunio'
   fileGid: 'gromox'
@@ -32,9 +28,6 @@ options:
       - unit: php-fpm.service
       - unit: postfix.service
       - unit: redis@grommunio.service
-security:
-  jwtPrivateKeyFile: '/etc/grommunio-admin-api/jwt-privkey.pem'
-  jwtPublicKeyFile: '/etc/grommunio-admin-api/jwt-pubkey.pem'
 mconf:
   ldapPath: '/etc/gromox/ldap_adaptor.cfg'
   authmgrPath: '/etc/gromox/authmgr.cfg'
@@ -71,10 +64,4 @@ logs:
     source: 'php-fpm.service'
   Nginx:
     source: 'nginx.service'
-DB:
-  host: '127.0.0.1'
-  user: 'root'
-  pass: ''
-  database: 'grommunio'
 confdir: "/etc/grommunio-admin-api/conf.d"
-
