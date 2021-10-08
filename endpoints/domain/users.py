@@ -366,10 +366,17 @@ def setUserStoreAccess(domainID, userID):
     data = request.get_json(silent=True)
     if data is None or "username" not in data:
         return jsonify(message="Invalid data"), 400
+    eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
     with Service("exmdb") as exmdb:
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        client.setFolderMember(user.maildir, makeEidEx(0, PrivateFIDs.IPMSUBTREE), data["username"],
-                               data.get("rights", Permissions.STOREOWNER), request.method == "POST")
+        memberList = exmdb.FolderMemberList(client.getFolderMemberList(user.maildir, eid))
+        for member in memberList.members:
+            if member.name == data["username"]:
+                break
+        else:
+            member = None
+        permissions = (member.rights if member else 0) | data.get("rights", Permissions.STOREOWNER)
+        client.setFolderMember(user.maildir, eid, data["username"], permissions, member.id if member else 0)
     return jsonify(message="Success."), 201 if request.method == "POST" else 200
 
 
