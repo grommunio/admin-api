@@ -88,8 +88,7 @@ class LdapService:
                 raise ValueError("Unknown template '{}'".format(_template))
             userAttributes.update(cls._templates.get(_template, {}))
         userAttributes.update(config["users"].get("attributes", {}))
-        if "displayname" not in userAttributes.values():
-            userAttributes[config["users"]["displayName"]] = "displayname"
+        userAttributes[config["users"]["displayName"]] = "displayname"
         return userAttributes
 
     def _matchFilters(self, ID):
