@@ -34,7 +34,7 @@ def _dumpUser(cli, user, indent=0):
                                                    _mkStatus(cli, user.domainStatus), _mkStatus(cli, user.status)))
     cli.print(" "*indent+"externID: "+(escape_filter_chars(user.externID) if user.externID is not None else
                                        cli.col("(none)", attrs=["dark"])))
-    cli.print(" "*indent+"chatID: "+(user.chatID if user.chatID else cli.col("(none)", attrs=["dark"]))+
+    cli.print(" "*indent+"chatID: "+(user.chatID if user.chatID else cli.col("(none)", attrs=["dark"])) +
               (" ("+cli.col("inactive", "red")+")" if user.chatID and not user.chat else ""))
     if user.chat:
         cli.print(" "*indent+"chatAdmin: "+(cli.col("yes", "yellow") if user.chatAdmin else "no"))
@@ -44,7 +44,7 @@ def _dumpUser(cli, user, indent=0):
     cli.print(" "*indent+"roles:"+(cli.col(" (none)", attrs=["dark"]) if len(user.roles) == 0 else ""))
     for role in user.roles:
         cli.print(" "*indent+"  "+role.name)
-    cli.print(" "*indent+"fetchmail:"+ (cli.col(" (none)", attrs=["dark"]) if len(user.fetchmail) == 0 else ""))
+    cli.print(" "*indent+"fetchmail:"+(cli.col(" (none)", attrs=["dark"]) if len(user.fetchmail) == 0 else ""))
     for fml in user.fetchmail:
         cli.print("{}  {}@{}/{} ({})".format(" "*indent, fml.srcUser, fml.srcServer, fml.srcFolder,
                                              cli.col("active", "green") if fml.active == 1 else cli.col("inactive", "red")))
@@ -79,7 +79,7 @@ def cliUserList(args):
         else:
             printName = cli.col(user.username, attrs=["bold"])
         cli.print("{}:\t{}{}({}|{})".format(user.ID, printName, " "*(maxNameLen-len(user.username)+4),
-                                               _mkStatus(cli, user.domainStatus), _mkStatus(cli, user.status)))
+                                            _mkStatus(cli, user.domainStatus), _mkStatus(cli, user.status)))
     cli.print("({} users total)".format(len(users)))
 
 
@@ -141,13 +141,13 @@ def _setupCliUser(subp: ArgumentParser):
     list = sub.add_parser("list", help="List users")
     list.set_defaults(_handle=cliUserList)
     list.add_argument("userspec", nargs="?", help="User ID or substring to match username against")
-    list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
     list.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
+    list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
     show = sub.add_parser("show", help="Show detailed information about user")
     show.set_defaults(_handle=cliUserShow)
     show.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter
-    show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
     show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
+    show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
 
 
 @Cli.command("user", _setupCliUser, help="User management")

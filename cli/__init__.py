@@ -212,7 +212,7 @@ class Cli:
 
         self.parser = ArgumentParser(description="grommunio admin cli")
         subparsers = self.parser.add_subparsers()
-        for name, handler, parserSetup, kwargs in self.funcs:
+        for name, handler, parserSetup, kwargs in sorted(self.funcs):
             subp = subparsers.add_parser(name, **kwargs)
             parserSetup(subp)
             subp.set_defaults(_handle=handler)

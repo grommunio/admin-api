@@ -6,10 +6,10 @@ from . import Cli, CliError, ArgumentParser
 
 
 def _runParserSetup(subp: ArgumentParser):
-    subp.add_argument("--ip", "-i", default="0.0.0.0", type=str, help="Host address to bind to")
-    subp.add_argument("--port", "-p", default=5001, type=int, help="Host port to bind to")
     subp.add_argument("--debug", "-d", action="store_true", help="Run in debug mode")
+    subp.add_argument("--ip", "-i", default="0.0.0.0", type=str, help="Host address to bind to")
     subp.add_argument("--no-config-check", action="store_true", help="Skip configuration check")
+    subp.add_argument("--port", "-p", default=5001, type=int, help="Host port to bind to")
 
 
 @Cli.command("run", _runParserSetup, help="Run the REST API")
@@ -82,22 +82,22 @@ def cliTaginfo(args):
     for tagid in args.tagID:
         try:
             ID = int(tagid, 0)
-        except:
+        except Exception:
             ID = getattr(PropTags, tagid.upper(), None)
             if ID is None or type(ID) != int:
                 cli.print("Unknown tag '{}'".format(tagid))
                 continue
         propname = PropTags.lookup(ID, "unknown")
         typename = PropTypes.lookup(ID, "unknown")
-        proptype = cli.col("{:04x}".format(ID%(1<<16)), attrs=["dark"])
-        cli.print("0x{:04x}{} ({}): {}, type {}".format(ID>>16, proptype, ID, propname, typename))
+        proptype = cli.col("{:04x}".format(ID % (1 << 16)), attrs=["dark"])
+        cli.print("0x{:04x}{} ({}): {}, type {}".format(ID >> 16, proptype, ID, propname, typename))
 
 
 def _setupCliShell(subp: ArgumentParser):
     subp.description = "Start shell to process multiple CLI calls in a single session"
     subp.add_argument("-d", "--debug", action="store_true", help="Print more information")
-    subp.add_argument("-n", "--no-history", action="store_true", help="Disable typed history")
     subp.add_argument("-x", "--exit", action="store_true", help="Exit on error")
+    subp.add_argument("-n", "--no-history", action="store_true", help="Disable typed history")
 
 
 @Cli.command("shell", _setupCliShell, help="Start interactive shell")
@@ -137,12 +137,12 @@ def cliShell(args):
                         cli.print(cli.col("Loaded {} history entries".format(readline.get_current_history_length()), attrs=["dark"]))
                 except Exception as err:
                     if args.debug:
-                        cli.print(cli.col("Failed to read history file: "+type(err).__name__+
+                        cli.print(cli.col("Failed to read history file: "+type(err).__name__ +
                                           " - ".join(str(arg) for arg in err.args), attrs=["dark"]))
             rlAvail = True
         except Exception as err:
             if args.debug:
-                cli.print(cli.col("Failed to initialize readline: "+type(err).__name__+
+                cli.print(cli.col("Failed to initialize readline: "+type(err).__name__ +
                                   " - ".join(str(arg) for arg in err.args), attrs=["dark"]))
             cli.print("Install readline module to enable autocompletion")
     elif cli.mode == "standalone":
@@ -180,6 +180,8 @@ def cliShell(args):
             except ServiceUnavailableError as err:
                 cli.print(cli.col(err.args[0], "red"))
             except BaseException as err:
+                if isinstance(err, AttributeError) and "_argcomplete_namespace" in err.args[0]:
+                    continue
                 if args.debug:
                     import traceback
                     cli.print(cli.col(traceback.format_exc(), attrs=["dark"]))

@@ -153,8 +153,8 @@ def _mconfKeyCompleter(prefix, parsed_args, **kwargs):
 
 def _setupCliMconfAddValue(parser: ArgumentParser):
     typearg = parser.add_mutually_exclusive_group()
-    typearg.add_argument("-i", "--int", action="store_true", help="Cast value to integer")
     typearg.add_argument("-b", "--bool", action="store_true", help="Cast value to boolean")
+    typearg.add_argument("-i", "--int", action="store_true", help="Cast value to integer")
     parser.add_argument("value")
 
 

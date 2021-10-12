@@ -35,7 +35,7 @@ def _dumpDomain(cli, domain):
     cli.print("  inactiveUsers: "+str(domain.inactiveUsers))
     cli.print("  maxUser: "+str(domain.maxUser))
     cli.print("  homedir: "+domain.homedir)
-    cli.print("  chatID: "+(domain.chatID or cli.col("(none)", attrs=["dark"]))+
+    cli.print("  chatID: "+(domain.chatID or cli.col("(none)", attrs=["dark"])) +
               (" ("+cli.col("inactive", "red")+")" if domain.chatID and not domain.chat else ""))
     cli.print("  endDay: "+str(domain.endDay))
     cli.print("  title: "+domain.title)
@@ -134,8 +134,8 @@ def cliDomainPurge(args):
         return 2
     domain = domains[0]
     if not args.yes:
-        if cli.confirm("Permanently delete domain "+
-                       cli.col(domain.domainname, "red", attrs=["bold"])+
+        if cli.confirm("Permanently delete domain " +
+                       cli.col(domain.domainname, "red", attrs=["bold"]) +
                        (" and all associated files" if args.files else "")+"? [y/N]: "):
             return 1
     domain.purge(deleteFiles=args.files, printStatus=True)
@@ -176,7 +176,8 @@ def _cliDomainDomainspecAutocomp(prefix, **kwarg):
 def _noComp(**kwargs):
     return ()
 
-def _setupCliDomain(subp : ArgumentParser):
+
+def _setupCliDomain(subp: ArgumentParser):
     def addProperties(parser, init):
         parser.add_argument("-u", "--maxUser", required=init, type=int, help="Maximum number of users")
         parser.add_argument("--address", help="Domain contact address")
@@ -200,8 +201,8 @@ def _setupCliDomain(subp : ArgumentParser):
     list = sub.add_parser("list", help="List domains")
     list.set_defaults(_handle=cliDomainList)
     list.add_argument("domainspec", nargs="?", help="Domain ID or prefix to match domainname against")
-    list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s domainname,desc")
     list.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
+    list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s domainname,desc")
     modify = sub.add_parser("modify", help="Modify domain")
     modify.set_defaults(_handle=cliDomainModify)
     modify.add_argument("domainspec", help="Domain ID or prefix to match domainname against")\
@@ -219,8 +220,9 @@ def _setupCliDomain(subp : ArgumentParser):
     show = sub.add_parser("show", help="Show detailed information about one or more domains")
     show.set_defaults(_handle=cliDomainShow)
     show.add_argument("domainspec", help="Domain ID or name").completer = _cliDomainDomainspecAutocomp
-    show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s domainname,desc")
     show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
+    show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s domainname,desc")
+
 
 @Cli.command("domain", _setupCliDomain, help="Domain management")
 def cliDomainStub(args):

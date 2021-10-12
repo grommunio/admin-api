@@ -31,7 +31,7 @@ def cliMlistCreate(args):
     from orm.mlists import MLists
     data = dict(listname=args.name,
                 listType=_typemap.get(args.type or "normal", 0),
-                listPrivilege= _privmap.get(args.privilege or "all", 0),
+                listPrivilege=_privmap.get(args.privilege or "all", 0),
                 associations=args.recipient or [],
                 specifieds=args.sender or [])
     if args.class_:
@@ -39,7 +39,7 @@ def cliMlistCreate(args):
         from sqlalchemy import or_
         try:
             ID = int(args.class_, 0)
-        except:
+        except Exception:
             ID = None
         classes = Classes.query.filter(or_(Classes.ID == ID, Classes.classname.ilike("%"+args.class_+"%"))).all()
         if len(classes) == 0:
@@ -125,7 +125,7 @@ def cliMlistDelete(args):
     mlist = mlists[0]
     if not args.yes:
         if cli.confirm("Delete mailing list '{}' ({})? [y/N]: ".format(cli.col(mlist.listname, attrs=["bold"]), mlist.ID))\
-            != Cli.SUCCESS:
+                != Cli.SUCCESS:
             return 3
     else:
         cli.print("Deleting mlist '{}' ({})".format(mlist.listname, mlist.ID))
@@ -236,8 +236,8 @@ def _setupCliMlist(subp: ArgumentParser):
     list = sub.add_parser("list", help="List existing lists")
     list.set_defaults(_handle=cliMlistList)
     list.add_argument("mlistspec", nargs="?", help="List ID or name prefix")
-    list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s listname,desc")
     list.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
+    list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s listname,desc")
     modify = sub.add_parser("modify", help="Modify list")
     modify.set_defaults(_handle=cliMlistModify)
     modify.add_argument("mlistspec", help="List ID or name prefix").completer = _cliListspecCompleter
@@ -249,8 +249,8 @@ def _setupCliMlist(subp: ArgumentParser):
     show = sub.add_parser("show", help="Show detailed information about list")
     show.set_defaults(_handle=cliMlistShow)
     show.add_argument("mlistspec", help="Mlist ID or name").completer = _cliListspecCompleter
-    show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s listname,desc")
     show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
+    show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s listname,desc")
 
 
 @Cli.command("mlist", _setupCliMlist, help="Mailing/distribution list management")
