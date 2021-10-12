@@ -447,7 +447,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     @classmethod
     def _commit(*args, **kwargs):
         with Service("systemd", Service.SUPPRESS_ALL) as sysd:
-            sysd.reloadService("gromox-http.service")
+            sysd.reloadService("gromox-http.service", "gromox-zcore.service")
 
     @validates("username")
     def usernameUpdateHook(self, key, value, *args):
@@ -548,7 +548,7 @@ class Aliases(DataModel, DB.Base, NotifyTable):
     @classmethod
     def _commit(*args, **kwargs):
         with Service("systemd", Service.SUPPRESS_ALL) as sysd:
-            sysd.reloadService("gromox-http.service")
+            sysd.reloadService("gromox-http.service", "gromox-zcore.service")
 
 
 class Fetchmail(DataModel, DB.Base):
