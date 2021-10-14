@@ -334,25 +334,6 @@ def getDomainSyncPolicy(domainID):
     return jsonify(data=policy)
 
 
-@API.route(api.BaseRoute+"/service/syncPolicy/<username>", methods=["GET"])
-@secure(requireDB=True, requireAuth="optional")
-def getUserSyncPolicy(username):
-    request.remote_addr in Config["sync"]["policyHosts"] or checkPermissions(DomainAdminROPermission("*"))
-    from orm.domains import Domains
-    from orm.users import Users
-    user = Users.query.filter(Users.username == username).first()
-    if user is None:
-        return jsonify(data=Config["sync"]["defaultPolicy"])
-    request.remote_addr in Config["sync"]["policyHosts"] or checkPermissions(DomainAdminROPermission(user.domainID))
-    domain = Domains.query.filter(Domains.ID == user.domainID, Domains._syncPolicy != None).first()
-    policy = dict(Config["sync"]["defaultPolicy"])
-    if domain is not None:
-        policy.update(domain.syncPolicy)
-    if user.syncPolicy is not None:
-        policy.update(user.syncPolicy)
-    return jsonify(data=policy)
-
-
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeAccess", methods=["POST", "PATCH"])
 @secure(requireDB=True)
 def setUserStoreAccess(domainID, userID):

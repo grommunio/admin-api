@@ -632,6 +632,41 @@ class Fetchmail(DataModel, DB.Base):
         return "poll {} with proto {} user {}{} there with password {} is {} here {}\n"\
             .format(self.srcServer, self.protocol, self.srcUser, srcFolder, self.srcPassword, self.mailbox, fetchoptions)
 
+
+class UserDevices(DataModel, DB.Base):
+    __tablename__ = "user_devices"
+
+    ID = Column("id", INTEGER(unsigned=True), primary_key=True)
+    userID = Column("user_id", INTEGER(unsigned=True), ForeignKey(Users.ID), nullable=False)
+    deviceID = Column("device_id", VARCHAR(64), nullable=False)
+    status = Column("status", INTEGER(unsigned=True), nullable=False, server_default="0")
+
+    STATUS_NA = 0
+    STATUS_OK = 1 << 0
+    STATUS_PENDING = 1 << 1
+    STATUS_REQUESTED = 1 << 2
+    STATUS_WIPED = 1 << 3
+
+    DEFAULT = {"status": STATUS_NA}
+
+    _dictmapping_ = ((Id(), Id("userID", flags="init"), Id("deviceID", flags="init"), Int("status", flags="patch")),)
+
+
+class UserDeviceHistory(DataModel, DB.Base):
+    __tablename__ = "user_device_history"
+
+    ID = Column("id", INTEGER(unsigned=True), primary_key=True)
+    userDeviceID = Column("user_device_id", INTEGER(unsigned=True), ForeignKey(UserDevices.ID), nullable=False)
+    time = Column("time", TIMESTAMP, nullable=False, server_default="now()")
+    remoteIP = Column("remote_ip", VARCHAR(64), nullable=True)
+    status = Column("status", INTEGER(unsigned=True), nullable=False, server_default="0")
+
+    _dictmapping_ = ((Id(), Id("userDeviceID", flags="init")),
+                     (DataModel.Prop("time", func=lambda date: int(date.timestamp()) if date else None, flags="init,sort"),
+                      Text("remoteIP", flags="init"),
+                      Int("status", flags="init")))
+
+
 from . import domains, roles
 
 Users.NTregister()

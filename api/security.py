@@ -61,13 +61,14 @@ def getSecurityContext(authLevel):
         Error message or None if successful
 
     """
+    request.auth = {}
     cookie = request.cookies.get("grommunioAuthJwt")
     if cookie is None:
         return "No token provided"
     success, val = checkToken(cookie)
     if not success:
         return val
-    request.auth = {"claims": val}
+    request.auth["claims"] = val
     if authLevel == "user":
         return getUser()
 
