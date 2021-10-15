@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(grommunio-admin VERSION 1.2 LANGUAGES NONE)
+project(grommunio-admin VERSION 1.4 LANGUAGES NONE)
 
 include(GNUInstallDirs)
 include(data/gzip.cmake)
@@ -20,11 +20,20 @@ compressed_name(MANPAGES ${MANFILES})
 compress_files(${MANFILES})
 add_custom_target(man ALL DEPENDS ${MANPAGES})
 
+add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openapi.json
+            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/data/yaml2json.py ${CMAKE_CURRENT_SOURCE_DIR}/res/openapi.yaml ${CMAKE_CURRENT_BINARY_DIR}/openapi.json
+                    || echo "Failed to create openapi.json - falling back to YAML"
+            VERBATIM)
+
+add_custom_target(openapi ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/openapi.json)
+
 file(CREATE_LINK ${INSTALLDIR}/main.py grommunio-admin SYMBOLIC)
 
 install(FILES ${MANPAGES} DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(DIRECTORY api cli endpoints orm services tools DESTINATION ${INSTALLDIR})
 install(DIRECTORY res DESTINATION ${INSTALLDIR})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/openapi.json DESTINATION ${INSTALLDIR}/res OPTIONAL)
 install(PROGRAMS main.py DESTINATION ${INSTALLDIR})
 install(FILES data/api-config.ini data/config.yaml DESTINATION ${INSTALLDIR})
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/grommunio-admin TYPE SBIN)
