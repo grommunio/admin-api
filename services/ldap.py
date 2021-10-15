@@ -60,10 +60,6 @@ class LdapService:
         except Exception as err:
             msg = " - ".join(str(arg) for arg in err.args) or type(err).__name__
             raise ServiceUnavailableError("Failed to connect to server: "+msg)
-        if "filter" in self._config["users"]:
-            f = self._config["users"]["filter"]
-            if f is not None and len(f) != 0 and f[0] != "(" and f[-1] != ")":
-                self._config["users"]["filter"] = "("+f+")"
         if "defaultQuota" in self._config["users"]:
             self._defaultProps = {prop: self._config["users"]["defaultQuota"] for prop in
                                   ("storagequotalimit", "prohibitsendquota", "prohibitreceivequota")}
@@ -83,6 +79,10 @@ class LdapService:
                 raise KeyError("Missing required config value '{}'".format(cls._configMap.get(required, "user."+required)))
         _templatesEnabled = config["users"].get("templates", [])
         userAttributes = {}
+        if "filter" in config["users"]:
+            f = config["users"]["filter"]
+            if f is not None and len(f) != 0 and f[0] != "(" and f[-1] != ")":
+                config["users"]["filter"] = "("+f+")"
         for _template in _templatesEnabled:
             if _template not in cls._templates:
                 raise ValueError("Unknown template '{}'".format(_template))
@@ -378,6 +378,7 @@ class LdapService:
 
     @classmethod
     def testConfig(cls, config):
+        cls.init()
         try:
             cls._checkConfig(config)
             cls.testConnection(config)
