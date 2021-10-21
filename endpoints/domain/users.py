@@ -350,14 +350,7 @@ def setUserStoreAccess(domainID, userID):
     eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
     with Service("exmdb") as exmdb:
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        memberList = exmdb.FolderMemberList(client.getFolderMemberList(user.maildir, eid))
-        for member in memberList.members:
-            if member.name == data["username"]:
-                break
-        else:
-            member = None
-        permissions = (member.rights if member else 0) | data.get("rights", Permissions.STOREOWNER)
-        client.setFolderMember(user.maildir, eid, data["username"], permissions, member.id if member else 0)
+        client.setFolderMember(user.maildir, eid, data["username"], Permissions.STOREOWNER)
     return jsonify(message="Success."), 201 if request.method == "POST" else 200
 
 
@@ -391,5 +384,5 @@ def deleteUserStoreAccess(domainID, userID, ID):
         return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        client.deleteFolderMember(user.maildir, makeEidEx(0, PrivateFIDs.IPMSUBTREE), ID)
+        client.setFolderMember(user.maildir, makeEidEx(0, PrivateFIDs.IPMSUBTREE), ID, Permissions.STOREOWNER, True)
     return jsonify(message="Success")
