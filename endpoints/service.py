@@ -48,8 +48,11 @@ def getWipeStatus(username):
     if user is None:
         return jsonify(message="User not found"), 404
     checkAccess(DomainAdminROPermission(user.domainID))
-    devices = {device.deviceID: device.status
-               for device in UserDevices.query.filter(UserDevices.userID == user.ID)}
+    try:
+        devices = {device.deviceID: device.status
+                   for device in UserDevices.query.filter(UserDevices.userID == user.ID)}
+    except Exception:
+        devices = {}
     requested = request.args["devices"].split(",") if "devices" in request.args else None
     if requested:
         data = {deviceID: {"status": devices[deviceID]} if deviceID in devices else UserDevices.DEFAULT
@@ -63,6 +66,8 @@ def getWipeStatus(username):
 @secure(requireDB=True, requireAuth="optional", authLevel="user")
 def setWipeStatus(username):
     from orm.users import DB, Users, UserDevices, UserDeviceHistory
+    if not DB.minVersion(93):
+        return jsonify(message="Database schema too old - please update to at least n93"), 503
     user = Users.query.filter(Users.username == username).first()
     if user is None:
         return jsonify(message="User not found"), 404
