@@ -3,7 +3,7 @@ Description=Socket for grommunio admin api
 PartOf=grommunio-admin-api
 
 [Socket]
-ListenStream=/var/run/grommunio/admin-api.socket
+ListenStream=/run/grommunio/admin-api.socket
 SocketUser=grommunio
 SocketGroup=nginx
 SocketMode=0660
