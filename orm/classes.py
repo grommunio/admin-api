@@ -117,6 +117,8 @@ class Classes(DataModel, DB.Base):
     def checkCycle(base, targetID):
         if base.ID is None:
             return False
+        if base.ID == targetID:
+            return True
         new = {targetID}
         collected = set()
         while len(new) != 0:
