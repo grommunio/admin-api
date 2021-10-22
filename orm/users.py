@@ -667,6 +667,13 @@ class UserDeviceHistory(DataModel, DB.Base):
                       Int("status", flags="init")))
 
 
+class UserSecondaryStores(DB.Base):
+    __tablename__ = "secondary_store_hints"
+
+    primaryID = Column("primary", INTEGER(unsigned=True), ForeignKey(Users.ID), primary_key=True)
+    secondaryID = Column("secondary", INTEGER(unsigned=True), ForeignKey(Users.ID), primary_key=True)
+
+
 from . import domains, roles
 
 Users.NTregister()

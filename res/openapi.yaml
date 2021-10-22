@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.4.0
+  version: 1.4.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1960,7 +1960,7 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/{domainID}/users/{userID}/storeAccess/{ID}:
+  /domains/{domainID}/users/{userID}/storeAccess/{username}:
     delete:
       summary: Remove user from store access list
       tags:
@@ -1970,7 +1970,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
-        - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/username'
       responses:
         '200':
           description: User removed
@@ -4108,6 +4108,9 @@ components:
           displayName:
             type: string
             description: Name of member
+          username:
+            type: string
+            description: E-Mail address of the user
     syncPolicy:
       type: object
       nullable: true

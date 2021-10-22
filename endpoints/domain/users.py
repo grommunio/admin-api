@@ -338,8 +338,9 @@ def getDomainSyncPolicy(domainID):
 @secure(requireDB=True)
 def setUserStoreAccess(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
-    from orm.users import Users
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    from orm.users import Users, DB, UserSecondaryStores
+    from sqlalchemy import insert
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.ID, Users.maildir).first()
     if user is None:
         return jsonify(message="User not found"), 404
     if user.maildir is None:
@@ -347,10 +348,17 @@ def setUserStoreAccess(domainID, userID):
     data = request.get_json(silent=True)
     if data is None or "username" not in data:
         return jsonify(message="Invalid data"), 400
+    secondary = Users.query.with_entities(Users.ID).filter(Users.username == data["username"],
+                                                           Users.domainID == domainID).first()
+    if secondary is None:
+        return jsonify(message="Could not find user to grant access to"), 404
     eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
     with Service("exmdb") as exmdb:
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
         client.setFolderMember(user.maildir, eid, data["username"], Permissions.STOREOWNER)
+    if DB.minVersion(91):
+        DB.session.execute(insert(UserSecondaryStores).values(primary=user.ID, secondary=secondary.ID).prefix_with("IGNORE"))
+        DB.session.commit()
     return jsonify(message="Success."), 201 if request.method == "POST" else 200
 
 
@@ -367,22 +375,28 @@ def getUserStoreAccess(domainID, userID):
     with Service("exmdb") as exmdb:
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
         memberList = exmdb.FolderMemberList(client.getFolderMemberList(user.maildir, makeEidEx(0, PrivateFIDs.IPMSUBTREE)))
-        members = [{"ID": member.id, "displayName": member.name} for member in memberList.members
+        members = [{"ID": member.id, "displayName": member.name, "username": member.mail} for member in memberList.members
                    if member.rights & Permissions.STOREOWNER]
         return jsonify(data=members)
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeAccess/<int:ID>", methods=["DELETE"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeAccess/<username>", methods=["DELETE"])
 @secure(requireDB=True)
-def deleteUserStoreAccess(domainID, userID, ID):
+def deleteUserStoreAccess(domainID, userID, username):
     checkPermissions(DomainAdminPermission(domainID))
-    from orm.users import Users
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    from orm.users import DB, Users, UserSecondaryStores
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.ID, Users.maildir).first()
     if user is None:
         return jsonify(message="User not found"), 404
     if user.maildir is None:
         return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        client.setFolderMember(user.maildir, makeEidEx(0, PrivateFIDs.IPMSUBTREE), ID, Permissions.STOREOWNER, True)
+        client.setFolderMember(user.maildir, makeEidEx(0, PrivateFIDs.IPMSUBTREE), username, Permissions.STOREOWNER, True)
+    if DB.minVersion(91):
+        secondary = Users.query.with_entities(Users.ID).filter(Users.username == username).first()
+        if secondary is not None:
+            UserSecondaryStores.query.filter(UserSecondaryStores.primaryID == user.ID,
+                                             UserSecondaryStores.secondaryID == secondary.ID).delete()
+        DB.session.commit()
     return jsonify(message="Success")

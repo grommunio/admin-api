@@ -127,7 +127,7 @@ def getPublicFolderOwnerList(domainID, folderID):
     with Service("exmdb") as exmdb:
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, domain.homedir, False)
         response = exmdb.FolderMemberList(client.getFolderMemberList(domain.homedir, folderID))
-    owners = [{"memberID": member.id, "displayName": member.name}
+    owners = [{"memberID": member.id, "displayName": member.name, "username": member.mail}
               for member in response.members
               if (member.rights & Permissions.FOLDEROWNER) == Permissions.FOLDEROWNER
               and member.id not in (0, 0xFFFFFFFFFFFFFFFF)]
