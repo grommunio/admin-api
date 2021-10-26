@@ -153,13 +153,14 @@ def updateUserRoles(domainID, userID):
 @secure(requireDB=True)
 def rdUserStoreProps(domainID, userID):
     checkPermissions(DomainAdminROPermission(domainID) if request.method == "GET" else DomainAdminPermission(domainID))
-    from orm.users import Users
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    from orm.users import DB, Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
     props = [prop for prop in request.args.get("properties", "").split(",") if prop != ""]
+    user.properties = {prop: val for prop, val in user.properties.items() if prop not in props}
     if len(props) == 0:
-        return jsonify(data={})
+        return jsonify(data={}) if request.method == "GET" else jsonify(message="Nothing to delete")
     for i in range(len(props)):
         if not hasattr(PropTags, props[i].upper()) or not isinstance(getattr(PropTags, props[i].upper()), int):
             return jsonify(message="Unknown property '{}'".format(props[i])), 400
@@ -168,6 +169,7 @@ def rdUserStoreProps(domainID, userID):
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
         if request.method == "DELETE":
             client.removeStoreProperties(user.maildir, props)
+            DB.session.commit()
             return jsonify(message="Success.")
         propvals = client.getStoreProperties(user.maildir, 0, props)
     respData = {}
@@ -184,8 +186,8 @@ def rdUserStoreProps(domainID, userID):
 @secure(requireDB=True)
 def setUserStoreProps(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
-    from orm.users import Users
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    from orm.users import DB, Users, UserProperties
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     data = request.get_json(silent=True)
     if data is None or len(data) == 0:
         return jsonify(message="Missing data"), 400
@@ -195,6 +197,7 @@ def setUserStoreProps(domainID, userID):
         return jsonify(message="User has no store"), 400
     errors = {}
     propvals = []
+    updated = {}
     with Service("exmdb") as exmdb:
         for prop, val in data.items():
             tag = getattr(PropTags, prop.upper(), None)
@@ -209,6 +212,7 @@ def setUserStoreProps(domainID, userID):
                 propvals.append(exmdb.TaggedPropval(tag, val))
             except TypeError:
                 errors[prop] = "Unsupported type"
+            updated[prop] = UserProperties({"name": prop, "val": val}, user)
 
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
         problems = client.setStoreProperties(user.maildir, 0, propvals)
@@ -216,6 +220,8 @@ def setUserStoreProps(domainID, userID):
             tag = PropTags.lookup(entry.proptag, hex(entry.proptag)).lower()
             err = ExchangeErrors.lookup(entry.err, hex(entry.err))
             errors[tag] = err
+        user.properties.update({prop: val for prop, val in updated.items() if prop not in errors})
+        DB.session.commit()
         if len(errors) != 0:
             API.logger.warn("Failed to set proptags: "+", ".join("{} ({})".format(tag, err) for tag, err in errors.items()))
         return jsonify(message="Great success!" if len(errors) == 0 else "Some tags could not be set", errors=errors)
