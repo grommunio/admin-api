@@ -110,7 +110,7 @@ def deletePublicFolder(domainID, folderID):
         return jsonify(message="Domain not found"), 404
     with Service("exmdb") as exmdb:
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, domain.homedir, False)
-        success = client.deleteFolder(domain.homedir, folderID)
+        success = client.deleteFolder(domain.homedir, folderID, request.args.get("clear") == "true")
     if not success:
         return jsonify(message="Folder deletion failed"), 500
     return jsonify(message="Success")

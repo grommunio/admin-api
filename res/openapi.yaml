@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.4.3
+  version: 1.4.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2694,6 +2694,13 @@ paths:
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/folderID'
+        - name: clear
+          in: query
+          required: false
+          description: Clear folder before deleting it
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Deletion successful
