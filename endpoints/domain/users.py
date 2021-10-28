@@ -242,12 +242,12 @@ def decodeSyncState(data, username):
 def getUserSyncData(domainID, userID):
     checkPermissions(DomainAdminROPermission(domainID))
     props = ("deviceid", "devicetype", "useragent", "deviceuser", "firstsynctime", "lastupdatetime", "asversion")
-    from orm.users import Users
+    from orm.users import DB, Users, UserDevices
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
     if user is None:
         return jsonify(message="User not found"), 404
     with Service("exmdb") as exmdb:
-        devices = []
+        devices = {}
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
         data = client.getSyncData(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState"))
         for device, state in data.items():
@@ -258,10 +258,18 @@ def getUserSyncData(domainID, userID):
                 syncstate = {prop: stateobj[prop] for prop in props}
                 syncstate["foldersSyncable"] = len(stateobj["contentdata"])
                 syncstate["foldersSynced"] = len([folder for folder in stateobj["contentdata"].values() if 1 in folder])
-                devices.append(syncstate)
+                syncstate["wipeStatus"] = 0
+                devices[syncstate["deviceid"]] = syncstate
             except Exception as err:
                 API.logger.warn("Failed to decode sync state: {}({})".format(type(err).__name__, ", ".join(str(arg) for arg in err.args)))
-        return jsonify(data=devices)
+        if DB.minVersion(93):
+            for device in UserDevices.query.filter(UserDevices.userID == userID)\
+                                           .with_entities(UserDevices.deviceID, UserDevices.status):
+                if device.deviceID in devices:
+                    devices[device.deviceID]["wipeStatus"] = device.status
+                else:
+                    devices[device.deviceID] = {"deviceid": device.deviceID, "wipeStatus": device.status}
+        return jsonify(data=tuple(devices.values()))
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/delegates", methods=["GET"])
@@ -323,6 +331,39 @@ def resyncDevice(domainID, userID, ID):
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
         client.resyncDevice(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState"), ID)
         return jsonify(message="Success")
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<ID>/wipe", methods=["POST", "DELETE"])
+@secure(requireDB=True, authLevel="user")
+def setDeviceWipe(domainID, userID, ID):
+    checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import DB, Users, UserDevices, UserDeviceHistory
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    device = UserDevices.query.filter(UserDevices.userID == userID, UserDevices.deviceID == ID).first()
+    status = device.status if device is not None else 0
+    if (status < 2 and request.method == "DELETE") or \
+       (status >= 2 and request.method == "POST"):
+        return jsonify(message="Nothing to to")
+    if request.method == "DELETE":
+        device.status = 1
+        DB.session.add(UserDeviceHistory(dict(userDeviceID=device.ID, time=datetime.utcnow(), remoteIP=request.remote_addr,
+                                              status=0)))
+        DB.session.commit()
+        return jsonify(message="Wipe canceled")
+    data = request.get_json(silent=True) or {}
+    if "password" not in data or not request.auth["user"].chkPw(data["password"]):
+        return jsonify(message="User password required"), 403
+    if device is None:
+        device = UserDevices(dict(userID=userID, deviceID=ID, status=2))
+        DB.session.add(device)
+        DB.session.flush()
+    device.status = 2
+    DB.session.add(UserDeviceHistory(dict(userDeviceID=device.ID, time=datetime.utcnow(), remoteIP=request.remote_addr,
+                                          status=2)))
+    DB.session.commit()
+    return jsonify(message="Device wipe requested.")
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/syncPolicy", methods=["GET"])

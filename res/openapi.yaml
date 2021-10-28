@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.4.1
+  version: 1.4.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1874,7 +1874,7 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/{domainID}/users/{userID}/sync/{ID}:
+  /domains/{domainID}/users/{userID}/sync/{deviceID}:
     delete:
       summary: Remove device (issue a resync)
       tags:
@@ -1884,12 +1884,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
-        - name: ID
-          in: path
-          required: true
-          description: Device ID
-          schema:
-            type: string
+        - $ref: '#/components/parameters/deviceID'
       responses:
         '200':
           description: Device resync queued
@@ -1901,6 +1896,62 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/users/{userID}/sync/{deviceID}/wipe:
+    post:
+      summary: Request a device wipe
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/deviceID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  description: Password of the user requesting the wipe
+      responses:
+        '200':
+          description: Wipe requested
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '403':
+          description: Password missing or wrong
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Cancel wipe request
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/deviceID'
+      responses:
+        '200':
+          description: Wipe request cancelled
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
 
   /domains/{domainID}/users/{userID}/storeAccess:
     get:
@@ -3371,6 +3422,13 @@ components:
         type: array
         items:
           type: string
+    deviceID:
+      name: deviceID
+      in: path
+      required: true
+      description: Device ID
+      schema:
+        type: string
     match:
       name: match
       description: Match by substring
