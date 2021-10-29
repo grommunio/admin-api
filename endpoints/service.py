@@ -12,8 +12,10 @@ from api.core import API, secure
 from api.errors import InsufficientPermissions
 from api.security import checkPermissions
 
+from services import Service
+
 from tools.config import Config
-from tools.permissions import DomainAdminPermission, DomainAdminROPermission
+from tools.permissions import DomainAdminROPermission, SystemAdminPermission
 
 
 def checkAccess(permission):
@@ -65,13 +67,13 @@ def getWipeStatus(username):
 @API.route(api.BaseRoute+"/service/wipe/<username>", methods=["POST"])
 @secure(requireDB=True, requireAuth="optional", authLevel="user")
 def setWipeStatus(username):
+    checkAccess(SystemAdminPermission())
     from orm.users import DB, Users, UserDevices, UserDeviceHistory
     if not DB.minVersion(93):
         return jsonify(message="Database schema too old - please update to at least n93"), 503
     user = Users.query.filter(Users.username == username).first()
     if user is None:
         return jsonify(message="User not found"), 404
-    checkAccess(DomainAdminPermission(user.domainID))
     data = request.get_json(silent=True)
     if data is None:
         return jsonify(message="Missing data")
@@ -95,10 +97,16 @@ def setWipeStatus(username):
     DB.session.flush()
     timestamp = datetime.fromtimestamp(data["time"]) if "time" in data else datetime.utcnow()
     remote = data.get("remoteIP", request.remote_addr)
+    refresh = []
     for device in devices.values():
-        if device.status <= 1 and newStatus > 1 and not authenticated:
-            raise InsufficientPermissions()
+        if device.status <= 1 and newStatus > 1:
+            if not authenticated:
+                raise InsufficientPermissions()
+            refresh.append(device.deviceID+"|-|"+user.username)
         device.status = newStatus
         DB.session.add(UserDeviceHistory(dict(userDeviceID=device.ID, time=timestamp, remoteIP=remote, status=newStatus)))
     DB.session.commit()
+    if refresh:
+        with Service("redis") as redis:
+            redis.hdel("grommunio-sync:provisioningcache", *refresh)
     return jsonify(message="Success."), 201
