@@ -271,6 +271,8 @@ class LdapService:
             if aliasattr in ldapuser and ldapuser[aliasattr].value is not None:
                 aliases = ldapuser[aliasattr].value
                 userdata["aliases"] = aliases if isinstance(aliases, list) else [aliases]
+                userdata["aliases"] = [alias[5:] if alias.lower().startswith("smtp:") else alias
+                                       for alias in userdata["aliases"]]
             else:
                 userdata["aliases"] = []
         return userdata
