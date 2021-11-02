@@ -192,11 +192,19 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
 
 
 def cliLdapDownsync(args):
+    def checkDomain(candidate):
+        domain = candidate.email.split("@")[-1]
+        if domain not in domainCache:
+            domainCache[domain] = Domains.query.filter(Domains.domainname == domain).count()
+        return domainCache[domain]
+
     cli = args._cli
     cli.require("DB", "LDAP")
     from services import Service
+    from orm.domains import Domains
     from orm.users import Aliases, Users
     error = False
+    domainCache = {}
     if args.user is not None and len(args.user) != 0:
         for expr in args.user:
             candidate = _getCandidate(cli, expr, args.auto)
@@ -204,6 +212,9 @@ def cliLdapDownsync(args):
                 error = True
                 if candidate == ERR_USR_ABRT:
                     break
+                continue
+            if not checkDomain(candidate):
+                cli.print(cli.col("Skipped {} ({}) - domain not found".format(candidate.name, candidate.email), "yellow"))
                 continue
             result = _downsyncUser(cli, candidate, args.yes, args.auto, args.force)
             if result == ERR_USR_ABRT:
@@ -221,6 +232,9 @@ def cliLdapDownsync(args):
         Aliases.NTactive(False)
         Users.NTactive(False)
         for candidate in candidates:
+            if not checkDomain(candidate):
+                cli.print(cli.col("Skipped {} ({}) - domain not found".format(candidate.name, candidate.email), "yellow"))
+                continue
             result = _downsyncUser(cli, candidate, args.yes, args.auto, args.force, False)
             error = error or result != SUCCESS
             if result == ERR_USR_ABRT:
