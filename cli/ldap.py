@@ -232,7 +232,7 @@ def cliLdapDownsync(args):
     from orm.users import Users
     users = Users.query.filter(Users.externID != None).with_entities(Users.externID).all()
     if len(users) == 0:
-        cli.print(cli.col("No imported users found", "yellow"))
+        cli.print("No imported users found. You can import users using `ldap downsync <name>` or `ldap downsync --complete`.")
         return SUCCESS
     with Service("ldap") as ldap:
         candidates = ldap.getAll(user.externID for user in users)
