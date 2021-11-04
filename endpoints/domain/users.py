@@ -333,15 +333,15 @@ def resyncDevice(domainID, userID, ID):
         return jsonify(message="Success")
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<ID>/wipe", methods=["POST", "DELETE"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<deviceID>/wipe", methods=["POST", "DELETE"])
 @secure(requireDB=True, authLevel="user")
-def setDeviceWipe(domainID, userID, ID):
+def setDeviceWipe(domainID, userID, deviceID):
     checkPermissions(DomainAdminPermission(domainID))
     from orm.users import DB, Users, UserDevices, UserDeviceHistory
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
-    device = UserDevices.query.filter(UserDevices.userID == userID, UserDevices.deviceID == ID).first()
+    device = UserDevices.query.filter(UserDevices.userID == userID, UserDevices.deviceID == deviceID).first()
     status = device.status if device is not None else 0
     if (status < 2 and request.method == "DELETE") or \
        (status >= 2 and request.method == "POST"):
@@ -356,7 +356,7 @@ def setDeviceWipe(domainID, userID, ID):
     if "password" not in data or not request.auth["user"].chkPw(data["password"]):
         return jsonify(message="User password required"), 403
     if device is None:
-        device = UserDevices(dict(userID=userID, deviceID=ID, status=2))
+        device = UserDevices(dict(userID=userID, deviceID=deviceID, status=2))
         DB.session.add(device)
         DB.session.flush()
     device.status = 2
