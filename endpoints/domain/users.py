@@ -338,6 +338,8 @@ def resyncDevice(domainID, userID, ID):
 def setDeviceWipe(domainID, userID, deviceID):
     checkPermissions(DomainAdminPermission(domainID))
     from orm.users import DB, Users, UserDevices, UserDeviceHistory
+    if not DB.minVersion(93):
+        return jsonify(message="Database schema too old - please update to at least n93"), 503
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
