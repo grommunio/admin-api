@@ -11,7 +11,6 @@ common:
   physicalDeliveryOfficeName: officelocation
   givenName: givenname
   sn: surname
-  o: childrensnames
   l: locality
   title: title
   initials: initials
@@ -29,5 +28,20 @@ common:
   displayname: displayname
 ActiveDirectory:
   department: departmentname
+  extensionAttribute1: addressbookextensionattribute1
+  extensionAttribute2: addressbookextensionattribute2
+  extensionAttribute3: addressbookextensionattribute3
+  extensionAttribute4: addressbookextensionattribute4
+  extensionAttribute5: addressbookextensionattribute5
+  extensionAttribute6: addressbookextensionattribute6
+  extensionAttribute7: addressbookextensionattribute7
+  extensionAttribute8: addressbookextensionattribute8
+  extensionAttribute9: addressbookextensionattribute9
+  extensionAttribute10: addressbookextensionattribute10
+  extensionAttribute11: addressbookextensionattribute11
+  extensionAttribute12: addressbookextensionattribute12
+  extensionAttribute13: addressbookextensionattribute13
+  extensionAttribute14: addressbookextensionattribute14
+  extensionAttribute15: addressbookextensionattribute15
 OpenLDAP:
   departmentNumber: departmentname
