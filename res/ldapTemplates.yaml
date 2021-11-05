@@ -26,6 +26,7 @@ common:
   assistant: assistant
   wWWHomePage: businesshomepage
   displayname: displayname
+  ou: addressbookorganizationalunitname
 ActiveDirectory:
   department: departmentname
   extensionAttribute1: addressbookextensionattribute1

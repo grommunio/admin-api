@@ -38,7 +38,7 @@ class GrochatService:
     @staticmethod
     def userToData(user):
         userdata = {"email": user.username, "username": user.username.replace("@", "_")}
-        props = user.propmap
+        props = user.properties
         GrochatService._addif(props, userdata, "givenname", "first_name")
         GrochatService._addif(props, userdata, "surname", "last_name")
         GrochatService._addif(props, userdata, "nickname", "nickname")

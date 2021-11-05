@@ -10,21 +10,114 @@ from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp, Bool, Date
 from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
 from tools.rop import ntTime, nxTime
 
-from sqlalchemy import Column, ForeignKey, func
+from sqlalchemy import Column, ForeignKey, event, func
 from sqlalchemy.dialects.mysql import ENUM, INTEGER, TEXT, TIMESTAMP, TINYINT, VARBINARY, VARCHAR
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, selectinload, validates
-from sqlalchemy.orm.collections import attribute_mapped_collection
 
 import crypt
 import json
 import time
+
 from datetime import datetime
 
 
 class Users(DataModel, DB.Base, NotifyTable):
+    class PropMap():
+        def __init__(self, user):
+            self.__user = user
+            self.__struct = {}
+            self.__dict = {}
+            for prop in user._properties:
+                if PropTypes.ismv(prop.tag):
+                    if prop.tag in self.__struct:
+                        self.__dict[self._name(prop.tag)].append(prop.val)
+                        self.__struct[prop.tag].append(prop)
+                    else:
+                        self.__dict[self._name(prop.tag)] = [prop.val]
+                        self.__struct[prop.tag] = [prop]
+                else:
+                    self.__dict[self._name(prop.tag)] = prop.val
+                    self.__struct[prop.tag] = prop
+
+        @staticmethod
+        def _name(key):
+            return key.lower() if isinstance(key, str) else PropTags.lookup(key, hex(key)).lower()
+
+        @staticmethod
+        def _tag(key):
+            return key if isinstance(key, int) else getattr(PropTags, key.upper(), None) or int(key, 0)
+
+        def __contains__(self, o):
+            return self._name(o) in self.__dict
+
+        def __getitem__(self, k):
+            return self.__dict[self._name(k)]
+
+        def __len__(self):
+            return len(self.__dict__)
+
+        def __repr__(self):
+            return repr(self.__dict)
+
+        def __setitem__(self, k, v):
+            tag = self._tag(k)
+            name = self._name(k)
+            if not PropTypes.ismv(tag):
+                if tag in self.__struct:
+                    if v is None:
+                        DB.session.delete(self.__struct[tag])
+                    else:
+                        self.__struct[tag].val = v
+                elif v is None:
+                    return
+                else:
+                    self.__struct[tag] = UserProperties(tag, v, self.__user)
+                    DB.session.add(self.__struct[tag])
+                self.__dict[name] = v
+                return
+            if v is None:
+                v = []
+            elif not isinstance(v, (list, tuple, set)):
+                v = [v]
+            values = self.__dict.get(name, ())
+            current = self.__struct.get(tag, ())
+            next = []
+            for value in v:
+                if v in current:
+                    i = values.index(v)
+                    values.pop(i)
+                    next.append(current.pop(i))
+                else:
+                    next.append(UserProperties(tag, value, self.__user))
+                    DB.session.add(next[-1])
+            for rm in current:
+                DB.session.delete(rm)
+            order = 1
+            for up in next:
+                up.orderID = order
+                order += 1
+            self.__dict[name] = v
+            self.__struct[tag] = next
+
+        def get(self, k, d=None):
+            return self.__dict.get(self._name(k), d)
+
+        def idmap(self):
+            return {tag: [v.val for v in value] if PropTypes.ismv(tag) else value.val for tag, value in self.__struct.items()}
+
+        def namemap(self):
+            return self.__dict
+
+        def items(self):
+            return self.__dict.items()
+
+        def update(self, data):
+            for k, v in data.items():
+                self[k] = v
+
     __tablename__ = "users"
 
     ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
@@ -46,8 +139,8 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     domain = relationship("Domains", foreign_keys=domainID, primaryjoin="Users.domainID == Domains.ID")
     roles = relationship("AdminRoles", secondary="admin_user_role_relation")
-    properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True,
-                              collection_class=attribute_mapped_collection("name"), passive_deletes=True)
+    _properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True, passive_deletes=True,
+                               order_by="UserProperties.orderID")
     aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True, passive_deletes=True)
     fetchmail = OptionalNC(75, [],
                            relationship("Fetchmail", cascade="all, delete-orphan", single_parent=True, order_by="Fetchmail.active.desc()"))
@@ -63,7 +156,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                       BoolP("publicAddress", flags="patch"),
                       RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
                       RefProp("fetchmail", flags="managed, patch", link="ID", qopt=selectinload),
-                      RefProp("properties", flags="patch, managed", link="name", flat="val", qopt=selectinload),
+                      {"attr": "properties", "flags": "patch", "func": lambda p: p.namemap()},
                       RefProp("roles", qopt=selectinload),
                       {"attr": "syncPolicy", "flags": "patch"},
                       {"attr": "chat", "flags": "patch"},
@@ -99,6 +192,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     DOMAIN_MASK = 0x30
 
     _chatUser = None
+    _propcache = None
 
     @staticmethod
     def checkCreateParams(data):
@@ -154,7 +248,7 @@ class Users(DataModel, DB.Base, NotifyTable):
             if not formats.email.match(self.username):
                 raise ValueError("'{}' is not a valid e-mail address".format(self.username))
         DataModel.fromdict(self, patches, args, kwargs)
-        displaytype = self.propmap.get("displaytypeex", 0)
+        displaytype = self.properties.get("displaytypeex", 0)
         if displaytype in (0, 1, 7, 8):
             self._deprecated_addressType, self._deprecated_subType = self._decodeDisplayType(displaytype)
         if self.chatID:
@@ -205,12 +299,22 @@ class Users(DataModel, DB.Base, NotifyTable):
         return crypt.crypt(pw, self.password) == self.password
 
     @property
-    def propmap(self):
-        return {k: v.val for k, v in self.properties.items()}
+    def propmap_id(self):
+        if self._propcache is None:
+            self._propcache = self.PropMap(self)
+        return self._propcache.idmap()
 
     @property
-    def propmap_id(self):
-        return {p.tag: p.val for p in self.properties.values()}
+    def properties(self):
+        if self._propcache is None:
+            self._propcache = self.PropMap(self)
+        return self._propcache
+
+    @properties.setter
+    def properties(self, values):
+        if self._propcache is None:
+            self._propcache = self.PropMap(self)
+        self._propcache.update(values)
 
     @property
     def syncPolicy(self):
@@ -455,25 +559,25 @@ class Users(DataModel, DB.Base, NotifyTable):
         return value
 
 
-class UserProperties(DataModel, DB.Base):
+class UserProperties(DB.Base):
     __tablename__ = "user_properties"
 
     supportedTypes = PropTypes.intTypes | PropTypes.floatTypes | {PropTypes.STRING, PropTypes.WSTRING}
 
     userID = Column("user_id", INTEGER(unsigned=True), ForeignKey(Users.ID, ondelete="cascade", onupdate="cascade"), primary_key=True)
-    tag = Column("proptag", INTEGER(unsigned=True), primary_key=True, index=True)
+    tag = Column("proptag", INTEGER(unsigned=True), primary_key=True)
+    orderID = Column("order_id", INTEGER(unsigned=True), primary_key=True, server_default="1")
     _propvalbin = Column("propval_bin", VARBINARY(4096))
     _propvalstr = Column("propval_str", VARCHAR(4096))
 
     user = relationship(Users)
 
-    _dictmapping_ = (({"attr": "name", "flags": "init"}, {"attr": "val", "flags": "patch"}), (Int("userID"),))
-
-    def __init__(self, props, user, *args, **kwargs):
-        self.user = user
-        if "tag" in props and props["tag"] & 0xFFFF not in self.supportedTypes:
+    def __init__(self, tag, value, user):
+        if tag & 0x0FFF not in self.supportedTypes:
             raise NotImplementedError("Prop type is currently not supported")
-        self.fromdict(props, *args, **kwargs)
+        self.tag = tag
+        self.val = value
+        self.user = user
 
     @property
     def name(self):
@@ -487,13 +591,17 @@ class UserProperties(DataModel, DB.Base):
         tag = getattr(PropTags, value.upper(), None)
         if tag is None:
             raise ValueError("Unknown PropTag '{}'".format(value))
-        if tag & 0xFFFF not in self.supportedTypes:
+        if tag & 0x0FFF not in self.supportedTypes:
             raise ValueError("{}: Tag type {} is not supported".format(PropTags.lookup(tag), PropTypes.lookup(tag)))
         self.tag = tag
 
     @property
     def type(self):
         return self.tag & 0xFFFF
+
+    @property
+    def baseType(self):
+        return self.tag & 0x0FFF
 
     @property
     def val(self):
@@ -512,7 +620,7 @@ class UserProperties(DataModel, DB.Base):
                 except TypeError:
                     raise ValueError("Invalid date '{}'".format(value))
             value = ntTime(time.mktime(value.timetuple()))
-        if type(value) != PropTypes.pyType(self.type):
+        if type(value) != PropTypes.pyType(self.baseType):
             raise ValueError("Type of value {} does not match type of tag {} ({})".format(value, self.name,
                                                                                           PropTypes.lookup(self.tag)))
         if self.type == PropTypes.BINARY:
@@ -633,6 +741,7 @@ class Fetchmail(DataModel, DB.Base):
             .format(self.srcServer, self.protocol, self.srcUser, srcFolder, self.srcPassword, self.mailbox, fetchoptions)
 
 
+# Available as of n93
 class UserDevices(DataModel, DB.Base):
     __tablename__ = "user_devices"
 
@@ -676,5 +785,11 @@ class UserSecondaryStores(DB.Base):
 
 from . import domains, roles
 
+
 Users.NTregister()
 Aliases.NTregister()
+
+
+@event.listens_for(Users, "expire")
+def _User_expire(target, *args, **kwargs):
+    target._propcache = None

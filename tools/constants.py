@@ -59,6 +59,10 @@ class PropTypes(_ReverseLookup):
         value = value & 0xFFFF
         return int if value in cls.intTypes else float if value in cls.floatTypes else bytes if value == cls.BINARY else str
 
+    @classmethod
+    def ismv(cls, value):
+        return bool(value & 0x1000)
+
 
 class ExchangeErrors(_ReverseLookup):
     ecSuccess = 0
@@ -260,6 +264,8 @@ class PropTags(_ReverseLookup):
     ADDRESSBOOKOBJECTGUID = 0x8C6D0102
     ADDRESSBOOKORGANIZATIONALUNITROOTDISTINGUISHEDNAME = 0x8CA8001F
     ADDRESSBOOKORGANIZATIONALUNITROOTDISTINGUISHEDNAME_STRING8 = 0x8CA8001E
+    ADDRESSBOOKORGANIZATIONNAME = 0x8101101f
+    ADDRESSBOOKORGANIZATIONALUNITNAME = 0x8102101f
     ADDRESSBOOKOWNER = 0x800C000D
     ADDRESSBOOKOWNERBACKLINK = 0x8024000D
     ADDRESSBOOKPARENTENTRYID = 0xFFFC0102

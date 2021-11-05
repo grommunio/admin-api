@@ -163,7 +163,7 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
                         cli.print("Aborted.")
                     return result
         with Service("ldap") as ldap:
-            userdata = ldap.downsyncUser(candidate.ID, user.propmap)
+            userdata = ldap.downsyncUser(candidate.ID, user.properties)
         try:
             user.fromdict(userdata)
             user.externID = candidate.ID

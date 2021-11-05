@@ -60,7 +60,7 @@ def ldapDownsyncDomains(ldap, domains):
     users = Users.query.filter(Users.externID != None, *domainFilters).all()
     syncStatus = []
     for user in users:
-        userdata = ldap.downsyncUser(user.externID, user.propmap)
+        userdata = ldap.downsyncUser(user.externID, user.properties)
         if userdata is None:
             syncStatus.append({"ID": user.ID, "username": user.username, "code": 404, "message": "LDAP object not found"})
             continue
@@ -165,7 +165,7 @@ def downloadLdapUser(ldap):
             return jsonify(message="Cannot import user: User exists " +
                            ("locally" if user.externID is None else "and is associated with another LDAP object")), 409
         checkPermissions(DomainAdminPermission(user.domainID))
-        userdata = ldap.downsyncUser(ID, user.propmap)
+        userdata = ldap.downsyncUser(ID, user.properties)
         try:
             user.fromdict(userdata)
             user.externID = ID
@@ -204,7 +204,7 @@ def updateLdapUser(ldap, domainID, userID):
     ldapID = ldap.unescapeFilterChars(request.args["ID"]) if "ID" in request.args else user.externID
     if ldapID is None:
         return jsonify(message="Cannot synchronize user: Could not determine LDAP object"), 400
-    userdata = ldap.downsyncUser(ldapID, user.propmap)
+    userdata = ldap.downsyncUser(ldapID, user.properties)
     if userdata is None:
         return jsonify(message="Cannot synchronize user: LDAP object not found"), 404
     user.fromdict(userdata)

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.4.4
+  version: 1.4.5
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3577,11 +3577,7 @@ components:
     propvals:
       type: object
       description: User properties as name/value pairs
-      additionalProperties:
-        anyOf:
-          - type: string
-          - type: integer
-          - type: number
+      additionalProperties: true
     userStatus:
       type: integer
       description: User status (0=Normal, 1=Suspended, 2=Out-of-date, 3=Deleted, 4=Shared Mailbox)
@@ -3662,13 +3658,7 @@ components:
           type: integer
           readOnly: true
         properties:
-          type: object
-          description: User properties as name/value pairs
-          additionalProperties:
-            anyOf:
-              - type: string
-              - type: integer
-              - type: number
+          $ref: '#/components/schemas/propvals'
         aliases:
           type: array
           description: List of aliases for this user
@@ -3711,13 +3701,7 @@ components:
           type: string
           maxLength: 128
         properties:
-          type: object
-          description: User properties as name/value pairs. Note that properties not contained in this object will be deleted.
-          additionalProperties:
-            anyOf:
-              - type: string
-              - type: integer
-              - type: number
+          $ref: '#/components/schemas/propvals'
         aliases:
           type: array
           description: List of aliases for this user

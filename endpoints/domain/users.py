@@ -158,7 +158,7 @@ def rdUserStoreProps(domainID, userID):
     if user is None:
         return jsonify(message="User not found"), 404
     props = [prop for prop in request.args.get("properties", "").split(",") if prop != ""]
-    user.properties = {prop: val for prop, val in user.properties.items() if prop not in props}
+    user.properties = {prop: None for prop in props}
     if len(props) == 0:
         return jsonify(data={}) if request.method == "GET" else jsonify(message="Nothing to delete")
     for i in range(len(props)):
@@ -186,7 +186,7 @@ def rdUserStoreProps(domainID, userID):
 @secure(requireDB=True)
 def setUserStoreProps(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
-    from orm.users import DB, Users, UserProperties
+    from orm.users import DB, Users
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     data = request.get_json(silent=True)
     if data is None or len(data) == 0:
@@ -197,7 +197,6 @@ def setUserStoreProps(domainID, userID):
         return jsonify(message="User has no store"), 400
     errors = {}
     propvals = []
-    updated = {}
     with Service("exmdb") as exmdb:
         for prop, val in data.items():
             tag = getattr(PropTags, prop.upper(), None)
@@ -212,15 +211,13 @@ def setUserStoreProps(domainID, userID):
                 propvals.append(exmdb.TaggedPropval(tag, val))
             except TypeError:
                 errors[prop] = "Unsupported type"
-            updated[prop] = UserProperties({"name": prop, "val": val}, user)
-
         client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
         problems = client.setStoreProperties(user.maildir, 0, propvals)
         for entry in problems:
             tag = PropTags.lookup(entry.proptag, hex(entry.proptag)).lower()
             err = ExchangeErrors.lookup(entry.err, hex(entry.err))
             errors[tag] = err
-        user.properties.update({prop: val for prop, val in updated.items() if prop not in errors})
+        user.properties = data
         DB.session.commit()
         if len(errors) != 0:
             API.logger.warn("Failed to set proptags: "+", ".join("{} ({})".format(tag, err) for tag, err in errors.items()))
