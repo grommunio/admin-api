@@ -57,7 +57,7 @@ class ServiceHub(metaclass=_ServiceHubMeta):
               DISABLED: "DISABLED"}
 
     class ServiceInfo:
-        def __init__(self, name, mgrclass, exchandler, maxreloads, maxfailures):
+        def __init__(self, name, mgrclass, exchandler, maxreloads, maxfailures, reloadlocktime):
             self.mgrclass = mgrclass
             self._state = ServiceHub.UNINITIALIZED
             self.exc = None
@@ -68,6 +68,8 @@ class ServiceHub(metaclass=_ServiceHubMeta):
             self._maxreloads = maxreloads
             self._failures = 0
             self._maxfailures = maxfailures
+            self._lastreload = 0
+            self._reloadlocktime = reloadlocktime
             self.logger = logging.getLogger(name)
 
         def __str__(self):
@@ -90,9 +92,12 @@ class ServiceHub(metaclass=_ServiceHubMeta):
             return True
 
         def load(self, force_reload=False):
-            if self._state not in (ServiceHub.UNINITIALIZED, ServiceHub.SUSPENDED) and not force_reload:
+            from time import time
+            if (self._state not in (ServiceHub.UNINITIALIZED, ServiceHub.SUSPENDED) or
+               time()-self._lastreload < self._reloadlocktime) and not force_reload:
                 return
             self._reloads += 1
+            self._lastreload = time()
             try:
                 self.manager = self.mgrclass()
                 self.state = ServiceHub.LOADED
@@ -102,8 +107,8 @@ class ServiceHub(metaclass=_ServiceHubMeta):
             except ServiceUnavailableError as err:
                 self.exc = err
                 self.logger.warning("Failed to load service: "+err.args[0])
-                self._reloads = min(self._reloads, self._maxreloads)
                 self.state = ServiceHub.SUSPENDED if self._reloads <= self._maxreloads else ServiceHub.ERROR
+                self._reloads = min(self._reloads, self._maxreloads)
             except ServiceDisabledError as err:
                 self.exc = err
                 self.logger.warning("Failed to load service: "+err.args[0])
@@ -154,9 +159,9 @@ class ServiceHub(metaclass=_ServiceHubMeta):
             return ServiceHub.statename(self._state)
 
     @classmethod
-    def register(cls, name, exchandler=lambda *args, **kwargs: None, maxreloads=0, maxfailures=None):
+    def register(cls, name, exchandler=lambda *args, **kwargs: None, maxreloads=0, maxfailures=None, reloadlocktime=1):
         def inner(mgrclass):
-            cls._services[name] = cls.ServiceInfo(name, mgrclass, exchandler, maxreloads, maxfailures)
+            cls._services[name] = cls.ServiceInfo(name, mgrclass, exchandler, maxreloads, maxfailures, reloadlocktime)
             return mgrclass
         return inner
 
