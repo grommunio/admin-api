@@ -230,7 +230,10 @@ def decodeSyncState(data, username):
         API.logger.warning("Loading PHP serialize objects is deprecated")
         return loadPSO(data, decode_strings=True)["StateObject"][1]["devices"][username]["ASDevice"][1]
     elif len(data) >= 1 and data[0] == ord("{"):
-        return json.loads(data)["data"]["devices"][username]["data"]
+        data = json.loads(data)["data"]
+        if "devices" in data:
+            data = data["devices"][username]["data"]
+        return data
     return None
 
 
