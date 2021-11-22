@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.4.5
+  version: 1.4.6
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3253,7 +3253,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/org'
+              $ref: '#/components/schemas/orgWrite'
       responses:
         '201':
           description: Organization created
@@ -3310,7 +3310,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/org'
+              $ref: '#/components/schemas/orgWrite'
       responses:
         '200':
           description: Organization updated
@@ -3574,6 +3574,31 @@ components:
         description:
           type: string
           nullable: true
+        domains:
+          type: array
+          description: List of domains belonging to the organization
+          items:
+            type: object
+            properties:
+              ID:
+                $ref: '#/components/schemas/ID'
+              domainname:
+                type: string
+              displayname:
+                type: string
+    orgWrite:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        domains:
+          type: array
+          description: List of domain IDs belonging to the organization
+          items:
+            type: integer
     propvals:
       type: object
       description: User properties as name/value pairs
@@ -3589,7 +3614,7 @@ components:
           $ref: '#/components/schemas/ID'
         username:
           type: string
-          maxLength: 128
+          maxLength: 320
         domainID:
           type: integer
           readOnly: true
@@ -3650,7 +3675,7 @@ components:
       properties:
         username:
           type: string
-          maxLength: 128
+          maxLength: 320
         password:
           type: string
           description: Initial password
@@ -3699,7 +3724,7 @@ components:
       properties:
         username:
           type: string
-          maxLength: 128
+          maxLength: 320
         properties:
           $ref: '#/components/schemas/propvals'
         aliases:

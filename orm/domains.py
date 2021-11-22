@@ -4,18 +4,18 @@
 
 from . import DB, OptionalC, NotifyTable
 from tools import formats
-from tools.DataModel import DataModel, Id, Text, Int, Date
+from tools.DataModel import DataModel, Id, Text, Int, Date, RefProp
 from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
 from services import Service
 
 import idna
 import json
 
-from sqlalchemy import Column, func, select
+from sqlalchemy import Column, func, select, ForeignKey
 from sqlalchemy.dialects.mysql import DATE, INTEGER, TEXT, TINYINT, VARCHAR
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import column_property, validates
+from sqlalchemy.orm import column_property, validates, relationship
 from sqlalchemy.types import TypeDecorator
 
 from .users import Users
@@ -28,7 +28,23 @@ class Orgs(DataModel, DB.Base):
     name = Column("name", VARCHAR(32), nullable=False)
     description = Column("description", VARCHAR(128))
 
-    _dictmapping_ = ((Id(), Text("name", flags="patch")), (Text("description", flags="patch"),))
+    domains = relationship("Domains")
+
+    _dictmapping_ = ((Id(), Text("name", flags="patch")), (Text("description", flags="patch"),),
+                     (RefProp("domains", flags="patch"),))
+
+    def fromdict(self, patches, *args, **kwargs):
+        domains = patches.pop("domains", None)
+        if domains is not None:
+            if self.ID is not None:
+                sync = {"synchronize_session": "fetch"}
+                Domains.query.filter(Domains.orgID == self.ID, Domains.ID.notin_(domains)).update({Domains.orgID: 0}, **sync)
+                Domains.query.filter(Domains.ID.in_(domains)).update({Domains.orgID: self.ID}, **sync)
+            else:
+                domains = Domains.query.filter(Domains.ID.in_(domains))
+                for domain in domains:
+                    domain.org = self
+        DataModel.fromdict(self, patches, *args, **kwargs)
 
 
 class Domains(DataModel, DB.Base, NotifyTable):
@@ -50,7 +66,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
     __tablename__ = "domains"
 
     ID = Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True, nullable=False)
-    orgID = Column("org_id", INTEGER(10, unsigned=True), nullable=False, server_default="0", index=True)
+    orgID = Column("org_id", INTEGER(10, unsigned=True), ForeignKey(Orgs.ID), nullable=False, server_default="0", index=True)
     _domainname = Column("domainname", DomainName(64), nullable=False)
     homedir = Column("homedir", VARCHAR(128), nullable=False, server_default="")
     maxUser = Column("max_user", INTEGER(10, unsigned=True), nullable=False)
@@ -65,6 +81,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
 
     activeUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus == 0)).as_scalar())
     inactiveUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus != 0)).as_scalar())
+    org = relationship(Orgs)
 
     _dictmapping_ = ((Id(), Text("domainname", flags="init"), "displayname"),
                      (Id("orgID", flags="patch"),
