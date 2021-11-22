@@ -21,14 +21,18 @@ _ldapDepServices = ("gromox-http.service", "gromox-midb.service", "gromox-zcore.
 
 def _loadConf(path):
     from multidict import MultiDict
-    with open(path) as file:
-        conf = MultiDict()
-        for line in file:
-            if line.strip().startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            conf.add(key.strip(), value.strip())
-    return conf
+    try:
+        with open(path) as file:
+            conf = MultiDict()
+            for line in file:
+                if line.strip().startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                conf.add(key.strip(), value.strip())
+        return conf
+    except FileNotFoundError:
+        logger.info("Could not load '{}': file not found".format(path))
+        return MultiDict()
 
 
 def _fDumpConf(file, conf):
@@ -216,10 +220,10 @@ def dumpAuthmgr(conf=None, file=None, reloadServices=False):
 def load():
     error = loadLdap()
     if error:
-        logger.info("Could not load ldap config: "+error)
+        logger.error("Could not load ldap config: "+error)
     error = loadAuthmgr()
     if error:
-        logger.info("Could not load authmgr config: "+error)
+        logger.error("Could not load authmgr config: "+error)
 
 
 load()
