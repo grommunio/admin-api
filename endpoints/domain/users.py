@@ -411,6 +411,34 @@ def setUserStoreAccess(domainID, userID):
     return jsonify(message="Success."), 201 if request.method == "POST" else 200
 
 
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeAccess", methods=["PUT"])
+@secure(requireDB=True)
+def setUserStoreAccessMulti(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users, DB, UserSecondaryStores
+    from sqlalchemy import insert
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.ID, Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    if user.maildir is None:
+        return jsonify(message="User has no store"), 400
+    data = request.get_json(silent=True)
+    if data is None or "usernames" not in data:
+        return jsonify(message="Invalid data"), 400
+    secondary = Users.query.filter(Users.username.in_(data["usernames"]), Users.domainID == domainID)\
+                           .with_entities(Users.ID).all()
+    eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
+    with Service("exmdb") as exmdb:
+        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
+        res = client.setFolderMembers(user.maildir, eid, data["usernames"], Permissions.STOREOWNER)
+    if DB.minVersion(91):
+        UserSecondaryStores.query.filter(UserSecondaryStores.primaryID == user.ID).delete(synchronize_session=False)
+        DB.session.execute(insert(UserSecondaryStores).values([{"primary": user.ID, "secondary": sec.ID}
+                                                               for sec in secondary]))
+        DB.session.commit()
+    return jsonify(message="{} user{} updated".format(res, "" if res == 1 else "s"))
+
+
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeAccess", methods=["GET"])
 @secure(requireDB=True)
 def getUserStoreAccess(domainID, userID):

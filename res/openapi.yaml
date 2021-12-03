@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.4.6
+  version: 1.4.7
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2002,6 +2002,37 @@ paths:
       responses:
         '201':
           description: User added
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    put:
+      summary: Overwrite the list of users with store access
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                usernames:
+                  type: array
+                  items:
+                    type: string
+                    description: Mail address of the user to grant access to
+      responses:
+        '200':
+          description: User list updated
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':

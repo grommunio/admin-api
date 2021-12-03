@@ -130,7 +130,7 @@ def getPublicFolderOwnerList(domainID, folderID):
     owners = [{"memberID": member.id, "displayName": member.name, "username": member.mail}
               for member in response.members
               if (member.rights & Permissions.FOLDEROWNER) == Permissions.FOLDEROWNER
-              and member.id not in (0, 0xFFFFFFFFFFFFFFFF)]
+              and not member.special]
     return jsonify(data=owners)
 
 

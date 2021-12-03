@@ -19,12 +19,12 @@ class ExmdbService:
     __methods = ("TaggedPropval", "FolderList", "FolderMemberList")
 
     def __init__(self):
-        self.loadPyexmdb()
+        self._loadPyexmdb()
         for method in self.__methods:
             setattr(self, method, getattr(self.pyexmdb, method))
 
     @classmethod
-    def loadPyexmdb(cls):
+    def _loadPyexmdb(cls):
         if cls.__loaded:
             return
         try:
@@ -41,3 +41,20 @@ class ExmdbService:
         cls.port = Config["options"].get("exmdbPort", "5000")
         cls.pyexmdb = pyexmdb
         cls.loaded = True
+
+    def client(self, homedir, isPrivate):
+        """Shortcut for creating a client.
+
+        Parameters
+        ----------
+        homedir : str
+            Home directory of the user or domain.
+        isPrivate : bool
+            Whether it is a user (True) or domain (False) database
+
+        Returns
+        -------
+        pyexmdb.ExmdbQueries
+            Exmdb client
+        """
+        return self.ExmdbQueries(self.host, self.port, homedir, isPrivate)
