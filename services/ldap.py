@@ -262,7 +262,7 @@ class LdapService:
         ldapuser = self.conn.entries[0]
         if not self._userComplete(ldapuser, (self._config["users"]["username"],)):
             return None
-        userdata = dict(username=ldapuser[self._config["users"]["username"]].value)
+        userdata = dict(username=ldapuser[self._config["users"]["username"]].value.lower())
         userdata["properties"] = props or self._defaultProps.copy()
         userdata["properties"].update({prop: ldapuser[attr].value
                                        for attr, prop in self._userAttributes.items() if attr in ldapuser})
