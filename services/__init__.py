@@ -234,6 +234,6 @@ class Service:
 
     @staticmethod
     def available(name):
-        return name in ServiceHub and ServiceHub[name].available
+        return name in ServiceHub and ServiceHub.get(name).available
 
 from . import chat, exmdb, ldap, redis, systemd
