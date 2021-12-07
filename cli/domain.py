@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
-from . import Cli
+from . import Cli, InvalidUseError
 from argparse import ArgumentParser
 
 _statusMap = {0: "active", 1: "suspended", 2: "out-of-date", 3: "deleted"}
@@ -226,4 +226,4 @@ def _setupCliDomain(subp: ArgumentParser):
 
 @Cli.command("domain", _setupCliDomain, help="Domain management")
 def cliDomainStub(args):
-    pass
+    raise InvalidUseError()

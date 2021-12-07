@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
-from . import Cli, ArgumentParser
+from . import Cli, ArgumentParser, InvalidUseError
 
 
 class CTrace:
@@ -339,4 +339,4 @@ def _setupCliConfigParser(subp: ArgumentParser):
 
 @Cli.command("config", _setupCliConfigParser, help="Show or check configuration")
 def cliConfigStub(args):
-    pass
+    raise InvalidUseError()

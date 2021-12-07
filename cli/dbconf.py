@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
-from . import Cli
+from . import Cli, InvalidUseError
 
 from argparse import ArgumentParser
 
@@ -154,4 +154,4 @@ def _setupCliDbconf(subp: ArgumentParser):
 
 @Cli.command("dbconf", _setupCliDbconf, help="Database-stored configuration management")
 def cliDbconfStub(args):
-    pass
+    raise InvalidUseError()

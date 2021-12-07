@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
-from . import Cli, ArgumentParser
+from . import Cli, ArgumentParser, InvalidUseError
 
 _states = {-1: ("UNLOADED", {"attrs": ["dark"]}),
            0: ("LOADED", {"color": "green"}),
@@ -103,4 +103,4 @@ def _cliSetupServiceParser(subp: ArgumentParser):
 
 @Cli.command("service", _cliSetupServiceParser)
 def cliServices(args):
-    pass
+    raise InvalidUseError()

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
-from . import Cli
+from . import Cli, InvalidUseError
 
 from argparse import ArgumentParser
 
@@ -152,4 +152,4 @@ def _setupCliUser(subp: ArgumentParser):
 
 @Cli.command("user", _setupCliUser, help="User management")
 def cliUserStub(args):
-    pass
+    raise InvalidUseError()

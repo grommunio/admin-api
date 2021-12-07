@@ -11,6 +11,10 @@ class CliError(BaseException):
     pass
 
 
+class InvalidUseError(Exception):
+    pass
+
+
 class Cli:
     class Formatter(logging.Formatter):
         levelstyles = {"DEBUG": {"attrs": ["dark"]},
@@ -106,6 +110,9 @@ class Cli:
             except CliError as err:
                 self.print(self.col(err.args[0], "red"))
                 return 1
+            except InvalidUseError:
+                self.print(self.col("Missing command. Use --help for more info.", "red"))
+                return 3
             except:
                 if not secure:
                     raise

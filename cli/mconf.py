@@ -5,7 +5,7 @@
 
 from argparse import ArgumentParser
 
-from . import Cli
+from . import Cli, InvalidUseError
 
 _configs = ("authmgr", "ldap")
 
@@ -198,5 +198,5 @@ def _setupCliMconf(subp: ArgumentParser):
 
 
 @Cli.command("mconf", _setupCliMconf, help="Managed configurations manipulation")
-def cliMconfStub():
-    pass
+def cliMconfStub(args):
+    raise InvalidUseError()

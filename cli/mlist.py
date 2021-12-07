@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
-from . import Cli
+from . import Cli, InvalidUseError
 from argparse import ArgumentParser
 
 _typemap = {"normal": 0, "domain": 2, "class": 3}
@@ -255,4 +255,4 @@ def _setupCliMlist(subp: ArgumentParser):
 
 @Cli.command("mlist", _setupCliMlist, help="Mailing/distribution list management")
 def cliMlistStub():
-    pass
+    raise InvalidUseError()

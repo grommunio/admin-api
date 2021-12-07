@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 """Create fetchmail configuration from database"""
 
-from . import Cli
+from . import Cli, InvalidUseError
 from .common import userspecAutocomp, userCandidates
 from argparse import ArgumentParser
 
@@ -312,4 +312,4 @@ def _setupCliFetchmailParser(subp: ArgumentParser):
 
 @Cli.command("fetchmail", _setupCliFetchmailParser, help="Fetchmail management")
 def cliFetchmailStub(args):
-    pass
+    raise InvalidUseError()
