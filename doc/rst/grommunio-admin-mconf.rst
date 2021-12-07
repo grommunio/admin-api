@@ -10,7 +10,7 @@ grommunio-admin mconf — Managed configuration manipulation
 Synopsis
 ========
 
-| **grommunio-admin mconf** **dump** *CONFIG*
+| **grommunio-admin mconf** **dump** [*-c*] *CONFIG*
 | **grommunio-admin mconf** **modify** *CONFIG* *unset* *KEY*
 | **grommunio-admin mconf** **modify** *CONFIG* *ACTION* [*-i* \| *-b*]
   *KEY* *VALUE*
@@ -59,6 +59,8 @@ Options
 ``-b``, ``--bool``
    Convert value to boolean, valid values are *y*, *n*, *yes*, *no*,
    *true*, *false*, *1*, *0*
+``-c``, ``--censor``
+   Hide confidential information
 ``-i``, ``--int``
    Convert value to integer, octal (*0o*) and hexadecimal (*0x*)
    prefixes are supported

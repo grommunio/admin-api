@@ -7,7 +7,8 @@
 grommunio-admin mconf \[em] Managed configuration manipulation
 .SH Synopsis
 .PP
-\f[B]grommunio-admin mconf\f[R] \f[B]dump\f[R] \f[I]CONFIG\f[R]
+\f[B]grommunio-admin mconf\f[R] \f[B]dump\f[R] [\f[I]-c\f[R]]
+\f[I]CONFIG\f[R]
 .PD 0
 .P
 .PD
@@ -86,6 +87,9 @@ Configuration value for numeric or boolean values use \f[I]-b\f[R] and
 Convert value to boolean, valid values are \f[I]y\f[R], \f[I]n\f[R],
 \f[I]yes\f[R], \f[I]no\f[R], \f[I]true\f[R], \f[I]false\f[R],
 \f[I]1\f[R], \f[I]0\f[R]
+.TP
+\f[B]\f[CB]-c\f[B]\f[R], \f[B]\f[CB]--censor\f[B]\f[R]
+Hide confidential information
 .TP
 \f[B]\f[CB]-i\f[B]\f[R], \f[B]\f[CB]--int\f[B]\f[R]
 Convert value to integer, octal (\f[I]0o\f[R]) and hexadecimal

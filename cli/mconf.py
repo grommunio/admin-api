@@ -37,7 +37,7 @@ def _cliMconfDump(args):
     if args.config == "authmgr":
         mconf.dumpAuthmgr(file=cli.stdout)
     elif args.config == "ldap":
-        mconf.dumpLdap(file=cli.stdout)
+        mconf.dumpLdap(file=cli.stdout, censor=args.censor)
     else:
         cli = cli.print(cli.col("Invalid config", "red"))
         return 1
@@ -163,6 +163,7 @@ def _setupCliMconf(subp: ArgumentParser):
     dump = sub.add_parser("dump", help="Dump configuration file to stdout")
     dump.set_defaults(_handle=_cliMconfDump)
     dump.add_argument("config", choices=_configs)
+    dump.add_argument("-c", "--censor", action="store_true", help="Hide confidential information")
     modify = sub.add_parser("modify", help="Modify configuration")
     modify.set_defaults(_handle=_cliMconfModify)
     modify.add_argument("config", choices=_configs)
