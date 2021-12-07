@@ -203,7 +203,7 @@ class Cli:
                 raise SystemExit(1)
 
             print_help = parser.print_help
-            parser.print_help = lambda: print_help(self.stdout)
+            parser.print_help = lambda *args, **kwargs: print_help(self.stdout)
             parser.error = perr
             if parser._subparsers:
                 for subparser in (p for a in parser._subparsers._actions if isinstance(a, _SubParsersAction)
