@@ -10,6 +10,7 @@ def _runParserSetup(subp: ArgumentParser):
     subp.add_argument("--ip", "-i", default="0.0.0.0", type=str, help="Host address to bind to")
     subp.add_argument("--no-config-check", action="store_true", help="Skip configuration check")
     subp.add_argument("--port", "-p", default=5001, type=int, help="Host port to bind to")
+    subp.add_argument("--tasq", "-t", action="store_true", help="Start TasQ server")
 
 
 @Cli.command("run", _runParserSetup, help="Run the REST API")
@@ -23,12 +24,16 @@ def cliRun(args):
         cli.print(cli.col("Invalid configuration found: "+error, "yellow" if args.no_config_check else "red"))
         if not args.no_config_check:
             return 1
+    from tools.tasq import TasQServer
+    if args.tasq:
+        TasQServer.start()
     from api.core import API
     import endpoints
     import importlib
     for group in endpoints.__all__:
         importlib.import_module("endpoints."+group)
     API.run(host=args.ip, port=args.port, debug=args.debug)
+    TasQServer.stop()
 
 
 def _versionParserSetup(subp: ArgumentParser):

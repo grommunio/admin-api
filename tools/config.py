@@ -92,6 +92,7 @@ def _defaultConfig():
         "chat": {
             "connection": {},
             },
+        "tasq": {},
         }
 
 

@@ -71,9 +71,10 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic", service=None):
     """Decorator securing API functions.
 
        Arguments:
-           - requireDB (boolean)
+           - requireDB (boolean or int)
                Whether the database is needed for the call. If set to True and the database is not configured,
-               and error message is returned without invoking the endpoint.
+               and error message is returned without invoking the endpoint. If given as an integer, marks the minimum required
+               schema version.
            - requireAuth (boolean or "optional")
                Whether authentication is required to use this endpoint. When set to False, no login context is created
                and user information is not available, even if logged in.
@@ -132,6 +133,9 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic", service=None):
                     return jsonify(message="Database not available."), 503
                 if DB.requireReload():
                     reloadORM()
+                if isinstance(requireDB, int) and DB.version < requireDB:
+                    return jsonify(message="Database schema version too old. Please update to at least n{}."
+                                   .format(requireDB)), 500
             return call()
         return wrapper
     return inner

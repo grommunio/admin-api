@@ -234,12 +234,12 @@ def syncTop():
             try:
                 value = json.loads(value)
                 if (value["ended"] != 0 and now-value["ended"] > expEnd) or \
-                    now-value["update"] > expUpd:
+                   now-value["update"] > expUpd:
                     remove.append(key)
                 elif not (value["ended"] != 0 and now-value["ended"] > fend or now-value["update"] > fupd):
                     data.append(value)
             except Exception as err:
-                API.logger.info(type(err).__name__+": "+str(err.args))
+                API.logger.warning(type(err).__name__+": "+str(err.args))
         if len(remove) > 0:
             r.hdel(sync.get("topdataKey", "grommunio-sync:topdata"), *remove)
     return jsonify(data=data)

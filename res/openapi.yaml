@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.4.7
+  version: 1.5.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -29,6 +29,9 @@ paths:
                   ldap:
                     type: boolean
                     description: Whether the LDAP connection is initialized
+                  tasq:
+                    type: boolean
+                    description: Whether the TasQ server is running
 
   /about:
     get:
@@ -2732,6 +2735,12 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: timeout
+          in: query
+          description: Time in seconds to wait for completion
+          schema:
+            type: number
+            default: 1.0
       responses:
         '200':
           description: Deletion successful
@@ -2742,6 +2751,18 @@ paths:
                 properties:
                   message:
                     type: string
+        '202':
+          description: Task took more than timeout seconds and is resumed in the background
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  taskID:
+                    type: integer
+                    description: ID of the task running the command
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -3369,6 +3390,174 @@ paths:
       responses:
         '200':
           description: Organization deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /tasq/notify:
+    post:
+      summary: Notify the TasQ server of externally added tasks
+      description: Load any waiting tasks from the database
+      tags:
+        - TasQ
+      responses:
+        '200':
+          description: Tasks loaded
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /tasq/status:
+    get:
+      summary: Get current status of the TasQ system
+      tags:
+        - TasQ
+      responses:
+        '200':
+          description: TasQ status returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  running:
+                    type: boolean
+                    description: Whether the TasQ server is running
+                  queued:
+                    type: integer
+                    description: Number of tasks waiting for processing
+                  workers:
+                    type: integer
+                    description: Number of active worker processes
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tasq/start:
+    post:
+      summary: Start the builtin TasQ server
+      tags:
+        - TasQ
+      security:
+        - JWTCookie: []
+      parameters:
+        - name: procs
+          in: query
+          description: Override number of worker processes
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: TasQ server started
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tasq/stop:
+    post:
+      summary: Stop the builtin TasQ server
+      tags:
+        - TasQ
+      security:
+        - JWTCookie: []
+      parameters:
+        - name: timeout
+          in: query
+          description: Duration in seconds to wait for worker processes to quit
+          schema:
+            type: number
+      responses:
+        '200':
+          description: TasQ server stopped
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tasq/tasks:
+    get:
+      summary: Get list of currently running tasks
+      tags:
+        - TasQ
+      security:
+        - JWTCookie: []
+      parameters:
+        - name: sort
+          description: Sort by attribute. Can be given multiple times.
+          in: query
+          schema:
+            type: string
+            pattern: '^(ID|command|state|created|updated|message)(,(a|de)sc)?$'
+        - $ref: '#/components/parameters/filterID'
+        - $ref: '#/components/parameters/verbosity'
+        - $ref: '#/components/parameters/queryLimit'
+        - $ref: '#/components/parameters/match'
+        - $ref: '#/components/parameters/matchFields'
+        - name: command
+          description: Filter by command
+          in: query
+          schema:
+            type: string
+        - name: message
+          description: Filter by message
+          in: query
+          schema:
+            type: string
+        - name: updated
+          description: Filter by last update time
+          in: query
+          schema:
+            type: string
+        - name: created
+          description: Filter by create date
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of tasks returned
+          content:
+            application/json:
+             schema:
+              type: object
+              properties:
+                data:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/tasqTask'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /tasq/tasks/{ID}:
+    get:
+      summary: Get information about a specific task
+      tags:
+        - TasQ
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Tasks returned
+          content:
+            application/json:
+             schema:
+              $ref: '#/components/schemas/tasqTask'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -4451,6 +4640,28 @@ components:
           message:
             type: string
             description: Update/import message
+    tasqTask:
+      type: object
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        command:
+          type: string
+          description: Task command
+        state:
+          type: integer
+          description: Task state (0=Queued, 1=Loaded, 2=Running, 3=Completed, 4=Error, 5=Cancelled)
+          enum: [0, 1, 2, 3, 4, 5]
+        created:
+          $ref: '#/components/schemas/dateTime'
+        updated:
+          $ref: '#/components/schemas/dateTime'
+        message:
+          type: string
+          description: Status message
+        params:
+          type: object
+          description: Task specific parameters
   responses:
     ServerError:
       description: An error occured while processing the request
@@ -4537,5 +4748,7 @@ tags:
     description: Endpoints for LDAP operations
   - name: Service
     description: Endpoints intended for other services
+  - name: TasQ
+    description: Endpoints for accessing the TasQ server
   - name: Misc
     description: Miscellaneous and organizational endpoints

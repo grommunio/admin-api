@@ -73,6 +73,12 @@ Possible parameters:
 - `policyHosts` (`list of strings`, default `["127.0.0.1", "localhost"]`): List of hosts that have unauthenticated access to user policies
 - `defaultPolicy` (`object`): Overrides for the default Active Sync policy. For available values and defaults see `res/config.yaml`.
 
+### TasQ ###
+The TasQ server can be configured with the `tasq` object.  
+Possible parameters:
+- `disabled` (`boolean`, default: `false`): Disable automatic startup
+- `workers` (`integer`, default: `1`): Number of workers to start
+
 ### Options ###
 Further parameters can be set in the `options` object:  
 - `dataPath` (`string`, default: `/usr/share/grommunio/common`): Directory where shared resources used by grommunio modules are stored

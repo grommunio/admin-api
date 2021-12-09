@@ -487,3 +487,16 @@ properties:
             default: []
             items:
               type: string
+  tasq:
+    type: object
+    description: TasQ server configuration
+    properties:
+      disabled:
+        type: boolean
+        description: Disable automatic TasQ server startup
+        default: false
+      workers:
+        type: integer
+        description: Number of workers
+        default: 1
+        minimum: 1

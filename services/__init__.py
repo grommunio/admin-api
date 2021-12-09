@@ -97,7 +97,6 @@ class ServiceHub(metaclass=_ServiceHubMeta):
                time()-self._lastreload < self._reloadlocktime) and not force_reload:
                 return
             self._reloads += 1
-            self._lastreload = time()
             try:
                 self.manager = self.mgrclass()
                 self.state = ServiceHub.LOADED
@@ -117,6 +116,7 @@ class ServiceHub(metaclass=_ServiceHubMeta):
                 self.exc = err
                 self.logger.error("Failed to load service: "+" - ".join(str(arg) for arg in err.args))
                 self.state = ServiceHub.ERROR
+            self._lastreload = time()
             self.manager = None
 
         @property

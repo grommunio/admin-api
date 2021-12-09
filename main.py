@@ -25,3 +25,12 @@ else:
     error = config.validate()
     if error:
         raise TypeError("Invalid configuration found - aborting ({})".format(error))
+    if not config.Config["tasq"].get("disabled", False):
+        import uwsgi
+        import uwsgidecorators
+        from tools.tasq import TasQServer
+
+        @uwsgidecorators.postfork
+        def enableTasQ():
+            TasQServer.start()
+            uwsgi.atexit = TasQServer.stop

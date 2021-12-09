@@ -13,6 +13,7 @@ from services import Service
 from tools.constants import Permissions, PropTags, EcErrors
 from tools.permissions import DomainAdminPermission, DomainAdminROPermission
 from tools.rop import nxTime
+from tools.tasq import TasQServer
 
 from datetime import datetime
 
@@ -108,12 +109,16 @@ def deletePublicFolder(domainID, folderID):
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, domain.homedir, False)
-        success = client.deleteFolder(domain.homedir, folderID, request.args.get("clear") == "true")
-    if not success:
-        return jsonify(message="Folder deletion failed"), 500
-    return jsonify(message="Success")
+    task = TasQServer.mktask.deleteFolder(domain.homedir, folderID, False, request.args.get("clear") == "true",
+                                          DomainAdminROPermission(domainID))
+    timeout = float(request.args.get("timeout", 1))
+    if timeout > 0:
+        TasQServer.wait(task.ID, timeout)
+    if not task.done:
+        return jsonify(message="Created background task #"+str(task.ID), taskID=task.ID), 202
+    if task.state == task.COMPLETED:
+        return jsonify(message="Success")
+    return jsonify(message="Folder deletion failed: "+task.message), 500
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners", methods=["GET"])

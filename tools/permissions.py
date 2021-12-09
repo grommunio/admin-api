@@ -9,6 +9,7 @@ class Permissions:
     """
 
     preg = {}
+    pregr = {}
 
     def __init__(self, *args):
         """Initialize permission object.
@@ -37,6 +38,58 @@ class Permissions:
         return Permissions(*(cls.preg[pData.permission](pData.params)
                              for pData in permissionsData if pData.permission in cls.preg))
 
+    @classmethod
+    def dump(cls, permission):
+        """Create a permission representation that can be loaded with `load`.
+
+        Parameters
+        ----------
+        permission : PermissionBase
+            Permission to serialize
+
+        Returns
+        -------
+        str
+            String representaion or None if serializaiton fails
+        """
+        if permission is None:
+            return None
+        try:
+            import json
+            data = {"permission": cls.pregr[permission] if type(permission) == type else cls.pregr[type(permission)]}
+            if type(permission) != type and permission.params is not None:
+                data["params"] = permission.params
+            return json.dumps(data, separators=(",", ":"))
+        except Exception:
+            return None
+
+    @classmethod
+    def load(cls, permission=None, default=None):
+        """Load a permission object.
+
+        If permission is None, the return value is None, regardless of the default.
+
+        Parameters
+        ----------
+        permission: str, optional
+            Permission data, as created by dump(). The default is None.
+        default : PermissionBase, optional
+            Default permission if loading fails. The default is None.
+
+        Returns
+        -------
+        PermissionBase
+            A single permission constructed from the serialization
+        """
+        if permission is None:
+            return
+        try:
+            import json
+            data = json.loads(permission)
+            return cls.preg[data["permission"]](data.get("params"))
+        except Exception:
+            return None
+
     def has(self, permission):
         """
         Check if permission is represented by permissions object.
@@ -51,7 +104,7 @@ class Permissions:
         bool
             True if the requested permission is represented, False otherwise
         """
-        return any(perm.permits(permission) for perm in self.permissions)
+        return permission is None or any(perm.permits(permission) for perm in self.permissions)
 
     def __contains__(self, permission):
         """Convenience alias for `has`.
@@ -94,6 +147,7 @@ class Permissions:
         """
         def inner(obj):
             cls.preg[name] = obj
+            cls.pregr[obj] = name
             return obj
         return inner
 
@@ -228,6 +282,11 @@ class PermissionBase:
         """
         return type(self).__name__+"()"
 
+    @property
+    def params(self):
+        """Parameters relevant for the permission."""
+        return None
+
 
 @Permissions.register("SystemAdmin")
 class SystemAdminPermission:
@@ -284,6 +343,11 @@ class SystemAdminPermission:
                 cls.__capcache |= permission.capabilities()
         return cls.__capcache
 
+    @property
+    def params(self):
+        """Parameters relevant for the permission."""
+        return None
+
 
 @Permissions.register("DomainAdminRO")
 class DomainAdminROPermission(PermissionBase):
@@ -295,6 +359,7 @@ class DomainAdminROPermission(PermissionBase):
     Requesting a DomainAdminPermission with parameter '*' and
     requesting DomainAdminPermission for a specific domain from a permission with parameter '*' will both return True.
     """
+
     def __init__(self, domainID):
         """Initialize domain admin permission.
 
@@ -345,6 +410,11 @@ class DomainAdminROPermission(PermissionBase):
     @property
     def domainID(self):
         """Return domain parameter."""
+        return self.__domain
+
+    @property
+    def params(self):
+        """Parameters relevant for the permission."""
         return self.__domain
 
 
@@ -425,6 +495,11 @@ class SystemAdminROPermission(DomainAdminROPermission):
             Set containing "SystemAdminRO" and "DomainAdminRO" capabilities.
         """
         return {"SystemAdminRead"} | super().capabilities()
+
+    @property
+    def params(self):
+        """Parameters relevant for the permission."""
+        return None
 
 
 @Permissions.register("OrgAdmin")
@@ -509,6 +584,11 @@ class OrgAdminPermission(PermissionBase):
     @property
     def orgID(self):
         """Return domain parameter."""
+        return self.__org
+
+    @property
+    def params(self):
+        """Parameters relevant for the permission."""
         return self.__org
 
 

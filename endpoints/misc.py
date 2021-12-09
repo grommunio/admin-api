@@ -13,6 +13,7 @@ from api.security import loginUser, refreshToken, getSecurityContext
 from orm import DB
 from services import Service
 from tools import formats
+from tools.tasq import TasQServer
 
 
 @API.route(api.BaseRoute+"/status", methods=["GET"])
@@ -21,7 +22,8 @@ def chkState():
     """Check status of the API."""
     return jsonify(message="API is operational",
                    database=DB is not None and DB.testConnection() is None,
-                   ldap=Service.available("ldap"))
+                   ldap=Service.available("ldap"),
+                   tasq=TasQServer.running())
 
 
 @API.route(api.BaseRoute+"/about", methods=["GET"])
