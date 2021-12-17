@@ -144,6 +144,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True, passive_deletes=True)
     fetchmail = OptionalNC(75, [],
                            relationship("Fetchmail", cascade="all, delete-orphan", single_parent=True, order_by="Fetchmail.active.desc()"))
+    forward = relationship("Forwards", uselist=False, cascade="all, delete-orphan")
 
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("domainID", flags="init"),
@@ -158,6 +159,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                       RefProp("fetchmail", flags="managed, patch", link="ID", qopt=selectinload),
                       {"attr": "properties", "flags": "patch", "func": lambda p: p.namemap()},
                       RefProp("roles", qopt=selectinload),
+                      RefProp("forward", flags="managed, patch"),
                       {"attr": "syncPolicy", "flags": "patch"},
                       {"attr": "chat", "flags": "patch"},
                       {"attr": "chatAdmin", "flags": "patch"}),
@@ -514,7 +516,6 @@ class Users(DataModel, DB.Base, NotifyTable):
             Error message or None if successful.
         """
         from .mlists import Associations
-        from .misc import Forwards
         from .classes import Members
         if self.ID == 0:
             raise ValueError("Cannot delete superuser")
@@ -781,6 +782,34 @@ class UserSecondaryStores(DB.Base):
 
     primaryID = Column("primary", INTEGER(unsigned=True), ForeignKey(Users.ID), primary_key=True)
     secondaryID = Column("secondary", INTEGER(unsigned=True), ForeignKey(Users.ID), primary_key=True)
+
+
+class Forwards(DataModel, DB.Base):
+    __tablename__ = "forwards"
+
+    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
+    username = Column("username", VARCHAR(128), ForeignKey(Users.username), nullable=False, unique=True)
+    forwardType = Column("forward_type", TINYINT, nullable=False, server_default="0")
+    destination = Column("destination", VARCHAR(128), nullable=False)
+
+    user = relationship(Users)
+
+    _dictmapping_ = ((Text("forwardType", flags="patch"),
+                      Text("destination", flags="patch")),
+                     (Id(), Text("username", flags="patch")))
+
+    CC = 0
+    REDIRECT = 1
+
+    def __init__(self, props, user, *args, **kwargs):
+        self.user = user
+        self.fromdict(props)
+
+    @validates("destination")
+    def validateDestination(self, key, value, *args):
+        if not formats.email.match(value):
+            raise ValueError("'{}' is not a valid e-mail address".format(value))
+        return value
 
 
 from . import domains, roles

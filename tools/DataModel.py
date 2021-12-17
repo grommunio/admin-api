@@ -462,7 +462,7 @@ class DataModel:
                     if value is None:
                         setattr(self, prop.attr, None)
                     elif attr is None:
-                        setattr(self, prop.attr, Element(value, *args, **kwargs))
+                        setattr(self, prop.attr, Element(value, self, *args, **kwargs))
                     else:
                         attr.fromdict(value, *args, **kwargs)
                 else:

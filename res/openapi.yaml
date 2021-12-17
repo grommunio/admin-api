@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.5.0
+  version: 1.5.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3827,6 +3827,17 @@ components:
       type: integer
       description: User status (0=Normal, 1=Suspended, 2=Out-of-date, 3=Deleted, 4=Shared Mailbox)
       enum: [0, 1, 2, 3, 4]
+    forward:
+      type: object
+      nullable: true
+      properties:
+        forwardType:
+          type: integer
+          description: Forward type (0=CC, 1=Redirect)
+          enum: [0, 1]
+        destination:
+          type: string
+          description: Destination mail address
     user:
       type: object
       properties:
@@ -3890,6 +3901,9 @@ components:
         lang:
           type: string
           description: User language
+
+        forward:
+         $ref: '#/components/schemas/forward'
     userInit:
       type: object
       properties:
@@ -3939,6 +3953,8 @@ components:
         lang:
           type: string
           description: User language
+        forward:
+         $ref: '#/components/schemas/forward'
     userUpdate:
       type: object
       properties:
@@ -3987,6 +4003,8 @@ components:
         lang:
           type: string
           description: User language
+        forward:
+         $ref: '#/components/schemas/forward'
     publicFolder:
       type: object
       properties:
