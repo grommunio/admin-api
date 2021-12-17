@@ -36,7 +36,7 @@ class DBConf(DB.Base):
 
 
 class TasQ(DataModel, DB.Base):
-    __tablename__ = "task_queue"
+    __tablename__ = "tasq"
 
     ID = Column("id", INTEGER(10, unsigned=True), primary_key=True)
     command = Column("command", VARCHAR(16))
