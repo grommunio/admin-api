@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.5.1
+  version: 1.5.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1542,7 +1542,7 @@ paths:
           in: query
           schema:
             type: string
-            pattern: '^(ID|username|domainID|pop3_imap|smtp|changePassword|publicAddress)(,(a|de)sc)?$'
+            pattern: '^(ID|username|domainID|pop3_imap|smtp|changePassword|publicAddress|privChat|privVideo|privFiles|privArchive)(,(a|de)sc)?$'
         - $ref: '#/components/parameters/filterID'
         - name: username
           description: Filter by username
@@ -3881,6 +3881,18 @@ components:
         publicAddress:
           type: boolean
           description: Public address privilege
+        privChat:
+          type: boolean
+          description: Chat privilege
+        privVideo:
+          type: boolean
+          description: Meet privilege
+        privFiles:
+          type: boolean
+          description: Files privilege
+        privArchive:
+          type: boolean
+          description: Archive privilege
         ldapID:
           type: string
           nullable: true
@@ -3937,6 +3949,18 @@ components:
         publicAddress:
           type: boolean
           description: Public address privilege
+        privChat:
+          type: boolean
+          description: Chat privilege
+        privVideo:
+          type: boolean
+          description: Meet privilege
+        privFiles:
+          type: boolean
+          description: Files privilege
+        privArchive:
+          type: boolean
+          description: Archive privilege
         fetchmail:
           type: array
           description: List of fetchmail entries for this user
@@ -3982,6 +4006,18 @@ components:
         publicAddress:
           type: boolean
           description: Public address privilege
+        privChat:
+          type: boolean
+          description: Chat privilege
+        privVideo:
+          type: boolean
+          description: Meet privilege
+        privFiles:
+          type: boolean
+          description: Files privilege
+        privArchive:
+          type: boolean
+          description: Archive privilege
         ldapID:
           type: string
           description: Detach imported user from LDAP object

@@ -155,6 +155,10 @@ class Users(DataModel, DB.Base, NotifyTable):
                       BoolP("smtp", flags="patch"),
                       BoolP("changePassword", flags="patch"),
                       BoolP("publicAddress", flags="patch"),
+                      BoolP("privChat", flags="patch"),
+                      BoolP("privVideo", flags="patch"),
+                      BoolP("privFiles", flags="patch"),
+                      BoolP("privArchive", flags="patch"),
                       RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
                       RefProp("fetchmail", flags="managed, patch", link="ID", qopt=selectinload),
                       {"attr": "properties", "flags": "patch", "func": lambda p: p.namemap()},
@@ -165,10 +169,14 @@ class Users(DataModel, DB.Base, NotifyTable):
                       {"attr": "chatAdmin", "flags": "patch"}),
                      ({"attr": "password", "flags": "init, hidden"},))
 
-    POP3_IMAP = 1 << 0
-    SMTP = 1 << 1
-    CHGPASSWD = 1 << 2
-    PUBADDR = 1 << 3
+    USER_PRIVILEGE_POP3_IMAP = 1 << 0
+    USER_PRIVILEGE_SMTP = 1 << 1
+    USER_PRIVILEGE_CHGPASSWD = 1 << 2
+    USER_PRIVILEGE_PUBADDR = 1 << 3
+    USER_PRIVILEGE_CHAT = 1 << 4
+    USER_PRIVILEGE_VIDEO = 1 << 5
+    USER_PRIVILEGE_FILES = 1 << 6
+    USER_PRIVILEGE_ARCHIVE = 1 << 7
 
     MAILUSER = 0x0
     DISTLIST = 0x1
@@ -337,51 +345,99 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @hybrid_property
     def pop3_imap(self):
-        return self._getPB(self.POP3_IMAP)
+        return self._getPB(self.USER_PRIVILEGE_POP3_IMAP)
 
     @pop3_imap.setter
     def pop3_imap(self, val):
-        self._setPB(self.POP3_IMAP, val)
+        self._setPB(self.USER_PRIVILEGE_POP3_IMAP, val)
 
     @pop3_imap.expression
     def pop3_imap(cls):
-        return cls.privilegeBits.op("&")(cls.POP3_IMAP) != 0
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_POP3_IMAP) != 0
 
     @hybrid_property
     def smtp(self):
-        return self._getPB(self.SMTP)
+        return self._getPB(self.USER_PRIVILEGE_SMTP)
 
     @smtp.setter
     def smtp(self, val):
-        self._setPB(self.SMTP, val)
+        self._setPB(self.USER_PRIVILEGE_SMTP, val)
 
     @smtp.expression
     def smtp(cls):
-        return cls.privilegeBits.op("&")(cls.SMTP) != 0
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_SMTP) != 0
 
     @hybrid_property
     def changePassword(self):
-        return self._getPB(self.CHGPASSWD)
+        return self._getPB(self.USER_PRIVILEGE_CHGPASSWD)
 
     @changePassword.setter
     def changePassword(self, val):
-        self._setPB(self.CHGPASSWD, val)
+        self._setPB(self.USER_PRIVILEGE_CHGPASSWD, val)
 
     @changePassword.expression
     def changePassword(cls):
-        return cls.privilegeBits.op("&")(cls.CHGPASSWD) != 0
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_CHGPASSWD) != 0
 
     @hybrid_property
     def publicAddress(self):
-        return self._getPB(self.PUBADDR)
+        return self._getPB(self.USER_PRIVILEGE_PUBADDR)
 
     @publicAddress.setter
     def publicAddress(self, val):
-        self._setPB(self.PUBADDR, val)
+        self._setPB(self.USER_PRIVILEGE_PUBADDR, val)
 
     @publicAddress.expression
     def publicAddress(cls):
-        return cls.privilegeBits.op("&")(cls.PUBADDR) != 0
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_PUBADDR) != 0
+
+    @hybrid_property
+    def privChat(self):
+        return self._getPB(self.USER_PRIVILEGE_CHAT)
+
+    @privChat.setter
+    def privChat(self, val):
+        self._setPB(self.USER_PRIVILEGE_CHAT, val)
+
+    @privChat.expression
+    def privChat(cls):
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_CHAT) != 0
+
+    @hybrid_property
+    def privVideo(self):
+        return self._getPB(self.USER_PRIVILEGE_VIDEO)
+
+    @privVideo.setter
+    def privVideo(self, val):
+        self._setPB(self.USER_PRIVILEGE_VIDEO, val)
+
+    @privVideo.expression
+    def privVideo(cls):
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_VIDEO) != 0
+
+    @hybrid_property
+    def privFiles(self):
+        return self._getPB(self.USER_PRIVILEGE_FILES)
+
+    @privFiles.setter
+    def privFiles(self, val):
+        self._setPB(self.USER_PRIVILEGE_FILES, val)
+
+    @privFiles.expression
+    def privFiles(cls):
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_FILES) != 0
+
+    @hybrid_property
+    def privArchive(self):
+        return self._getPB(self.USER_PRIVILEGE_ARCHIVE)
+
+    @privArchive.setter
+    def privArchive(self, val):
+        self._setPB(self.USER_PRIVILEGE_ARCHIVE, val)
+
+    @privArchive.expression
+    def privArchive(cls):
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_ARCHIVE) != 0
 
     @property
     def ldapID(self):
