@@ -51,8 +51,6 @@ logs:
     source: 'gromox-midb.service'
   Gromox zcore:
     source: 'gromox-zcore.service'
-  Gromox adaptor:
-    source: 'gromox-adaptor.service'
   Gromox timer:
     source: 'gromox-timer.service'
   Gromox event:
