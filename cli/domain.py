@@ -45,7 +45,7 @@ def _dumpDomain(cli, domain):
 
 
 def _sanitizeData(data):
-    cliargs = {"_handle", "_cli", "domainspec", "skip_adaptor_reload"}
+    cliargs = {"_handle", "_cli", "domainspec"}
     return {key: value for key, value in data.items() if value is not None and key not in cliargs}
 
 
@@ -191,7 +191,6 @@ def _setupCliDomain(subp: ArgumentParser):
     create.set_defaults(_handle=cliDomainCreate)
     create.add_argument("domainname", help="Name of the domain")
     create.add_argument("--create-role", action="store_true", help="Create domain administrator role for new domain")
-    create.add_argument("--skip-adaptor-reload", action="store_true", help="Do not reload gromox-adaptor service")
     addProperties(create, True)
     delete = sub.add_parser("delete", help="Soft delete domain",
                             description="Set domain status to deleted and deactivate users")

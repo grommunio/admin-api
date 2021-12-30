@@ -58,8 +58,6 @@ Options
 ``-f FIELD=<value>``, ``--filter FIELD=<value>``
    Filter expression in the form of ‘field=value’. Can be specified
    multiple times to refine filter
-``--skip-adaptor-reload``
-   Do not reload ``gromox-adaptor`` service after domain creation
 ``-s FIELD``, ``--sort FIELD``
    Sort by field. Can be given multiple times
 ``-y``, ``--yes``
