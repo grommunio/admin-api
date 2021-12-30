@@ -13,7 +13,6 @@ options:
     local: 'http://localhost:8080/statusmonitor'
   dashboard:
     services:
-      - unit: gromox-adaptor.service
       - unit: grommunio-antispam.service
       - unit: gromox-delivery.service
       - unit: gromox-event.service
