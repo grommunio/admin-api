@@ -5,6 +5,7 @@
 from math import ceil
 import os
 import shutil
+import subprocess
 
 from .misc import setDirectoryOwner, setDirectoryPermission
 from .structures import XID, GUID
@@ -148,6 +149,39 @@ class SetupContext:
         self.exmdb.execute(stmt, (folderID, PropTags.CHANGEKEY, xidData))
         self.exmdb.execute(stmt, (folderID, PropTags.PREDECESSORCHANGELIST, b'\x16'+xidData))
 
+    def mkext(self, command, name):
+        """Try to databases with external tools.
+
+        Executes shell command to create database files.
+        Fails if the command terminates with non-zero exit code.
+
+        Parameters
+        ----------
+        command : str
+            Command to execute
+        name : str
+            Name of the entity.
+
+        Returns
+        -------
+        bool
+            True if successful, False otherwise.
+        """
+        try:
+            res = subprocess.run((command, name), stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+            if res.returncode:
+                logger.warning("{} return non-zero exit code ({}): {}".format(command, res.returncode, res.stdout))
+                return False
+            if res.stdout:
+                logger.debug("{} (stdout): {}".format(command, res.stdout))
+            if res.stderr:
+                logger.debug("{} (stderr): {}".format(command, res.stderr))
+        except Exception as err:
+            logger.error("Failed to run {} ({}): {}".format(command, type(err).__name__,
+                                                            " - ".join(str(arg) for arg in err.args)))
+            return False
+        return True
+
 
 class DomainSetup(SetupContext):
     """Domain initialization context.
@@ -161,7 +195,7 @@ class DomainSetup(SetupContext):
     contains a short error description and the `errorCode` attribute is set to an appropriate HTTP status code.
     """
 
-    def __init__(self, domain):
+    def __init__(self, domain, session):
         """Initialize context object
 
         Parameters
@@ -175,6 +209,7 @@ class DomainSetup(SetupContext):
         self.lastArt = 0
 
         self.domain = domain
+        self.session = session
 
         self.success = False
         self.error = self.errorCode = None
@@ -183,6 +218,7 @@ class DomainSetup(SetupContext):
         """Run domain home directory initialization."""
         try:
             self.createHomedir()
+            self.session.commit()
             self.createExmdb()
             try:
                 setDirectoryOwner(self.domain.homedir, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
@@ -194,10 +230,12 @@ class DomainSetup(SetupContext):
             logger.error(traceback.format_exc())
             self.error = "Could not create home directory ({})".format(err.args[1])
             self.errorCode = 500
+            self.domain.homedir = ""
         except Exception:
-            logger.debug(traceback.format_exc())
+            logger.error(traceback.format_exc())
             self.error = "Unknown error"
             self.errorCode = 500
+            self.domain.homedir = ""
 
     def createHomedir(self):
         """Set up directory structure for a domain.
@@ -225,6 +263,8 @@ class DomainSetup(SetupContext):
 
         Database is placed under <homedir>/exmdb/exchange.sqlite3.
         """
+        if self.mkext("gromox-mkpublic", self.domain.domainname):
+            return
         dbPath = os.path.join(self.domain.homedir, "exmdb", "exchange.sqlite3")
         shutil.copy("res/domain.sqlite3", dbPath)
         self.exmdb = sqlite3.connect(dbPath)
@@ -251,7 +291,7 @@ class UserSetup(SetupContext):
     contains a short error description and the `errorCode` attribute is set to an appropriate HTTP status code.
     """
 
-    def __init__(self, user):
+    def __init__(self, user, session):
         """Initialize context object.
 
         Parameters
@@ -264,6 +304,7 @@ class UserSetup(SetupContext):
         self.lastArt = 0
 
         self.user = user
+        self.session = session
 
         self.success = False
         self.error = self.errorCode = None
@@ -272,6 +313,7 @@ class UserSetup(SetupContext):
         """Run user home directory initialization."""
         try:
             self.createHomedir()
+            self.session.commit()
             self.createExmdb()
             self.createMidb()
             try:
@@ -284,10 +326,12 @@ class UserSetup(SetupContext):
             logger.error(traceback.format_exc())
             self.error = "Could not create home directory ({})".format(err.args[1])
             self.errorCode = 500
+            self.user.maildir = ""
         except Exception:
             logger.error(traceback.format_exc())
             self.error = "Unknown error"
             self.errorCode = 500
+            self.user.maildir = ""
 
     def createHomedir(self):
         """Set up directory structure for a user.
@@ -343,6 +387,8 @@ class UserSetup(SetupContext):
 
         Database is placed under <homedir>/exmdb/exchange.sqlite3.
         """
+        if self.mkext("gromox-mkprivate", self.user.username):
+            return
         dbPath = os.path.join(self.user.maildir, "exmdb", "exchange.sqlite3")
         shutil.copy("res/user.sqlite3", dbPath)
         self.exmdb = sqlite3.connect(dbPath)
@@ -399,6 +445,8 @@ class UserSetup(SetupContext):
 
         Database is placed under <homedir>/exmdb/midb.sqlite3.
         """
+        if self.mkext("gromox-mkmidb", self.user.username):
+            return
         dbPath = os.path.join(self.user.maildir, "exmdb", "midb.sqlite3")
         shutil.copy("res/midb.sqlite3", dbPath)
         DB = sqlite3.connect(dbPath)

@@ -260,7 +260,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
             with AutoClean(lambda: DB.session.rollback()):
                 DB.session.add(domain)
                 DB.session.flush()
-                with DomainSetup(domain) as ds:
+                with DomainSetup(domain, DB.session) as ds:
                     ds.run()
                 if not ds.success:
                     return "Error during domain setup: "+ds.error, ds.errorCode

@@ -91,28 +91,10 @@ def ldapDownsyncDomains(ldap, domains):
             if userData is None:
                 syncStatus.append({"username": candidate.email, "code": 500, "message": "Error retrieving userdata"})
                 continue
-            error = Users.checkCreateParams(userData)
-            if error is not None:
-                syncStatus.append({"username": candidate.email, "code": 500, "message": "Invalid data: "+error})
-                continue
-            user = Users(userData)
-            user.externID = candidate.ID
-            DB.session.add(user)
-            try:
-                DB.session.flush()
-                with UserSetup(user) as us:
-                    us.run()
-                if not us.success:
-                    syncStatus.append({"username": candidate.email, "code": us.errorCode,
-                                       "message": "Error during user setup: "+us.error})
-                    DB.session.rollback()
-                    continue
-                DB.session.commit()
-                syncStatus.append({"ID": user.ID, "username": user.username, "code": 201, "message": "User created"})
-            except Exception:
-                API.logger.error(traceback.format_exc())
-                DB.session.rollback()
-                syncStatus.append({"username": candidate.email, "code": 503, "message": "Database error"})
+            result, code = Users.create(userData, externID=candidate.ID)
+            if code != 201:
+                syncStatus.append({"username": candidate.email, "code": code, "message": result})
+            syncStatus.append({"ID": result.ID, "username": result.username, "code": 201, "message": "User created"})
     Users.NTactive(False)
     Aliases.NTactive(False)
     Users.NTcommit()
@@ -175,21 +157,14 @@ def downloadLdapUser(ldap):
             DB.session.rollback()
             return jsonify(message=err.args[0]), 500
     userdata = ldap.downsyncUser(ID)
-    error = Users.checkCreateParams(userdata)
-    if error is not None:
-        return jsonify(message="Cannot import user: "+error), 400
-    user = Users(userdata)
-    user.externID = ID
+    if userdata is None:
+        return jsonify(message="Error retrieving user"), 404
+    result, code = Users.create(userdata, externID=ID)
+    if code != 201:
+        return jsonify(message="Failed to create user: "+result), code
     checkPermissions(DomainAdminPermission(user.domainID))
     DB.session.add(user)
-    DB.session.flush()
-    with UserSetup(user) as us:
-        us.run()
-    if not us.success:
-        return jsonify(message="Error during user setup", error=us.error), us.errorCode
     DB.session.commit()
-    with Service("systemd", Service.SUPPRESS_ALL) as sysd:
-        sysd.reloadService("gromox-http.service")
     return jsonify(user.fulldesc()), 201
 
 

@@ -596,11 +596,11 @@ class Users(DataModel, DB.Base, NotifyTable):
             with AutoClean(lambda: DB.session.rollback()):
                 DB.session.add(user)
                 DB.session.flush()
-                with UserSetup(user) as us:
+                with UserSetup(user, DB.session) as us:
                     us.run()
+                DB.session.commit()
                 if not us.success:
                     return "Error during user setup: "+us.error, us.errorCode
-                DB.session.commit()
                 return user, 201
         except IntegrityError as err:
             return "Object violates database constraints "+err.orig.args[1], 400
