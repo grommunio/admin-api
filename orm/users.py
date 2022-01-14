@@ -148,9 +148,9 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("domainID", flags="init"),
-                      {"attr": "ldapID", "flags": "patch"}),
-                     (Int("status", flags="patch"),
-                      Text("lang", flags="patch"),
+                      {"attr": "ldapID", "flags": "patch"},
+                      Int("status", flags="patch")),
+                     (Text("lang", flags="patch"),
                       BoolP("pop3_imap", flags="patch"),
                       BoolP("smtp", flags="patch"),
                       BoolP("changePassword", flags="patch"),
