@@ -16,6 +16,7 @@ from tools.permissions import DomainAdminROPermission, OrgAdminPermission, Domai
 
 from orm import DB
 
+
 @API.route(api.BaseRoute+"/system/orgs", methods=["GET", "POST"])
 @secure(requireDB=True)
 def orgListEndpoint():

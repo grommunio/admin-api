@@ -44,7 +44,7 @@ def searchLdap(ldap):
     return jsonify(data=[{"ID": ldap.escape_filter_chars(u.ID), "name": u.name, "email": u.email} for u in ldapusers])
 
 
-def ldapDownsyncDomains(ldap, domains):
+def ldapDownsyncDomains(ldap, domains, lang=None):
     """Synchronize ldap domains.
 
     Parameters
@@ -66,6 +66,7 @@ def ldapDownsyncDomains(ldap, domains):
             continue
         try:
             user.fromdict(userdata)
+            user.lang = user.lang or lang
             syncStatus.append({"ID": user.ID, "username": user.username, "code": 200, "message": "Synchronization successful"})
             DB.session.commit()
         except (MismatchROError, InvalidAttributeError, ValueError):
@@ -91,6 +92,7 @@ def ldapDownsyncDomains(ldap, domains):
             if userData is None:
                 syncStatus.append({"username": candidate.email, "code": 500, "message": "Error retrieving userdata"})
                 continue
+            userData["lang"] = lang
             result, code = Users.create(userData, externID=candidate.ID)
             if code != 201:
                 syncStatus.append({"username": candidate.email, "code": code, "message": result})
@@ -105,7 +107,7 @@ def ldapDownsyncDomains(ldap, domains):
 @secure(requireDB=True, authLevel="user", service="ldap")
 def ldapDownsyncAll(ldap):
     checkPermissions(SystemAdminPermission())
-    return ldapDownsyncDomains(ldap, None)
+    return ldapDownsyncDomains(ldap, None, request.args.get("lang", ""))
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/ldap/downsync", methods=["POST"])
@@ -116,7 +118,7 @@ def ldapDownsyncDomain(ldap, domainID):
     domain = Domains.query.with_entities(Domains.ID, Domains.domainname).filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    return ldapDownsyncDomains(ldap, (domain,))
+    return ldapDownsyncDomains(ldap, (domain,), request.args.get("lang", ""))
 
 
 @API.route(api.BaseRoute+"/domains/ldap/importUser", methods=["POST"])
@@ -132,6 +134,7 @@ def downloadLdapUser(ldap):
     except Exception:
         return jsonify(message="Invalid ID"), 400
     force = request.args.get("force")
+    lang = request.args.get("lang", "")
     userinfo = ldap.getUserInfo(ID)
     if userinfo is None:
         return jsonify(message="User not found"), 404
@@ -151,6 +154,7 @@ def downloadLdapUser(ldap):
         try:
             user.fromdict(userdata)
             user.externID = ID
+            user.lang = user.lang or lang
             DB.session.commit()
             return jsonify(user.fulldesc()), 200
         except (InvalidAttributeError, MismatchROError, ValueError) as err:
@@ -159,13 +163,14 @@ def downloadLdapUser(ldap):
     userdata = ldap.downsyncUser(ID)
     if userdata is None:
         return jsonify(message="Error retrieving user"), 404
+    userdata["lang"] = lang
     result, code = Users.create(userdata, externID=ID)
     if code != 201:
         return jsonify(message="Failed to create user: "+result), code
-    checkPermissions(DomainAdminPermission(user.domainID))
-    DB.session.add(user)
+    checkPermissions(DomainAdminPermission(result.domainID))
+    DB.session.add(result)
     DB.session.commit()
-    return jsonify(user.fulldesc()), 201
+    return jsonify(result.fulldesc()), 201
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/downsync", methods=["PUT"])
@@ -184,6 +189,7 @@ def updateLdapUser(ldap, domainID, userID):
         return jsonify(message="Cannot synchronize user: LDAP object not found"), 404
     user.fromdict(userdata)
     user.externID = ldapID
+    user.lang = user.lang or request.args.get("lang", "")
     DB.session.commit()
     return jsonify(user.fulldesc())
 

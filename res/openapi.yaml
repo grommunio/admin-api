@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.5.3
+  version: 1.5.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2117,6 +2117,7 @@ paths:
           description: Optional LDAP object ID
           schema:
             type: string
+        - $ref: '#/components/parameters/defaultLang'
       responses:
         '200':
           description: Synchronization successful
@@ -2932,6 +2933,7 @@ paths:
           schema:
             type: boolean
             default: false
+        - $ref: '#/components/parameters/defaultLang'
       responses:
         '200':
           description: An existing user was updated with LDAP data
@@ -3035,6 +3037,7 @@ paths:
         - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/completeSync'
+        - $ref: '#/components/parameters/defaultLang'
       responses:
         '200':
           description: Update process successful
@@ -3062,6 +3065,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/completeSync'
+        - $ref: '#/components/parameters/defaultLang'
       responses:
         '200':
           description: Update process successful
@@ -3664,6 +3668,14 @@ components:
       required: true
       schema:
         type: string
+    defaultLang:
+      name: lang
+      description: Default language for imported users
+      in: query
+      required: false
+      schema:
+        type: string
+        default: ""
     devices:
       name: devices
       description: Restrict request to these device IDs

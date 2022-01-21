@@ -401,11 +401,11 @@ class UserSetup(SetupContext):
         stmt = "INSERT INTO store_properties VALUES (?, ?)"
         self.exmdb.execute(stmt, (PropTags.CREATIONTIME, ntNow))
         if "prohibitreceivequota" in self.user.properties:
-            self.exmdb.execute(stmt, (PropTags.PROHIBITRECEIVEQUOTA, self.user.properties["prohibitreceivequota"].val))
+            self.exmdb.execute(stmt, (PropTags.PROHIBITRECEIVEQUOTA, self.user.properties["prohibitreceivequota"]))
         if "prohibitsendquota" in self.user.properties:
-            self.exmdb.execute(stmt, (PropTags.PROHIBITSENDQUOTA, self.user.properties["prohibitsendquota"].val))
+            self.exmdb.execute(stmt, (PropTags.PROHIBITSENDQUOTA, self.user.properties["prohibitsendquota"]))
         if "storagequotalimit" in self.user.properties:
-            self.exmdb.execute(stmt, (PropTags.STORAGEQUOTALIMIT, self.user.properties["storagequotalimit"].val))
+            self.exmdb.execute(stmt, (PropTags.STORAGEQUOTALIMIT, self.user.properties["storagequotalimit"]))
         self.createGenericFolder(PrivateFIDs.ROOT, self.user.ID)
         self.createGenericFolder(PrivateFIDs.IPMSUBTREE, self.user.ID)
         self.createGenericFolder(PrivateFIDs.INBOX, self.user.ID)

@@ -17,8 +17,8 @@ grommunio-admin ldap \[em] LDAP tools
 .P
 .PD
 \f[B]grommunio-admin ldap\f[R] \f[B]downsync\f[R] [\f[I]-a\f[R]]
-[\f[I]-c\f[R]] [\f[I]-f\f[R]] [\f[I]-y\f[R]] [\f[I]USER\f[R]
-[\f[I]USER\f[R] \&...]]
+[\f[I]-c\f[R]] [\f[I]-f\f[R]] [\f[I]-l\f[R]] [\f[I]-y\f[R]]
+[\f[I]USER\f[R] [\f[I]USER\f[R] \&...]]
 .PD 0
 .P
 .PD
@@ -77,6 +77,10 @@ Import or update all users from the LDAP tree
 .TP
 \f[B]\f[CB]-f\f[B]\f[R], \f[B]\f[CB]--force\f[B]\f[R]
 Force update users that are linked to a different or no LDAP object
+.TP
+\f[B]\f[CB]-l\f[B]\f[R], \f[B]\f[CB]--lang\f[B]\f[R]
+Set language for imported users.
+Default is to not set any language.
 .TP
 \f[B]\f[CB]-m\f[B]\f[R], \f[B]\f[CB]--remove-maildirs\f[B]\f[R]
 Also remove user files from disk

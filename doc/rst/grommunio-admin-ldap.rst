@@ -12,7 +12,7 @@ Synopsis
 
 | **grommunio-admin ldap** **check** [*-r* [*-m*] [*-y*]]
 | **grommunio-admin ldap** **configure**
-| **grommunio-admin ldap** **downsync** [*-a*] [*-c*] [*-f*] [*-y*]
+| **grommunio-admin ldap** **downsync** [*-a*] [*-c*] [*-f*] [*-l*] [*-y*]
   [*USER* [*USER* …]]
 | **grommunio-admin ldap** **dump** *USER*
 | **grommunio-admin ldap** **info**
@@ -56,6 +56,8 @@ Options
    Import or update all users from the LDAP tree
 ``-f``, ``--force``
    Force update users that are linked to a different or no LDAP object
+``-l``, ``--lang``
+   Set language for imported users. Default is to not set any language.
 ``-m``, ``--remove-maildirs``
    Also remove user files from disk
 ``-n``, ``--max-results``

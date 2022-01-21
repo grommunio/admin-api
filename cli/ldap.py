@@ -121,7 +121,7 @@ def _getCandidates(expr):
         return [candidate] if candidate is not None else ldap.searchUsers(expr)
 
 
-def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
+def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True, lang=None):
     from services import Service
     if yes or auto:
         cli.print("Synchronizing user '{}' ({})".format(candidate.name, candidate.email))
@@ -167,6 +167,7 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
         try:
             user.fromdict(userdata)
             user.externID = candidate.ID
+            user.lang = user.lang or lang or ""
             DB.session.commit()
             cli.print("User updated.")
             return SUCCESS
@@ -180,6 +181,7 @@ def _downsyncUser(cli, candidate, yes, auto, force, reloadHttp=True):
     if userdata is None:
         cli.print(cli.col("Error retrieving user", "red"))
         return ERR_NO_USER
+    userdata["lang"] = lang or ""
     result, code = Users.create(userdata, reloadGromoxHttp=False, externID=candidate.ID)
     if code != 201:
         cli.print(cli.col("Failed to create user: "+result, "red"))
@@ -216,7 +218,7 @@ def cliLdapDownsync(args):
             if not checkDomain(candidate):
                 cli.print(cli.col("Skipped {} ({}) - domain not found".format(candidate.name, candidate.email), "yellow"))
                 continue
-            result = _downsyncUser(cli, candidate, args.yes, args.auto, args.force)
+            result = _downsyncUser(cli, candidate, args.yes, args.auto, args.force, lang=args.lang)
             if result == ERR_USR_ABRT:
                 break
             error = error or result != SUCCESS
@@ -235,7 +237,7 @@ def cliLdapDownsync(args):
             if not checkDomain(candidate):
                 cli.print(cli.col("Skipped {} ({}) - domain not found".format(candidate.name, candidate.email), "yellow"))
                 continue
-            result = _downsyncUser(cli, candidate, args.yes, args.auto, args.force, False)
+            result = _downsyncUser(cli, candidate, args.yes, args.auto, args.force, False, args.lang)
             error = error or result != SUCCESS
             if result == ERR_USR_ABRT:
                 break
@@ -260,7 +262,7 @@ def cliLdapDownsync(args):
     Aliases.NTactive(False)
     Users.NTactive(False)
     for candidate in candidates:
-        result = _downsyncUser(cli, candidate, args.yes, args.auto, args.force, False)
+        result = _downsyncUser(cli, candidate, args.yes, args.auto, args.force, False, args.lang)
         error = error or result != SUCCESS
         if result == ERR_USR_ABRT:
             break
@@ -470,6 +472,7 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     downsync.add_argument("-a", "--auto", action="store_true", help="Do not prompt, exit with error instead. Implies -y.")
     downsync.add_argument("-c", "--complete", action="store_true", help="Import/update all users in the ldap tree")
     downsync.add_argument("-f", "--force", action="store_true", help="Force synchronization of unassociated users")
+    downsync.add_argument("-l", "--lang", help="Default language for imported users")
     downsync.add_argument("-y", "--yes", action="store_true", help="Proceed automatically if target is unambiguous")
     dump = sub.add_parser("dump", help="Dump LDAP object")
     dump.set_defaults(_handle=cliLdapDump)
