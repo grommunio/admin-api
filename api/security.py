@@ -40,8 +40,9 @@ def getUser():
     try:
         from orm.users import Users
         user = Users.query.filter(Users.username == request.auth["claims"]["usr"]).first()
-    except Exception:
-        return "Database error"
+    except Exception as err:
+        logger.warn("getUser() failed ({}): {}".format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
+        return "Failed to get user information from database"
     if user is None:
         return "Invalid user"
     request.auth["user"] = user
@@ -203,11 +204,12 @@ def checkPermissions(*requested):
     None.
     """
     from .errors import InsufficientPermissions
-    if getUser() is not None:
-        raise InsufficientPermissions()
+    error = getUser()
+    if error is not None:
+        raise InsufficientPermissions(error)
     user = request.auth["user"]
     if user.ID != 0 and user.addressStatus != 0:
-        raise InsufficientPermissions()
+        raise InsufficientPermissions("Account deactivated")
     permissions = user.permissions()
     if not all(permission in permissions for permission in requested):
         raise InsufficientPermissions()

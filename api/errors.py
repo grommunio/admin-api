@@ -11,7 +11,8 @@ import traceback
 
 
 class InsufficientPermissions(RuntimeError):
-    pass
+    def __init__(self, msg=None):
+        RuntimeError(self, msg)
 
 
 @API.errorhandler(DatabaseError)
@@ -22,7 +23,7 @@ def database_error(error):
 
 @API.errorhandler(InsufficientPermissions)
 def insufficient_permissions(error):
-    return jsonify(message="Insufficient permissions for this operation"), 403
+    return jsonify(message="Access denied: "+(error.args[0] or "Insufficient permissions for this operation")), 403
 
 
 @API.errorhandler(ServiceUnavailableError)
