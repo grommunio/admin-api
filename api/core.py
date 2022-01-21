@@ -62,9 +62,8 @@ def reloadORM():
     import sys
     API.logger.warn("Database schema version updated detected - reloading ORM")
     DB.initVersion()
-    for name, module in sys.modules.items():
-        if name.startswith("orm."):
-            importlib.reload(module)
+    for name, module in [(name, module) for name, module in sys.modules.items() if name.startswith("orm.")]:
+        importlib.reload(module)
 
 
 def secure(requireDB=False, requireAuth=True, authLevel="basic", service=None):
