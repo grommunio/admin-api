@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.5.2
+  version: 1.5.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3567,6 +3567,31 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /defaults/storeLangs:
+    get:
+      summary: Get list of available user store languages
+      tags:
+        - Defaults
+      responses:
+        '200':
+          description: List of available languages returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                          description: Language code
+                        name:
+                          type: string
+                          description: Language name
+
 components:
   securitySchemes:
     JWTCookie:
@@ -4798,6 +4823,8 @@ tags:
     description: Endpoints for mailing list management
   - name: Domain Admin/Users
     description: Endpoints for user management
+  - name: Defaults
+    description: Endpoints providing static default data
   - name: LDAP
     description: Endpoints for LDAP operations
   - name: Service

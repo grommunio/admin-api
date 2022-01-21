@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020 grommunio GmbH
 
-__all__ = ["domain", "system", "misc", "service", "tasq"]
+__all__ = ["domain", "system", "defaults", "misc", "service", "tasq"]
 
 from flask import request, jsonify
 from orm import DB
