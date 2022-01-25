@@ -96,6 +96,7 @@ def ldapDownsyncDomains(ldap, domains, lang=None):
             result, code = Users.create(userData, externID=candidate.ID)
             if code != 201:
                 syncStatus.append({"username": candidate.email, "code": code, "message": result})
+                continue
             syncStatus.append({"ID": result.ID, "username": result.username, "code": 201, "message": "User created"})
     Users.NTactive(False)
     Aliases.NTactive(False)
