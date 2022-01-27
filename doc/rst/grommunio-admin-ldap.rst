@@ -49,9 +49,8 @@ Options
 
 ``USER``
    LDAP object ID or search string
-``-a``, ``--all``
-   Synchronize all imported users. No new users are created, to import
-   users use *-c*
+``-a``, ``--auto``
+   Never prompt, exit with error on conflicts. Implies -y.
 ``-c``, ``--complete``
    Import or update all users from the LDAP tree
 ``-f``, ``--force``
@@ -66,7 +65,7 @@ Options
    Remove imported users of which the linked LDAP object could not be
    found
 ``-y``, ``--yes``
-   Do not prompt, assume yes
+   Do not prompt for confirmation, assume yes
 
 See Also
 ========

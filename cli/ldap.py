@@ -81,36 +81,42 @@ def _getCandidate(cli, expr, auto):
     with Service("ldap") as ldap:
         try:
             candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
+            if candidate is not None:
+                return candidate
         except Exception:
+            pass
+        matches = ldap.searchUsers(expr)
+        if len(matches) == 0:
+            cli.print(cli.col("Could not find user matching '{}'".format(expr), "red"))
+            return ERR_NO_USER
+        if len(matches) == 1:
+            return matches[0]
+        else:
+            if auto:
+                exact = [candidate for candidate in matches if candidate.name == expr or candidate.email == expr]
+                if len(exact) == 1:
+                    return exact[0]
+                cli.print(cli.col("Multiple candidates for '{}' found - aborting".format(expr), "red"))
+                return ERR_AMBIG
+            cli.print("Found {} users matching '{}':".format(len(matches), expr))
+            for i in range(len(matches)):
+                exact = matches[i].name == expr or matches[i].email == expr
+                cli.print(cli.col("{: 2d}: {} ({})".format(i+1, matches[i].name, matches[i].email),
+                                  attrs=("bold",) if exact else ()), cli.col("(exact match)" if exact else "", attrs=["dark"]))
             candidate = None
-        if candidate is None:
-            matches = ldap.searchUsers(expr)
-            if len(matches) == 0:
-                cli.print(cli.col("Could not find user matching '{}'".format(expr), "red"))
-                return ERR_NO_USER
-            if len(matches) == 1:
-                candidate = matches[0]
-            else:
-                if auto:
-                    cli.print(cli.col("Multiple candidates for '{}' found - aborting".format(expr), "red"))
-                    return ERR_AMBIG
-                cli.print("Found {} users matching '{}':".format(len(matches), expr))
-                for i in range(len(matches)):
-                    cli.print("{: 2d}: {} ({})".format(i+1, matches[i].name, matches[i].email))
-                candidate = None
-                while candidate is None:
-                    try:
-                        selected = _getc(cli, "Choose index of user (1-{}) or CTRL+C to exit".format(len(matches)),
-                                         choices=range(len(matches)), getter=_geti)
-                        index = int(selected)-1
-                        if not 0 <= index < len(matches):
-                            continue
-                        candidate = matches[index]
-                    except (EOFError, KeyboardInterrupt):
-                        cli.print("k bye.")
-                        return ERR_USR_ABRT
-                    except ValueError:
+            while candidate is None:
+                try:
+                    selected = _getc(cli, "Choose index of user (1-{}) or CTRL+C to exit".format(len(matches)),
+                                     choices=range(len(matches)), getter=_geti)
+                    index = int(selected)-1
+                    if not 0 <= index < len(matches):
                         continue
+                    candidate = matches[index]
+                except (EOFError, KeyboardInterrupt):
+                    cli.print("k bye.")
+                    return ERR_USR_ABRT
+                except ValueError:
+                    continue
         return candidate
 
 
