@@ -70,7 +70,7 @@ def genPath(index: int, depth: int):
     return diridx
 
 
-def createPath(parent: str, index: int, depth: int):
+def createPath(parent: str, index: int, depth: int, fileUid=None, fileGid=None):
     """Create storage path.
 
     Parameters
@@ -92,8 +92,14 @@ def createPath(parent: str, index: int, depth: int):
     path : str
         The full path of the created directory (without trailing slash)
     """
-    path = os.path.join(parent, *("{:X}".format(i) for i in genPath(index, depth)))
+    subdirs = ["{:X}".format(i) for i in genPath(index, depth)]
+    path = os.path.join(parent, *subdirs)
     os.makedirs(path)
+    if fileUid is not None or fileGid is not None:
+        temp = parent
+        for subdir in subdirs:
+            temp = os.path.join(temp, subdir)
+            shutil.chown(temp, fileUid, fileGid)
     return path
 
 
@@ -217,11 +223,12 @@ class DomainSetup(SetupContext):
     def run(self):
         """Run domain home directory initialization."""
         try:
-            self.createHomedir()
+            fileUid, fileGid = Config["options"].get("fileUid"), Config["options"].get("fileGid")
+            self.createHomedir(fileUid, fileGid)
             self.session.commit()
             self.createExmdb()
             try:
-                setDirectoryOwner(self.domain.homedir, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
+                setDirectoryOwner(self.domain.homedir, fileUid, fileGid)
                 setDirectoryPermission(self.domain.homedir, Config["options"].get("filePermissions"))
             except Exception as err:
                 logger.warn("Could not set domain directory ownership: "+" - ".join(str(arg) for arg in err.args))
@@ -231,13 +238,18 @@ class DomainSetup(SetupContext):
             self.error = "Could not create home directory ({})".format(err.args[1])
             self.errorCode = 500
             self.domain.homedir = ""
+        except FileExistsError:
+            logger.error("Failed to create {}: Directory exists.".format(self.domain.homedir))
+            self.error = "Could not create home directory: File exists"
+            self.errorCode = 500
+            self.domain.homedir = ""
         except Exception:
             logger.error(traceback.format_exc())
             self.error = "Unknown error"
             self.errorCode = 500
             self.domain.homedir = ""
 
-    def createHomedir(self):
+    def createHomedir(self, fileUid, fileGid):
         """Set up directory structure for a domain.
 
         Creates the home directory according to its ID in the prefix specified in the configuration.
@@ -246,7 +258,8 @@ class DomainSetup(SetupContext):
         Additional `cid`, `log` and `tmp` subdirectories are created in the home directory.
         """
         options = Config["options"]
-        self.domain.homedir = createPath(options["domainPrefix"], self.domain.ID, options["domainStorageLevels"])
+        self.domain.homedir = createPath(options["domainPrefix"], self.domain.ID, options["domainStorageLevels"],
+                                         fileUid, fileGid)
         self._dirs.append(self.domain.homedir)
         if options["domainAcceleratedStorage"] is not None:
             dbPath = createPath(options["domainAcceleratedStorage"], self.domain.ID, options["domainStorageLevels"])
@@ -312,12 +325,13 @@ class UserSetup(SetupContext):
     def run(self):
         """Run user home directory initialization."""
         try:
-            self.createHomedir()
+            fileUid, fileGid = Config["options"].get("fileUid"), Config["options"].get("fileGid")
+            self.createHomedir(fileUid, fileGid)
             self.session.commit()
             self.createExmdb()
             self.createMidb()
             try:
-                setDirectoryOwner(self.user.maildir, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
+                setDirectoryOwner(self.user.maildir, fileUid, fileGid)
                 setDirectoryPermission(self.user.maildir, Config["options"].get("filePermissions"))
             except Exception as err:
                 logger.warn("Could not set user directory ownership: "+" - ".join(str(arg) for arg in err.args))
@@ -327,13 +341,18 @@ class UserSetup(SetupContext):
             self.error = "Could not create home directory ({})".format(err.args[1])
             self.errorCode = 500
             self.user.maildir = ""
+        except FileExistsError:
+            logger.error("Failed to create {}: Directory exists.".format(self.domain.homedir))
+            self.error = "Could not create home directory: File exists"
+            self.errorCode = 500
+            self.user.maildir = ""
         except Exception:
             logger.error(traceback.format_exc())
             self.error = "Unknown error"
             self.errorCode = 500
             self.user.maildir = ""
 
-    def createHomedir(self):
+    def createHomedir(self, fileUid=None, fileGid=None):
         """Set up directory structure for a user.
 
         Creates the home directory according to its ID in the prefix set in the configuration.
@@ -344,7 +363,7 @@ class UserSetup(SetupContext):
         Additional `cid`, `config`, `disk`, `eml`, `ext` and `tmp` subdirectories are created in the home directory.
         """
         options = Config["options"]
-        self.user.maildir = createPath(options["userPrefix"], self.user.ID, options["userStorageLevels"])
+        self.user.maildir = createPath(options["userPrefix"], self.user.ID, options["userStorageLevels"], fileUid, fileGid)
         self._dirs.append(self.user.maildir)
         if options["userAcceleratedStorage"] is not None:
             dbPath = createPath(options["userAcceleratedStorage"], self.user.ID, options["userStorageLevels"])
