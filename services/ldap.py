@@ -137,6 +137,23 @@ class LdapService:
     def _sbase(self):
         return self._searchBase(self._config)
 
+    def _search(self, *args, **kwargs):
+        """Perform async search query.
+
+        Parameters
+        ----------
+        *args : Any
+            Arguments forwarded to conn.search
+        **kwargs : Any
+            Keyword arguments forwarded to conn.search
+
+        Returns
+        -------
+        list
+            Search result list
+        """
+        return self.conn.get_response(self.conn.search(*args, **kwargs))[0]
+
     @classmethod
     def _searchBase(cls, conf):
         """Generate directory name to search.
@@ -200,8 +217,7 @@ class LdapService:
 
         """
         props = required or (self._config["users"]["username"], self._config["users"]["displayName"], self._config["objectID"])
-        res = all(prop in user and user[prop].value is not None for prop in props)
-        return res
+        return all(prop in user and user[prop] is not None for prop in props)
 
     def authUser(self, ID, password):
         """Attempt ldap bind for user with given ID and password
@@ -218,12 +234,12 @@ class LdapService:
         str
             Error message if authentication failed or None if successful
         """
-        self.conn.search(self._sbase, self._matchFilters(ID))
-        if len(self.conn.response) == 0:
+        response = self._search(self._sbase, self._matchFilters(ID))
+        if len(response) == 0:
             return "Invalid Username or password"
-        if len(self.conn.response) > 1:
+        if len(response) > 1:
             return "Multiple entries found - please contact your administrator"
-        userDN = self.conn.response[0]["dn"]
+        userDN = response[0]["dn"]
         try:
             ldap3.Connection(self._config["connection"].get("server"), user=userDN, password=password, auto_bind=True)
         except ldapexc.LDAPBindError:
@@ -252,24 +268,24 @@ class LdapService:
             Dictionary representation of the LDAP user
         """
         try:
-            self.conn.search(self._sbase, self._matchFilters(ID), attributes=["*", self._config["objectID"]])
+            response = self._search(self._sbase, self._matchFilters(ID), attributes=["*", self._config["objectID"]])
         except Exception:
             return None
-        if len(self.conn.entries) == 0:
+        if len(response) == 0:
             return None
-        if len(self.conn.entries) > 1:
+        if len(response) > 1:
             raise RuntimeError("Multiple entries found - aborting")
-        ldapuser = self.conn.entries[0]
+        ldapuser = response[0]["attributes"]
         if not self._userComplete(ldapuser, (self._config["users"]["username"],)):
             return None
-        userdata = dict(username=ldapuser[self._config["users"]["username"]].value.lower())
+        userdata = dict(username=ldapuser[self._config["users"]["username"]].lower())
         userdata["properties"] = props or self._defaultProps.copy()
-        userdata["properties"].update({prop: ldapuser[attr].value
-                                       for attr, prop in self._userAttributes.items() if attr in ldapuser})
+        userdata["properties"].update({prop: " ".join(str(a) for a in ldapuser[attr]) if isinstance(ldapuser[attr], list)
+                                       else ldapuser[attr] for attr, prop in self._userAttributes.items() if attr in ldapuser})
         if self._config["users"].get("aliases"):
             aliasattr = self._config["users"]["aliases"]
-            if aliasattr in ldapuser and ldapuser[aliasattr].value is not None:
-                aliases = ldapuser[aliasattr].value
+            if ldapuser.get(aliasattr) is not None:
+                aliases = ldapuser[aliasattr]
                 userdata["aliases"] = aliases if isinstance(aliases, list) else [aliases]
                 userdata["aliases"] = [alias[5:] if alias.lower().startswith("smtp:") else alias
                                        for alias in userdata["aliases"]]
@@ -290,8 +306,8 @@ class LdapService:
         ldap3.abstract.entry.Entry
             LDAP object or None if not found or ambiguous
         """
-        self.conn.search(self._sbase, self._matchFilters(ID), attributes=["*", self._config["objectID"]])
-        return self.conn.entries[0] if len(self.conn.entries) == 1 else None
+        res = self._search(self._sbase, self._matchFilters(ID), attributes=["*", self._config["objectID"]])
+        return yaml.dump({"DN": res[0]["dn"]})+yaml.dump({"attributes": dict(res[0]["attributes"])}) if len(res) == 1 else None
 
     @staticmethod
     def escape_filter_chars(text, encoding=None):
@@ -314,12 +330,12 @@ class LdapService:
         """
         users = self._config["users"]
         username, name = users["username"], users["displayName"]
-        self.conn.search(self._sbase, self._matchFiltersMulti(IDs), attributes=[username, name, self._config["objectID"]])
-        return [GenericObject(ID=entry[self._config["objectID"]].raw_values[0],
-                              username=entry[username].value,
-                              name=entry[name].value,
-                              email=entry[username].value)
-                for entry in self.conn.entries if self._userComplete(entry)]
+        ress = self._search(self._sbase, self._matchFiltersMulti(IDs), attributes=[username, name, self._config["objectID"]])
+        return [GenericObject(ID=res["raw_attributes"][self._config["objectID"]][0],
+                              username=res["attributes"][username],
+                              name=res["attributes"][name],
+                              email=res["attributes"][username])
+                for res in ress if self._userComplete(res["attributes"])]
 
     def getUserInfo(self, ID):
         """Get e-mail address of an ldap user.
@@ -336,16 +352,16 @@ class LdapService:
         users = self._config["users"]
         username, name = users["username"], users["displayName"]
         try:
-            self.conn.search(self._sbase, self._matchFilters(ID), attributes=[username, name, self._config["objectID"]])
+            response = self._search(self._sbase, self._matchFilters(ID), attributes=[username, name, self._config["objectID"]])
         except ldapexc.LDAPInvalidValueError:
             return None
-        if len(self.conn.entries) != 1 or not self._userComplete(self.conn.entries[0]):
+        if len(response) != 1 or not self._userComplete(response[0]["attributes"]):
             return None
-        entry = self.conn.entries[0]
-        return GenericObject(ID=entry[self._config["objectID"]].raw_values[0],
-                             username=entry[username].value,
-                             name=entry[name].value,
-                             email=entry[username].value)
+        entry = response[0]["attributes"]
+        return GenericObject(ID=response[0]["raw_attributes"][self._config["objectID"]][0],
+                             username=entry[username],
+                             name=entry[name],
+                             email=entry[username])
 
     def searchUsers(self, query, domains=None, limit=25):
         """Search for ldap users matchig the query.
@@ -366,17 +382,17 @@ class LdapService:
         name, email = self._config["users"]["displayName"], self._config["users"]["username"]
         try:
             exact = self.getUserInfo(self.unescapeFilterChars(query))
-            exact = [] if exact is None or not self._userComplete(exact) else [exact]
+            exact = [] if exact is None else [exact]
         except Exception:
             exact = []
-        self.conn.search(self._sbase,
-                         self._searchFilters(query, self._config["users"], domains),
-                         attributes=[IDattr, name, email],
-                         paged_size=limit)
-        return exact+[GenericObject(ID=result[IDattr].raw_values[0],
-                                    email=result[email].value,
-                                    name=result[name].value)
-                      for result in self.conn.entries if self._userComplete(result)]
+        response = self._search(self._sbase,
+                                self._searchFilters(query, self._config["users"], domains),
+                                attributes=[IDattr, name, email],
+                                paged_size=limit)
+        return exact+[GenericObject(ID=result["raw_attributes"][IDattr][0],
+                                    email=result["attributes"][email],
+                                    name=result["attributes"][name])
+                      for result in response if self._userComplete(result["attributes"])]
 
     @classmethod
     def testConfig(cls, config):
@@ -395,14 +411,15 @@ class LdapService:
     def testConnection(cls, config, active=True):
         servers = config["connection"]["server"].split()
         pool = ldap3.ServerPool(servers, "FIRST", active=1)
-        conn = ldap3.Connection(pool, user=config["connection"].get("bindUser"), password=config["connection"].get("bindPass"))
+        conn = ldap3.Connection(pool, user=config["connection"].get("bindUser"), password=config["connection"].get("bindPass"),
+                                client_strategy=ldap3.ASYNC)
         if config["connection"].get("starttls") and not conn.start_tls():
             logger.warning("Failed to initiate StartTLS connection")
         if not conn.bind():
             raise ldapexc.LDAPBindError("LDAP bind failed ({}): {}".format(conn.result["description"], conn.result["message"]))
         if active:
-            conn.search(cls._searchBase(config), cls._searchFilters(" ", userconf=config["users"]),
-                        attributes=[], paged_size=0)
+            conn.get_response(conn.search(cls._searchBase(config), cls._searchFilters(" ", userconf=config["users"]),
+                                          attributes=[], paged_size=0))
         return conn
 
     @classmethod

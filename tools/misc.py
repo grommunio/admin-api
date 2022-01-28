@@ -89,6 +89,12 @@ class GenericObject:
         return "GenericObject({})".format(", ".join((key+"="+repr(getattr(self, key))
                                                      for key in dir(self) if not key.startswith("_"))))
 
+    def __contains__(self, key):
+        return key in dir(self)
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
 
 def setDirectoryOwner(path, uid=None, gid=None):
     """Recursively set directory ownership of path.
