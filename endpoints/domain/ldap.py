@@ -84,18 +84,19 @@ def ldapDownsyncDomains(ldap, domains, lang=None):
         for candidate in candidates:
             if candidate.ID in synced:
                 continue
-            user = Users.query.filter((Users.externID == candidate.ID) | (Users.username == candidate.email)).first()
+            email = candidate.email[0] if isinstance(candidate.email, list) else candidate.email
+            user = Users.query.filter((Users.externID == candidate.ID) | (Users.username == email)).first()
             if user is not None:
                 syncStatus.append({"ID": user.ID, "username": user.username, "code": 409, "message": "Exists but not synced"})
                 continue
             userData = ldap.downsyncUser(candidate.ID)
             if userData is None:
-                syncStatus.append({"username": candidate.email, "code": 500, "message": "Error retrieving userdata"})
+                syncStatus.append({"username": email, "code": 500, "message": "Error retrieving userdata"})
                 continue
             userData["lang"] = lang
             result, code = Users.create(userData, externID=candidate.ID)
             if code != 201:
-                syncStatus.append({"username": candidate.email, "code": code, "message": result})
+                syncStatus.append({"username": email, "code": code, "message": result})
                 continue
             syncStatus.append({"ID": result.ID, "username": result.username, "code": 201, "message": "User created"})
     Users.NTactive(False)
