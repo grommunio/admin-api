@@ -262,7 +262,9 @@ class LdapService:
         ldapuser = self.conn.entries[0]
         if not self._userComplete(ldapuser, (self._config["users"]["username"],)):
             return None
-        userdata = dict(username=ldapuser[self._config["users"]["username"]].value.lower())
+        username = ldapuser[self._config["users"]["username"]].value
+        username = username[0] if isinstance(username, list) else username
+        userdata = dict(username=username.lower())
         userdata["properties"] = props or self._defaultProps.copy()
         userdata["properties"].update({prop: ldapuser[attr].value
                                        for attr, prop in self._userAttributes.items() if attr in ldapuser})
@@ -272,7 +274,7 @@ class LdapService:
                 aliases = ldapuser[aliasattr].value
                 userdata["aliases"] = aliases if isinstance(aliases, list) else [aliases]
                 userdata["aliases"] = [alias[5:] if alias.lower().startswith("smtp:") else alias
-                                       for alias in userdata["aliases"]]
+                                       for alias in userdata["aliases"] if alias != username]
             else:
                 userdata["aliases"] = []
         return userdata
