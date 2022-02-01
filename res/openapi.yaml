@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.5.4
+  version: 1.5.5
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2736,12 +2736,7 @@ paths:
           schema:
             type: boolean
             default: false
-        - name: timeout
-          in: query
-          description: Time in seconds to wait for completion
-          schema:
-            type: number
-            default: 1.0
+        - $ref: '#/components/parameters/timeout'
       responses:
         '200':
           description: Deletion successful
@@ -2753,17 +2748,7 @@ paths:
                   message:
                     type: string
         '202':
-          description: Task took more than timeout seconds and is resumed in the background
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  taskID:
-                    type: integer
-                    description: ID of the task running the command
+          $ref: '#/components/responses/Queued'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -3038,6 +3023,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/completeSync'
         - $ref: '#/components/parameters/defaultLang'
+        - $ref: '#/components/parameters/timeout'
       responses:
         '200':
           description: Update process successful
@@ -3048,6 +3034,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/syncStatus'
+        '202':
+          $ref: '#/components/responses/Queued'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '500':
@@ -3066,6 +3054,7 @@ paths:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/completeSync'
         - $ref: '#/components/parameters/defaultLang'
+        - $ref: '#/components/parameters/timeout'
       responses:
         '200':
           description: Update process successful
@@ -3076,6 +3065,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/syncStatus'
+        '202':
+          $ref: '#/components/responses/Queued'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -3731,6 +3722,13 @@ components:
       in: query
       schema:
         type: string
+    timeout:
+      name: timeout
+      in: query
+      description: Time in seconds to wait for completion
+      schema:
+        type: number
+        default: 1.0
     username:
       name: username
       in: path
@@ -4807,6 +4805,18 @@ components:
             properties:
               message:
                 type: string
+    Queued:
+      description: Task took more than timeout seconds and is resumed in the background
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              taskID:
+                type: integer
+                description: ID of the task running the command
 
 tags:
   - name: System Admin/Dashboard

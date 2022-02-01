@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2020 grommunio GmbH
 
 import shutil
-import traceback
 
 from flask import jsonify, request
 
@@ -13,8 +12,8 @@ from api.security import checkPermissions
 
 from services import Service
 from tools.DataModel import InvalidAttributeError, MismatchROError
-from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission
-from tools.storage import UserSetup
+from tools.permissions import SystemAdminPermission, SystemAdminROPermission, DomainAdminPermission, DomainAdminROPermission
+from tools.tasq import TasQServer
 
 from orm import DB
 
@@ -44,64 +43,28 @@ def searchLdap(ldap):
     return jsonify(data=[{"ID": ldap.escape_filter_chars(u.ID), "name": u.name, "email": u.email} for u in ldapusers])
 
 
-def ldapDownsyncDomains(ldap, domains, lang=None):
+def ldapDownsyncDomains(ldap, domain, lang=None):
     """Synchronize ldap domains.
 
     Parameters
     ----------
-    domains : list of orm.domains.Domains
-        Domain objects providing ID and domainname. If None, synchronize all domains.
+    domain : orm.domains.Domains
+        Domain object providing ID and domainname. If None, synchronize all domains.
     """
-    from orm.domains import Domains
-    from orm.users import Users, Aliases
-    domainFilters = () if domains is None else (Domains.ID.in_(domain.ID for domain in domains),)
-    Users.NTactive(False)
-    Aliases.NTactive(False)
-    users = Users.query.filter(Users.externID != None, *domainFilters).all()
-    syncStatus = []
-    for user in users:
-        userdata = ldap.downsyncUser(user.externID, user.properties)
-        if userdata is None:
-            syncStatus.append({"ID": user.ID, "username": user.username, "code": 404, "message": "LDAP object not found"})
-            continue
-        try:
-            user.fromdict(userdata)
-            user.lang = user.lang or lang
-            syncStatus.append({"ID": user.ID, "username": user.username, "code": 200, "message": "Synchronization successful"})
-            DB.session.commit()
-        except (MismatchROError, InvalidAttributeError, ValueError):
-            API.logger.error(traceback.format_exc())
-            syncStatus.append({"ID": user.ID, "username": user.username, "code": 500, "message": "Synchronization error"})
-            DB.session.rollback()
-        except Exception:
-            API.logger.error(traceback.format_exc())
-            syncStatus.append({"ID": user.ID, "username": user.username, "code": 503, "message": "Database error"})
-            DB.session.rollback()
-    if request.args.get("import") == "true":
-        synced = {user.externID for user in users}
-        candidates = ldap.searchUsers(None,
-                                      domains=(d.domainname for d in domains) if domains is not None else None, limit=None)
-        for candidate in candidates:
-            if candidate.ID in synced:
-                continue
-            user = Users.query.filter((Users.externID == candidate.ID) | (Users.username == candidate.email)).first()
-            if user is not None:
-                syncStatus.append({"ID": user.ID, "username": user.username, "code": 409, "message": "Exists but not synced"})
-                continue
-            userData = ldap.downsyncUser(candidate.ID)
-            if userData is None:
-                syncStatus.append({"username": candidate.email, "code": 500, "message": "Error retrieving userdata"})
-                continue
-            userData["lang"] = lang
-            result, code = Users.create(userData, externID=candidate.ID)
-            if code != 201:
-                syncStatus.append({"username": candidate.email, "code": code, "message": result})
-                continue
-            syncStatus.append({"ID": result.ID, "username": result.username, "code": 201, "message": "User created"})
-    Users.NTactive(False)
-    Aliases.NTactive(False)
-    Users.NTcommit()
-    return jsonify(data=syncStatus)
+    params = {} if domain is None else {"domains": ({"ID": domain.ID, "domainname": domain.domainname},)}
+    params["lang"] = lang
+    params["import"] = request.args.get("import") == "true"
+    task = TasQServer.create("ldapSync", params,
+                             permission=DomainAdminROPermission(domain.ID) if domain else SystemAdminROPermission())
+    timeout = float(request.args.get("timeout", 1))
+    if timeout > 0:
+        TasQServer.wait(task.ID, timeout)
+    if not task.done:
+        return jsonify(message="Created background task #"+str(task.ID), taskID=task.ID), 202
+    if task.state == task.COMPLETED:
+        return jsonify(message=task.message,
+                       data=task.params.get("result", []))
+    return jsonify(message="Synchronization failed: "+task.message), 500
 
 
 @API.route(api.BaseRoute+"/domains/ldap/downsync", methods=["POST"])
@@ -119,7 +82,7 @@ def ldapDownsyncDomain(ldap, domainID):
     domain = Domains.query.with_entities(Domains.ID, Domains.domainname).filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    return ldapDownsyncDomains(ldap, (domain,), request.args.get("lang", ""))
+    return ldapDownsyncDomains(ldap, domain, request.args.get("lang", ""))
 
 
 @API.route(api.BaseRoute+"/domains/ldap/importUser", methods=["POST"])

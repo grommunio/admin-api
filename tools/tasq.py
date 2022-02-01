@@ -45,14 +45,18 @@ class Worker:
     def __init__(self, _queued, _finished):
         self._queued, self._finished = _queued, _finished
         self.run()
+        self.__current = None
 
     def log(self, level, message):
         self._finished.put(Task(0, "control", dict(cmd="log", level=level, message=message)))
 
+    def bump(self):
+        self._finished.put(Task(self.__current.ID, "control", dict(cmd="bump"), message=self.__current.message))
+
     def run(self):
         from time import time
         while True:
-            task = self._queued.get()
+            self.__current = task = self._queued.get()
             func = self.cmap.get(task.command)
             if func is None:
                 task.state = Task.ERROR
@@ -69,6 +73,7 @@ class Worker:
             task.state = max(task.state, Task.COMPLETED)
             task.message = task.message or "Completed ({:.1f}ms)".format(1000*duration)
             self._finished.put(task)
+            self.__current = None
 
     def control(self, task):
         command = task.params.get("cmd")
@@ -79,14 +84,20 @@ class Worker:
 
     def debug(self, task):
         command = task.params.get("cmd")
-        if command == "wait":
-            import time
-            time.sleep(task.params.get("t", 5))
+        if command == "bump":
+            task.message = task.params.get("message", "Bump")
+            self.bump()
+            if "t" in task.params:
+                import time
+                time.wait(task.params["t"])
+        elif command == "log":
+            self.log(task.params.get("level", "INFO"), task.params.get("message", "(no message specified)"))
         elif command == "task":
             task.message = task.params.get("message", task.message)
             task.state = task.params.get("state", task.state)
-        elif command == "log":
-            self.log(task.params.get("level", "INFO"), task.params.get("message", "(no message specified)"))
+        elif command == "wait":
+            import time
+            time.sleep(task.params.get("t", 5))
         else:
             raise Exception("Invalid or missing test command")
 
@@ -98,7 +109,105 @@ class Worker:
             client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, task.params["homedir"], task.params["private"])
             client.deleteFolder(task.params["homedir"], task.params["folderID"], task.params.get("clear", False))
 
-    cmap = {"control": control, "debug": debug, "delFolder": deleteFolder}
+    def ldapSync(self, task):
+        def updateMessage():
+            task.message = "{}/{} synced".format(counts["synced"], counts["sync"])
+            if counts["created"]:
+                task.message += ", {}/{} created".format(counts["created"], counts["create"])
+            if counts["error"]:
+                task.message += ", {} errors".format(counts["error"])
+
+        def bump():
+            nonlocal last
+            if time.time()-last < updateInterval:
+                return
+            updateMessage()
+            last = time.time()
+            self.bump()
+
+        from orm import DB
+        from orm.domains import Domains
+        from orm.users import Aliases, Users
+        from services import Service
+        from tools.DataModel import MismatchROError, InvalidAttributeError
+        import time
+        import traceback
+        start = time.time()
+        lang = task.params.get("lang", "")
+        create = task.params.get("import", False)
+        domains = task.params.get("domains")
+        updateInterval = task.params.get("updateInterval", 5)
+        domainFilters = () if domains is None else (Users.domainID.in_(domain["ID"] for domain in domains),)
+        Users.NTactive(False)
+        Aliases.NTactive(False)
+        users = Users.query.filter(Users.externID != None, *domainFilters).all()
+        syncStatus = []
+        counts = {"created": 0, "synced": 0, "error": 0, "sync": len(users), "create": None}
+        last = time.time()
+        with Service("ldap") as ldap:
+            for user in users:
+                bump()
+                counts["synced"] += 1
+                userdata = ldap.downsyncUser(user.externID, user.properties)
+                if userdata is None:
+                    syncStatus.append({"ID": user.ID, "username": user.username, "code": 404,
+                                       "message": "LDAP object not found"})
+                    counts["error"] += 1
+                    continue
+                try:
+                    user.fromdict(userdata)
+                    user.lang = user.lang or lang
+                    syncStatus.append({"ID": user.ID, "username": user.username, "code": 200,
+                                       "message": "Synchronization successful"})
+                    DB.session.commit()
+                except (MismatchROError, InvalidAttributeError, ValueError):
+                    self.log("ERROR", traceback.format_exc())
+                    syncStatus.append({"ID": user.ID, "username": user.username, "code": 500,
+                                       "message": "Synchronization error"})
+                    DB.session.rollback()
+                    counts["error"] += 1
+                except Exception:
+                    self.log("ERROR", traceback.format_exc())
+                    syncStatus.append({"ID": user.ID, "username": user.username, "code": 503,
+                                       "message": "Unknown error"})
+                    DB.session.rollback()
+                    counts["error"] += 1
+            if create:
+                synced = {user.externID for user in users}
+                candidates = ldap.searchUsers(None, domains=(d["domainname"] for d in domains)
+                                              if domains is not None else None, limit=None)
+                candidates = [candidate for candidate in candidates if candidate.ID not in synced]
+                counts["create"] = len(candidates)
+                for candidate in candidates:
+                    user = Users.query.filter((Users.externID == candidate.ID) | (Users.username == candidate.email)).first()
+                    if user is not None:
+                        syncStatus.append({"ID": user.ID, "username": user.username, "code": 409,
+                                           "message": "Exists but not linked to LDAP object"})
+                        counts["error"] += 1
+                        continue
+                    userData = ldap.downsyncUser(candidate.ID)
+                    if userData is None:
+                        syncStatus.append({"username": candidate.email, "code": 500, "message":
+                                           "Error retrieving userdata"})
+                        counts["error"] += 1
+                        continue
+                    userData["lang"] = lang
+                    result, code = Users.create(userData, externID=candidate.ID)
+                    if code != 201:
+                        syncStatus.append({"username": candidate.email, "code": code, "message": result})
+                        counts["error"] += 1
+                        continue
+                    counts["created"] += 1
+                    syncStatus.append({"ID": result.ID, "username": result.username, "code": 201,
+                                       "message": "User created"})
+            Users.NTactive(False)
+            Aliases.NTactive(False)
+            Users.NTcommit()
+        updateMessage()
+        task.message += " ({:.1f}s)".format(time.time()-start)
+        task.params["result"] = syncStatus
+
+    cmap = {"control": control, "debug": debug, "delFolder": deleteFolder, "ldapSync": ldapSync}
 
 
 class TasQServer:
@@ -330,6 +439,8 @@ class TasQServer:
     @classmethod
     def _process(cls):
         logger.debug("Clerk started")
+        from orm.misc import DB, TasQ
+        from datetime import datetime
         while True:
             task = cls._finished.get()
             if task.command == "control":
@@ -339,6 +450,12 @@ class TasQServer:
                 if cmd == "exit":
                     logger.debug("Clerk stopped")
                     return
+                elif cmd == "bump":
+                    dbtask = TasQ.query.filter(TasQ.ID == task.ID).first()
+                    if dbtask is not None:
+                        dbtask.message = task.message
+                        dbtask.updated = datetime.now()
+                        DB.session.commit()
                 elif cmd == "log":
                     try:
                         logger.log(logging.getLevelName(task.params.get("level", "INFO")),
@@ -349,13 +466,12 @@ class TasQServer:
             with cls._active_lock:
                 tracker = cls._active.pop(task.ID, None)
                 if cls._online:
-                    from orm.misc import DB, TasQ
-                    from datetime import datetime
                     dbtask = TasQ.query.filter(TasQ.ID == task.ID).first()
                     if dbtask is not None:
                         dbtask.state = task.state
                         dbtask.message = task.message
                         dbtask.updated = datetime.now()
+                        dbtask.params = task.params
                     DB.session.commit()
                 if tracker is not None:
                     tracker[0].state = task.state
