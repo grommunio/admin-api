@@ -99,7 +99,10 @@ def createPath(parent: str, index: int, depth: int, fileUid=None, fileGid=None):
         temp = parent
         for subdir in subdirs:
             temp = os.path.join(temp, subdir)
-            shutil.chown(temp, fileUid, fileGid)
+            try:
+                shutil.chown(temp, fileUid, fileGid)
+            except Exception:
+                pass
     return path
 
 
