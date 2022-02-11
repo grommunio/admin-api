@@ -169,7 +169,7 @@ class LdapService:
         Any
             Scalar value (tail=False) or two-tuple containing the scalar and additional elements (tail=True).
         """
-        res = (value[0], value[1:]) if isinstance(value, (list, tuple)) else (value, ())
+        res = (value[0], value[1:]) if isinstance(value, (list, tuple)) else (value, [])
         return res if tail else res[0]
 
     @property
@@ -310,6 +310,8 @@ class LdapService:
             response = self._search(self._sbase, self._matchFilters(ID), attributes=["*", self._config["objectID"]])
         except Exception:
             return None
+        response = [result for result in response if
+                    "attributes" in result and self._userComplete(result["attributes"], (self._config["users"]["username"],))]
         if len(response) == 0:
             return None
         if len(response) > 1:
@@ -418,7 +420,8 @@ class LdapService:
                                 self._searchFilters(query, self._config["users"], domains),
                                 attributes=[IDattr, name, email],
                                 paged_size=limit)
-        return exact+[self._asUser(result) for result in response if self._userComplete(result["attributes"])]
+        return exact+[self._asUser(result) for result in response
+                      if "attributes" in result and self._userComplete(result["attributes"])]
 
     @classmethod
     def testConfig(cls, config):
