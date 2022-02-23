@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
-from . import DB, OptionalC, NotifyTable
+from . import DB, OptionalC, OptionalNC, NotifyTable
 from tools import formats
 from tools.DataModel import DataModel, Id, Text, Int, Date, RefProp
 from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
@@ -15,7 +15,7 @@ from sqlalchemy import Column, func, select, ForeignKey
 from sqlalchemy.dialects.mysql import DATE, INTEGER, TEXT, TINYINT, VARCHAR
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import column_property, validates, relationship
+from sqlalchemy.orm import column_property, validates, relationship, selectinload
 from sqlalchemy.types import TypeDecorator
 
 from .users import Users
@@ -68,6 +68,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
     ID = Column("id", INTEGER(10, unsigned=True), unique=True, primary_key=True, nullable=False)
     orgID = Column("org_id", INTEGER(10, unsigned=True), ForeignKey(Orgs.ID), nullable=False, server_default="0", index=True)
     _domainname = Column("domainname", DomainName(64), nullable=False)
+    homeserverID = OptionalC(105, "0", Column("homeserver", TINYINT(unsigned=True), nullable=False, server_default="0"))
     homedir = Column("homedir", VARCHAR(128), nullable=False, server_default="")
     maxUser = Column("max_user", INTEGER(10, unsigned=True), nullable=False)
     title = Column("title", VARCHAR(128), nullable=False, server_default="")
@@ -82,6 +83,8 @@ class Domains(DataModel, DB.Base, NotifyTable):
     activeUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus == 0)).as_scalar())
     inactiveUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus != 0)).as_scalar())
     org = relationship(Orgs)
+    homeserver = OptionalNC(105, None,
+                            relationship("Servers", foreign_keys=homeserverID, primaryjoin="Domains.homeserverID==Servers.ID"))
 
     _dictmapping_ = ((Id(), Text("domainname", flags="init"), "displayname"),
                      (Id("orgID", flags="patch"),
@@ -95,7 +98,8 @@ class Domains(DataModel, DB.Base, NotifyTable):
                       Date("endDay", flags="patch"),
                       Int("domainStatus", flags="patch", filter="set")),
                      ({"attr": "syncPolicy", "flags": "patch"},
-                      {"attr": "chat", "flags": "patch"}))
+                      {"attr": "chat", "flags": "patch"},
+                      RefProp("homeserver", "homeserverID", flags="init", filter="set", qopt=selectinload)))
 
     NORMAL = 0
     SUSPENDED = 1
@@ -189,6 +193,9 @@ class Domains(DataModel, DB.Base, NotifyTable):
     def checkCreateParams(data):
         if "maxUser" not in data:
             return "Missing required property maxUser"
+        from .misc import Servers
+        if data.get("homeserver") and Servers.query.filter(Servers.ID == data["homeserver"]).count() == 0:
+            return "Homeserver not found"
 
     def delete(self):
         from .users import Users
@@ -247,6 +254,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
     @staticmethod
     def create(props, createRole=True, *args, **kwargs):
         from .roles import AdminRoles
+        from orm.misc import Servers
         from tools.storage import DomainSetup
         from tools.misc import AutoClean
         error = Domains.checkCreateParams(props)
@@ -260,6 +268,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
             with AutoClean(lambda: DB.session.rollback()):
                 DB.session.add(domain)
                 DB.session.flush()
+                domain.homeserverID, domain.homedir = Servers.allocDomain(domain.ID, props.get("homeserver"))
                 with DomainSetup(domain, DB.session) as ds:
                     ds.run()
                 if not ds.success:
@@ -280,6 +289,9 @@ class Domains(DataModel, DB.Base, NotifyTable):
         with Service("systemd", Service.SUPPRESS_ALL) as sysd:
             sysd.reloadService("gromox-delivery.service", "gromox-delivery-queue.service",
                                "gromox-http.service")
+
+
+from . import misc
 
 
 Domains.NTregister()

@@ -87,6 +87,7 @@ def cliUserDelete(args):
     cli = args._cli
     cli.require("DB")
     from orm import DB
+    from tools.misc import GenericObject
     users = _mkUserQuery(args).all()
     if len(users) == 0:
         cli.print(cli.col("No users found.", "yellow"))
@@ -97,7 +98,7 @@ def cliUserDelete(args):
             cli.print("  {}:\t{}".format(user.ID, user.username))
         return 2
     user = users[0]
-    maildir = user.maildir
+    userdata = GenericObject(maildir=user.maildir, homeserver=user.homeserver)
     if not args.yes:
         if cli.confirm("Delete user '{}' ({})? [y/N]: ".format(user.username, user.ID)) != Cli.SUCCESS:
             return 3
@@ -106,22 +107,22 @@ def cliUserDelete(args):
     user.delete()
     DB.session.commit()
     cli.print("User deleted.")
-    if maildir == "":
+    if userdata.maildir == "":
         cli.print("No user files to delete.")
         return 0
     cli.print("Unloading store...", end="", flush=True)
 
     from services import Service
     with Service("exmdb", Service.SUPPRESS_INOP) as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, maildir, True)
-        client.unloadStore(maildir)
+        client = exmdb.user(user)
+        client.unloadStore()
         cli.print("Done.")
     if args.keep_files or (not args.yes and cli.confirm("Delete user directory from disk? [y/N]: ") != Cli.SUCCESS):
-        cli.print(cli.col("Files remain in "+maildir, attrs=["bold"]))
+        cli.print(cli.col("Files remain in "+userdata.maildir, attrs=["bold"]))
         return 0
     cli.print("Deleting user files...", end="")
     import shutil
-    shutil.rmtree(maildir, ignore_errors=True)
+    shutil.rmtree(userdata.maildir, ignore_errors=True)
     cli.print("Done.")
 
 

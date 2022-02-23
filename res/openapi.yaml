@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.5.5
+  version: 1.6.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3327,16 +3327,11 @@ paths:
         - $ref: '#/components/parameters/verbosity'
       responses:
         '200':
-          description: LDAP configuration returned
+          description: Organization returned
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/org'
+                $ref: '#/components/schemas/org'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -3385,6 +3380,156 @@ paths:
       responses:
         '200':
           description: Organization deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /system/servers:
+    get:
+      summary: Get a list of servers
+      tags:
+        - System Admin/Servers
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/verbosity'
+        - $ref: '#/components/parameters/queryLimit'
+        - $ref: '#/components/parameters/queryOffset'
+        - $ref: '#/components/parameters/match'
+        - $ref: '#/components/parameters/matchFields'
+        - name: sort
+          description: Sort by attribute. Can be given multiple times.
+          in: query
+          schema:
+            type: string
+            pattern: '^(ID|hostname|extname|users)(,(a|de)sc)?$'
+        - name: hostname
+          description: Filter by hostname
+          in: query
+          schema:
+            type: string
+        - name: description
+          description: Filter by extname
+          in: query
+          schema:
+            type: string
+        - name: users
+          description: Filter by users
+          in: query
+          schema:
+            $ref: '#/components/schemas/intRange'
+      responses:
+        '200':
+          description: List of servers returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/homeserver'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    post:
+      summary: Register a new server
+      tags:
+        - System Admin/Servers
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/homeserver'
+      responses:
+        '201':
+          description: Server registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/homeserver'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /system/servers/{ID}:
+    get:
+      summary: Get detailed information about a server
+      tags:
+        - System Admin/Servers
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/verbosity'
+      responses:
+        '200':
+          description: Server returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/homeserver'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    patch:
+      summary: Update server
+      tags:
+        - System Admin/Servers
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/homeserver'
+      responses:
+        '200':
+          description: Server updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/homeserver'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete server
+      tags:
+        - System Admin/Servers
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Server deleted
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -3819,6 +3964,15 @@ components:
         chat:
           type: boolean
           description: Whether chat is enabled for this domain
+    homeserverRef:
+      type: object
+      nullable: true
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        hostname:
+          type: string
+          description: Internal hostname of the server
     org:
       type: object
       properties:
@@ -3948,9 +4102,10 @@ components:
         lang:
           type: string
           description: User language
-
         forward:
-         $ref: '#/components/schemas/forward'
+          $ref: '#/components/schemas/forward'
+        homeserver:
+          $ref: '#/components/schemas/homeserverRef'
     userInit:
       type: object
       properties:
@@ -4013,7 +4168,7 @@ components:
           type: string
           description: User language
         forward:
-         $ref: '#/components/schemas/forward'
+          $ref: '#/components/schemas/forward'
     userUpdate:
       type: object
       properties:
@@ -4494,6 +4649,25 @@ components:
           username:
             type: string
             description: E-Mail address of the user
+    homeserver:
+      type: object
+      properties:
+        ID:
+          $ref: '#/components/schemas/ID'
+        hostname:
+          type: string
+          description: Internal hostname of the server
+        extname:
+          type: string
+          description: External address of the server
+        users:
+          type: integer
+          readOnly: true
+          description: Number of users on the server
+        domains:
+          type: integer
+          readOnly: true
+          description: Number of domains on the server
     syncPolicy:
       type: object
       nullable: true
@@ -4837,6 +5011,8 @@ tags:
     description: Proxy endpoints to internal services
   - name: System Admin/Roles
     description: Endpoints for user role and permission management
+  - name: System Admin/Servers
+    description: Endpoints for multi-server configuration
   - name: Domain Admin/Classes
     description: Endpoints for class and hierarchy management
   - name: Domain Admin/Folders

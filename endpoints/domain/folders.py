@@ -27,8 +27,8 @@ def getPublicFoldersList(domainID):
     if domain is None:
         return jsonify(message="Domain not found"), 404
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, domain.homedir, False)
-        response = exmdb.FolderList(client.getFolderList(domain.homedir))
+        client = exmdb.domain(domain)
+        response = exmdb.FolderList(client.getFolderList())
     folders = [{"folderid": str(entry.folderId),
                 "displayname": entry.displayName,
                 "comment": entry.comment,
@@ -48,8 +48,8 @@ def createPublicFolder(domainID):
         return jsonify(message="Domain not found"), 404
     data = request.json
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, domain.homedir, False)
-        folderId = client.createFolder(domain.homedir, domain.ID, data["displayname"], data["container"], data["comment"])
+        client = exmdb.domain(domain)
+        folderId = client.createFolder(domain.ID, data["displayname"], data["container"], data["comment"])
     if folderId == 0:
         return jsonify(message="Folder creation failed"), 500
     return jsonify(folderid=str(folderId),
@@ -68,8 +68,8 @@ def getPublicFolder(domainID, folderID):
     if domain is None:
         return jsonify(message="Domain not found"), 404
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, domain.homedir, False)
-        response = exmdb.Folder(client.getFolderProperties(domain.homedir, 0, folderID))
+        client = exmdb.domain(domain)
+        response = exmdb.Folder(client.getFolderProperties(0, folderID))
     return jsonify({"folderid": str(response.folderId),
                     "displayname": response.displayName,
                     "comment": response.comment,
@@ -91,8 +91,8 @@ def updatePublicFolder(domainID, folderID):
         proptags = [exmdb.TaggedPropval(tag, data[tagname]) for tag, tagname in supported if tagname in data]
         if not len(proptags):
             return jsonify(message="Nothing to do")
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, domain.homedir, False)
-        problems = client.setFolderProperties(domain.homedir, 0, folderID, proptags)
+        client = exmdb.domain(domain)
+        problems = client.setFolderProperties(0, folderID, proptags)
         if len(problems):
             errors = ["{} ({})".format(PropTags.lookup(problem.proptag, hex(problem.proptag)).lower(),
                                        EcErrors.lookup(problem.err, hex(problem.err))) for problem in problems]
@@ -110,7 +110,7 @@ def deletePublicFolder(domainID, folderID):
     if domain is None:
         return jsonify(message="Domain not found"), 404
     task = TasQServer.mktask.deleteFolder(domain.homedir, folderID, False, request.args.get("clear") == "true",
-                                          DomainAdminROPermission(domainID))
+                                          DomainAdminROPermission(domainID), domain.homeserver)
     timeout = float(request.args.get("timeout", 1))
     if timeout > 0:
         TasQServer.wait(task.ID, timeout)
@@ -130,8 +130,8 @@ def getPublicFolderOwnerList(domainID, folderID):
     if domain is None:
         return jsonify(message="Domain not found"), 404
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, domain.homedir, False)
-        response = exmdb.FolderMemberList(client.getFolderMemberList(domain.homedir, folderID))
+        client = exmdb.domain(domain)
+        response = exmdb.FolderMemberList(client.getFolderMemberList(folderID))
     owners = [{"memberID": member.id, "displayName": member.name, "username": member.mail}
               for member in response.members
               if (member.rights & Permissions.FOLDEROWNER) == Permissions.FOLDEROWNER
@@ -151,8 +151,8 @@ def addPublicFolderOwner(domainID, folderID):
     if domain is None:
         return jsonify(message="Domain not found"), 404
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, domain.homedir, False)
-        client.setFolderMember(domain.homedir, folderID, data["username"], client.ownerRights)
+        client = client = exmdb.domain(domain)
+        client.setFolderMember(folderID, data["username"], client.ownerRights)
     return jsonify(message="Success"), 201
 
 
@@ -165,6 +165,6 @@ def deletePublicFolderOwner(domainID, folderID, memberID):
     if domain is None:
         return jsonify(message="Domain not found"), 404
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, domain.homedir, False)
-        client.setFolderMember(domain.homedir, folderID, memberID, client.ownerRights, True)
+        client = exmdb.domain(domain)
+        client.setFolderMember(folderID, memberID, client.ownerRights, True)
     return jsonify(message="Success"), 200

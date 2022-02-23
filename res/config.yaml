@@ -72,6 +72,15 @@ properties:
         type: string
         description: Path to store user home directories in
         default: /u-data/
+      serverPolicy:
+        type: string
+        description: Server selection policy for newly created users
+        default: round-robin
+        enum: [balanced, first, last, random, round-robin]
+      serverExplicitMount:
+        type: boolean
+        description: Place user and domain directories in server specific subdirectories
+        default: False
       exmdbHost:
         type: string
         description: Name or IP address of the exmdb service provider

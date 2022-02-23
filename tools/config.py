@@ -74,7 +74,8 @@ def _defaultConfig():
             "userAcceleratedStorage": None,
             "dashboard": {
                 "services": []
-                }
+                },
+            "serverPolicy": "round-robin"
             },
         "security": {
             "jwtPrivateKeyFile": "/etc/grommunio-admin-api/jwt-privkey.pem",

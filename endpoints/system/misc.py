@@ -6,6 +6,8 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
+from .. import defaultListHandler, defaultObjectHandler
+
 from cli import Cli
 
 from services import Service
@@ -260,3 +262,23 @@ def getMailqData():
         API.logger.error("Failed to run gromox-mailq: {} ({})".format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
         gromoxMailq = ""
     return jsonify(postfixMailq=postfixMailq, gromoxMailq=gromoxMailq)
+
+
+@API.route(api.BaseRoute+"/system/servers", methods=["GET", "POST"])
+@secure(requireDB=105)
+def getServersList():
+    checkPermissions(SystemAdminROPermission() if request.method == "GET" else SystemAdminPermission())
+    from orm.misc import Servers
+    return defaultListHandler(Servers)
+
+
+@API.route(api.BaseRoute+"/system/servers/<int:ID>", methods=["GET", "PATCH", "DELETE"])
+@secure(requireDB=105)
+def getServerObject(ID):
+    checkPermissions(SystemAdminROPermission() if request.method == "GET" else SystemAdminPermission())
+    from orm.misc import Servers
+    if request.method == "DELETE":
+        server = Servers.query.filter(Servers.ID == ID).first()
+        if server is not None and server.users+server.domains != 0:
+            return jsonify(message="Cannot delete server with users or domains"), 400
+    return defaultObjectHandler(Servers, ID, "")

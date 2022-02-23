@@ -19,7 +19,7 @@ from services import Service
 from tools import formats
 from tools.config import Config
 from tools.constants import PropTags, PropTypes, ExchangeErrors, PrivateFIDs, Permissions
-from tools.misc import createMapping, loadPSO
+from tools.misc import createMapping, loadPSO, GenericObject
 from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission
 from tools.rop import nxTime, makeEidEx
 from tools.storage import setDirectoryOwner, setDirectoryPermission
@@ -91,17 +91,17 @@ def deleteUserEndpoint(domainID, userID):
 def deleteUser(user):
     if user.ID == 0:
         return jsonify(message="Cannot delete superuser"), 400
-    maildir = user.maildir
+    userdata = GenericObject(maildir=user.maildir, homeserver=user.homeserver)
     user.delete()
     try:
         DB.session.commit()
     except Exception:
         return jsonify(message="Cannot delete user: Database commit failed."), 500
     with Service("exmdb", Service.SUPPRESS_INOP) as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.host, user.maildir, True)
-        client.unloadStore(maildir)
+        client = exmdb.user(userdata)
+        client.unloadStore()
     if request.args.get("deleteFiles") == "true":
-        shutil.rmtree(maildir, ignore_errors=True)
+        shutil.rmtree(userdata.maildir, ignore_errors=True)
     return jsonify(message="isded")
 
 
@@ -166,12 +166,12 @@ def rdUserStoreProps(domainID, userID):
             return jsonify(message="Unknown property '{}'".format(props[i])), 400
         props[i] = getattr(PropTags, props[i].upper())
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
+        client = exmdb.user(user)
         if request.method == "DELETE":
-            client.removeStoreProperties(user.maildir, props)
+            client.removeStoreProperties(props)
             DB.session.commit()
             return jsonify(message="Success.")
-        propvals = client.getStoreProperties(user.maildir, 0, props)
+        propvals = client.getStoreProperties(0, props)
     respData = {}
     for propval in propvals:
         propname = PropTags.lookup(propval.tag).lower()
@@ -211,7 +211,7 @@ def setUserStoreProps(domainID, userID):
                 propvals.append(exmdb.TaggedPropval(tag, val))
             except TypeError:
                 errors[prop] = "Unsupported type"
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
+        client = exmdb.user(user)
         problems = client.setStoreProperties(user.maildir, 0, propvals)
         for entry in problems:
             tag = PropTags.lookup(entry.proptag, hex(entry.proptag)).lower()
@@ -243,33 +243,33 @@ def getUserSyncData(domainID, userID):
     checkPermissions(DomainAdminROPermission(domainID))
     props = ("deviceid", "devicetype", "useragent", "deviceuser", "firstsynctime", "lastupdatetime", "asversion")
     from orm.users import DB, Users, UserDevices
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
     with Service("exmdb") as exmdb:
         devices = {}
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        data = client.getSyncData(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState"))
-        for device, state in data.items():
-            try:
-                stateobj = decodeSyncState(state, user.username)
-                if stateobj is None:
-                    continue
-                syncstate = {prop: stateobj[prop] for prop in props}
-                syncstate["foldersSyncable"] = len(stateobj["contentdata"])
-                syncstate["foldersSynced"] = len([folder for folder in stateobj["contentdata"].values() if 1 in folder])
-                syncstate["wipeStatus"] = 0
-                devices[syncstate["deviceid"]] = syncstate
-            except Exception as err:
-                API.logger.warn("Failed to decode sync state: {}({})".format(type(err).__name__, ", ".join(str(arg) for arg in err.args)))
-        if DB.minVersion(93):
-            for device in UserDevices.query.filter(UserDevices.userID == userID)\
-                                           .with_entities(UserDevices.deviceID, UserDevices.status):
-                if device.deviceID in devices:
-                    devices[device.deviceID]["wipeStatus"] = device.status
-                else:
-                    devices[device.deviceID] = {"deviceid": device.deviceID, "wipeStatus": device.status}
-        return jsonify(data=tuple(devices.values()))
+        client = exmdb.user(user)
+        data = client.getSyncData(Config["sync"].get("syncStateFolder", "GS-SyncState"))
+    for device, state in data.items():
+        try:
+            stateobj = decodeSyncState(state, user.username)
+            if stateobj is None:
+                continue
+            syncstate = {prop: stateobj[prop] for prop in props}
+            syncstate["foldersSyncable"] = len(stateobj["contentdata"])
+            syncstate["foldersSynced"] = len([folder for folder in stateobj["contentdata"].values() if 1 in folder])
+            syncstate["wipeStatus"] = 0
+            devices[syncstate["deviceid"]] = syncstate
+        except Exception as err:
+            API.logger.warn("Failed to decode sync state: {}({})".format(type(err).__name__, ", ".join(str(arg) for arg in err.args)))
+    if DB.minVersion(93):
+        for device in UserDevices.query.filter(UserDevices.userID == userID)\
+                                       .with_entities(UserDevices.deviceID, UserDevices.status):
+            if device.deviceID in devices:
+                devices[device.deviceID]["wipeStatus"] = device.status
+            else:
+                devices[device.deviceID] = {"deviceid": device.deviceID, "wipeStatus": device.status}
+    return jsonify(data=tuple(devices.values()))
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/delegates", methods=["GET"])
@@ -323,14 +323,13 @@ def setUserDelegates(domainID, userID):
 def resyncDevice(domainID, userID, ID):
     checkPermissions(DomainAdminPermission(domainID))
     from orm.users import Users
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID)\
-                      .with_entities(Users.username, Users.maildir).first()
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        client.resyncDevice(user.maildir, Config["sync"].get("syncStateFolder", "GS-SyncState"), ID)
-        return jsonify(message="Success")
+        client = exmdb.user(user)
+        client.resyncDevice(Config["sync"].get("syncStateFolder", "GS-SyncState"), ID)
+    return jsonify(message="Success")
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<deviceID>/wipe", methods=["POST", "DELETE"])
@@ -403,8 +402,8 @@ def setUserStoreAccess(domainID, userID):
         return jsonify(message="Could not find user to grant access to"), 404
     eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        client.setFolderMember(user.maildir, eid, data["username"], Permissions.STOREOWNER)
+        client = exmdb.user(user)
+        client.setFolderMember(eid, data["username"], Permissions.STOREOWNER)
     if DB.minVersion(91):
         DB.session.execute(insert(UserSecondaryStores).values(primary=primary, secondary=user.ID).prefix_with("IGNORE"))
         DB.session.commit()
@@ -429,8 +428,8 @@ def setUserStoreAccessMulti(domainID, userID):
                          .with_entities(Users.ID).all()
     eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        res = client.setFolderMembers(user.maildir, eid, data["usernames"], Permissions.STOREOWNER)
+        client = exmdb.user(user)
+        res = client.setFolderMembers(eid, data["usernames"], Permissions.STOREOWNER)
     if DB.minVersion(91):
         UserSecondaryStores.query.filter(UserSecondaryStores.secondaryID == user.ID).delete(synchronize_session=False)
         if len(primary):
@@ -451,11 +450,11 @@ def getUserStoreAccess(domainID, userID):
     if user.maildir is None:
         return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        memberList = exmdb.FolderMemberList(client.getFolderMemberList(user.maildir, makeEidEx(0, PrivateFIDs.IPMSUBTREE)))
+        client = exmdb.user(user)
+        memberList = exmdb.FolderMemberList(client.getFolderMemberList(makeEidEx(0, PrivateFIDs.IPMSUBTREE)))
         members = [{"ID": member.id, "displayName": member.name, "username": member.mail} for member in memberList.members
                    if member.rights & Permissions.STOREOWNER]
-        return jsonify(data=members)
+    return jsonify(data=members)
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/storeAccess/<username>", methods=["DELETE"])
@@ -469,8 +468,8 @@ def deleteUserStoreAccess(domainID, userID, username):
     if user.maildir is None:
         return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
-        client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, user.maildir, True)
-        client.setFolderMember(user.maildir, makeEidEx(0, PrivateFIDs.IPMSUBTREE), username, Permissions.STOREOWNER, True)
+        client = exmdb.user(user)
+        client.setFolderMember(makeEidEx(0, PrivateFIDs.IPMSUBTREE), username, Permissions.STOREOWNER, True)
     if DB.minVersion(91):
         primary = Users.query.with_entities(Users.ID).filter(Users.username == username).first()
         if primary is not None:

@@ -296,7 +296,7 @@ def cliLdapSearch(args):
 def cliLdapCheck(args):
     cli = args._cli
     cli.require("DB", "LDAP")
-    from services import Service
+    from services import Service, ServiceUnavailableError
     from time import time
     from orm import DB
     from orm.users import Users
@@ -327,18 +327,33 @@ def cliLdapCheck(args):
         if args.yes or cli.confirm("Delete all orphaned users? [y/N]: ") == Cli.SUCCESS:
             cli.print("Unloading exmdb stores...")
             if len(orphaned):
-                with Service("exmdb", Service.SUPPRESS_INOP) as exmdb:
-                    client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, orphaned[0].maildir, True)
+                homeserver = None
+                users = Users.query.filter(Users.ID.in_(orphan.ID for orphan in orphaned)).order_by(Users.homeserverID).all()
+                index = 0
+                while index < len(users):
+                    try:
+                        with Service("exmdb") as exmdb:
+                            if homeserver != users[index].homeserverID:  # Reuse the exmdb client for users on the same server
+                                user = users[index]
+                                client = exmdb.ExmdbQueries(exmdb.host if user.homeserverID == 0 else user.homeserver.hostname,
+                                                            exmdb.port, user.maildir, True)
+                                homeserver = user.homeserverID
+                            while index < len(users) and users[index].homeserverID == homeserver:
+                                client.unloadStore(users[index].maildir)
+                                index += 1
+                    except ServiceUnavailableError:
+                        cli.print(cli.col("Failed to unload store: exmdb service not available", "yellow"))
+                        index += 1
+                if args.remove_maildirs:
+                    import shutil
+                    cli.print("Removing mail directories...")
                     for user in orphaned:
-                        client.unloadStore(user.maildir)
-            if args.remove_maildirs:
-                import shutil
-                cli.print("Removing mail directories...")
-                for user in orphaned:
-                    shutil.rmtree(user.maildir, ignore_errors=True)
-            deleted = Users.query.filter(Users.ID.in_(user.ID for user in orphaned)).delete(synchronize_session=False)
+                        shutil.rmtree(user.maildir, ignore_errors=True)
+                for user in users:
+                    user.delete()
             DB.session.commit()
-            cli.print("Deleted {} user{}".format(deleted, "" if deleted == 1 else "s"))
+            cli.print("Deleted {} user{}".format(len(users), "" if len(users) == 1 else "s"))
+            return
     return ERR_NO_USER
 
 

@@ -106,7 +106,8 @@ class Worker:
             raise Exception("Missing arguments for delFolder")
         from services import Service
         with Service("exmdb") as exmdb:
-            client = exmdb.ExmdbQueries(exmdb.host, exmdb.port, task.params["homedir"], task.params["private"])
+            host = task.params.get("homeserver") or exmdb.host
+            client = exmdb.ExmdbQueries(host, exmdb.port, task.params["homedir"], task.params["private"])
             client.deleteFolder(task.params["homedir"], task.params["folderID"], task.params.get("clear", False))
 
     def ldapSync(self, task):
@@ -481,6 +482,7 @@ class TasQServer:
 
     class mktask:
         @staticmethod
-        def deleteFolder(homedir, folderID, private, clear=False, permission=None):
-            return TasQServer.create("delFolder", dict(homedir=homedir, folderID=folderID, private=private, clear=clear),
+        def deleteFolder(homedir, folderID, private, clear=False, permission=None, homeserver=None):
+            return TasQServer.create("delFolder", dict(homedir=homedir, folderID=folderID, private=private, clear=clear,
+                                                       homeserver=homeserver.hostname if homeserver else None),
                                      permission=permission)

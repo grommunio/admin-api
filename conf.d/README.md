@@ -86,6 +86,7 @@ Further parameters can be set in the `options` object:
 - `domainStoreRatio` (`int`, default: `10`): Mysterious storage factor for `domain.maxSize`
 - `domainPrefix` (`string`, default: `/d-data/`): Prefix used for domain exmdb connections
 - `userPrefix` (`string`, default: `/u-data/`): Prefix used for user exmdb connections
+- `serverPolicy` (`string`, default: `round-robin`): Server selection policy in multi-server environments. Possible values are `balanced`, `first`, `last`, `random` and `round-robin`
 - `exmdbHost` (`string`, default: `::1`): Hostname of the exmdb service provider
 - `exmdbPort` (`string`, default: `5000`): Port of the exmdb service provider
 - `fileUid` (`string` or `int`): If set, change ownership of created files to this user

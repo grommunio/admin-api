@@ -131,6 +131,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     externID = Column("externid", VARBINARY(64))
     chatID = OptionalC(78, "NULL", Column("chat_id", VARCHAR(26)))
     lang = Column("lang", VARCHAR(32), nullable=False, server_default="")
+    homeserverID = OptionalC(104, "0", Column("homeserver", TINYINT(unsigned=True), nullable=False, server_default="0"))
     _syncPolicy = OptionalC(76, "NULL", Column("sync_policy", TEXT))
     _deprecated_maxSize = Column("max_size", INTEGER(10), nullable=False, default=0)
     _deprecated_addressType = OptionalC(-86, "NULL", Column("address_type", TINYINT, nullable=False, server_default="0"))
@@ -145,6 +146,8 @@ class Users(DataModel, DB.Base, NotifyTable):
     fetchmail = OptionalNC(75, [],
                            relationship("Fetchmail", cascade="all, delete-orphan", single_parent=True, order_by="Fetchmail.active.desc()"))
     forward = relationship("Forwards", uselist=False, cascade="all, delete-orphan")
+    homeserver = OptionalNC(104, None,
+                            relationship("Servers", foreign_keys=homeserverID, primaryjoin="Users.homeserverID == Servers.ID"))
 
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("domainID", flags="init"),
@@ -166,7 +169,8 @@ class Users(DataModel, DB.Base, NotifyTable):
                       RefProp("forward", flags="managed, patch"),
                       {"attr": "syncPolicy", "flags": "patch"},
                       {"attr": "chat", "flags": "patch"},
-                      {"attr": "chatAdmin", "flags": "patch"}),
+                      {"attr": "chatAdmin", "flags": "patch"},
+                      RefProp("homeserver", "homeserverID", flags="init", filter="set", qopt=selectinload)),
                      ({"attr": "password", "flags": "init, hidden"},))
 
     USER_PRIVILEGE_POP3_IMAP = 1 << 0
@@ -207,6 +211,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     @staticmethod
     def checkCreateParams(data):
         from orm.domains import Domains
+        from orm.misc import Servers
         from tools.license import getLicense
         if data.get("status", 0) != Users.SHARED and Users.count() >= getLicense().users:
             return "License user limit exceeded"
@@ -234,6 +239,8 @@ class Users(DataModel, DB.Base, NotifyTable):
         properties["creationtime"] = datetime.now()
         if "displaytypeex" not in properties:
             properties["displaytypeex"] = 0
+        if data.get("homeserver") and Servers.query.filter(Servers.ID == data["homeserver"]).count() == 0:
+            return "Homeserver not found"
 
     def __init__(self, props, *args, **kwargs):
         self._permissions = None
@@ -582,6 +589,7 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @staticmethod
     def create(props, reloadGromoxHttp=True, externID=None, *args, **kwargs):
+        from .misc import Servers
         from tools.misc import AutoClean
         from tools.storage import UserSetup
         error = Users.checkCreateParams(props)
@@ -596,6 +604,7 @@ class Users(DataModel, DB.Base, NotifyTable):
             with AutoClean(lambda: DB.session.rollback()):
                 DB.session.add(user)
                 DB.session.flush()
+                user.homeserverID, user.maildir = Servers.allocUser(user.ID, props.get("homeserver"))
                 with UserSetup(user, DB.session) as us:
                     us.run()
                 DB.session.commit()
@@ -868,7 +877,7 @@ class Forwards(DataModel, DB.Base):
         return value
 
 
-from . import domains, roles
+from . import domains, misc, roles
 
 
 Users.NTregister()

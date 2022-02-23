@@ -261,8 +261,7 @@ class DomainSetup(SetupContext):
         Additional `cid`, `log` and `tmp` subdirectories are created in the home directory.
         """
         options = Config["options"]
-        self.domain.homedir = createPath(options["domainPrefix"], self.domain.ID, options["domainStorageLevels"],
-                                         fileUid, fileGid)
+        self.domain.homedir = createPath(self.domain.homedir, self.domain.ID, options["domainStorageLevels"], fileUid, fileGid)
         self._dirs.append(self.domain.homedir)
         if options["domainAcceleratedStorage"] is not None:
             dbPath = createPath(options["domainAcceleratedStorage"], self.domain.ID, options["domainStorageLevels"])
@@ -366,7 +365,7 @@ class UserSetup(SetupContext):
         Additional `cid`, `config`, `disk`, `eml`, `ext` and `tmp` subdirectories are created in the home directory.
         """
         options = Config["options"]
-        self.user.maildir = createPath(options["userPrefix"], self.user.ID, options["userStorageLevels"], fileUid, fileGid)
+        self.user.maildir = createPath(self.user.maildir, self.user.ID, options["userStorageLevels"], fileUid, fileGid)
         self._dirs.append(self.user.maildir)
         if options["userAcceleratedStorage"] is not None:
             dbPath = createPath(options["userAcceleratedStorage"], self.user.ID, options["userStorageLevels"])

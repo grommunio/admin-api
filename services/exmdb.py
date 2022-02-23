@@ -14,6 +14,17 @@ def exmdbHandleException(service, error):
 
 @ServiceHub.register("exmdb", exmdbHandleException)
 class ExmdbService:
+    class _BoundClient:
+        def __init__(self, exmdb, host, port, homedir, isPrivate):
+            self.__homedir = homedir
+            self.__client = exmdb.ExmdbQueries(host, port, homedir, isPrivate)
+
+        def __getattr__(self, attr):
+            target = getattr(self.__client, attr)
+            if callable(target):
+                return lambda *args, **kwargs: target(self.__homedir, *args, **kwargs)
+            return target
+
     __loaded = False
     __symbols = ("ExmdbError", "ExmdbQueries", "Folder", )
     __methods = ("TaggedPropval", "FolderList", "FolderMemberList")
@@ -58,3 +69,41 @@ class ExmdbService:
             Exmdb client
         """
         return self.ExmdbQueries(self.host, self.port, homedir, isPrivate)
+
+    def user(self, user):
+        """Create client for user.
+
+        Connect to the users homeserver if specified, otherwise connect to configured exmdbHost.
+        Connection is always established using the exmdbPort from the configuration.
+
+        Parameters
+        ----------
+        user : orm.users.Users
+            User object providing homeserver and maildir.
+
+        Returns
+        -------
+        services.exmdb.ExmdbService._BoundClient
+            Exmdb client bound to the specific user
+        """
+        host = user.homeserver.hostname if user.homeserver is not None else self.host
+        return self._BoundClient(self, host, self.port, user.maildir, True)
+
+    def domain(self, domain):
+        """Create client for domain.
+
+        Connect to the domains homeserver if specified, otherwise connect to configured exmdbHost.
+        Connection is always established using the exmdbPort from the configuration.
+
+        Parameters
+        ----------
+        domain : orm.domains.Domain
+            Domain object providing homeserver and homedir.
+
+        Returns
+        -------
+        services.exmdb.ExmdbService._BoundClient
+            Exmdb client bound to the specific domain
+        """
+        host = domain.homeserver.hostname if domain.homeserver is not None else self.host
+        return self._BoundClient(self, host, self.port, domain.homedir, False)

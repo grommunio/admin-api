@@ -6,8 +6,9 @@ from . import DB
 
 from tools.DataModel import DataModel, Id, Date, Int, Text
 
-from sqlalchemy import Column
+from sqlalchemy import Column, func, select
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT, VARCHAR, TEXT, TIMESTAMP
+from sqlalchemy.ext.hybrid import hybrid_property
 
 import json
 
@@ -58,3 +59,132 @@ class TasQ(DataModel, DB.Base):
     def permission(self, perm):
         from tools.permissions import Permissions
         self.access = Permissions.dump(perm)
+
+
+class Servers(DataModel, DB.Base):
+    __tablename__ = "servers"
+
+    ID = Column("id", TINYINT(unsigned=True), primary_key=True)
+    hostname = Column("hostname", VARCHAR(255), nullable=False, unique=True)
+    extname = Column("extname", VARCHAR(255), nullable=False, unique=True)
+
+    _dictmapping_ = ((Id(), Text("hostname", flags="patch")),
+                     (Text("extname", flags="patch"),),
+                     (Int("users"),
+                      Int("domains")))
+
+    # Defined as hybrid_property instead of column_property to break cyclical import dependency
+    # Domains -> Users -> Servers -> Domains
+    @hybrid_property
+    def users(self):
+        from .users import Users
+        return Users.query.filter(Users.homeserverID == self.ID).count()
+
+    @users.expression
+    def users(cls):
+        from .users import Users
+        return select([func.count(Users.ID)]).where(Users.homeserverID == cls.ID).as_scalar()
+
+    @hybrid_property
+    def domains(self):
+        from .domains import Domains
+        return Domains.query.filter(Domains.homeserverID == self.ID).count()
+
+    @domains.expression
+    def domains(cls):
+        from .domains import Domains
+        return select([func.count(Domains.ID)]).where(Domains.homeserverID == cls.ID).as_scalar()
+
+    @staticmethod
+    def _getServer(objID, serverID=None):
+        """Select a server for an object
+
+        Parameters
+        ----------
+        objID : int
+            ID of the object
+        serverID : int, optional
+            ID of the server or None to select automatically. The default is None.
+
+        Raises
+        ------
+        ValueError
+            Server with specified ID could not be found.
+
+        Returns
+        -------
+        Servers
+            Selected server object or None if no servers are configured (i.e. single server setup)
+        """
+        if not DB.minVersion(105):
+            return None
+        from tools.config import Config
+        if serverID:
+            server = Servers.query.filter(Servers.ID == serverID).first()
+            if server is None:
+                raise ValueError("Requested server #{} not found".format(serverID))
+            return server
+        servers = Servers.query.count()
+        if servers == 0:
+            return None
+        policy = Config["options"].get("serverPolicy")
+        if policy == "balanced":
+            return Servers.query.order_by(Servers.users.asc()).first()
+        elif policy == "first":
+            index = 0
+        elif policy == "last":
+            index = servers-1
+        elif policy == "random":
+            import random
+            index = random.randint(0, servers-1)
+        else:  # default (policy == "round-robin")
+            index = objID % servers
+        return Servers.query.order_by(Servers.ID).offset(index).first()
+
+    @staticmethod
+    def allocUser(userID, serverID=None):
+        """Select a server to store new user on.
+
+        Parameters
+        ----------
+        userID : int
+            ID of the new user
+        serverID : int, optional
+            Server to use or None for automatic selection. The default is None.
+
+        Returns
+        -------
+        tuple(int, str)
+            2-tuple containing the server ID and path
+        """
+        from tools.config import Config
+        from os import path
+        server = Servers._getServer(userID, serverID)
+        serverMount = server is not None and Config["options"].get("serverExplicitMount")
+        targetPath = Config["options"]["userPrefix"]
+        targetPath = path.join(targetPath, server.hostname) if serverMount else targetPath
+        return (0 if server is None else server.ID, targetPath)
+
+    @staticmethod
+    def allocDomain(domainID, serverID=None):
+        """Select a server to store new domain on.
+
+        Parameters
+        ----------
+        domainID : int
+            ID of the new domain
+        serverID : int, optional
+            Server to use or None for automatic selection. The default is None.
+
+        Returns
+        -------
+        tuple(int, str)
+            2-tuple containing the server ID and path
+        """
+        from tools.config import Config
+        from os import path
+        server = Servers._getServer(domainID, serverID)
+        serverMount = server is not None and Config["options"].get("serverExplicitMount")
+        targetPath = Config["options"]["domainPrefix"]
+        targetPath = path.join(targetPath, server.hostname) if serverMount else targetPath
+        return (0 if server is None else server.ID, targetPath)
