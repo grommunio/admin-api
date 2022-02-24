@@ -26,10 +26,39 @@ def _mkStatus(cli, status):
 
 
 def _dumpUser(cli, user, indent=0):
+    def privstr():
+        from orm.users import Users
+        bits = user.privilegeBits
+        privs = []
+        if bits & Users.USER_PRIVILEGE_POP3_IMAP:
+            privs.append("pop_imap")
+        if bits & Users.USER_PRIVILEGE_SMTP:
+            privs.append("smtp")
+        if bits & Users.USER_PRIVILEGE_CHGPASSWD:
+            privs.append("passwd")
+        if bits & Users.USER_PRIVILEGE_PUBADDR:
+            privs.append("pubaddr")
+        if bits & Users.USER_PRIVILEGE_CHAT:
+            privs.append("chat")
+        if bits & Users.USER_PRIVILEGE_VIDEO:
+            privs.append("video")
+        if bits & Users.USER_PRIVILEGE_FILES:
+            privs.append("files")
+        if bits & Users.USER_PRIVILEGE_ARCHIVE:
+            privs.append("archive")
+        if len(privs) == 0:
+            return ""
+        return "("+",".join(privs)+")"
+
     from ldap3.utils.conv import escape_filter_chars
-    for attr in ("ID", "username", "domainID", "maildir", "privilegeBits"):
-        v = getattr(user, attr, None)
-        cli.print("{}{}: {}".format(" "*indent, attr, v if v is not None else ""))
+    homeserver = cli.col("(local)", attrs=["dark"]) if user.homeserver is None else \
+        "{} ({})".format(user.homeserver.ID, user.homeserver.hostname)
+    cli.print("{}ID: {}".format(" "*indent, user.ID))
+    cli.print("{}username: {}".format(" "*indent, user.username))
+    cli.print("{}domainID: {}".format(" "*indent, user.domainID))
+    cli.print("{}homeserver: {}".format(" "*indent, homeserver))
+    cli.print("{}maildir: {}".format(" "*indent, user.maildir or cli.col("(not set)", attrs=["dark"])))
+    cli.print("{}privilegeBits: {} {}".format(" "*indent, user.privilegeBits, cli.col(privstr(), attrs=["dark"])))
     cli.print("{}addressStatus: {} ({}|{})".format(" "*indent, user.addressStatus,
                                                    _mkStatus(cli, user.domainStatus), _mkStatus(cli, user.status)))
     cli.print(" "*indent+"externID: "+(escape_filter_chars(user.externID) if user.externID is not None else

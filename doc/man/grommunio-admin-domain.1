@@ -8,7 +8,9 @@ grommunio-admin domain \[em] Domain management
 .SH Synopsis
 .PP
 \f[B]grommunio-admin domain\f[R] \f[B]create\f[R] [\f[I]<FIELDS>\f[R]]
-[\f[I]--create-role\f[R]] \f[I]-u MAXUSER\f[R] \f[I]DOMAINNAME\f[R]
+[\f[I]--create-role\f[R]] [\f[I]--skip-adaptor-reload\f[R]]
+[\f[I]--homeserver HOMESERVER\f[R]] \f[I]-u MAXUSER\f[R]
+\f[I]DOMAINNAME\f[R]
 .PD 0
 .P
 .PD
@@ -80,6 +82,9 @@ Also delete files from disk
 Filter expression in the form of \[oq]field=value\[cq].
 Can be specified multiple times to refine filter
 .TP
+\f[B]\f[CB]--homeserver HOMESERVER\f[B]\f[R]
+ID of the homeserver to place the domain on
+.TP
 \f[B]\f[CB]-s FIELD\f[B]\f[R], \f[B]\f[CB]--sort FIELD\f[B]\f[R]
 Sort by field.
 Can be given multiple times
@@ -108,4 +113,4 @@ Maxmimum number of users in the domain
 .SH See Also
 .PP
 \f[B]grommunio-admin\f[R](1), \f[B]grommunio-admin-fs\f[R](1),
-\f[B]grommunio-admin-user\f[R](1)
+\f[B]grommunio-admin-server\f[R](1), \f[B]grommunio-admin-user\f[R](1)

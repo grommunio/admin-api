@@ -11,7 +11,7 @@ Synopsis
 ========
 
 | **grommunio-admin domain** **create** [*<FIELDS>*] [*--create-role*]
-  [*--skip-adaptor-reload*] *-u MAXUSER* *DOMAINNAME*
+  [*--skip-adaptor-reload*] [*--homeserver HOMESERVER*] *-u MAXUSER* *DOMAINNAME*
 | **grommunio-admin domain** **delete** *DOMAINSPEC*
 | **grommunio-admin domain** **list** [*-f FIELD=<value>*] [*-s FIELD*]
   [*DOMAINSPEC*]
@@ -58,6 +58,8 @@ Options
 ``-f FIELD=<value>``, ``--filter FIELD=<value>``
    Filter expression in the form of ‘field=value’. Can be specified
    multiple times to refine filter
+`` --homeserver HOMESERVER``
+   ID of the homeserver to place the domain on
 ``-s FIELD``, ``--sort FIELD``
    Sort by field. Can be given multiple times
 ``-y``, ``--yes``
@@ -82,4 +84,4 @@ Fields
 See Also
 ========
 
-**grommunio-admin**\ (1), **grommunio-admin-fs**\ (1), **grommunio-admin-user**\ (1)
+**grommunio-admin**\ (1), **grommunio-admin-fs**\ (1), **grommunio-admin-server**\ (1), **grommunio-admin-user**\ (1)
