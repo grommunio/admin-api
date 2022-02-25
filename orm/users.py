@@ -886,4 +886,5 @@ Aliases.NTregister()
 
 @event.listens_for(Users, "expire")
 def _User_expire(target, *args, **kwargs):
-    target._propcache = None
+    if target is not None:
+        target._propcache = None
