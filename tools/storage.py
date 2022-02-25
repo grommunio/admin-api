@@ -362,7 +362,7 @@ class UserSetup(SetupContext):
 
         If `userAcceleratedStorage` is set, an exmdb path is created and symlinked accordingly.
 
-        Additional `cid`, `config`, `disk`, `eml`, `ext` and `tmp` subdirectories are created in the home directory.
+        Additional `cid`, `config`, `eml`, `ext` and `tmp` subdirectories are created in the home directory.
         """
         options = Config["options"]
         self.user.maildir = createPath(self.user.maildir, self.user.ID, options["userStorageLevels"], fileUid, fileGid)
@@ -379,10 +379,7 @@ class UserSetup(SetupContext):
         os.mkdir(self.user.maildir+"/eml")
         os.mkdir(self.user.maildir+"/ext")
         os.mkdir(self.user.maildir+"/cid")
-        os.mkdir(self.user.maildir+"/disk")
         os.mkdir(self.user.maildir+"/config")
-        with open(self.user.maildir+"/disk/index", "w") as file:
-            file.write('{"size":0,"files":0}'+' '*492)
         thumbnailSrc = os.path.join(Config["options"]["dataPath"], Config["options"]["portrait"])
         try:
             shutil.copy(thumbnailSrc, self.user.maildir+"/config/portrait.jpg")
