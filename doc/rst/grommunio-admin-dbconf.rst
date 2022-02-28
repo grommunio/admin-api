@@ -65,6 +65,21 @@ Options
 ``-i``, ``--init``
    Only set if configuration key does not exist yet
 
+grommunio-admin
+===============
+
+The grommunio-admin API and CLI are also dbconf consumers. This allows
+system adiministrators to change certain configurations without filesystem
+access and the need to restart the API.
+
+The following files and keys are meaningful when placed under the
+`grommunio-admin` service:
+
+multi-server
+------------
+``policy``
+      Server selection policy for newly created users and domains in multi-server environments. Possible values are *balanced*, *first*, *last*, *random* and *round-robin*. Default is *round-robin*.
+
 Commit Hooks
 ============
 

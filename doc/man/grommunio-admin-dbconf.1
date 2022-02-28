@@ -82,6 +82,22 @@ Do not auto-commit
 .TP
 \f[B]\f[CB]-i\f[B]\f[R], \f[B]\f[CB]--init\f[B]\f[R]
 Only set if configuration key does not exist yet
+.SH grommunio-admin
+.PP
+The grommunio-admin API and CLI are also dbconf consumers.
+This allows system adiministrators to change certain configurations
+without filesystem access and the need to restart the API.
+.PP
+The following files and keys are meaningful when placed under the
+grommunio-admin service:
+.SS multi-server
+.TP
+\f[B]\f[CB]policy\f[B]\f[R]
+Server selection policy for newly created users and domains in
+multi-server environments.
+Possible values are \f[I]balanced\f[R], \f[I]first\f[R], \f[I]last\f[R],
+\f[I]random\f[R] and \f[I]round-robin\f[R].
+Default is \f[I]round-robin\f[R]
 .SH Commit Hooks
 .PP
 When modifying values, potential consumers can be notified of this

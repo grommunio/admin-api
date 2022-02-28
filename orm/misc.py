@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020 grommunio GmbH
 
-from . import DB
+from . import DB, logger
 
 from tools.DataModel import DataModel, Id, Date, Int, Text
 
@@ -21,6 +21,12 @@ class DBConf(DB.Base):
     file = Column("file", VARCHAR(200), nullable=False, index=True)
     key = Column("key", VARCHAR(200), nullable=False)
     value = Column("value", VARCHAR(200), nullable=False, default="")
+
+    @staticmethod
+    def getValue(service, file, key, default=None):
+        entry = DBConf.query.filter(DBConf.service == service, DBConf.file == file, DBConf.key == key)\
+                            .with_entities(DBConf.value).first()
+        return default if entry is None else entry.value
 
 
 class TasQ(DataModel, DB.Base):
@@ -127,7 +133,7 @@ class Servers(DataModel, DB.Base):
         servers = Servers.query.count()
         if servers == 0:
             return None
-        policy = Config["options"].get("serverPolicy")
+        policy = DBConf.getValue("grommunio-admin", "multi-server", "policy", default="round-robin")
         if policy == "balanced":
             return Servers.query.order_by(Servers.users.asc()).first()
         elif policy == "first":
@@ -138,6 +144,8 @@ class Servers(DataModel, DB.Base):
             import random
             index = random.randint(0, servers-1)
         else:  # default (policy == "round-robin")
+            if policy != "round-robin":
+                logger.warning("Unknown multi-server policy '{}'. Defaulting to round-robin.".format(policy))
             index = objID % servers
         return Servers.query.order_by(Servers.ID).offset(index).first()
 
