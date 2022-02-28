@@ -102,7 +102,7 @@ class Servers(DataModel, DB.Base):
         return select([func.count(Domains.ID)]).where(Domains.homeserverID == cls.ID).as_scalar()
 
     @staticmethod
-    def _getServer(objID, serverID=None):
+    def _getServer(objID, serverID=None, domain=False):
         """Select a server for an object
 
         Parameters
@@ -135,7 +135,7 @@ class Servers(DataModel, DB.Base):
             return None
         policy = DBConf.getValue("grommunio-admin", "multi-server", "policy", default="round-robin")
         if policy == "balanced":
-            return Servers.query.order_by(Servers.users.asc()).first()
+            return Servers.query.order_by((Servers.domains if domain else Servers.users).asc()).first()
         elif policy == "first":
             index = 0
         elif policy == "last":
@@ -191,7 +191,7 @@ class Servers(DataModel, DB.Base):
         """
         from tools.config import Config
         from os import path
-        server = Servers._getServer(domainID, serverID)
+        server = Servers._getServer(domainID, serverID, domain=True)
         serverMount = server is not None and Config["options"].get("serverExplicitMount")
         targetPath = Config["options"]["domainPrefix"]
         targetPath = path.join(targetPath, server.hostname) if serverMount else targetPath
