@@ -99,7 +99,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
                       Int("domainStatus", flags="patch", filter="set")),
                      ({"attr": "syncPolicy", "flags": "patch"},
                       {"attr": "chat", "flags": "patch"},
-                      RefProp("homeserver", "homeserverID", flags="init", filter="set", qopt=selectinload)))
+                      RefProp("homeserver", "homeserverID", flags="patch", filter="set", qopt=selectinload)))
 
     NORMAL = 0
     SUSPENDED = 1
@@ -193,9 +193,6 @@ class Domains(DataModel, DB.Base, NotifyTable):
     def checkCreateParams(data):
         if "maxUser" not in data:
             return "Missing required property maxUser"
-        from .misc import Servers
-        if data.get("homeserver") and Servers.query.filter(Servers.ID == data["homeserver"]).count() == 0:
-            return "Homeserver not found"
 
     def delete(self):
         from .users import Users
@@ -283,6 +280,16 @@ class Domains(DataModel, DB.Base, NotifyTable):
             return domain, 201
         except IntegrityError as err:
             return "Object violates database constraints ({})".format(err.orig.args[1]), 400
+
+    @validates("homeserverID")
+    def checkHomeserver(self, key, value, *args):
+        from tools.config import Config
+        if self.homeserverID and value != self.homeserverID and Config["options"].get("serverExplicitMount"):
+            raise ValueError("Cannot change homeserver with explicitely mounted home-directories")
+        from .misc import Servers
+        if value and Servers.query.filter(Servers.ID == value).count() == 0:
+            raise ValueError("Invalid homeserver")
+        return value or 0
 
     @classmethod
     def _commit(cls, *args, **kwargs):

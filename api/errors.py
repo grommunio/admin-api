@@ -23,7 +23,8 @@ def database_error(error):
 
 @API.errorhandler(InsufficientPermissions)
 def insufficient_permissions(error):
-    return jsonify(message="Access denied: "+(error.args[0] or "Insufficient permissions for this operation")), 403
+    msg = error.args[0] if len(error.args) else "Insufficient permissions for this operation"
+    return jsonify(message="Access denied: "+msg), 403
 
 
 @API.errorhandler(ServiceUnavailableError)

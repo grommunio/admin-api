@@ -170,7 +170,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                       {"attr": "syncPolicy", "flags": "patch"},
                       {"attr": "chat", "flags": "patch"},
                       {"attr": "chatAdmin", "flags": "patch"},
-                      RefProp("homeserver", "homeserverID", flags="init", filter="set", qopt=selectinload)),
+                      RefProp("homeserver", "homeserverID", flags="patch", filter="set", qopt=selectinload)),
                      ({"attr": "password", "flags": "init, hidden"},))
 
     USER_PRIVILEGE_POP3_IMAP = 1 << 0
@@ -239,8 +239,6 @@ class Users(DataModel, DB.Base, NotifyTable):
         properties["creationtime"] = datetime.now()
         if "displaytypeex" not in properties:
             properties["displaytypeex"] = 0
-        if data.get("homeserver") and Servers.query.filter(Servers.ID == data["homeserver"]).count() == 0:
-            return "Homeserver not found"
 
     def __init__(self, props, *args, **kwargs):
         self._permissions = None
@@ -547,6 +545,16 @@ class Users(DataModel, DB.Base, NotifyTable):
             with Service("redis", Service.SUPPRESS_INOP) as r:
                 r.delete("grommunio-sync:policycache-"+self.username)
         return value
+
+    @validates("homeserverID")
+    def checkHomeserver(self, key, value, *args):
+        from tools.config import Config
+        if self.homeserverID and value != self.homeserverID and Config["options"].get("serverExplicitMount"):
+            raise ValueError("Cannot change homeserver with explicitely mounted home-directories")
+        from .misc import Servers
+        if value and Servers.query.filter(Servers.ID == value).count() == 0:
+            raise ValueError("Invalid homeserver")
+        return value or 0
 
     @staticmethod
     def count(*filters):

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.6.0
+  version: 1.6.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -771,7 +771,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/domain'
+              $ref: '#/components/schemas/domainWrite'
       parameters:
         - name: createRole
           description: Whether to automatically create a domain admin role for the new domain
@@ -828,7 +828,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/domain'
+              $ref: '#/components/schemas/domainWrite'
       responses:
         '200':
           description: Domain updated
@@ -3908,7 +3908,7 @@ components:
       type: string
       description: Precise date/time string including fractional seconds
       pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,6}$'
-    domain:
+    domainCommon:
       type: object
       properties:
         ID:
@@ -3964,6 +3964,24 @@ components:
         chat:
           type: boolean
           description: Whether chat is enabled for this domain
+    domain:
+      allOf:
+        - $ref: '#/components/schemas/domainCommon'
+        - type: object
+          properties:
+            homeserver:
+              $ref: '#/components/schemas/homeserverRef'
+    domainWrite:
+      allOf:
+        - $ref: '#/components/schemas/domainCommon'
+        - type: object
+          properties:
+            homeserver:
+              $ref: '#/components/schemas/homeserverID'
+    homeserverID:
+      type: integer
+      description: ID of the homeserver
+      nullable: true
     homeserverRef:
       type: object
       nullable: true
@@ -4169,6 +4187,8 @@ components:
           description: User language
         forward:
           $ref: '#/components/schemas/forward'
+        homeserver:
+          $ref: '#/components/schemas/homeserverID'
     userUpdate:
       type: object
       properties:
@@ -4230,7 +4250,9 @@ components:
           type: string
           description: User language
         forward:
-         $ref: '#/components/schemas/forward'
+          $ref: '#/components/schemas/forward'
+        homeserver:
+          $ref: '#/components/schemas/homeserverID'
     publicFolder:
       type: object
       properties:

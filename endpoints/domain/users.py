@@ -57,12 +57,14 @@ def getUsers(domainID):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["POST"])
-@secure(requireDB=True)
+@secure(requireDB=True, authLevel="user")
 def createUser(domainID):
     checkPermissions(DomainAdminPermission(domainID))
     from orm.users import Users
     data = request.get_json(silent=True) or {}
     data["domainID"] = domainID
+    if SystemAdminPermission() not in request.auth["user"].permissions():
+        data.pop("homeserver", None)
     result, code = Users.create(data, reloadGromoxHttp=True)
     if code != 201:
         return jsonify(message=result), code
@@ -70,9 +72,12 @@ def createUser(domainID):
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["GET", "PATCH"])
-@secure(requireDB=True)
+@secure(requireDB=True, authLevel="user")
 def userObjectEndpoint(domainID, userID):
     checkPermissions(DomainAdminROPermission(domainID) if request.method == "GET" else DomainAdminPermission(domainID))
+    if request.method == "PATCH" and SystemAdminPermission() not in request.auth["user"].permissions():
+        data = request.get_json(silent=True) or {}
+        data.pop("homeserver", None)
     from orm.users import Users
     return defaultObjectHandler(Users, userID, "User", filters=(Users.domainID == domainID,))
 

@@ -61,6 +61,8 @@ def domainCreate():
     data = request.get_json(silent=True)
     if data is None:
         return jsonify(message="Missing data"), 400
+    if SystemAdminPermission not in request.auth["user"].permissions():
+        data.pop("homeserver", None)
     result, code = Domains.create(data, request.args.get("createRole", "false") == "true")
     if code != 201:
         return jsonify(message=result), code
