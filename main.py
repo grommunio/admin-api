@@ -14,7 +14,7 @@ if __name__ == '__main__':
     import sys
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
     from cli import Cli
-    res = Cli().execute(secure=False)
+    res = Cli().execute()
     sys.exit(res)
 else:
     from api.core import API  # Export to uwsgi server

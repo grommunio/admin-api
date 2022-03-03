@@ -113,9 +113,11 @@ class Cli:
             except InvalidUseError:
                 self.print(self.col("Missing command. Use --help for more info.", "red"))
                 return 3
-            except:
+            except BaseException as err:
                 if not secure:
                     raise
+                self.print(self.col("An error occurred: {}."
+                                    .format(repr(err)), "red"))
                 return -1
         else:
             self.parser.print_help()
