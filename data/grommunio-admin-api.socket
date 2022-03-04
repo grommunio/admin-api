@@ -1,6 +1,5 @@
 [Unit]
 Description=Socket for grommunio admin api
-PartOf=grommunio-admin-api
 
 [Socket]
 ListenStream=/run/grommunio/admin-api.socket
