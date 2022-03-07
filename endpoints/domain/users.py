@@ -163,7 +163,10 @@ def rdUserStoreProps(domainID, userID):
     if user is None:
         return jsonify(message="User not found"), 404
     props = [prop for prop in request.args.get("properties", "").split(",") if prop != ""]
-    user.properties = {prop: None for prop in props}
+    try:
+        user.properties = {prop: None for prop in props}
+    except ValueError as err:
+        return jsonify(message=err.args[0])
     if len(props) == 0:
         return jsonify(data={}) if request.method == "GET" else jsonify(message="Nothing to delete")
     for i in range(len(props)):
@@ -204,12 +207,14 @@ def setUserStoreProps(domainID, userID):
     propvals = []
     with Service("exmdb") as exmdb:
         for prop, val in data.items():
-            tag = getattr(PropTags, prop.upper(), None)
-            if tag is None:
+            try:
+                tag = PropTags.deriveTag(prop)
+            except ValueError:
                 errors[prop] = "Unknown tag"
                 continue
-            tagtype = tag & 0xFFFF
-            if not isinstance(val, PropTypes.pyType(tagtype)):
+            try:
+                val = PropTags.convertValue(tag, val)
+            except ValueError:
                 errors[prop] = "Invalid type"
                 continue
             try:
@@ -217,7 +222,7 @@ def setUserStoreProps(domainID, userID):
             except TypeError:
                 errors[prop] = "Unsupported type"
         client = exmdb.user(user)
-        problems = client.setStoreProperties(user.maildir, 0, propvals)
+        problems = client.setStoreProperties(0, propvals)
         for entry in problems:
             tag = PropTags.lookup(entry.proptag, hex(entry.proptag)).lower()
             err = ExchangeErrors.lookup(entry.err, hex(entry.err))

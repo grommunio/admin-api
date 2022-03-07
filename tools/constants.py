@@ -1038,6 +1038,96 @@ class PropTags(_ReverseLookup):
     PARENTDISPLAY_STRING8 = 0x0E05001E
     CREATORSID = 0x0E580102
 
+    @classmethod
+    def deriveTag(cls, tag):
+        """Derive numeric tag value from integer or string.
+
+        Parameters
+        ----------
+        tag : int or str
+            - Integer ID of the tag
+            - Name of the tag (case insensitive)
+            - str that can be converted by int(tag, 0)
+
+        Raises
+        ------
+        ValueError
+            Tag derivation failed
+
+        Returns
+        -------
+        int
+            Numeric tag value
+        """
+        try:
+            return tag if isinstance(tag, int) else getattr(cls, tag.upper(), None) or int(tag, 0)
+        except Exception:
+            pass
+        raise ValueError("Failed to derive proptag from {}".format(repr(tag)))
+
+    @classmethod
+    def convertValue(cls, tag, value):
+        """Convert value to the appropriate tag type.
+
+        Parameters
+        ----------
+        tag : int
+            Tag ID
+        value : any
+            Value to convert
+
+        Raises
+        ------
+        ValueError
+            Value cannot be converted to correct type
+
+        Returns
+        -------
+        value : any
+            Converted value
+        """
+        tagtype = tag & 0xFFFF
+        baseType = tag & 0x0FFF
+        if tagtype == PropTypes.FILETIME:
+            from datetime import datetime
+            from .rop import ntTime
+            import time
+            if not isinstance(value, datetime):
+                try:
+                    value = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+                except TypeError:
+                    raise ValueError("Invalid date '{}'".format(value))
+            value = ntTime(time.mktime(value.timetuple()))
+        if type(value) != PropTypes.pyType(baseType):
+            try:
+                value = PropTypes.pyType(baseType)(value)
+            except Exception:
+                raise ValueError("Type of value {} does not match type of tag {} ({})"
+                                 .format(value, cls.lookup(tag), PropTypes.lookup(tag)))
+        return value
+
+    @classmethod
+    def normalize(cls, tag, value):
+        """Normalize tag ID and value.
+
+        Calls deriveTag and convertValue.
+
+        Parameters
+        ----------
+        tag : int or str
+            See deriveTag.
+        value : any
+            Tag value
+
+        Returns
+        -------
+        value : tuple
+            tag ID and value
+        """
+        tag = cls.deriveTag(tag)
+        value = cls.convertValue(tag, value)
+        return tag, value
+
 
 class ConfigIDs(_ReverseLookup):
     MAILBOX_GUID = 1

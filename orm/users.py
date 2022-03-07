@@ -8,7 +8,7 @@ from tools import formats
 from tools.constants import PropTags, PropTypes
 from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp, Bool, Date
 from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
-from tools.rop import ntTime, nxTime
+from tools.rop import nxTime
 
 from sqlalchemy import Column, ForeignKey, event, func
 from sqlalchemy.dialects.mysql import ENUM, INTEGER, TEXT, TIMESTAMP, TINYINT, VARBINARY, VARCHAR
@@ -19,7 +19,6 @@ from sqlalchemy.orm import relationship, selectinload, validates
 
 import crypt
 import json
-import time
 
 from datetime import datetime
 
@@ -46,10 +45,6 @@ class Users(DataModel, DB.Base, NotifyTable):
         def _name(key):
             return key.lower() if isinstance(key, str) else PropTags.lookup(key, hex(key)).lower()
 
-        @staticmethod
-        def _tag(key):
-            return key if isinstance(key, int) else getattr(PropTags, key.upper(), None) or int(key, 0)
-
         def __contains__(self, o):
             return self._name(o) in self.__dict
 
@@ -63,7 +58,7 @@ class Users(DataModel, DB.Base, NotifyTable):
             return repr(self.__dict)
 
         def __setitem__(self, k, v):
-            tag = self._tag(k)
+            tag = PropTags.deriveTag(k)
             name = self._name(k)
             if not PropTypes.ismv(tag):
                 if tag in self.__struct:
@@ -687,16 +682,7 @@ class UserProperties(DB.Base):
 
     @val.setter
     def val(self, value):
-        if self.type == PropTypes.FILETIME:
-            if not isinstance(value, datetime):
-                try:
-                    value = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-                except TypeError:
-                    raise ValueError("Invalid date '{}'".format(value))
-            value = ntTime(time.mktime(value.timetuple()))
-        if type(value) != PropTypes.pyType(self.baseType):
-            raise ValueError("Type of value {} does not match type of tag {} ({})".format(value, self.name,
-                                                                                          PropTypes.lookup(self.tag)))
+        value = PropTags.convertValue(self.tag, value)
         if self.type == PropTypes.BINARY:
             self._propvalbin = value
         else:
