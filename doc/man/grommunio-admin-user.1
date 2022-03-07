@@ -7,6 +7,11 @@
 grommunio-admin user \[em] User management
 .SH Synopsis
 .PP
+\f[B]grommunio-admin user\f[R] \f[B]create\f[R] [\f[I]<FIELDS>\f[R]]
+\f[I]USERNAME\f[R]
+.PD 0
+.P
+.PD
 \f[B]grommunio-admin user\f[R] \f[B]delete\f[R] [\f[I]-k\f[R]]
 [\f[I]-y\f[R]] \f[I]USERSPEC\f[R]
 .PD 0
@@ -14,6 +19,13 @@ grommunio-admin user \[em] User management
 .PD
 \f[B]grommunio-admin user\f[R] \f[B]list\f[R] [\f[I]-f
 FIELD=<value>\f[R]] [\f[I]-s FIELD\f[R]] [\f[I]USERSPEC\f[R]]
+.PD 0
+.P
+.PD
+\f[B]grommunio-admin user\f[R] \f[B]modify\f[R] [\f[I]<FIELDS>\f[R]]
+[\f[I]--no-ldap\f[R]] [\f[I]--remove-alias ALIAS\f[R]]
+[\f[I]--remove-property PROPSPEC\f[R]] [\f[I]--remove-storeprop
+PROPSPEC\f[R]] \f[I]USERSPEC\f[R]
 .PD 0
 .P
 .PD
@@ -37,6 +49,9 @@ List users
 Show detailed information about a user
 .SH Options
 .TP
+\f[B]\f[CB]USERNAME\f[B]\f[R]
+E-Mail address of the user
+.TP
 \f[B]\f[CB]USERSPEC\f[B]\f[R]
 User name prefix or user ID
 .TP
@@ -47,14 +62,80 @@ Can be specified multiple times to refine filter
 \f[B]\f[CB]-k\f[B]\f[R], \f[B]\f[CB]--keep-files\f[B]\f[R]
 Do not delete user files from disk
 .TP
+\f[B]\f[CB]--no-ldap\f[B]\f[R]
+Detach user from LDAP object
+.TP
+\f[B]\f[CB]--remove-alias ALIAS\f[B]\f[R]
+Remove ALIAS from user (can be given multiple times)
+.TP
+\f[B]\f[CB]--remove-property PROPSPEC\f[B]\f[R]
+Remove property from user (can be given multiple times)
+.TP
+\f[B]\f[CB]--remove-storeprop PROPSPEC\f[B]\f[R]
+Remove property from user\[aq]s store (can be given multiple times)
+.TP
 \f[B]\f[CB]-s FIELD\f[B]\f[R], \f[B]\f[CB]--sort FIELD\f[B]\f[R]
 Sort by field.
 Can be given multiple times
 .TP
 \f[B]\f[CB]-y\f[B]\f[R], \f[B]\f[CB]--yes\f[B]\f[R]
 Assume yes instead of prompting
+.SH Fields
+.TP
+\f[B]\f[CB]--changePassword <bool>\f[B]\f[R]
+Whether the user can change the password
+.TP
+\f[B]\f[CB]--chat <bool>\f[B]\f[R]
+Whether to create a chat user
+.TP
+\f[B]\f[CB]--chatAdmin <bool>\f[B]\f[R]
+Whether the user has chat admin privileges
+.TP
+\f[B]\f[CB]--homeserver ID\f[B]\f[R]
+ID of the home server or 0 for local user
+.TP
+\f[B]\f[CB]--lang LANG\f[B]\f[R]
+User store language
+.TP
+\f[B]\f[CB]--ldapID LDAPID\f[B]\f[R]
+Identifier of the LDAP object linked to the user
+.TP
+\f[B]\f[CB]--pop3-imap <bool>\f[B]\f[R]
+Whether the user has the POP3/IMAP privilege
+.TP
+\f[B]\f[CB]--privArchive <bool>\f[B]\f[R]
+Whether the user has the archiving privilege
+.TP
+\f[B]\f[CB]--privChat <bool>\f[B]\f[R]
+Whether the user has the chat privilege
+.TP
+\f[B]\f[CB]--privFiles <bool>\f[B]\f[R]
+Whether the user has the files privilege
+.TP
+\f[B]\f[CB]--privVideo <bool>\f[B]\f[R]
+Whether the user has the video privilege
+.TP
+\f[B]\f[CB]--public-address <bool>\f[B]\f[R]
+Whether the user has the public address privilege
+.TP
+\f[B]\f[CB]--smtp <bool>\f[B]\f[R]
+Whether the user has the SMTP privilege
+.TP
+\f[B]\f[CB]--status STATUS\f[B]\f[R]
+User address status.
+Either numeric value or one of \f[I]normal\f[R], \f[I]suspended\f[R],
+\f[I]out-of-date\f[R], \f[I]deleted\f[R] or \f[I]shared\f[R].
+.TP
+\f[B]\f[CB]--alias ALIAS\f[B]\f[R]
+Add alias
+.TP
+\f[B]\f[CB]--property propspec=value\f[B]\f[R]
+Set property defined by propspec to value
+.TP
+\f[B]\f[CB]--storeprop propspec=value\f[B]\f[R]
+Set store property defined by propspec to value
 .SH See Also
 .PP
 \f[B]grommunio-admin\f[R](1), \f[B]grommunio-admin-domain\f[R](1),
 \f[B]grommunio-admin-fs\f[R](1), \f[B]grommunio-admin-ldap\f[R](1),
-\f[B]grommunio-admin-passwd\f[R](1)
+\f[B]grommunio-admin-passwd\f[R](1), \f[B]grommunio-admin-server\f[R](1)
