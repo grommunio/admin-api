@@ -398,7 +398,7 @@ def setUserStoreAccess(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     from orm.users import Users, DB, UserSecondaryStores
     from sqlalchemy import insert
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.ID, Users.maildir).first()
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
     if user.maildir is None:
@@ -426,7 +426,7 @@ def setUserStoreAccessMulti(domainID, userID):
     checkPermissions(DomainAdminPermission(domainID))
     from orm.users import Users, DB, UserSecondaryStores
     from sqlalchemy import insert
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.ID, Users.maildir).first()
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
     if user.maildir is None:
@@ -454,7 +454,7 @@ def setUserStoreAccessMulti(domainID, userID):
 def getUserStoreAccess(domainID, userID):
     checkPermissions(DomainAdminROPermission(domainID))
     from orm.users import Users
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
     if user.maildir is None:
@@ -472,7 +472,7 @@ def getUserStoreAccess(domainID, userID):
 def deleteUserStoreAccess(domainID, userID, username):
     checkPermissions(DomainAdminPermission(domainID))
     from orm.users import DB, Users, UserSecondaryStores
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.ID, Users.maildir).first()
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
     if user.maildir is None:
