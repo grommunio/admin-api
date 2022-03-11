@@ -42,36 +42,57 @@ class Task:
 
 
 class Worker:
-    def __init__(self, _queued, _finished):
+    def __init__(self, _queued=None, _finished=None):
+        """Start TasQ worker.
+
+        Omitting in- and output queues will not start the main loop,
+        allowing to dispatch tasks manually.
+
+        Parameters
+        ----------
+        _queued : Queue, optional
+            Input queue. The default is None.
+        _finished : TYPE, optional
+            Output queue. The default is None.
+        """
         self._queued, self._finished = _queued, _finished
-        self.run()
+        if None not in (_queued, _finished):
+            self.run()
         self.__current = None
 
     def log(self, level, message):
-        self._finished.put(Task(0, "control", dict(cmd="log", level=level, message=message)))
+        if self._finished is None:
+            logger.log(level, message)
+        else:
+            self._finished.put(Task(0, "control", dict(cmd="log", level=level, message=message)))
 
     def bump(self):
-        self._finished.put(Task(self.__current.ID, "control", dict(cmd="bump"), message=self.__current.message))
+        if self._finished is not None:
+            self._finished.put(Task(self.__current.ID, "control", dict(cmd="bump"), message=self.__current.message))
+
+    def dispatch(self, task):
+        from time import time
+        func = self.cmap.get(task.command)
+        if func is None:
+            task.state = Task.ERROR
+            task.message = "Unknown command '{}'".format(task.command)
+        else:
+            task.message = None
+            try:
+                start = time()
+                func(self, task)
+                duration = time()-start
+            except Exception as err:
+                task.state = Task.ERROR
+                task.message = " - ".join(str(arg) for arg in err.args)[:160]
+        task.state = max(task.state, Task.COMPLETED)
+        task.message = task.message or "Completed ({:.1f}ms)".format(1000*duration)
+        return task
 
     def run(self):
-        from time import time
         while True:
             self.__current = task = self._queued.get()
-            func = self.cmap.get(task.command)
-            if func is None:
-                task.state = Task.ERROR
-                task.message = "Unknown command '{}'".format(task.command)
-            else:
-                task.message = None
-                try:
-                    start = time()
-                    func(self, task)
-                    duration = time()-start
-                except Exception as err:
-                    task.state = Task.ERROR
-                    task.message = " - ".join(str(arg) for arg in err.args)[:160]
-            task.state = max(task.state, Task.COMPLETED)
-            task.message = task.message or "Completed ({:.1f}ms)".format(1000*duration)
+            self.dispatch(task)
             self._finished.put(task)
             self.__current = None
 
@@ -235,7 +256,7 @@ class TasQServer:
         return task
 
     @classmethod
-    def create(cls, command, params, synced=True, permission=None):
+    def create(cls, command, params, synced=True, permission=None, inline=None):
         """Create a new task.
 
         Parameters
@@ -245,6 +266,12 @@ class TasQServer:
             Command specific parameters
         synced : bool, optional
             Whether to synchronize the task with the database. The default is True.
+        permission : PermissionBase, optional
+            Restrict acces to users wih permission. The default is None.
+        inline : bool, optional
+            Do not execute async, but dispatch in current thread.
+            If set to None, only execute inline if TasQ server is not running.
+            The default is None.
 
         Raises
         ------
@@ -258,7 +285,9 @@ class TasQServer:
         """
         if command == "control":
             raise ValueError("Cannot create control commands")
-        if cls._online and synced:
+        if inline or (inline is None and not cls.running()):
+            return Worker().dispatch(Task(0, command, params))
+        elif cls._online and synced:
             from orm.misc import DB, TasQ
             dbtask = TasQ(dict(command=command, params=params))
             dbtask.state = Task.LOADED if cls.running() else Task.QUEUED
