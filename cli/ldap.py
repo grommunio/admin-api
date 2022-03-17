@@ -99,17 +99,18 @@ def _getCandidate(cli, expr, auto):
                 cli.print(cli.col("Multiple candidates for '{}' found - aborting".format(expr), "red"))
                 return ERR_AMBIG
             cli.print("Found {} users matching '{}':".format(len(matches), expr))
+            exactIndex = None
             for i in range(len(matches)):
                 exact = matches[i].name == expr or matches[i].email == expr
-                cli.print(cli.col("{: 2d}: {} ({})".format(i+1, matches[i].name, matches[i].email),
+                cli.print(cli.col("{: 2d}: {} ({})".format(i, matches[i].name, matches[i].email),
                                   attrs=("bold",) if exact else ()), cli.col("(exact match)" if exact else "", attrs=["dark"]))
+                exactIndex = i if exact else exactIndex
             candidate = None
             while candidate is None:
                 try:
-                    selected = _getc(cli, "Choose index of user (1-{}) or CTRL+C to exit".format(len(matches)),
-                                     choices=range(len(matches)), getter=_geti)
-                    index = int(selected)-1
-                    if not 0 <= index < len(matches):
+                    index = _getc(cli, "Choose index of user (0-{}) or CTRL+C to abort".format(len(matches)-1),
+                                  choices=range(len(matches)), getter=_geti, default=exactIndex)
+                    if index is None or not 0 <= index < len(matches):
                         continue
                     candidate = matches[index]
                 except (EOFError, KeyboardInterrupt):
