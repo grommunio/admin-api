@@ -191,7 +191,9 @@ class LdapService:
         list
             Search result list
         """
-        return self.conn.get_response(self.conn.search(*args, **kwargs))[0]
+        results = self.conn.get_response(self.conn.search(*args, **kwargs))[0]
+        return [result for result in results
+                if "attributes" in result and self._userComplete(result["attributes"], (self._config["users"]["username"],))]
 
     @classmethod
     def _searchBase(cls, conf):
@@ -310,8 +312,6 @@ class LdapService:
             response = self._search(self._sbase, self._matchFilters(ID), attributes=["*", self._config["objectID"]])
         except Exception:
             return None
-        response = [result for result in response if
-                    "attributes" in result and self._userComplete(result["attributes"], (self._config["users"]["username"],))]
         if len(response) == 0:
             return None
         if len(response) > 1:
@@ -420,8 +420,7 @@ class LdapService:
                                 self._searchFilters(query, self._config["users"], domains),
                                 attributes=[IDattr, name, email],
                                 paged_size=limit)
-        return exact+[self._asUser(result) for result in response
-                      if "attributes" in result and self._userComplete(result["attributes"])]
+        return exact+[self._asUser(result) for result in response]
 
     @classmethod
     def testConfig(cls, config):
@@ -441,7 +440,7 @@ class LdapService:
         servers = config["connection"]["server"].split()
         pool = ldap3.ServerPool(servers, "FIRST", active=1)
         conn = ldap3.Connection(pool, user=config["connection"].get("bindUser"), password=config["connection"].get("bindPass"),
-                                client_strategy=ldap3.ASYNC)
+                                client_strategy=ldap3.ASYNC, pool_keepalive=120)
         if config["connection"].get("starttls") and not conn.start_tls():
             logger.warning("Failed to initiate StartTLS connection")
         if not conn.bind():
