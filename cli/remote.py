@@ -31,7 +31,7 @@ def _tryConnect(args, target):
 def _getConnection(args):
     import re
     urlre = re.compile(r"^(?P<proto>https?://)?(?P<host>[\w\.-]+)(:(?P<port>\d{1,5}))?$")
-    url = urlre.match(args.host)
+    url = urlre.match(args.host or "localhost")
     if url is None:
         return False, "Invalid host"
     host = url["host"]
@@ -64,10 +64,29 @@ def _getConnection(args):
     return True, (target, host, proto)
 
 
-def _login(target, user, passwd, args):
+def _login(target, host, args):
+    def debugout(*argv, **kwargs):
+        if args.verbose >= 1:
+            cli.print(*argv, **kwargs)
+
     import requests
     import urllib
+    cli = args._cli
+    user = args.user or "admin"
+    if not args.password and host == "localhost" and not args.passwd:
+        from api.security import mkJWT
+        debugout("Attempting passwordless login...", end="", flush=True)
+        try:
+            token = mkJWT({"usr": user})
+            code, response = _remoteExec(None, target, token, "version", cparm=args._cparm)
+            if code == 200:
+                debugout(cli.col("success.", "green"))
+                return True, token
+            debugout(cli.col("failed.", "yellow"))
+        except Exception:
+            debugout(cli.col("error.", "red"))
     try:
+        passwd = args.passwd or cli.input("Password: ", secret=True)
         data = urllib.parse.urlencode({"user": user, "pass": passwd})
         response = requests.post(target+"login", data, headers={"Content-Type": "application/x-www-form-urlencoded"},
                                  **args._cparm)
@@ -88,7 +107,7 @@ def _login(target, user, passwd, args):
             if "message" in response:
                 return False, "Remote execution failed: "+response["message"]
             return False, "Remote execution failed with code "+str(code)
-        return True, data["grommunioAuthJwt"]
+        return True, token
     except Exception as err:
         return False, "Login failed ({})".format(type(err).__name__)
 
@@ -265,13 +284,14 @@ class RemoteCli(Cli):
 
 
 def _cliRemoteSetupParser(subp: ArgumentParser):
-    subp.add_argument("host", help="Host to connect to")
+    subp.add_argument("host", nargs="?", help="Host to connect to (default 'localhost')")
     subp.add_argument("user", nargs="?", help="User to connect with (default 'admin')")
     subp.add_argument("passwd", nargs="?", help="User password (default is to prompt)")
     subp.add_argument("--auto-save", choices=("local", "remote", "discard", "print"),
                       help="Automatically perform selected action when receiving files, instead of prompting")
     subp.add_argument("-c", "--command", help="Run command and exit (instead of starting shell)")
     subp.add_argument("--no-verify", action="store_true", help="Skip certificate verification")
+    subp.add_argument("-p", "--password", action="store_true", help="Prompt for password even when connecting to localhost")
     subp.add_argument("--redirect-fs", action="store_true", help="Emulate CLI initiated read/write operations")
     subp.add_argument("-v", "--verbose", default=0, action="count", help="Print more information")
 
@@ -292,9 +312,7 @@ def cliRemote(args):
     target, host, proto = result
     if proto == "http://":
         cli.print(cli.col("Using insecure HTTP connection", "yellow"))
-    user = args.user or "admin"
-    passwd = args.passwd or cli.input("Password: ", secret=True)
-    success, result = _login(target, user, passwd, args)
+    success, result = _login(target, host, args)
     if not success:
         cli.print(cli.col(result, "red"))
         return 2

@@ -93,7 +93,8 @@ def mkJWT(claims):
     from tools.config import Config
     if "exp" not in claims:
         claims["exp"] = int(time.mktime(time.gmtime())+Config["options"].get("jwtExpiresAfter", 7*24*60*60))
-    return jwt.encode(claims, jwtPrivkey, "RS256")
+    token = jwt.encode(claims, jwtPrivkey, "RS256")
+    return token.decode("ascii") if isinstance(token, bytes) else token
 
 
 def checkToken(token):
@@ -145,8 +146,7 @@ def refreshToken():
         return
     if "exp" in claims:
         claims.pop("exp")
-    token = mkJWT(claims)
-    return token.decode("ascii") if isinstance(token, bytes) else token
+    return mkJWT(claims)
 
 
 def loginUser(username, password):
@@ -183,7 +183,7 @@ def loginUser(username, password):
         token = mkJWT({"usr": user.username})
     except Exception:
         return False, "Token generation failed"
-    return True, (token.decode("ascii") if isinstance(token, bytes) else token)
+    return True, token
 
 
 def checkPermissions(*requested):

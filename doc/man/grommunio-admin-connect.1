@@ -9,8 +9,8 @@ grommunio-admin connect \[em] Connect to remote CLI
 .PP
 \f[B]grommunio-admin connect\f[R] [\f[I]-c COMMAND\f[R]]
 [\f[I]--no-verify\f[R]] [\f[I]--redirect-fs\f[R] [\f[I]--auto-save
-(local|remote|discard|print)\f[R]]] [\f[I]-v\f[R]] \f[I]HOST\f[R]
-[\f[I]USER\f[R] [\f[I]PASSWORD\f[R]]]
+(local|remote|discard|print)\f[R]]] [\f[I]-v\f[R]] [\f[I]HOST\f[R]
+[\f[I]USER\f[R] [\f[I]PASSWORD\f[R]]]]
 .SH Description
 .PP
 Connect to a remote server to invoke CLI commands on.
@@ -33,6 +33,7 @@ If omitted, the protocol is auto-detected, with https taking precendence
 over http.
 If no port is specified, the default ports 8080 (http) and 8443 (https)
 are used.
+Default is \f[I]localhost\f[R].
 .TP
 \f[B]\f[CB]PASSWORD\f[B]\f[R]
 Password to use for authentication.
@@ -40,7 +41,7 @@ Default is to prompt.
 .TP
 \f[B]\f[CB]USER\f[B]\f[R]
 User to use for authentication.
-Defaults is \f[I]admin\f[R].
+Default is \f[I]admin\f[R].
 .TP
 \f[B]\f[CB]--auto-save ACTION\f[B]\f[R]
 Choose automatic action for received files when filesystem redirection
@@ -73,6 +74,9 @@ is invalid.
 Required if the server uses a self-signed certificate that is not
 installed on the system.
 Use with caution.
+.TP
+\f[B]\f[CB]-p\f[B]\f[R], \f[B]\f[CB]--password\f[B]\f[R]
+Prompt for password even when connecting to localhost.
 .TP
 \f[B]\f[CB]--redirect-fs\f[B]\f[R]
 Redirect CLI initiated file operations to local filesystem.

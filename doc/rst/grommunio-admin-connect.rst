@@ -11,7 +11,7 @@ Synopsis
 ========
 
 **grommunio-admin connect** [*-c COMMAND*] [*--no-verify*] [*--redirect-fs*
-[*--auto-save (local\|remote\|discard\|print)*]] [*-v*] *HOST* [*USER* [*PASSWORD*]]
+[*--auto-save (local\|remote\|discard\|print)*]] [*-v*] [*HOST* [*USER* [*PASSWORD*]]]
 
 Description
 ===========
@@ -32,10 +32,11 @@ Options
    where protocol is either http or https. If omitted, the protocol is
    auto-detected, with https taking precendence over http. If no port is
    specified, the default ports 8080 (http) and 8443 (https) are used.
+   Default is *localhost*.
 ``PASSWORD``
    Password to use for authentication. Default is to prompt.
 ``USER``
-   User to use for authentication. Defaults is *admin*.
+   User to use for authentication. Default is *admin*.
 ``--auto-save ACTION``
    Choose automatic action for received files when filesystem
    redirection is enabled. Possible actions are:
@@ -52,6 +53,8 @@ Options
    Continue with https even if the TLS certificate presented by the
    server is invalid. Required if the server uses a self-signed
    certificate that is not installed on the system. Use with caution.
+``-p``, ``--password``
+   Prompt for password even when connecting to localhost.
 ``--redirect-fs``
    Redirect CLI initiated file operations to local filesystem. See
    section *Filesystem Emulation* for details.
