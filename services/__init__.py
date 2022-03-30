@@ -160,6 +160,40 @@ class ServiceHub(metaclass=_ServiceHubMeta):
 
     @classmethod
     def register(cls, name, exchandler=lambda *args, **kwargs: None, maxreloads=0, maxfailures=None, reloadlocktime=1):
+        """Decorator to register a new service provider class.
+
+        Register a new class as service provider.
+
+        An exception handler function can be defined taking the service instance and exception raised in the service context,
+        returning either None (indicating that the exception was not handled) or the new service state and optionally
+        an error message (indicating that the original exception was handled, throwing a ServiceUnavailableException instead).
+        This provides a convenient way to react to exception resulting from lost connections and put automatic reloading and
+        deactivation mechanics to use.
+
+        `maxreloads` and `maxfailures` provide limits which, when reached, will permanently disable a service
+        (the service can still be recovered with force_reload).
+        `maxreloads` is the maximum number of automatic reloads, i.e. number of failed load operations.
+        `maxfailures` is the maximum number of exceptions handled by the exception handler
+
+        `reloadlocktime` can be used for rate-limiting automatic reloads. This can prevent that a short temporary downtime
+        of a service permanently disables it because it is requested multiple times in rapid succession.
+
+        Parameters
+        ----------
+        name : str
+            Name of the service.
+        exchandler : function, optional
+            Exception handler. The default is the empty function.
+        **kwargs : None
+            Keyword argument dict, only for compatibility
+        maxreloads : int, optional
+            Number of acceptable automatic reloads before service enters ERROR state. The default is 0.
+        maxfailures : int, optional
+            Number acceptable load error before service enters ERROR state or None for indefinite reloading.
+            The default is None.
+        reloadlocktime : float, optional
+            Minimum time (in seconds) between automatic reloads. The default is 1.
+        """
         def inner(mgrclass):
             cls._services[name] = cls.ServiceInfo(name, mgrclass, exchandler, maxreloads, maxfailures, reloadlocktime)
             return mgrclass
@@ -224,7 +258,9 @@ class Service:
             newstate, msg = excresult
         else:
             newstate, msg = excresult, "Service '{}' is currently not available".format(self.__service.name)
-        if newstate is not None:
+        if newstate == 0:
+            return True
+        if newstate:
             self.__service.failed(newstate, exc_value)
             if self.__suppress:
                 return True

@@ -6,10 +6,8 @@ from . import ServiceHub
 
 
 def exmdbHandleException(service, error):
-    if isinstance(error, ExmdbService.ExmdbError):
-        return 0, error.args[0]
-    elif isinstance(error, RuntimeError):
-        return ServiceHub.UNAVAILABLE
+    if isinstance(error, ExmdbService.ConnectionError):
+        return ServiceHub.UNAVAILABLE, error.args[0]
 
 
 @ServiceHub.register("exmdb", exmdbHandleException)
@@ -26,7 +24,7 @@ class ExmdbService:
             return target
 
     __loaded = False
-    __symbols = ("ExmdbError", "ExmdbQueries", "Folder", )
+    __symbols = ("ConnectionError", "ExmdbError", "ExmdbProtocolError", "SerializationError", "ExmdbQueries", "Folder")
     __methods = ("TaggedPropval", "FolderList", "FolderMemberList")
 
     def __init__(self):
