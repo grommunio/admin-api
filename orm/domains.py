@@ -46,6 +46,12 @@ class Orgs(DataModel, DB.Base):
                     domain.org = self
         DataModel.fromdict(self, patches, *args, **kwargs)
 
+    @validates("name")
+    def validateName(self, key, value, *args):
+        if Orgs.query.filter(Orgs.ID != self.ID, Orgs.name == value).count():
+            raise ValueError("Organization '{}' already exists".format(value))
+        return value
+
 
 class Domains(DataModel, DB.Base, NotifyTable):
     class DomainName(TypeDecorator):
@@ -225,7 +231,8 @@ class Domains(DataModel, DB.Base, NotifyTable):
             if printStatus:
                 print("Done.\nDeleting domain directory...", end="")
             rmtree(self.homedir, True)
-            print("Done.")
+            if printStatus:
+                print("Done.")
         nosync = {"synchronize_session": False}
         classes = Classes.query.filter(Classes.domainID == self.ID).with_entities(Classes.ID)
         Hierarchy.query.filter(Hierarchy.childID.in_(classes) | Hierarchy.classID.in_(classes)).delete(**nosync)
