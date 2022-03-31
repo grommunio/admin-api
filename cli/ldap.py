@@ -411,7 +411,7 @@ def _getConf(cli, old):
                                     "y" if connfig.get("starttls") else "n", ("y", "n")) == "y"
         connected = _checkConn(cli, connfig)
     conf["connection"] = connfig
-    conf["baseDn"] = _getv(cli, "DN for user lookup/searches", old.get("baseDn", ""))
+    conf["baseDn"] = _getv(cli, "Search base for user lookup/searches", old.get("baseDn", ""))
     users = old.get("users", {})
     oldtempl = users.get("templates", ())
     res = _getc(cli, "Choose a template:\n 0: No template\n 1: ActiveDirectory\n 2: OpenLDAP\n",
