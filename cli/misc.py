@@ -7,7 +7,7 @@ from . import Cli, CliError, ArgumentParser
 
 def _runParserSetup(subp: ArgumentParser):
     subp.add_argument("--debug", "-d", action="store_true", help="Run in debug mode")
-    subp.add_argument("--ip", "-i", default="0.0.0.0", type=str, help="Host address to bind to")
+    subp.add_argument("--ip", "-i", default="::", type=str, help="Host address to bind to")
     subp.add_argument("--no-config-check", action="store_true", help="Skip configuration check")
     subp.add_argument("--port", "-p", default=5001, type=int, help="Host port to bind to")
     subp.add_argument("--tasq", "-t", action="store_true", help="Start TasQ server")

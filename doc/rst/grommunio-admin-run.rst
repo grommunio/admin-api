@@ -28,7 +28,7 @@ Options
 ``-d``, ``--debug``
    Enable debug mode
 ``-i IP``, ``--ip IP``
-   Host address to bind to (default 0.0.0.0)
+   Host address to bind to (default ::)
 ``--no-config-check``
    Skip configuration check
 ``-p PORT``, ``--port PORT``
