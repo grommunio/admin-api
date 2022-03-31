@@ -32,7 +32,8 @@ Options
    where protocol is either http or https. If omitted, the protocol is
    auto-detected, with https taking precendence over http. If no port is
    specified, the default ports 8080 (http) and 8443 (https) are used.
-   Default is *localhost*.
+   *hostname* can either be a resolvable host name, an IPv4 address or an
+   IPv6 address in brackets. The default hostname is *localhost*.
 ``PASSWORD``
    Password to use for authentication. Default is to prompt.
 ``USER``

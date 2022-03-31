@@ -30,7 +30,7 @@ def _tryConnect(args, target):
 
 def _getConnection(args):
     import re
-    urlre = re.compile(r"^(?P<proto>https?://)?(?P<host>[\w\.-]+)(:(?P<port>\d{1,5}))?$")
+    urlre = re.compile(r"^(?P<proto>https?://)?(?P<host>(([\w\.-]+)|(\[[:\da-fA-F]+\])))(:(?P<port>\d{1,5}))?$")
     url = urlre.match(args.host or "localhost")
     if url is None:
         return False, "Invalid host"
