@@ -91,6 +91,6 @@ Further parameters can be set in the `options` object:
 - `fileUid` (`string` or `int`): If set, change ownership of created files to this user
 - `fileGid` (`string` or `int`): If set, change ownership of created files to this group
 - `filePermissions` (`int`): If set, change file permissions of any created files to this bitmask
-- `antispamUrl` (`string`, default: `http://127.0.0.1:11334`): URL of the grommunio-antispam backend
+- `antispamUrl` (`string`, default: `http://localhost:11334`): URL of the grommunio-antispam backend
 - `antispamEndpoints` (`list of strings`, default: `["stat", "graph", "errors"]`): List of allowed endpoints to proxy to grommunio-antispam
 - `vhosts` (`object`, default: `{}`): Name -> URL mapping of nginx VHost status endpoints

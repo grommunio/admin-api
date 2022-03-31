@@ -60,6 +60,7 @@ def _defaultConfig():
             "validateResponse": True
             },
         "options": {
+            "antispamUrl": "http://localhost:11334",
             "disableDB": False,
             "dataPath": "/usr/share/grommunio-admin-common",
             "portrait": "portrait.jpg",

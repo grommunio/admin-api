@@ -145,7 +145,7 @@ properties:
             description: Permission bitmask of newly created files
       antispamUrl:
           type: string
-          default: 'http://127.0.0.1:11334'
+          default: 'http://localhost:11334'
           description: URL of the grommunio-antispam backend
       antispamEndpoints:
           type: array
