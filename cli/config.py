@@ -26,6 +26,7 @@ class CTrace:
     _fbStyle = {"attrs": ["dark"]}
 
     def __init__(self, value, filename=None):
+        value = {} if value is None else value  # Interpret empty config files as empty dict instead of None
         self.state = self.USED
         self.type = self.LIST if isinstance(value, list) else self.DICT if isinstance(value, dict) else self.KEY
         self.value = {key: CTrace(val, filename) for key, val in value.items()} if self.type == self.DICT else\
@@ -76,9 +77,7 @@ class CTrace:
                    self.SHADOWED if self.value == entry.value else self.UNUSED
         if self.type == self.DICT and self.state != self.UNUSED:
             for key, value in self.value.items():
-                if newstate == self.UNUSED:
-                    value.invalidate(file)
-                elif key in entry.value:
+                if key in entry.value:
                     value.update(file, entry.value[key])
         self.overwritten.append((file, self.NOCHANGE if self.state == newstate == self.UNUSED else newstate))
         self.state = newstate
