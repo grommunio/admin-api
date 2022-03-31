@@ -403,12 +403,13 @@ class TasQServer:
         """
         if not cls.running() or not cls._online:
             return 0
-        from orm.misc import DB, TasQ
+        from orm import DB
         from datetime import datetime
-        if not DB.minVersion(102):
+        if DB is None or not DB.minVersion(102):
             cls._online = False
-            logger.warning("Database schema version too old (n102 required) - falling back to offline mode.")
+            logger.warning("Database unavailable or schema version too old (n102 required) - falling back to offline mode.")
             return
+        from orm.misc import TasQ
         waiting = TasQ.query.filter(TasQ.state == Task.QUEUED).with_for_update().all()
         for w in waiting:
             if w.command == "control":
@@ -469,7 +470,6 @@ class TasQServer:
     @classmethod
     def _process(cls):
         logger.debug("Clerk started")
-        from orm.misc import DB, TasQ
         from datetime import datetime
         while True:
             task = cls._finished.get()
@@ -480,7 +480,8 @@ class TasQServer:
                 if cmd == "exit":
                     logger.debug("Clerk stopped")
                     return
-                elif cmd == "bump":
+                elif cls._online and cmd == "bump":
+                    from orm.misc import DB, TasQ
                     dbtask = TasQ.query.filter(TasQ.ID == task.ID).first()
                     if dbtask is not None:
                         dbtask.message = task.message
@@ -496,6 +497,7 @@ class TasQServer:
             with cls._active_lock:
                 tracker = cls._active.pop(task.ID, None)
                 if cls._online:
+                    from orm.misc import DB, TasQ
                     dbtask = TasQ.query.filter(TasQ.ID == task.ID).first()
                     if dbtask is not None:
                         dbtask.state = task.state
