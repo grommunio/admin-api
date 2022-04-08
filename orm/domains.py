@@ -35,6 +35,7 @@ class Orgs(DataModel, DB.Base):
 
     def fromdict(self, patches, *args, **kwargs):
         domains = patches.pop("domains", None)
+        DataModel.fromdict(self, patches, *args, **kwargs)
         if domains is not None:
             if self.ID is not None:
                 sync = {"synchronize_session": "fetch"}
@@ -44,7 +45,6 @@ class Orgs(DataModel, DB.Base):
                 domains = Domains.query.filter(Domains.ID.in_(domains))
                 for domain in domains:
                     domain.org = self
-        DataModel.fromdict(self, patches, *args, **kwargs)
 
     @validates("name")
     def validateName(self, key, value, *args):
