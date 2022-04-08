@@ -17,8 +17,9 @@ logger = logging.getLogger("mysql")
 
 class DBConn:
     def __init__(self, URI):
+        import threading
         self.engine = create_engine(URI)
-        self.session = scoped_session(sessionmaker(self.engine))
+        self.session = scoped_session(sessionmaker(self.engine), threading.get_ident)
         self.__version = None
         self.__maxversion = 0
         self.initVersion()
@@ -37,9 +38,6 @@ class DBConn:
         self.Base = declarative_base(cls=Model)
 
     def enableFlask(self, API):
-        from flask import _app_ctx_stack
-        self.session = scoped_session(sessionmaker(self.engine), _app_ctx_stack.__ident_func__)
-
         @API.teardown_appcontext
         def removeSession(*args, **kwargs):
             self.session.remove()
