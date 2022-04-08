@@ -6,7 +6,8 @@ name = "pypi"
 [packages]
 Flask = "*"
 mysqlclient = "*"
-openapi-core = "~=0.13.7"
+openapi-core = "~=0.13.8"
+openapi-schema-validator = "~=0.1.5"
 jellyfish = "*"
 dbus-python = "*"
 psutil = "*"
@@ -16,8 +17,11 @@ ldap3 = "*"
 argcomplete = "*"
 idna = "*"
 mattermostdriver = "*"
+sqlalchemy = "*"
+redis = "*"
+systemd-python = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.6"
+python_version = "3"
