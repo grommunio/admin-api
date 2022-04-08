@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.6.1
+  version: 1.6.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -812,6 +812,8 @@ paths:
                 $ref: '#/components/schemas/domain'
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
         '503':
@@ -838,6 +840,8 @@ paths:
                 $ref: '#/components/schemas/domain'
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
         '503':
