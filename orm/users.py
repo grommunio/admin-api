@@ -13,7 +13,6 @@ from tools.rop import nxTime
 from sqlalchemy import Column, ForeignKey, event, func
 from sqlalchemy.dialects.mysql import ENUM, INTEGER, TEXT, TIMESTAMP, TINYINT, VARBINARY, VARCHAR
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, selectinload, validates
 
@@ -21,6 +20,13 @@ import crypt
 import json
 
 from datetime import datetime
+
+# Was moved in SQLA 1.4
+import sqlalchemy
+if sqlalchemy.__version__.split(".") >= ["1", "4"]:
+    from sqlalchemy.orm import DeclarativeMeta
+else:
+    from sqlalchemy.ext.declarative.api import DeclarativeMeta
 
 
 class Users(DataModel, DB.Base, NotifyTable):
