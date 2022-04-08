@@ -58,9 +58,12 @@ class MLists(DataModel, DB.Base):
                       RefProp("class_", alias="class", flags="patch")))
 
     user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname, cascade="all, delete-orphan", single_parent=True)
-    associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID, cascade="all, delete-orphan", single_parent=True)
-    specifieds = relationship(Specifieds, primaryjoin=ID == Specifieds.listID, foreign_keys=Specifieds.listID, cascade="all, delete-orphan", single_parent=True)
-    class_ = relationship("Classes", primaryjoin="MLists.listname == Classes.listname", foreign_keys="Classes.listname", uselist=False)
+    associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID,
+                                cascade="all, delete-orphan", single_parent=True)
+    specifieds = relationship(Specifieds, primaryjoin=ID == Specifieds.listID, foreign_keys=Specifieds.listID,
+                              cascade="all, delete-orphan", single_parent=True)
+    class_ = relationship("Classes", primaryjoin="MLists.listname == Classes.listname", foreign_keys="Classes.listname",
+                          uselist=False, back_populates="mlist")
 
     TYPE_NORMAL = 0
     TYPE_DOMAIN = 2

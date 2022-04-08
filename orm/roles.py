@@ -22,7 +22,7 @@ class AdminRoles(DataModel, DB.Base):
     description = Column("description", VARCHAR(256))
 
     permissions = relationship("AdminRolePermissionRelation", cascade="all, delete-orphan", single_parent=True)
-    users = relationship("AdminUserRoleRelation", cascade="all, delete-orphan")
+    users = relationship("AdminUserRoleRelation", cascade="all, delete-orphan", back_populates="role")
 
     _dictmapping_ = ((Id(), Text("name", flags="patch")),
                      (Text("description", flags="patch"),),
@@ -38,7 +38,7 @@ class AdminRolePermissionRelation(DataModel, DB.Base):
     permission = Column("permission", VARCHAR(64), nullable=False)
     _params = Column("parameters", TEXT)
 
-    role = relationship(AdminRoles)
+    role = relationship(AdminRoles, back_populates="permissions")
 
     _dictmapping_ = ((Id(), Text("permission", flags="init"), {"attr": "params", "flags": "patch"}), (), (Int("roleID"),))
 
@@ -70,8 +70,8 @@ class AdminUserRoleRelation(DataModel, DB.Base):
     userID = Column("user_id", INTEGER(10, unsigned=True), ForeignKey(Users.ID, ondelete="cascade"), primary_key=True)
     roleID = Column("role_id", INTEGER(10, unsigned=True), ForeignKey(AdminRoles.ID), primary_key=True)
 
-    user = relationship("Users")
-    role = relationship(AdminRoles)
+    user = relationship("Users", viewonly=True)
+    role = relationship(AdminRoles, back_populates="users")
 
     _dictmapping_ = ((RefProp("user"),),
                      (RefProp("role"),))

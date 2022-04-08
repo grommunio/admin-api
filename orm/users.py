@@ -134,13 +134,15 @@ class Users(DataModel, DB.Base, NotifyTable):
     _deprecated_groupID = Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
 
     domain = relationship("Domains", foreign_keys=domainID, primaryjoin="Users.domainID == Domains.ID")
-    roles = relationship("AdminRoles", secondary="admin_user_role_relation")
+    roles = relationship("AdminRoles", secondary="admin_user_role_relation", viewonly=True)
     _properties = relationship("UserProperties", cascade="all, delete-orphan", single_parent=True, passive_deletes=True,
-                               order_by="UserProperties.orderID")
-    aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True, passive_deletes=True)
+                               order_by="UserProperties.orderID", back_populates="user")
+    aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True, passive_deletes=True,
+                           back_populates="main")
     fetchmail = OptionalNC(75, [],
-                           relationship("Fetchmail", cascade="all, delete-orphan", single_parent=True, order_by="Fetchmail.active.desc()"))
-    forward = relationship("Forwards", uselist=False, cascade="all, delete-orphan")
+                           relationship("Fetchmail", cascade="all, delete-orphan", single_parent=True,
+                                        order_by="Fetchmail.active.desc()", back_populates="user"))
+    forward = relationship("Forwards", uselist=False, cascade="all, delete-orphan", back_populates="user")
     homeserver = OptionalNC(104, None,
                             relationship("Servers", foreign_keys=homeserverID, primaryjoin="Users.homeserverID == Servers.ID"))
 
@@ -341,7 +343,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         self.privilegeBits = (self.privilegeBits or 0) | bit if val else (self.privilegeBits or 0) & ~bit
 
     def _getPB(self, bit):
-        return (self.privilegeBits) if isinstance(self, DeclarativeMeta) else bool((self.privilegeBits or 0) & bit)
+        return self.privilegeBits if isinstance(self, DeclarativeMeta) else bool((self.privilegeBits or 0) & bit)
 
     @hybrid_property
     def pop3_imap(self):
@@ -639,7 +641,7 @@ class UserProperties(DB.Base):
     _propvalbin = Column("propval_bin", VARBINARY(4096))
     _propvalstr = Column("propval_str", VARCHAR(4096))
 
-    user = relationship(Users)
+    user = relationship(Users, back_populates="_properties")
 
     def __init__(self, tag, value, user):
         if tag & 0x0FFF not in self.supportedTypes:
@@ -696,7 +698,7 @@ class Aliases(DataModel, DB.Base, NotifyTable):
     mainname = Column("mainname", VARCHAR(128), ForeignKey(Users.username, ondelete="cascade", onupdate="cascade"),
                       nullable=False, index=True)
 
-    main = relationship(Users)
+    main = relationship(Users, back_populates="aliases")
 
     _dictmapping_ = ((Text("aliasname", flags="init"),),
                      (Text("mainname", flags="init"),))

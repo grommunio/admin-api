@@ -73,14 +73,16 @@ class Classes(DataModel, DB.Base):
 
     cParents = relationship(Hierarchy,
                             primaryjoin=(ID == Hierarchy.childID) & (Hierarchy.classID != 0),
-                            foreign_keys=Hierarchy.childID, cascade="all, delete-orphan", single_parent=True)
+                            foreign_keys=Hierarchy.childID, cascade="all, delete-orphan", single_parent=True,
+                            back_populates="child")
     children = relationship(Hierarchy,
                             primaryjoin=(ID == Hierarchy.classID),
-                            foreign_keys=Hierarchy.classID)
+                            foreign_keys=Hierarchy.classID, back_populates="cParent")
 
     members = relationship(Members, primaryjoin=ID == Members.classID, foreign_keys=Members.classID,
                            cascade="all, delete-orphan", single_parent=True, lazy="selectin")
-    mlist = relationship(MLists, primaryjoin=listname == MLists.listname, foreign_keys=listname, cascade="all, delete-orphan", single_parent=True)
+    mlist = relationship(MLists, primaryjoin=listname == MLists.listname, foreign_keys=listname, cascade="all, delete-orphan",
+                         single_parent=True, back_populates="class_")
 
     _dictmapping_ = ((Id(), Text("classname", flags="patch")),
                      (Text("listname"),),

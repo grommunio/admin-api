@@ -28,7 +28,7 @@ class Orgs(DataModel, DB.Base):
     name = Column("name", VARCHAR(32), nullable=False)
     description = Column("description", VARCHAR(128))
 
-    domains = relationship("Domains")
+    domains = relationship("Domains", back_populates="org")
 
     _dictmapping_ = ((Id(), Text("name", flags="patch")), (Text("description", flags="patch"),),
                      (RefProp("domains", flags="patch"),))
@@ -88,7 +88,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
 
     activeUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus == 0)).as_scalar())
     inactiveUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus != 0)).as_scalar())
-    org = relationship(Orgs)
+    org = relationship(Orgs, back_populates="domains")
     homeserver = OptionalNC(105, None,
                             relationship("Servers", foreign_keys=homeserverID, primaryjoin="Domains.homeserverID==Servers.ID"))
 
@@ -237,7 +237,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
         classes = Classes.query.filter(Classes.domainID == self.ID).with_entities(Classes.ID)
         Hierarchy.query.filter(Hierarchy.childID.in_(classes) | Hierarchy.classID.in_(classes)).delete(**nosync)
         Members.query.filter(Members.classID.in_(classes)).delete(**nosync)
-        classes.delete(**nosync)
+        Classes.query.filter(Classes.domainID == self.ID).delete(**nosync)
         mlists = MLists.query.filter(MLists.domainID == self.ID)
         Specifieds.query.filter(Specifieds.listID.in_(mlists.with_entities(MLists.ID))).delete(**nosync)
         Associations.query.filter(Associations.listID.in_(mlists.with_entities(MLists.ID))).delete(**nosync)
