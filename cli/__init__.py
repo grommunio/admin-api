@@ -254,14 +254,14 @@ class Cli:
     def choice(self, prompt="", choices=(), default=None):
         """Display choice dialogue.
 
-        If a default value is set, it is returned on empty input, otherwise
+        If a default value is set, it is returned on empty input.
 
         Parameters
         ----------
         prompt : str, optional
             Prompt to display. The default is "".
         choices : list-like, optional
-            Calid choices. The default is ().
+            Valid choices. The default is ().
         default : str, optional
             Default value. The default is None.
 
@@ -277,7 +277,7 @@ class Cli:
                 return None
             if default is not None and res == "":
                 return default
-            if res not in choices:
+            if choices and res not in choices:
                 continue
             return res
 
