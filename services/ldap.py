@@ -437,7 +437,7 @@ class LdapService:
 
     @classmethod
     def testConnection(cls, config, active=True):
-        servers = config["connection"]["server"].split()
+        servers = [s[:-1] if s.endswith("/") else s for s in config["connection"]["server"].split()]
         pool = ldap3.ServerPool(servers, "FIRST", active=1)
         conn = ldap3.Connection(pool, user=config["connection"].get("bindUser"), password=config["connection"].get("bindPass"),
                                 client_strategy=ldap3.ASYNC, pool_keepalive=120)
