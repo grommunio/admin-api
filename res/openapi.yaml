@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.6.2
+  version: 1.6.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1895,6 +1895,29 @@ paths:
       responses:
         '200':
           description: Device resync queued
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /domains/{domainID}/users/{userID}/sync/{deviceID}/resync:
+    put:
+      summary: Request a device resync
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/deviceID'
+      responses:
+        '200':
+          description: Resync requested
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':

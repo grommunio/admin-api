@@ -309,7 +309,8 @@ def setUserDelegates(domainID, userID):
         if not formats.email.match(entry):
             return jsonify(message="Invalid delegate e-mail '{}'".format(entry))
     from orm.users import Users
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID)\
+                      .with_entities(Users.username, Users.maildir).first()
     if user is None:
         return jsonify(message="User not found"), 404
     try:
@@ -328,9 +329,9 @@ def setUserDelegates(domainID, userID):
     return jsonify(message="Delegates updated")
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<ID>", methods=["DELETE"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<deviceID>", methods=["DELETE"])
 @secure(requireDB=True)
-def resyncDevice(domainID, userID, ID):
+def removeDevice(domainID, userID, deviceID):
     checkPermissions(DomainAdminPermission(domainID))
     from orm.users import Users
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
@@ -338,8 +339,22 @@ def resyncDevice(domainID, userID, ID):
         return jsonify(message="User not found"), 404
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
-        client.resyncDevice(Config["sync"].get("syncStateFolder", "GS-SyncState"), ID)
+        client.removeDevice(Config["sync"]["syncStateFolder"], deviceID)
     return jsonify(message="Success")
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<deviceID>/resync", methods=["PUT"])
+@secure(requireDB=True)
+def resyncDevice(domainID, userID, deviceID):
+    checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    with Service("exmdb") as exmdb:
+        client = exmdb.user(user)
+        res = client.resyncDevice(Config["sync"]["syncStateFolder"], deviceID, userID)
+        return jsonify(message="Great success" if res else "Success")
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<deviceID>/wipe", methods=["POST", "DELETE"])

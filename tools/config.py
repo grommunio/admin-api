@@ -88,6 +88,7 @@ def _defaultConfig():
           },
         "logs": {},
         "sync": {
+            "syncStateFolder": "GS-SyncState",
             "defaultPolicy": _defaultSyncPolicy,
             "policyHosts": ["127.0.0.1", "localhost", "::1"]
             },
