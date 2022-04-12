@@ -147,11 +147,11 @@ def _loadDBConfig():
         logger.info("Database connection not specified. Using default '127.0.0.1:3306'")
     host = DBconf.get("host", "127.0.0.1")
     port = DBconf.get("port", 3306)
-    return "mysql+mysqldb://{user}:{password}@{host}:{port}/{db}".format(user=DBconf["user"],
-                                                                         password=DBconf["pass"],
-                                                                         host=host,
-                                                                         port=port,
-                                                                         db=DBconf["database"])
+    return "mysql+mysqldb://{user}:{password}@{host}:{port}/{db}?charset=utf8mb4".format(user=DBconf["user"],
+                                                                                         password=DBconf["pass"],
+                                                                                         host=host,
+                                                                                         port=port,
+                                                                                         db=DBconf["database"])
 
 
 if Config["options"]["disableDB"]:
