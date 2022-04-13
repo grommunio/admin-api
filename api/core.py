@@ -132,7 +132,7 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic", service=None):
                     return jsonify(message="Database not available."), 503
                 if DB.requireReload():
                     reloadORM()
-                if isinstance(requireDB, int) and DB.version < requireDB:
+                if isinstance(requireDB, int) and not isinstance(requireDB, bool) and DB.version < requireDB:
                     return jsonify(message="Database schema version too old. Please update to at least n{}."
                                    .format(requireDB)), 500
             return call()
