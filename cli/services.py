@@ -75,8 +75,10 @@ def cliServiceStatus(args):
     from services import ServiceHub
     cli = args._cli
     maxlen = max(len(service.name) for service in ServiceHub)
-    for service in ServiceHub:
-        _printService(cli, service, maxlen, args.verbose)
+    if len(args.services) == 0:
+        args.services = [service.name for service in ServiceHub]
+    for service in args.services:
+        _printService(cli, ServiceHub[service], maxlen, args.verbose)
 
 
 def _serviceCompleter(prefix, parsed_args, **kwargs):
@@ -99,6 +101,7 @@ def _cliSetupServiceParser(subp: ArgumentParser):
     status = sub.add_parser("status", help="List services")
     status.set_defaults(_handle=cliServiceStatus)
     status.add_argument("-v", "--verbose", action="count", help="Show more information")
+    status.add_argument("services", nargs="*", help="Only show status of specified service(s)").completer = _serviceCompleter
 
 
 @Cli.command("service", _cliSetupServiceParser)

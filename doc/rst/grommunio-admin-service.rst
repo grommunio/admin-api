@@ -12,7 +12,7 @@ Synopsis
 
 | **grommunio-admin service** *disable* [*SERVICE* [*SERVICE* [...]]]
 | **grommunio-admin service** [*-r*] *load* [*SERVICE* [*SERVICE* [...]]]
-| **grommunio-admin service** [*-v*] *status*
+| **grommunio-admin service** [*-v*] *status* [*SERVICE* [*SERVICE* [...]]]
 
 
 Description
