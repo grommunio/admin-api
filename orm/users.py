@@ -724,7 +724,7 @@ class Aliases(DataModel, DB.Base, NotifyTable):
     @classmethod
     def _commit(*args, **kwargs):
         with Service("systemd", Service.SUPPRESS_ALL) as sysd:
-            sysd.reloadService("gromox-http.service", "gromox-zcore.service")
+            sysd.reloadService("gromox-delivery.service", "gromox-http.service", "gromox-zcore.service")
 
 
 class Fetchmail(DataModel, DB.Base):
