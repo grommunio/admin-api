@@ -7,10 +7,10 @@
 grommunio-admin domain \[em] Domain management
 .SH Synopsis
 .PP
-\f[B]grommunio-admin domain\f[R] \f[B]create\f[R] [\f[I]<FIELDS>\f[R]]
-[\f[I]--create-role\f[R]] [\f[I]--skip-adaptor-reload\f[R]]
-[\f[I]--homeserver HOMESERVER\f[R]] \f[I]-u MAXUSER\f[R]
-\f[I]DOMAINNAME\f[R]
+\f[B]grommunio-admin domain\f[R] \f[B]create\f[R]
+[\f[I]--create-role\f[R]] [\f[I]--homeserver HOMESERVER\f[R]]
+[\f[I]--no-defaults\f[R]] [\f[I]--skip-adaptor-reload\f[R]]
+[\f[I]<FIELDS>\f[R]] \f[I]-u MAXUSER\f[R] \f[I]DOMAINNAME\f[R]
 .PD 0
 .P
 .PD
@@ -84,6 +84,9 @@ Can be specified multiple times to refine filter
 .TP
 \f[B]\f[CB]--homeserver HOMESERVER\f[B]\f[R]
 ID of the homeserver to place the domain on
+.TP
+\f[B]\f[CB]--no-defaults\f[B]\f[R]
+Do not apply configured default values
 .TP
 \f[B]\f[CB]-s FIELD\f[B]\f[R], \f[B]\f[CB]--sort FIELD\f[B]\f[R]
 Sort by field.

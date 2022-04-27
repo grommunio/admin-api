@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.6.3
+  version: 1.7.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3734,6 +3734,147 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /defaults/createParams:
+    get:
+      summary: Get default create parameters
+      tags:
+        - Defaults
+      security:
+        - JWTCookie: []
+      parameters:
+        - name: domain
+          in: query
+          required: false
+          description: Get the effective defaults for specific domain
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Default values returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/createDefaults'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    patch:
+      summary: Update create default parameters
+      tags:
+        - Defaults
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/createDefaults'
+      responses:
+        '200':
+          description: Default values updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    put:
+      summary: Replace create default parameters
+      tags:
+        - Defaults
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/createDefaults'
+      responses:
+        '200':
+          description: Default values updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /defaults/createParams/{domainID}:
+    get:
+      summary: Get default create parameter overrides for domain
+      tags:
+        - Defaults
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: Default values returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/createDefaults'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    patch:
+      summary: Update create default parameter overrides for domain
+      tags:
+        - Defaults
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/createDefaults'
+      responses:
+        '200':
+          description: Default values updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    put:
+      summary: Replace create default parameter overrides for domain
+      tags:
+        - Defaults
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/createDefaults'
+      responses:
+        '200':
+          description: Default values updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
   /defaults/storeLangs:
     get:
       summary: Get list of available user store languages
@@ -4615,6 +4756,17 @@ components:
             val:
               type: string
               description: Value used for comparison (binary operators)
+    createDefaults:
+      type: object
+      properties:
+        user:
+          type: object
+          additionalProperties: true
+          description: Default values for user creation
+        domain:
+          type: object
+          additionalProperties: true
+          description: Default values for domain creation
     dbConfFile:
       type: object
       additionalProperties:
@@ -5071,7 +5223,7 @@ tags:
   - name: Domain Admin/Users
     description: Endpoints for user management
   - name: Defaults
-    description: Endpoints providing static default data
+    description: Endpoints providing default data
   - name: LDAP
     description: Endpoints for LDAP operations
   - name: Service

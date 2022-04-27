@@ -97,7 +97,7 @@ def _getUser(args):
 
 
 def _splitData(args):
-    cliargs = {"_handle", "_cli", "userspec"}
+    cliargs = {"_handle", "_cli", "userspec", "no_defaults"}
     data = {}
     attributes = data["attributes"] = {key: value for key, value in args.items() if value is not None and key not in cliargs}
     data["aliases"] = attributes.pop("alias", None) or ()
@@ -151,7 +151,6 @@ def _updateStoreprops(cli, user, props, props_rm=()):
         cli.print(cli.col("Failed to set store properties: "+err.args[0], "yellow"))
 
 
-
 def cliUserShow(args):
     cli = args._cli
     cli.require("DB")
@@ -185,9 +184,20 @@ def cliUserList(args):
 def cliUserCreate(args):
     cli = args._cli
     cli.require("DB")
+    from orm.domains import Domains
+    from orm.misc import DBConf
     from orm.users import DB, Users
+    from tools.misc import RecursiveDict
+    if args.no_defaults:
+        props = {}
+    else:
+        props = DBConf.getFile("grommunio-admin", "defaults-system", True).get("user", RecursiveDict())
+        if "@" in args.username:
+            domain = Domains.query.filter(Domains.domainname == args.username.split("@", 1)[1]).with_entities(Domains.ID).first()
+            if domain is not None:
+                props.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domain.ID), True).get("user", {}))
     data = _splitData(args.__dict__)
-    props = data["attributes"]
+    props.update(data["attributes"])
     props["username"] = args.username
     props["aliases"] = data["aliases"]
     properties = data["properties"] = {}
@@ -195,6 +205,7 @@ def cliUserCreate(args):
         if "=" in pv:
             prop, val = pv.split("=", 1)
             properties[prop] = val
+    props["properties"] = properties
     result, code = Users.create(props)
     if code != 201:
         cli.print(cli.col("Could not create user: "+result, "red"))
@@ -230,7 +241,8 @@ def cliUserDelete(args):
     with Service("exmdb", Service.SUPPRESS_INOP) as exmdb:
         client = exmdb.user(user)
         client.unloadStore()
-        cli.print("Done.")
+        cli.print("Done.", end="")
+    cli.print("")
     if args.keep_files or (not args.yes and cli.confirm("Delete user directory from disk? [y/N]: ") != Cli.SUCCESS):
         cli.print(cli.col("Files remain in "+userdata.maildir, attrs=["bold"]))
         return 0
@@ -346,6 +358,7 @@ def _setupCliUser(subp: ArgumentParser):
     sub = subp.add_subparsers()
     create = sub.add_parser("create",  help="Create user")
     create.add_argument("username", help="E-Mail address of the user")
+    create.add_argument("--no-defaults", action="store_true", help="Do not apply configured default values")
     create.set_defaults(_handle=cliUserCreate)
     _cliAddUserAttributes(create)
     delete = sub.add_parser("delete", help="Delete user")

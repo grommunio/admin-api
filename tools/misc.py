@@ -264,3 +264,84 @@ def loadPSO(data, charset='utf-8', decode_strings=False,
         raise ValueError('unexpected opcode')
 
     return _unserialize()
+
+
+class RecursiveDict(dict):
+    """dict extension to handle keys in dottet notation."""
+
+    def __init__(self, data=None, reconstruct=True):
+        """Construct from data
+
+        Parameters
+        ----------
+        data : dict, optional
+            Dict to create from. The default is None.
+        reconstruct : bool, optional
+            Whether to cast contained dicts to RecursiveDict
+        """
+        if data:
+            for key, value in data.items():
+                self.insert(key, RecursiveDict(value) if reconstruct and isinstance(value, dict) else value)
+
+    def flat(self):
+        """Flatten RecursiveDicts to normal dict with dot notation.
+
+        Returns
+        -------
+        data : dict
+            Converted dict.
+        """
+        data = {}
+        for key, value in self.items():
+            if not isinstance(value, RecursiveDict):
+                data[key] = value
+                continue
+            for k, v in value.flat().items():
+                data[key if k is None else key+"."+k] = v
+        return data
+
+    def insert(self, key, value):
+        """Insert key, creating sub-levels as necessary.
+
+        Parameters
+        ----------
+        key : any
+            Key of the value to insert
+        value : any
+            Value to insert
+        """
+        if not isinstance(key, str) or "." not in key:
+            if isinstance(self.get(key), RecursiveDict):
+                self[key][None] = value
+            else:
+                self[key] = value
+            return
+        pre, post = key.split(".", 1)
+        if pre not in self:
+            self[pre] = RecursiveDict()
+        elif not isinstance(self[pre], RecursiveDict):
+            self[pre] = RecursiveDict({None: self[pre]})
+        self[pre].insert(post, value)
+
+    def update(self, E=None, **F):
+        """Override for dict.update, using insert for each key.
+
+        Parameters
+        ----------
+        E : dict, optional
+            DESCRIPTION. The default is None.
+        **F : TYPE
+            DESCRIPTION.
+        """
+        if isinstance(E, RecursiveDict):
+            for key, value in E.items():
+                if isinstance(self.get(key), dict) and isinstance(value, dict):
+                    self[key].update(value)
+                else:
+                    self[key] = value
+        elif isinstance(E, dict):
+            for key, value in E.items():
+                self.insert(key, value)
+        for key, value in F.items():
+            self.insert(key, value)
+        return self

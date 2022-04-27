@@ -48,7 +48,7 @@ def _dumpDomain(cli, domain):
 
 
 def _sanitizeData(data):
-    cliargs = {"_handle", "_cli", "domainspec"}
+    cliargs = {"_handle", "_cli", "domainspec", "no_defaults"}
     return {key: value for key, value in data.items() if value is not None and key not in cliargs}
 
 
@@ -79,7 +79,13 @@ def cliDomainCreate(args):
     cli = args._cli
     cli.require("DB")
     from orm.domains import Domains
-    data = _sanitizeData(args.__dict__)
+    from orm.misc import DBConf
+    from tools.misc import RecursiveDict
+    if args.no_defaults:
+        data = {}
+    else:
+        data = DBConf.getFile("grommunio-admin", "defaults-system", True).get("domain", RecursiveDict())
+    data.update(RecursiveDict(_sanitizeData(args.__dict__)))
     result, code = Domains.create(data, createRole=data.pop("create_role", False))
     if code != 201:
         cli.print(cli.col("Could not create domain: "+result, "red"))
@@ -195,6 +201,7 @@ def _setupCliDomain(subp: ArgumentParser):
     create.add_argument("domainname", help="Name of the domain")
     create.add_argument("--create-role", action="store_true", help="Create domain administrator role for new domain")
     create.add_argument("--homeserver", type=int, help="SID of the server to create the domain on")
+    create.add_argument("--no-defaults", action="store_true", help="Do not apply configured default values")
     addProperties(create, True)
     delete = sub.add_parser("delete", help="Soft delete domain",
                             description="Set domain status to deleted and deactivate users")

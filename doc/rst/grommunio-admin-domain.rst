@@ -10,8 +10,8 @@ grommunio-admin domain — Domain management
 Synopsis
 ========
 
-| **grommunio-admin domain** **create** [*<FIELDS>*] [*--create-role*]
-  [*--skip-adaptor-reload*] [*--homeserver HOMESERVER*] *-u MAXUSER* *DOMAINNAME*
+| **grommunio-admin domain** **create** [*--create-role*] [*--homeserver HOMESERVER*]
+  [*--no-defaults*] [*--skip-adaptor-reload*] [*<FIELDS>*] *-u MAXUSER* *DOMAINNAME*
 | **grommunio-admin domain** **delete** *DOMAINSPEC*
 | **grommunio-admin domain** **list** [*-f FIELD=<value>*] [*-s FIELD*]
   [*DOMAINSPEC*]
@@ -60,6 +60,8 @@ Options
    multiple times to refine filter
 `` --homeserver HOMESERVER``
    ID of the homeserver to place the domain on
+``--no-defaults``
+   Do not apply configured default values
 ``-s FIELD``, ``--sort FIELD``
    Sort by field. Can be given multiple times
 ``-y``, ``--yes``

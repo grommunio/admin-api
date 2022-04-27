@@ -10,7 +10,7 @@ grommunio-admin user — User management
 Synopsis
 ========
 
-| **grommunio-admin user** **create** [*<FIELDS>*] *USERNAME*
+| **grommunio-admin user** **create** [*--no-defaults*] [*<FIELDS>*] *USERNAME*
 | **grommunio-admin user** **delete** [*-k*] [*-y*] *USERSPEC*
 | **grommunio-admin user** **list** [*-f FIELD=<value>*] [*-s FIELD*]
   [*USERSPEC*]
@@ -48,6 +48,8 @@ Options
    multiple times to refine filter
 ``-k``, ``--keep-files``
    Do not delete user files from disk
+``--no-defaults``
+   Do not apply configured default values
 ``--no-ldap``
    Detach user from LDAP object
 ``--remove-alias ALIAS``

@@ -216,6 +216,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
 
     def purge(self, deleteFiles=False, printStatus=False):
         from .classes import Classes, Hierarchy, Members
+        from .misc import DBConf
         from .mlists import MLists, Associations, Specifieds
         from .roles import AdminRoles as AR, AdminRolePermissionRelation as ARPR
         from .users import Users, Aliases
@@ -253,6 +254,8 @@ class Domains(DataModel, DB.Base, NotifyTable):
         for role in roles:
             if len(role.permissions) == 0:
                 DB.session.delete(role)
+        DBConf.query.filter(DBConf.service == "grommunio-admin", DBConf.file == "defaults-domain-"+str(self.ID))\
+                    .delete(**nosync)
         DB.session.delete(self)
 
     @staticmethod

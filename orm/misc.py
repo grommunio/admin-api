@@ -5,12 +5,20 @@
 from . import DB, logger
 
 from tools.DataModel import DataModel, Id, Date, Int, Text
+from tools.misc import RecursiveDict
 
 from sqlalchemy import Column, func, select
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT, VARCHAR, TEXT, TIMESTAMP
 from sqlalchemy.ext.hybrid import hybrid_property
 
 import json
+
+
+def _trydec(value, default=None):
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return default
 
 
 class DBConf(DB.Base):
@@ -23,10 +31,77 @@ class DBConf(DB.Base):
     value = Column("value", VARCHAR(200), nullable=False, default="")
 
     @staticmethod
+    def getFile(service, file, structured=False):
+        """Read config file to dict.
+
+        Values are json decoded if possible, otherwise retained as strings.
+
+        Parameters
+        ----------
+        service : str
+            Name of the service.
+        file : str
+            Name of the config file
+        structured : bool, optional
+            Unpack keys into RecursiveDict. The default is False.
+
+        Returns
+        -------
+        dict
+            Key/value pairs of the file
+        """
+        entries = DBConf.query.filter(DBConf.service == service, DBConf.file == file).with_entities(DBConf.key, DBConf.value)
+        data = {entry.key: _trydec(entry.value, entry.value) for entry in entries}
+        return RecursiveDict(data) if structured else data
+
+    @staticmethod
     def getValue(service, file, key, default=None):
+        """Get single config value.
+
+        Parameters
+        ----------
+        service : str
+            Service name
+        file : str
+            File name
+        key : str
+            Configuration key
+        default : any, optional
+            Default value to return if the parameter does not exist. The default is None.
+
+        Returns
+        -------
+        str
+            Configuration value.
+        """
         entry = DBConf.query.filter(DBConf.service == service, DBConf.file == file, DBConf.key == key)\
                             .with_entities(DBConf.value).first()
         return default if entry is None else entry.value
+
+    @staticmethod
+    def setFile(service, file, data):
+        """Write key-value mapping to config file.
+
+        Existing contents are removed.
+
+        Values are json encoded before writing.
+
+        If data is an instance of RecursiveDict, it is flattened before writing.
+
+        Parameters
+        ----------
+        service : str
+            Name of the service
+        file : str
+            Name of the config file
+        data : dict
+            Key/value pairs to save.
+        """
+        data = data.flat() if isinstance(data, RecursiveDict) else data
+        data = {key: json.dumps(value, separators=(",", ":")) for key, value in data.items()}
+        DBConf.query.filter(DBConf.service == service, DBConf.file == file).delete()
+        DB.session.bulk_insert_mappings(DBConf, [dict(service=service, file=file, key=key, value=value)
+                                                 for key, value in data.items()])
 
 
 class TasQ(DataModel, DB.Base):

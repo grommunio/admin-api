@@ -7,8 +7,8 @@
 grommunio-admin user \[em] User management
 .SH Synopsis
 .PP
-\f[B]grommunio-admin user\f[R] \f[B]create\f[R] [\f[I]<FIELDS>\f[R]]
-\f[I]USERNAME\f[R]
+\f[B]grommunio-admin user\f[R] \f[B]create\f[R]
+[\f[I]--no-defaults\f[R]] [\f[I]<FIELDS>\f[R]] \f[I]USERNAME\f[R]
 .PD 0
 .P
 .PD
@@ -61,6 +61,9 @@ Can be specified multiple times to refine filter
 .TP
 \f[B]\f[CB]-k\f[B]\f[R], \f[B]\f[CB]--keep-files\f[B]\f[R]
 Do not delete user files from disk
+.TP
+\f[B]\f[CB]--no-defaults\f[B]\f[R]
+Do not apply configured default values
 .TP
 \f[B]\f[CB]--no-ldap\f[B]\f[R]
 Detach user from LDAP object
