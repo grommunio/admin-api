@@ -33,7 +33,8 @@ def getStoreLangs():
 def getSystemDefaults():
     checkPermissions(DomainAdminROPermission("*"))
     from orm.misc import DBConf
-    data = DBConf.getFile("grommunio-admin", "defaults-system", True)
+    data = RecursiveDict({"user": {}, "domain": {}})
+    data.update(DBConf.getFile("grommunio-admin", "defaults-system", True))
     if "domain" in request.args and request.args["domain"].isdecimal:
         checkPermissions(DomainAdminROPermission(int(request.args["domain"])))
         data.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+request.args["domain"]))
@@ -62,7 +63,8 @@ def setSystemDefaults():
 def getDomainDefaults(domainID):
     checkPermissions(DomainAdminROPermission(domainID))
     from orm.misc import DBConf
-    data = DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domainID), True)
+    data = RecursiveDict({"user": {}, "domain": {}})
+    data.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domainID), True))
     return jsonify(data=data)
 
 
