@@ -11,7 +11,6 @@ from sqlalchemy.orm import relationship
 from tools.DataModel import DataModel, Id, Int, RefProp, Text
 
 from . import DB
-from .users import Users
 
 
 class AdminRoles(DataModel, DB.Base):
@@ -67,7 +66,7 @@ class AdminRolePermissionRelation(DataModel, DB.Base):
 class AdminUserRoleRelation(DataModel, DB.Base):
     __tablename__ = "admin_user_role_relation"
 
-    userID = Column("user_id", INTEGER(10, unsigned=True), ForeignKey(Users.ID, ondelete="cascade"), primary_key=True)
+    userID = Column("user_id", INTEGER(10, unsigned=True), ForeignKey("users.id", ondelete="cascade"), primary_key=True)
     roleID = Column("role_id", INTEGER(10, unsigned=True), ForeignKey(AdminRoles.ID), primary_key=True)
 
     user = relationship("Users", viewonly=True)

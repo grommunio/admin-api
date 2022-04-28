@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
 from . import DB
-from .mlists import MLists
 
 from tools.classfilters import ClassFilter
 from tools.constants import PropTags
@@ -81,8 +80,8 @@ class Classes(DataModel, DB.Base):
 
     members = relationship(Members, primaryjoin=ID == Members.classID, foreign_keys=Members.classID,
                            cascade="all, delete-orphan", single_parent=True, lazy="selectin")
-    mlist = relationship(MLists, primaryjoin=listname == MLists.listname, foreign_keys=listname, cascade="all, delete-orphan",
-                         single_parent=True, back_populates="class_")
+    mlist = relationship("MLists", primaryjoin="Classes.listname == MLists.listname", foreign_keys=listname,
+                         cascade="all, delete-orphan", single_parent=True, back_populates="class_")
 
     _dictmapping_ = ((Id(), Text("classname", flags="patch")),
                      (Text("listname"),),
@@ -194,4 +193,4 @@ class Classes(DataModel, DB.Base):
         ClassFilter(data)
         self._filters = json.dumps(data, separators=(",", ":"))
 
-from . import domains
+from . import domains, mlists
