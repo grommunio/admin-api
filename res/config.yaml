@@ -47,6 +47,10 @@ properties:
         type: integer
         description: Port the database server listens on
         default: 3306
+      sessionTimeout:
+        type: integer
+        description: Time in seconds after which database connection closed by the server and a new one is needed
+        default: 28800
   options:
     type: object
     properties:

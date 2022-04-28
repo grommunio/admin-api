@@ -18,7 +18,7 @@ logger = logging.getLogger("mysql")
 class DBConn:
     def __init__(self, URI):
         import threading
-        self.engine = create_engine(URI)
+        self.engine = create_engine(URI, pool_recycle=Config["DB"]["sessionTimout"])
         self.session = scoped_session(sessionmaker(self.engine), threading.get_ident)
         self.__version = None
         self.__maxversion = 0

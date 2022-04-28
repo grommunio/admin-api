@@ -30,6 +30,7 @@ Possible parameters:
 - `database` (`string`): Name of the database to connect to
 - `host` (`string`, default: `127.0.0.1`): Host the database runs on
 - `port` (`int`, default: `3306`): Port the database server runs on
+- `sessionTimeout` (`int`, default: `28800`): Time in seconds after which database connection closed by the server and a new one is needed
 
 ### OpenAPI ###
 The behavior of the OpenAPI validation can be configured by the `openapi` object.  

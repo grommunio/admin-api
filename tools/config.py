@@ -55,6 +55,9 @@ def _defaultConfig():
       "unapprovedinromapplist": []
     }
     return {
+        "DB": {
+            "sessionTimout": 28800,
+            },
         "openapi": {
             "validateRequest": True,
             "validateResponse": True
