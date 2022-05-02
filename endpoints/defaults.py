@@ -68,7 +68,7 @@ def getDomainDefaults(domainID):
     return jsonify(data=data)
 
 
-@API.route(api.BaseRoute+"/defaults/createParams/<int:domainID>", methods=["PATCH"])
+@API.route(api.BaseRoute+"/defaults/createParams/<int:domainID>", methods=["PATCH", "PUT"])
 @secure(requireDB=True)
 def setDomainDefaults(domainID):
     checkPermissions(DomainAdminPermission(domainID))
