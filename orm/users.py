@@ -214,8 +214,9 @@ class Users(DataModel, DB.Base, NotifyTable):
     @staticmethod
     def checkCreateParams(data):
         from orm.domains import Domains
-        from orm.misc import Servers
         from tools.license import getLicense
+        if "username" not in data:
+            return "Missing username"
         if data.get("status", 0) != Users.SHARED and Users.count() >= getLicense().users:
             return "License user limit exceeded"
         if "domainID" in data:
@@ -604,6 +605,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         from tools.misc import AutoClean
         from tools.storage import UserSetup
         error = Users.checkCreateParams(props)
+        chat = props.pop("chat", None)
         if error is not None:
             return error, 400
         try:
@@ -618,6 +620,8 @@ class Users(DataModel, DB.Base, NotifyTable):
                 user.homeserverID, user.maildir = Servers.allocUser(user.ID, props.get("homeserver"))
                 with UserSetup(user, DB.session) as us:
                     us.run()
+                if chat:
+                    user.chat = chat
                 DB.session.commit()
                 if not us.success:
                     return "Error during user setup: "+us.error, us.errorCode

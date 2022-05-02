@@ -265,6 +265,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
         from tools.storage import DomainSetup
         from tools.misc import AutoClean
         error = Domains.checkCreateParams(props)
+        chat = props.pop("chat", None)
         if error is not None:
             return error, 400
         try:
@@ -280,6 +281,8 @@ class Domains(DataModel, DB.Base, NotifyTable):
                     ds.run()
                 if not ds.success:
                     return "Error during domain setup: "+ds.error, ds.errorCode
+                if chat:
+                    domain.chat = chat
                 DB.session.commit()
             domainAdminRoleName = "Domain Admin ({})".format(domain.domainname)
             if createRole and AdminRoles.query.filter(AdminRoles.name == domainAdminRoleName).count() == 0:
