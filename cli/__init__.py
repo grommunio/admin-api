@@ -487,5 +487,43 @@ class Cli:
         self.__completing = False
         return completions
 
+    def table(self, content, header=None, colsep="  ", empty=None):
+        """Pretty print a table.
 
-from . import config, dbconf, dbtools, domain, fetchmail, fs, ldap, mconf, misc, mlist, remote, server, services, user
+        Parameters
+        ----------
+        content : str[][]
+            Matrix containing the column entries
+        header : str[], optional
+            Table header. The default is None.
+        colsep : str, optional
+            Column separator. The default is "  ".
+        empty : str, optional
+            Message to display when table is empty. The default is None.
+        """
+        def rawlen(string):
+            return len(stylemarker.sub("", string).expandtabs())
+
+        def printline(line):
+            for i in range(columns):
+                self.print(line[i]+(" "*(colwidth[i]-rawlen(line[i]))+colsep if i != columns-1 else ""), end="")
+            self.print()
+
+        import re
+        if not header and len(content) == 0:
+            if empty:
+                self.print(empty)
+            return
+        stylemarker = re.compile("\x1b\\[[\\d]{1,2}m")
+        vheader = header or ("",)*len(content[0])
+        columns = len(vheader)
+        colwidth = tuple(rawlen(col) for col in vheader)
+        for line in content:
+            colwidth = tuple(max(colwidth[i], rawlen(line[i])) for i in range(columns))
+        if header:
+            printline(header)
+        for line in content:
+            printline(line)
+
+
+from . import config, dbconf, dbtools, domain, exmdb, fetchmail, fs, ldap, mconf, misc, mlist, remote, server, services, user

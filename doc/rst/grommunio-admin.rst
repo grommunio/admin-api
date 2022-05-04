@@ -53,6 +53,11 @@ domain
 
 Domain management. See *grommunio-admin-domain(1)*.
 
+exmdb
+-----
+
+Access and modify stores of domains and users. See *grommunio-admin-exmdb(1)*.
+
 fetchmail
 ---------
 

@@ -5,6 +5,10 @@
 import time
 
 
+def gcToValue(value: int) -> int:
+    return int.from_bytes(value.to_bytes(8, "big")[:6], "little")
+
+
 def valueToGc(value: int) -> bytes:
     """-> rop_util.c:57."""
     return value.to_bytes(6, "little")
