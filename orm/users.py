@@ -312,7 +312,7 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @password.setter
     def password(self, pw):
-        self._password = crypt.crypt(pw, crypt.mksalt(crypt.METHOD_MD5))
+        self._password = crypt.crypt(pw, crypt.mksalt(crypt.METHOD_SHA512))
 
     def chkPw(self, pw):
         return crypt.crypt(pw, self.password) == self.password
