@@ -2,11 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020 grommunio GmbH
 
-from datetime import datetime
 from io import BytesIO
 
-from .constants import PropTags, PropTypes
-from .rop import nxTime
 
 class AutoClean:
     """Simple context manager calling a function on exit."""
@@ -38,19 +35,6 @@ class AutoClean:
 
     def release(self):
         self.func = None
-
-
-def propvals2dict(vals: list) -> dict:
-    def prop2val(prop):
-        if prop.type == PropTypes.FILETIME:
-            return datetime.fromtimestamp(nxTime(int(prop.toString()))).strftime("%Y-%m-%d %H:%M:%S")
-        elif prop.type in PropTypes.intTypes:
-            return int(prop.toString())
-        elif prop.type in PropTypes().floatTypes:
-            return float(prop.toString())
-        return prop.toString()
-
-    return {PropTags.lookup(prop.tag).lower(): prop2val(prop) for prop in vals}
 
 
 def createMapping(iterable, key, value=lambda x: x):

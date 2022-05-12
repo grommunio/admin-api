@@ -184,9 +184,9 @@ def rdUserStoreProps(domainID, userID):
     for propval in propvals:
         propname = PropTags.lookup(propval.tag).lower()
         if propval.tag & 0xFFFF == PropTypes.FILETIME:
-            respData[propname] = datetime.fromtimestamp(nxTime(int(propval.toString()))).strftime("%Y-%m-%d %H:%M:%S")
+            respData[propname] = datetime.fromtimestamp(nxTime(propval.val)).strftime("%Y-%m-%d %H:%M:%S")
         else:
-            respData[propname] = PropTypes.pyType(propval.tag)(propval.toString())
+            respData[propname] = propval.val
     return jsonify(data=respData)
 
 
