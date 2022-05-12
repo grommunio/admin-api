@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
 from . import Cli, InvalidUseError
+from .common import proptagCompleter
 
 from argparse import ArgumentParser
 
@@ -331,6 +332,9 @@ def _cliAddUserAttributes(parser: ArgumentParser):
             raise ValueError("'{}' is not an assignment".format(arg))
         return arg
 
+    def proptagAssignCompleter(*args, **kwargs):
+        return proptagCompleter(*args, **kwargs, addSuffix="=")
+
     parser.add_argument("--changePassword", type=getBool, metavar="<bool>", help="Whether the user can change the password")
     parser.add_argument("--chat", type=optBool, metavar="<bool>", help="Whether to create a chat user")
     parser.add_argument("--chatAdmin", type=getBool, metavar="<bool>", help="Whether the user has chat admin privileges")
@@ -349,9 +353,9 @@ def _cliAddUserAttributes(parser: ArgumentParser):
 
     parser.add_argument("--alias", action="append", help="Add alias")
     parser.add_argument("--property", action="append", type=assignment, metavar="propspec=value",
-                        help="Set property defined by propspec to value")
+                        help="Set property defined by propspec to value").completer = proptagAssignCompleter
     parser.add_argument("--storeprop", action="append", type=assignment, metavar="propspec=value",
-                        help="Set store property defined by propspec to value")
+                        help="Set store property defined by propspec to value").completer = proptagAssignCompleter
 
 
 def _setupCliUser(subp: ArgumentParser):

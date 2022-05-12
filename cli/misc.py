@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
 from . import Cli, CliError, ArgumentParser
+from .common import proptagCompleter
 
 
 def _runParserSetup(subp: ArgumentParser):
@@ -58,26 +59,9 @@ def cliVersion(args):
             cli.print("{}{:+}".format(apiVersion, vdiff))
 
 
-def _cliTaginfoCompleter(prefix, **kwargs):
-    from tools.constants import PropTags
-    PropTags.lookup(None)
-    c = []
-    if prefix == "" or prefix[0].islower():
-        c += [tag.lower() for value, tag in PropTags._lookup.items() if isinstance(value, int)]
-    if prefix == "" or prefix[0].isupper():
-        c += [tag.upper() for value, tag in PropTags._lookup.items() if isinstance(value, int)]
-    if prefix == "" or prefix[0] == "0" and (len(prefix) <= 2 or not prefix[2:].isupper()):
-        c += ["0x{:08x}".format(value) for value in PropTags._lookup.keys() if isinstance(value, int)]
-    if prefix == "" or prefix[0] == "0" and (len(prefix) <= 2 or not prefix[2:].islower()):
-        c += ["0x{:08X}".format(value) for value in PropTags._lookup.keys() if isinstance(value, int)]
-    if prefix == "" or prefix.isnumeric():
-        c += [str(value) for value in PropTags._lookup.keys() if isinstance(value, int)]
-    return c
-
-
 def _setupTaginfo(subp: ArgumentParser):
     tagID = subp.add_argument("tagID", nargs="+", help="Numeric tag ID in decimal or hexadecimal or tag name")
-    tagID.completer = _cliTaginfoCompleter
+    tagID.completer = proptagCompleter
 
 
 @Cli.command("taginfo", _setupTaginfo, help="Print information about proptags")
