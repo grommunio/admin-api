@@ -21,8 +21,19 @@ try:
         jwtPubkey = file.read()
 except Exception:
     import logging
-    logger.error("Could not load JWT RSA keys ('{}', '{}'), authentication will not work".format(_priFile, _pubFile))
-    jwtPrivkey = jwtPubkey = None
+    logger.warn("Could not load JWT RSA keys ('{}', '{}'), generating new...".format(_priFile, _pubFile))
+    from cryptography.hazmat.primitives import asymmetric, serialization as out
+    import os
+    jwtPrivkey = asymmetric.rsa.generate_private_key(65537, Config["security"]["rsaKeySize"])
+    jwtPubkey = jwtPrivkey.public_key()
+    try:
+        with open(_priFile, "wb") as priFile, open(_pubFile, "wb") as pubFile:
+            priFile.write(jwtPrivkey.private_bytes(out.Encoding.PEM, out.PrivateFormat.TraditionalOpenSSL, out.NoEncryption()))
+            pubFile.write(jwtPubkey.public_bytes(out.Encoding.PEM, out.PublicFormat.PKCS1))
+        os.chmod(_priFile, 0o600)
+    except Exception as err:
+        logger.info("An exception occured ("+type(err).__name__+"): "+" - ".join(str(arg) for arg in err.args))
+        logger.error("Failed to save JWT RSA keys, logins will not persist across API restarts")
 
 
 def getUser():

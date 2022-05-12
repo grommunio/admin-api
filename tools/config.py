@@ -83,7 +83,8 @@ def _defaultConfig():
             },
         "security": {
             "jwtPrivateKeyFile": "/etc/grommunio-admin-api/jwt-privkey.pem",
-            "jwtPublicKeyFile": "/etc/grommunio-admin-api/jwt-pubkey.pem"
+            "jwtPublicKeyFile": "/etc/grommunio-admin-api/jwt-pubkey.pem",
+            "rsaKeySize": 4096,
             },
         "mconf": {
           "ldapPath": "/etc/gromox/ldap_adaptor.cfg",
