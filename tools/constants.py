@@ -9,9 +9,9 @@ class _ReverseLookup:
     @classmethod
     def lookup(cls, value, default=None):
         if not hasattr(cls, "_lookup"):
-            import collections
+            from collections.abc import Hashable
             cls._lookup = {getattr(cls, key): key for key in dir(cls) if not key.startswith("_")
-                           if isinstance(getattr(cls, key), collections.Hashable)}
+                           if isinstance(getattr(cls, key), Hashable)}
         return cls._lookup.get(value, default)
 
     @classmethod
