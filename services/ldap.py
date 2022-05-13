@@ -57,6 +57,8 @@ class LdapService:
             raise ServiceDisabledError("Service disabled by configuration")
         try:
             self.conn = self.testConnection(self._config)
+        except ldap3.core.exceptions.LDAPInvalidDnError:
+            raise ServiceUnavailableError("Invalid base DN")
         except Exception as err:
             msg = " - ".join(str(arg) for arg in err.args) or type(err).__name__
             raise ServiceUnavailableError("Failed to connect to server: "+msg)
