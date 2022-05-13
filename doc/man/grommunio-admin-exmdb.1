@@ -28,14 +28,28 @@ grommunio-admin exmdb \[em] User or domain store management
 \f[B]grommunio-admin\f[R] \f[B]exmdb\f[R] \f[I]TARGET\f[R]
 \f[I]folder\f[R] \f[I]revoke\f[R] [\f[I]-r\f[R]] \f[I]ID\f[R]
 \f[I]USERNAME\f[R] [\f[I]PERMISSION\f[R] \&...]
+.PD 0
+.P
+.PD
+\f[B]grommunio-admin\f[R] \f[B]exmdb\f[R] \f[I]TARGET\f[R]
+\f[I]store\f[R] \f[I]delete\f[R] \f[I]PROPSPEC\f[R] [\f[I]PROPSPEC\f[R]
+\&...]
+.PD 0
+.P
+.PD
+\f[B]grommunio-admin\f[R] \f[B]exmdb\f[R] \f[I]TARGET\f[R]
+\f[I]store\f[R] \f[I]get\f[R] [\f[I]PROPSPEC\f[R] ...]
+.PD 0
+.P
+.PD
+\f[B]grommunio-admin\f[R] \f[B]exmdb\f[R] \f[I]TARGET\f[R]
+\f[I]store\f[R] \f[I]set\f[R] [\f[I]PROPSPEC=VALUE\f[R] ...]
 .SH Description
 .PP
 Subcommand to access and modify a domain\[aq]s or user\[aq]s store via
 exmdb protocol.
-.PP
-Currently only basic operations on folders are available but support for
-more functions is planned for the future.
 .SH Commands
+.SS Folder subcommand
 .TP
 \f[B]\f[CB]find\f[B]\f[R]
 Find folders with given name
@@ -50,6 +64,16 @@ If no folder ID is specified, list subfolders of root folder.
 \f[B]\f[CB]revoke\f[B]\f[R]
 Revoke permissions on this folder from a user.
 If not permission is specified, revoke all permissions.
+.SS Store subcommand
+.TP
+\f[B]\f[CB]delete\f[B]\f[R]
+Delete properties
+.TP
+\f[B]\f[CB]get\f[B]\f[R]
+Get store properties
+.TP
+\f[B]\f[CB]set\f[B]\f[R]
+Set store properties
 .SH Options
 .TP
 \f[B]\f[CB]ID\f[B]\f[R]
@@ -58,8 +82,11 @@ ID of the folder
 \f[B]\f[CB]NAME\f[B]\f[R]
 Name of the folder
 .TP
-\f[B]\f[CB]PERMSSION\f[B]\f[R]
+\f[B]\f[CB]PERMISSION\f[B]\f[R]
 Name or numeric value of the permission
+.TP
+\f[B]\f[CB]PROPSPEC\f[B]\f[R]
+Name or numeric value of the property
 .TP
 \f[B]\f[CB]TARGET\f[B]\f[R]
 Name of the domain or e-mail address of the user

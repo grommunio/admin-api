@@ -16,17 +16,20 @@ Synopsis
 | **grommunio-admin** **exmdb** *TARGET* *folder* *list* [*-r*] [*ID*]
 | **grommunio-admin** **exmdb** *TARGET* *folder* *revoke* [*-r*] *ID*
   *USERNAME* [*PERMISSION* …]
+| **grommunio-admin** **exmdb** *TARGET* *store* *delete* *PROPSPEC* [*PROPSPEC*  ...]
+| **grommunio-admin** **exmdb** *TARGET* *store* *get* [*PROPSPEC* ...]
+| **grommunio-admin** **exmdb** *TARGET* *store* *set* [*PROPSPEC=VALUE* ...]
 
 Description
 ===========
 
 Subcommand to access and modify a domain's or user's store via exmdb protocol.
 
-Currently only basic operations on folders are available but support for more
-functions is planned for the future.
-
 Commands
 ========
+
+Folder subcommand
+-----------------
 
 ``find``
    Find folders with given name
@@ -39,14 +42,26 @@ Commands
    Revoke permissions on this folder from a user. If not permission is
    specified, revoke all permissions.
 
+Store subcommand
+----------------
+
+``delete``
+   Delete properties
+``get``
+   Get store properties
+``set``
+   Set store properties
+
 Options
 =======
 ``ID``
    ID of the folder
 ``NAME``
    Name of the folder
-``PERMSSION``
+``PERMISSION``
    Name or numeric value of the permission
+``PROPSPEC``
+   Name or numeric value of the property
 ``TARGET``
    Name of the domain or e-mail address of the user
 ``USERNAME``
