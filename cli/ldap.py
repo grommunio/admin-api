@@ -238,7 +238,7 @@ def cliLdapDownsync(args):
         return ERR_GENERIC if error else SUCCESS
     elif args.complete:
         with Service("ldap") as ldap:
-            candidates = ldap.searchUsers(None, limit=None)
+            candidates = ldap.searchUsers(None, limit=None, pageSize=args.page_size)
         if len(candidates) == 0:
             cli.print(cli.col("No LDAP users found.", "yellow"))
             return SUCCESS
@@ -501,6 +501,7 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     downsync.add_argument("-c", "--complete", action="store_true", help="Import/update all users in the ldap tree")
     downsync.add_argument("-f", "--force", action="store_true", help="Force synchronization of unassociated users")
     downsync.add_argument("-l", "--lang", help="Default language for imported users")
+    downsync.add_argument("-p", "--page-size", type=int, default=1000, help="Page size when downloading users")
     downsync.add_argument("-y", "--yes", action="store_true", help="Proceed automatically if target is unambiguous")
     dump = sub.add_parser("dump", help="Dump LDAP object")
     dump.set_defaults(_handle=cliLdapDump)

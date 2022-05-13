@@ -12,8 +12,8 @@ Synopsis
 
 | **grommunio-admin ldap** **check** [*-r* [*-m*] [*-y*]]
 | **grommunio-admin ldap** **configure**
-| **grommunio-admin ldap** **downsync** [*-a*] [*-c*] [*-f*] [*-l*] [*-y*]
-  [*USER* [*USER* …]]
+| **grommunio-admin ldap** **downsync** [*-a*] [*-c*] [*-f*] [*-l*] [*-p*]
+  [*-y*] [*USER* [*USER* …]]
 | **grommunio-admin ldap** **dump** *USER*
 | **grommunio-admin ldap** **info**
 | **grommunio-admin ldap** **reload**
@@ -57,6 +57,9 @@ Options
    Force update users that are linked to a different or no LDAP object
 ``-l``, ``--lang``
    Set language for imported users. Default is to not set any language.
+``-p``, ``--page-size``
+   Set batch size for paged search. Can be decreased when running into timeout
+   errors with slow LDAP servers. Default is 1000.
 ``-m``, ``--remove-maildirs``
    Also remove user files from disk
 ``-n``, ``--max-results``

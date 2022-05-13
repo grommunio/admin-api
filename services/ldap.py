@@ -176,7 +176,7 @@ class LdapService:
     def _sbase(self):
         return self._searchBase(self._config)
 
-    def _search(self, *args, **kwargs):
+    def _search(self, *args, limit=25, **kwargs):
         """Perform async search query.
 
         Parameters
@@ -191,9 +191,19 @@ class LdapService:
         list
             Search result list
         """
-        results = self.conn.get_response(self.conn.search(*args, **kwargs))[0]
-        return [result for result in results
-                if "attributes" in result and self._userComplete(result["attributes"], (self._config["users"]["username"],))]
+        def complete(result):
+            return "attributes" in result and self._userComplete(result["attributes"], (self._config["users"]["username"],))
+
+        if limit:
+            kwargs["paged_size"] = min(limit, kwargs.get("paged_size") or limit)
+        results, control = self.conn.get_response(self.conn.search(*args, **kwargs))
+        results = [result for result in results if complete(result)]
+        cookie = control.get("controls", {}).get("1.2.840.113556.1.4.319", {}).get("value", {}).get("cookie")
+        while cookie and (not limit or len(results) < limit):
+            response = self.conn.get_response(self.conn.search(*args, **kwargs, paged_cookie=cookie))
+            results += [result for result in response[0] if complete(result)]
+            cookie = response[1].get("controls", {}).get("1.2.840.113556.1.4.319", {}).get("value", {}).get("cookie")
+        return results
 
     @classmethod
     def _searchBase(cls, conf):
@@ -394,7 +404,7 @@ class LdapService:
             return None
         return self._asUser(response[0])
 
-    def searchUsers(self, query, domains=None, limit=25):
+    def searchUsers(self, query, domains=None, limit=25, pageSize=1000):
         """Search for ldap users matchig the query.
 
         Parameters
@@ -403,6 +413,10 @@ class LdapService:
             String to match
         domains : list of str, optional
             Optional domain filter. The default is None.
+        limit : int, optional
+            Maximum number of results to return or None for no limit. Default is 25.
+        pageSize : int, optional
+            Perform a paged search with given page size. Default is None.
 
         Returns
         -------
@@ -419,7 +433,8 @@ class LdapService:
         response = self._search(self._sbase,
                                 self._searchFilters(query, self._config["users"], domains),
                                 attributes=[IDattr, name, email],
-                                paged_size=limit)
+                                paged_size=pageSize,
+                                limit=limit)
         return exact+[self._asUser(result) for result in response]
 
     @classmethod
