@@ -339,9 +339,11 @@ class LdapService:
         if self._config["users"].get("aliases"):
             aliasattr = self._config["users"]["aliases"]
             if ldapuser.get(aliasattr) is not None:
+                from tools import formats
                 aliases = ldapuser[aliasattr]
                 aliases = aliases if isinstance(aliases, list) else [aliases]
-                userdata["aliases"] += [alias[5:] if alias.lower().startswith("smtp:") else alias for alias in aliases]
+                aliases = [alias[5:] if alias.lower().startswith("smtp:") else alias for alias in aliases]
+                userdata["aliases"] += [alias for alias in aliases if formats.email.match(alias)]
         return userdata
 
     def dumpUser(self, ID):
