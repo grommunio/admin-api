@@ -287,7 +287,7 @@ class TasQServer:
             raise ValueError("Cannot create control commands")
         if inline or (inline is None and not cls.running()):
             return Worker().dispatch(Task(0, command, params))
-        elif cls._online and synced:
+        elif cls.online() and synced:
             from orm.misc import DB, TasQ
             dbtask = TasQ(dict(command=command, params=params))
             dbtask.state = Task.LOADED if cls.running() else Task.QUEUED
@@ -396,6 +396,22 @@ class TasQServer:
         logger.info("TasQ server stopped")
 
     @classmethod
+    def online(cls):
+        """Try to enable online mode.
+
+        Has no effect if online mode is already enabled or explicitely disabled.
+
+        Returns
+        -------
+        bool
+            Whether the server is now in online mode
+        """
+        if cls._online is not None:
+            return cls._online
+        cls._online = True
+        return cls.pull() is not None
+
+    @classmethod
     def pull(cls):
         """Import queued tasks from the database.
 
@@ -406,9 +422,9 @@ class TasQServer:
         from orm import DB
         from datetime import datetime
         if DB is None or not DB.minVersion(102):
-            cls._online = False
+            cls._online = None
             logger.warning("Database unavailable or schema version too old (n102 required) - falling back to offline mode.")
-            return
+            return None
         from orm.misc import TasQ
         waiting = TasQ.query.filter(TasQ.state == Task.QUEUED).with_for_update().all()
         for w in waiting:

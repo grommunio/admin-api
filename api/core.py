@@ -127,7 +127,7 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic", service=None):
                 else:
                     API.logger.warn("Request validation failed: {}".format(errors))
 
-            if requireDB:
+            if requireDB or requireAuth:
                 if DB is None:
                     return jsonify(message="Database not available."), 503
                 if DB.requireReload():
