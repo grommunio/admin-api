@@ -79,6 +79,7 @@ def _transformLdap(conf):
     _addIfDef(LDAP["connection"], "bindUser", conf, "ldap_bind_user")
     _addIfDef(LDAP["connection"], "bindPass", conf, "ldap_bind_pass")
     _addIfDef(LDAP["connection"], "starttls", conf, "ldap_start_tls", type=lambda x: x.lower() in ("true", "yes", "1"))
+    _addIfDef(LDAP["connection"], "connections", conf, "data_connections", type=int)
     _addIfDef(LDAP, "baseDn", conf, "ldap_search_base")
     _addIfDef(LDAP, "objectID", conf, "ldap_object_id")
     _addIfDef(LDAP["users"], "username", conf, "ldap_mail_attr")
@@ -103,6 +104,7 @@ def _flattenLdap(conf):
         _addIfDef(LDAP, "ldap_bind_user", conf["connection"], "bindUser")
         _addIfDef(LDAP, "ldap_bind_pass", conf["connection"], "bindPass")
         _addIfDef(LDAP, "ldap_start_tls", conf["connection"], "starttls")
+        _addIfDef(LDAP, "data_connections", conf["connection"], "connections")
     _addIfDef(LDAP, "ldap_search_base", conf, "baseDn")
     _addIfDef(LDAP, "ldap_object_id", conf, "objectID")
     if "users" in conf:

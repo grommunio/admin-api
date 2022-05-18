@@ -458,8 +458,10 @@ class LdapService:
     def testConnection(cls, config, active=True):
         servers = [s[:-1] if s.endswith("/") else s for s in config["connection"]["server"].split()]
         pool = servers[0] if len(servers) == 1 else ldap3.ServerPool(servers, "FIRST", active=1)
+        connections = config["connection"].get("connections", 4)
+        # pool_lifetime is not required but improves performance. 360 is the slapd default.
         conn = ldap3.Connection(pool, user=config["connection"].get("bindUser"), password=config["connection"].get("bindPass"),
-                                client_strategy=ldap3.ASYNC, pool_keepalive=120)
+                                client_strategy=ldap3.REUSABLE, pool_size=connections, pool_lifetime=360)
         if config["connection"].get("starttls") and not conn.start_tls():
             logger.warning("Failed to initiate StartTLS connection")
         if not conn.bind():
