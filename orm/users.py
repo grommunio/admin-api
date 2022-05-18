@@ -174,7 +174,8 @@ class Users(DataModel, DB.Base, NotifyTable):
                       {"attr": "chat", "flags": "patch"},
                       {"attr": "chatAdmin", "flags": "patch"},
                       RefProp("homeserver", "homeserverID", flags="patch", filter="set", qopt=selectinload)),
-                     ({"attr": "password", "flags": "init, hidden"},))
+                     ({"attr": "password", "flags": "init, hidden"},
+                      Text("maildir", flags="hidden"),))
 
     USER_PRIVILEGE_POP3_IMAP = 1 << 0
     USER_PRIVILEGE_SMTP = 1 << 1

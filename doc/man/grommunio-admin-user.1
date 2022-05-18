@@ -18,7 +18,7 @@ grommunio-admin user \[em] User management
 .P
 .PD
 \f[B]grommunio-admin user\f[R] \f[B]list\f[R] [\f[I]-f
-FIELD=<value>\f[R]] [\f[I]-s FIELD\f[R]] [\f[I]USERSPEC\f[R]]
+ATTRIBUTE=<value>\f[R]] [\f[I]-s FIELD\f[R]] [\f[I]USERSPEC\f[R]]
 .PD 0
 .P
 .PD
@@ -29,8 +29,15 @@ PROPSPEC\f[R]] \f[I]USERSPEC\f[R]
 .PD 0
 .P
 .PD
+\f[B]grommunio-admin user\f[R] \f[B]query\f[R] [\f[I]-f
+ATTRIBUTE=<value>\f[R]] [\f[I]--format FORMAT\f[R]] [\f[I]--separator
+SEPARATOR\f[R]][\f[I]-s FIELD\f[R]] \f[I]ATTRIBUTE\f[R]
+[\f[I]ATTRIBUTE\f[R] \&...]
+.PD 0
+.P
+.PD
 \f[B]grommunio-admin user\f[R] \f[B]show\f[R] [\f[I]-f
-FIELD=<value>\f[R]] [\f[I]-s FIELD\f[R]] \f[I]USERSPEC\f[R]
+ATTRIBUTE=<value>\f[R]] [\f[I]-s FIELD\f[R]] \f[I]USERSPEC\f[R]
 .SH Description
 .PP
 Subcommand to show and delete users.
@@ -39,15 +46,39 @@ No functionality for adding or modifying users is implemented at the
 moment.
 .SH Commands
 .TP
+\f[B]\f[CB]create\f[B]\f[R]
+Create a new user
+.TP
 \f[B]\f[CB]delete\f[B]\f[R]
 Delete user
 .TP
 \f[B]\f[CB]list\f[B]\f[R]
-List users
+List users \f[B]Deprecated.\f[R] Use query instead.
+.TP
+\f[B]\f[CB]modify\f[B]\f[R]
+Modify a user
+.TP
+\f[B]\f[CB]query\f[B]\f[R]
+Query user attributes
 .TP
 \f[B]\f[CB]show\f[B]\f[R]
 Show detailed information about a user
 .SH Options
+.TP
+\f[B]\f[CB]ATTRIBUTE\f[B]\f[R]
+Attributes to query.
+Available attributes are \f[I]ID\f[R], \f[I]aliases\f[R],
+\f[I]changePassword\f[R], \f[I]chat\f[R], \f[I]chatAdmin\f[R],
+\f[I]domainID\f[R], \f[I]forward\f[R], \f[I]homeserverID\f[R],
+\f[I]lang\f[R], \f[I]ldapID\f[R], \f[I]maildir\f[R],
+\f[I]pop3_imap\f[R], \f[I]privArchive\f[R], \f[I]privChat\f[R],
+\f[I]privFiles\f[R], \f[I]privVideo\f[R], \f[I]publicAddress\f[R],
+\f[I]smtp\f[R], \f[I]status\f[R] and \f[I]username\f[R].
+.RS
+.PP
+If no attributes are specified, \f[I]ID\f[R], \f[I]username\f[R] and
+\f[I]status\f[R] are shown.
+.RE
 .TP
 \f[B]\f[CB]USERNAME\f[B]\f[R]
 E-Mail address of the user
@@ -58,6 +89,12 @@ User name prefix or user ID
 \f[B]\f[CB]-f FIELD=<value>\f[B]\f[R], \f[B]\f[CB]--filter FIELD=<value>\f[B]\f[R]
 Filter expression in the form of \[oq]field=value\[cq].
 Can be specified multiple times to refine filter
+.TP
+\f[B]\f[CB]--format FORMAT\f[B]\f[R]
+Output format.
+Can be one of \f[I]csv\f[R], \f[I]json-flat\f[R],
+\f[I]json-structured\f[R] and \f[I]pretty\f[R].
+Default is \f[I]pretty\f[R].
 .TP
 \f[B]\f[CB]-k\f[B]\f[R], \f[B]\f[CB]--keep-files\f[B]\f[R]
 Do not delete user files from disk
@@ -76,6 +113,12 @@ Remove property from user (can be given multiple times)
 .TP
 \f[B]\f[CB]--remove-storeprop PROPSPEC\f[B]\f[R]
 Remove property from user\[aq]s store (can be given multiple times)
+.TP
+\f[B]\f[CB]--separator SEPARATOR\f[B]\f[R]
+String to use for column separation (\f[I]csv\f[R] and \f[I]pretty\f[R]
+only).
+Must have length 1 if format is \f[I]csv\f[R].
+Default is \[dq],\[dq] for \f[I]csv\f[R] and \[dq] \[dq] for pretty.
 .TP
 \f[B]\f[CB]-s FIELD\f[B]\f[R], \f[B]\f[CB]--sort FIELD\f[B]\f[R]
 Sort by field.

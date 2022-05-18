@@ -336,7 +336,7 @@ class DataModel:
         """
         return self.todict(2, **kwargs)
 
-    def todict(self, verbosity, exclude=set()):
+    def todict(self, spec, exclude=set()):
         """Create dictionary representation of the object.
 
         Parameters
@@ -352,11 +352,16 @@ class DataModel:
             Dictionary representation
         """
         self._init()
-        return {prop.key: prop.value(self) for prop in self._meta.props(verbosity, lambda x: x.proxy is None)
-                if "hidden" not in prop.flags and prop.attr not in exclude}
+        if isinstance(spec, int):
+            propsel = lambda prop: "hidden" not in prop.flags and prop.attr not in exclude and prop.proxy is None
+        else:
+            sspec = set(spec)
+            propsel = lambda prop: prop.attr in sspec and prop.attr not in exclude and prop.proxy is None
+            spec = None
+        return {prop.key: prop.value(self) for prop in self._meta.props(spec, propsel)}
 
     @classmethod
-    def optimize_query(cls, query, verbosity):
+    def optimize_query(cls, query, spec):
         """Optimize query by eager loading relationships.
 
         Parameters
@@ -365,8 +370,8 @@ class DataModel:
             CLass inheriting from DataModel
         query : SQLAlchemy Query
             Query to add eager loading options to
-        verbosity : int
-            Level of detail
+        spec : int or iterable
+            Level of detail or list of attribute names to eager load
 
         Returns
         -------
@@ -375,16 +380,21 @@ class DataModel:
 
         """
         cls._init()
-        return query.options(prop.qopt(prop.value(cls, "raw"))
-                             for prop in cls._meta.props(verbosity, lambda prop: "ref" in prop.flags))
+        if isinstance(spec, int):
+            propsel = lambda prop: "ref" in prop.flags
+        else:
+            sspec = set(spec)
+            propsel = lambda prop: "ref" in prop.flags and prop.attr in sspec
+            spec = None
+        return query.options(prop.qopt(prop.value(cls, "raw")) for prop in cls._meta.props(spec, propsel))
 
     @classmethod
-    def optimized_query(cls, verbosity):
+    def optimized_query(cls, spec):
         """Generate an optimized query.
 
         See `optimize_query` for more information.
         """
-        return cls.optimize_query(cls.query, verbosity)
+        return cls.optimize_query(cls.query, spec)
 
     def fromdict(self, patches, *args, **kwargs):
         """Update object from dictionary representation.

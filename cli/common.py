@@ -150,7 +150,7 @@ class Table:
             Text to display when table does not contain data. The default is None.
         """
         self.data = [[self._styled(cell) for cell in row] for row in data] if data else None
-        self.header = [self._styled(col, "c", attrs=["underline"]) for col in header] if header else None
+        self.header = [self._styled(col, "l", attrs=["underline"]) for col in header] if header else None
         self.empty = empty
         if not (header or data):
             return
@@ -158,8 +158,9 @@ class Table:
         head = self.header or self.data[0]
         self.columns = len(head)
         self.colwidth = tuple(col.width for col in head)
-        for line in self.data:
-            self.colwidth = tuple(max(self.colwidth[i], line[i].width) for i in range(self.columns))
+        if self.data:
+            for line in self.data:
+                self.colwidth = tuple(max(self.colwidth[i], line[i].width) for i in range(self.columns))
 
     @classmethod
     def _styled(cls, data, *args, **kwargs):
@@ -201,9 +202,10 @@ class Table:
         cli : Cli
             Cli providing printing functionality.
         """
-        if not (self.header or self.data):
-            return cli.print(self.empty) if self.empty is not None else None
+        if not (self.header or self.data) and self.empty:
+            cli.print(self.empty)
         if self.header:
             self.printline(cli, self.header)
-        for line in self.data:
-            self.printline(cli, line)
+        if self.data:
+            for line in self.data:
+                self.printline(cli, line)

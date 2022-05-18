@@ -9,12 +9,17 @@ from argparse import ArgumentParser
 
 _statusMap = {0: "active", 1: "suspended", 2: "out-of-date", 3: "deleted"}
 _statusColor = {0: "green", 1: "yellow", 2: "yellow", 3: "red"}
+_userAttributes = ("ID", "aliases", "changePassword", "chat", "chatAdmin", "domainID", "forward", "homeserverID", "lang",
+                   "ldapID", "maildir", "pop3_imap", "privArchive", "privChat", "privFiles", "privVideo", "publicAddress",
+                   "smtp", "status", "username")
 
 
 def _mkUserQuery(args):
     from .common import userFilter
     from orm.users import Users
-    query = Users.query.filter(userFilter(args.userspec))
+    query = Users.query
+    if "userspec" in args:
+        query = query.filter(userFilter(args.userspec))
     if "filter" in args and args.filter is not None:
         query = Users.autofilter(query, {f.split("=", 1)[0]: f.split("=", 1)[1] for f in args.filter if "=" in f})
     if "sort" in args and args.sort is not None:
@@ -167,6 +172,8 @@ def cliUserShow(args):
 def cliUserList(args):
     cli = args._cli
     cli.require("DB")
+    cli.print(cli.col("The 'user list' command is deprecated and may be removed in the future. Use 'user query' instead.\n",
+                      "yellow"))
     users = _mkUserQuery(args).all()
     if len(users) == 0:
         cli.print(cli.col("No users found.", "yellow"))
@@ -290,6 +297,46 @@ def cliUserModify(args):
     _dumpUser(cli, user)
 
 
+def cliUserQuery(args):
+    def mkUsername(value):
+        if "@" not in value:
+            return cli.col(value, attrs=["bold"])
+        username, domain = value.split("@", 1)
+        return cli.col(username, attrs=["bold"])+"@"+domain
+
+    cli = args._cli
+    cli.require("DB")
+
+    attrTf = {"username": mkUsername,
+              "status": lambda v: cli.col(str(v)+"/", attrs=["dark"])+_mkStatus(cli, v)}\
+        if args.format == "pretty" else {}
+
+    from .common import Table
+    from orm.users import Users
+    args.attributes = args.attributes or ("ID", "username", "status")
+    query = _mkUserQuery(args)
+    query = Users.optimize_query(query, args.attributes)
+    users = [user.todict(args.attributes) for user in query]
+    data = [[attrTf.get(attr, lambda x: x)(user.get(attr)) for attr in args.attributes] for user in users]
+    if args.format == "csv":
+        import csv
+        writer = csv.DictWriter(cli.stdout, fieldnames=args.attributes, delimiter=args.separator or ",")
+        writer.writeheader()
+        for row in data:
+            writer.writerow({name: value for name, value in zip(args.attributes, row)})
+    elif args.format == "json-flat":
+        import json
+        cli.print(json.dumps(data, default=lambda x: str(x), separators=(",", ":")))
+    elif args.format == "json-structured":
+        import json
+        data = [{name: value for name, value in zip(args.attributes, row)} for row in data]
+        cli.print(json.dumps(data))
+    else:
+        header = None if len(args.attributes) <= 1 and len(data) <= 1 else args.attributes
+        Table(data, header=header, empty=cli.col("(no results)", attrs=["dark"]), colsep=args.separator or "   ")\
+            .print(cli)
+
+
 def _cliUserspecCompleter(prefix, **kwargs):
     from orm.users import Users
     return (user.username for user in Users.query.filter(Users.username.ilike(prefix+"%"))
@@ -359,6 +406,16 @@ def _cliAddUserAttributes(parser: ArgumentParser):
 
 
 def _setupCliUser(subp: ArgumentParser):
+    class AttrChoice:
+        def __contains__(self, value):
+            return value == [] or value in _userAttributes
+
+        def __getitem__(self, i):
+            return _userAttributes[i]
+
+        def __len__(self):
+            return len(_userAttributes)
+
     sub = subp.add_subparsers()
     create = sub.add_parser("create",  help="Create user")
     create.add_argument("username", help="E-Mail address of the user")
@@ -373,8 +430,8 @@ def _setupCliUser(subp: ArgumentParser):
     list = sub.add_parser("list", help="List users")
     list.set_defaults(_handle=cliUserList)
     list.add_argument("userspec", nargs="?", help="User ID or name prefix")
-    list.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
-    list.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
+    list.add_argument("-f", "--filter", action="append", help="Filter by attribute, e.g. -f ID=42")
+    list.add_argument("-s", "--sort", action="append", help="Sort by attribute, e.g. -s username,desc")
     modify = sub.add_parser("modify",  help="Modify user")
     modify.set_defaults(_handle=cliUserModify)
     modify.add_argument("userspec", help="User ID or name prefix").completer = _cliUserspecCompleter
@@ -383,11 +440,19 @@ def _setupCliUser(subp: ArgumentParser):
     modify.add_argument("--remove-alias", metavar="ALIAS", action="append", help="Remove alias")
     modify.add_argument("--remove-property", action="append", metavar="propspec", help="Remove property from user")
     modify.add_argument("--remove-storeprop", action="append", metavar="propspec", help="Remove property from user's store")
+    query = sub.add_parser("query", help="Query specific user attributes")
+    query.set_defaults(_handle=cliUserQuery)
+    query.add_argument("-f", "--filter", action="append", help="Filter by attribute, e.g. -f ID=42")
+    query.add_argument("--format", choices=("csv", "json-flat", "json-structured", "pretty"), help="Set output format",
+                       metavar="FORMAT", default="pretty")
+    query.add_argument("--separator", help="Set column separator")
+    query.add_argument("-s", "--sort", action="append", help="Sort by attribute, e.g. -s username,desc")
+    query.add_argument("attributes", nargs="*", choices=AttrChoice(), help="Attributes to query", metavar="ATTRIBUTE")
     show = sub.add_parser("show", help="Show detailed information about user")
     show.set_defaults(_handle=cliUserShow)
     show.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter
-    show.add_argument("-f", "--filter", nargs="*", help="Filter by attribute, e.g. -f ID=42")
-    show.add_argument("-s", "--sort", nargs="*", help="Sort by attribute, e.g. -s username,desc")
+    show.add_argument("-f", "--filter", action="append", help="Filter by attribute, e.g. -f ID=42")
+    show.add_argument("-s", "--sort", action="append", help="Sort by attribute, e.g. -s username,desc")
 
 
 @Cli.command("user", _setupCliUser, help="User management")
