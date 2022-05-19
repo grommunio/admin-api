@@ -30,6 +30,7 @@ def searchLdap(ldap):
         domainIDs = [int(ID) for ID in request.args["domain"].split(",") if DomainAdminROPermission(int(ID)) in permissions]
         if len(domainIDs) == 0:
             return jsonify(data=[])
+    limit = int(request.args.get("limit", 50))
     if SystemAdminPermission() in permissions:
         domainFilters = ()
     else:
@@ -39,7 +40,7 @@ def searchLdap(ldap):
         domainFilters = () if "*" in domainIDs else (Domains.ID.in_(domainIDs),)
     domainNames = [d[0] for d in Domains.query.filter(*domainFilters).with_entities(Domains.domainname).all()]\
         if len(domainFilters) else None
-    ldapusers = ldap.searchUsers(request.args["query"], domainNames)
+    ldapusers = ldap.searchUsers(request.args["query"], domainNames, limit=limit or None)
     return jsonify(data=[{"ID": ldap.escape_filter_chars(u.ID), "name": u.name, "email": u.email} for u in ldapusers])
 
 
