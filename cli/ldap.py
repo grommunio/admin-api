@@ -290,7 +290,7 @@ def cliLdapSearch(args):
     cli.require("LDAP")
     from services import Service
     with Service("ldap") as ldap:
-        matches = ldap.searchUsers(args.query, limit=args.max_results or None)
+        matches = ldap.searchUsers(args.query, limit=args.max_results or None, pageSize=args.page_size)
         if len(matches) == 0:
             cli.print(cli.col("No "+("matches" if args.query else "entries"), "yellow"))
             return ERR_NO_USER
@@ -513,8 +513,9 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     search = sub.add_parser("search", help="Search LDAP tree")
     search.set_defaults(_handle=cliLdapSearch)
     search.add_argument("query", nargs="?", help="Optional search query, omit to return all users")
-    search.add_argument("-n", "--max-results", type=int, default=25,
-                        help="Maximum number of results or 0 to disable limit (default: 25)")
+    search.add_argument("-n", "--max-results", type=int, default=0,
+                        help="Maximum number of results or 0 to disable limit (default: 0)")
+    search.add_argument("-p", "--page-size", type=int, default=1000, help="Page size when downloading users")
 
 
 @Cli.command("ldap", _cliLdapParserSetup, help="LDAP configuration, diagnostics and synchronization")

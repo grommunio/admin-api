@@ -17,7 +17,7 @@ grommunio-admin ldap \[em] LDAP tools
 .P
 .PD
 \f[B]grommunio-admin ldap\f[R] \f[B]downsync\f[R] [\f[I]-a\f[R]]
-[\f[I]-c\f[R]] [\f[I]-f\f[R]] [\f[I]-l\f[R]] [\f[I]-p\f[R]]
+[\f[I]-c\f[R]] [\f[I]-f\f[R]] [\f[I]-l\f[R]] [\f[I]-p PAGE_SIZE\f[R]]
 [\f[I]-y\f[R]] [\f[I]USER\f[R] [\f[I]USER\f[R] \&...]]
 .PD 0
 .P
@@ -35,7 +35,7 @@ grommunio-admin ldap \[em] LDAP tools
 .P
 .PD
 \f[B]grommunio-admin ldap\f[R] \f[B]search\f[R] [\f[I]-n
-MAX_RESULTS\f[R]] [\f[I]USER\f[R]]
+MAX_RESULTS\f[R]] [\f[I]-p PAGE_SIZE\f[R]] [\f[I]USER\f[R]]
 .SH Description
 .PP
 The grommunio admin ldap module provides functions for configuring and
@@ -82,7 +82,7 @@ Force update users that are linked to a different or no LDAP object
 Set language for imported users.
 Default is to not set any language.
 .TP
-\f[B]\f[CB]-p\f[B]\f[R], \f[B]\f[CB]--page-size\f[B]\f[R]
+\f[B]\f[CB]-p PAGE_SIZE\f[B]\f[R], \f[B]\f[CB]--page-size PAGE_SIZE\f[B]\f[R]
 Set batch size for paged search.
 Can be decreased when running into timeout errors with slow LDAP
 servers.
@@ -91,8 +91,10 @@ Default is 1000.
 \f[B]\f[CB]-m\f[B]\f[R], \f[B]\f[CB]--remove-maildirs\f[B]\f[R]
 Also remove user files from disk
 .TP
-\f[B]\f[CB]-n\f[B]\f[R], \f[B]\f[CB]--max-results\f[B]\f[R]
-Maximum number of results or 0 to diable limit (default 25)
+\f[B]\f[CB]-n MAX_RESULTS\f[B]\f[R], \f[B]\f[CB]--max-results MAX_RESULTS\f[B]\f[R]
+Maximum number of results or 0 to disable limit (default 0).
+Note that the actual number of results may exceed the limit due to
+paging and filtering.
 .TP
 \f[B]\f[CB]-r\f[B]\f[R], \f[B]\f[CB]--remove\f[B]\f[R]
 Remove imported users of which the linked LDAP object could not be found
