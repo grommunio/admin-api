@@ -61,7 +61,7 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
     offset = request.args.get("offset", "0")
     if len(offset) == 0:
         offset = None
-    verbosity = request.args.get("level", 1)
+    verbosity = int(request.args.get("level", 1))
     query = (Model.optimized_query(verbosity) if query is None else Model.optimize_query(query, verbosity)).filter(*filters)
     if autosort:
         query = Model.autosort(query, request.args.getlist("sort"))
