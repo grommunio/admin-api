@@ -202,9 +202,11 @@ class LdapService:
         results = [result for result in results if complete(result)]
         cookie = control.get("controls", {}).get("1.2.840.113556.1.4.319", {}).get("value", {}).get("cookie")
         while cookie and (not limit or len(results) < limit):
-            response = self.conn.get_response(self.conn.search(*args, **kwargs, paged_cookie=cookie))
-            results += [result for result in response[0] if complete(result)]
-            cookie = response[1].get("controls", {}).get("1.2.840.113556.1.4.319", {}).get("value", {}).get("cookie")
+            response, control = self.conn.get_response(self.conn.search(*args, **kwargs, paged_cookie=cookie))
+            results += [result for result in response if complete(result)]
+            cookie = control.get("controls", {}).get("1.2.840.113556.1.4.319", {}).get("value", {}).get("cookie")
+        if limit:
+            return results[:limit]
         return results
 
     @classmethod
