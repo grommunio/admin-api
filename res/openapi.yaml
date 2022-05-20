@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.7.1
+  version: 1.7.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -84,6 +84,9 @@ paths:
                   grommunioAuthJwt:
                     type: string
                     description: API access token
+                  csrf:
+                    type: string
+                    description: CSRF token
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -127,6 +130,8 @@ paths:
       tags:
         - Misc
         - Service
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
       requestBody:
         content:
           application/json:
@@ -226,6 +231,7 @@ paths:
         - JWTCookie: []
         - {}
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/username'
         - $ref: '#/components/parameters/devices'
       requestBody:
@@ -433,6 +439,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/systemdUnit'
         - name: action
           description: Signal to send
@@ -541,6 +548,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/dbConfService'
       requestBody:
         content:
@@ -567,6 +575,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/dbConfService'
       responses:
         '200':
@@ -613,6 +622,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/dbConfService'
         - $ref: '#/components/parameters/dbConfFile'
       requestBody:
@@ -639,6 +649,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/dbConfService'
         - $ref: '#/components/parameters/dbConfFile'
       requestBody:
@@ -668,6 +679,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/dbConfService'
         - $ref: '#/components/parameters/dbConfFile'
       responses:
@@ -773,6 +785,7 @@ paths:
             schema:
               $ref: '#/components/schemas/domainWrite'
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - name: createRole
           description: Whether to automatically create a domain admin role for the new domain
           in: query
@@ -825,6 +838,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
       requestBody:
         content:
@@ -854,6 +868,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - name: purge
           in: query
@@ -980,6 +995,8 @@ paths:
         - System Admin/Roles
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
       requestBody:
         content:
           application/json:
@@ -1031,6 +1048,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/ID'
       requestBody:
         content:
@@ -1059,6 +1077,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/ID'
       responses:
         '200':
@@ -1098,6 +1117,8 @@ paths:
         - System Admin/License
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
       responses:
         '200':
           description: License updated
@@ -1356,6 +1377,8 @@ paths:
         - Misc
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
       requestBody:
         required: true
         content:
@@ -1579,6 +1602,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
       requestBody:
         content:
@@ -1632,6 +1656,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
       requestBody:
@@ -1661,6 +1686,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
         - name: deleteFiles
@@ -1719,6 +1745,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
       requestBody:
@@ -1774,6 +1801,7 @@ paths:
       tags:
        - Domain Admin/Users
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
       requestBody:
@@ -1814,6 +1842,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/propnames'
@@ -1889,6 +1918,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/deviceID'
@@ -1912,6 +1942,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/deviceID'
@@ -1935,6 +1966,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/deviceID'
@@ -1967,6 +1999,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/deviceID'
@@ -2018,6 +2051,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
       requestBody:
@@ -2047,6 +2081,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
       requestBody:
@@ -2080,6 +2115,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/userID'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/username'
@@ -2104,6 +2140,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/userID'
       requestBody:
@@ -2136,6 +2173,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/userID'
         - name: ID
@@ -2197,6 +2235,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/userID'
       requestBody:
@@ -2298,6 +2337,7 @@ paths:
     post:
       summary: Create new mailing list
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
       tags:
        - Domain Admin/MLists
@@ -2353,6 +2393,7 @@ paths:
     patch:
       summary: Update mailing list
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
       tags:
@@ -2382,6 +2423,7 @@ paths:
     delete:
       summary: Delete mailing list
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
       tags:
@@ -2456,6 +2498,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
       requestBody:
         content:
@@ -2484,6 +2527,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
       requestBody:
         content:
@@ -2575,6 +2619,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
       requestBody:
@@ -2604,6 +2649,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
       responses:
@@ -2650,6 +2696,7 @@ paths:
     post:
       summary: Create a new public folder
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
       tags:
         - Domain Admin/Folders
@@ -2719,6 +2766,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/folderID'
       requestBody:
@@ -2754,6 +2802,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/folderID'
         - name: clear
@@ -2820,6 +2869,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/folderID'
       requestBody:
@@ -2853,6 +2903,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/folderID'
         - name: memberID
@@ -2933,6 +2984,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - name: ID
           in: query
           required: true
@@ -3009,6 +3061,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - name: deleteFiles
           description: Delete user files on disk
           in: query
@@ -3049,6 +3102,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/completeSync'
         - $ref: '#/components/parameters/defaultLang'
         - $ref: '#/components/parameters/timeout'
@@ -3079,6 +3133,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/completeSync'
         - $ref: '#/components/parameters/defaultLang'
@@ -3172,6 +3227,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - name: force
           description: Update configutation even if validation failed
           in: query
@@ -3198,6 +3254,8 @@ paths:
         - System Admin/MConf
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
       responses:
         '200':
           description: LDAP deactivated
@@ -3237,6 +3295,8 @@ paths:
         - System Admin/MConf
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
       requestBody:
         content:
           application/json:
@@ -3324,6 +3384,8 @@ paths:
         - System Admin/Organizations
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
       requestBody:
         content:
           application/json:
@@ -3375,6 +3437,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/ID'
       requestBody:
         content:
@@ -3404,6 +3467,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/ID'
       responses:
         '200':
@@ -3480,6 +3544,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/homeserver'
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
       responses:
         '201':
           description: Server registered
@@ -3526,6 +3592,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/ID'
       requestBody:
         content:
@@ -3554,6 +3621,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/ID'
       responses:
         '200':
@@ -3618,6 +3686,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - name: procs
           in: query
           description: Override number of worker processes
@@ -3639,6 +3708,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - name: timeout
           in: query
           description: Duration in seconds to wait for worker processes to quit
@@ -3771,6 +3841,8 @@ paths:
         - Defaults
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
       requestBody:
         content:
           application/json:
@@ -3791,6 +3863,8 @@ paths:
         - Defaults
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
       requestBody:
         content:
           application/json:
@@ -3838,6 +3912,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
       requestBody:
         content:
@@ -3860,6 +3935,7 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
       requestBody:
         content:
@@ -3908,6 +3984,13 @@ components:
       in: cookie
       name: grommunioAuthJwt
   parameters:
+    CSRFToken:
+      name: X-Csrf-Token
+      in: header
+      description: CSRF Token
+      required: true
+      schema:
+        type: string
     ID:
       name: ID
       description: ID of the object

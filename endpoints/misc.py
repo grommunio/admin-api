@@ -8,7 +8,7 @@ import api
 import idna
 
 from api.core import API, secure
-from api.security import loginUser, refreshToken, getSecurityContext
+from api.security import loginUser, refreshToken, getSecurityContext, mkCSRF
 
 from orm import DB
 from services import Service
@@ -38,15 +38,15 @@ def getAbout(requireAuth=False):
 def login():
     if "user" not in request.form or "pass" not in request.form:
         refreshed = refreshToken()
-        if refreshed is not None:
-            return jsonify(grommunioAuthJwt=refreshed)
-        return jsonify(message="Incomplete login form"), 400
+        if refreshed is None:
+            return jsonify(message="Incomplete login form"), 400
+        return jsonify(grommunioAuthJwt=refreshed, csrf=mkCSRF(refreshed))
     success, val = loginUser(request.form["user"], request.form["pass"])
     if not success:
         API.logger.warning("Failed login attempt for user '{}' from '{}': {}"
                            .format(request.form["user"], request.remote_addr, val))
         return jsonify(message="Login failed", error=val), 401
-    return jsonify({"grommunioAuthJwt": val})
+    return jsonify(grommunioAuthJwt=val, csrf=mkCSRF(val))
 
 
 @API.route(api.BaseRoute+"/profile", methods=["GET"])

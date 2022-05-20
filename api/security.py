@@ -3,10 +3,12 @@
 # SPDX-FileCopyrightText: 2020 grommunio GmbH
 
 from flask import request
+import hashlib
 import logging
 import time
 import jwt
 
+from base64 import b64encode
 from services import Service
 from tools.config import Config
 
@@ -59,7 +61,7 @@ def getUser():
     request.auth["user"] = user
 
 
-def getSecurityContext(authLevel):
+def getSecurityContext(authLevel, validateCSRF=None):
     """Create security context for the request.
 
     Check for `jwt` cookie in the request and try to decode it. If token is valid, the claims are saved in `request.auth`
@@ -80,9 +82,17 @@ def getSecurityContext(authLevel):
     success, val = checkToken(cookie)
     if not success:
         return val
+    validateCSRF = not request.method == "GET" if validateCSRF is None else validateCSRF
+    if validateCSRF and not checkCSRF(cookie):
+        return "Invalid or missing CSRF token"
     request.auth["claims"] = val
     if authLevel == "user":
         return getUser()
+
+
+def mkCSRF(token):
+    """Generate CSRF token from JWT."""
+    return b64encode(hashlib.sha3_256(token.encode("ascii")).digest()).decode("ascii")
 
 
 def mkJWT(claims):
@@ -108,6 +118,23 @@ def mkJWT(claims):
     return token.decode("ascii") if isinstance(token, bytes) else token
 
 
+def checkCSRF(token):
+    """Check validity of CSRF token.
+
+    Parameters
+    ----------
+    token : str
+        JWT
+
+    Returns
+    -------
+    bool
+        True if a valid CSRF token is present, False otherwise
+
+    """
+    return request.headers.get("X-Csrf-Token") == mkCSRF(token)
+
+
 def checkToken(token):
     """Check jwt validity.
 
@@ -122,7 +149,6 @@ def checkToken(token):
         True if valid, false otherwise
     dict / str
         Dict containing the JWT claims if successful, error message otherwise
-
     """
     try:
         claims = jwt.decode(token, jwtPubkey, algorithms=["RS256"])
