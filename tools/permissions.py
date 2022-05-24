@@ -50,7 +50,7 @@ class Permissions:
         Returns
         -------
         str
-            String representaion or None if serializaiton fails
+            String representation or None if serializaiton fails
         """
         if permission is None:
             return None

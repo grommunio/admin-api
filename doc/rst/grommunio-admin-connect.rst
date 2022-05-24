@@ -30,7 +30,7 @@ Options
 ``HOST``
    Host to connect to, in the format *protocol*://*hostname*:*port*,
    where protocol is either http or https. If omitted, the protocol is
-   auto-detected, with https taking precendence over http. If no port is
+   auto-detected, with https taking precedence over http. If no port is
    specified, the default ports 8080 (http) and 8443 (https) are used.
    *hostname* can either be a resolvable host name, an IPv4 address or an
    IPv6 address in brackets. The default hostname is *localhost*.
@@ -69,7 +69,7 @@ When the *--redirect-fs* option is given, CLI initiated file operations
 are performed in an emulated filesystem and written files are sent back
 to the client.
 
-Note that this does only apply to files which are opend by CLI
+Note that this does only apply to files which are opened by CLI
 operations, while module-level operations (e.g. loading of
 configurations) are unaffected.
 

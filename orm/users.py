@@ -555,7 +555,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     def checkHomeserver(self, key, value, *args):
         from tools.config import Config
         if self.homeserverID and value != self.homeserverID and Config["options"].get("serverExplicitMount"):
-            raise ValueError("Cannot change homeserver with explicitely mounted home-directories")
+            raise ValueError("Cannot change homeserver with explicitly mounted home-directories")
         from .misc import Servers
         if value and Servers.query.filter(Servers.ID == value).count() == 0:
             raise ValueError("Invalid homeserver")

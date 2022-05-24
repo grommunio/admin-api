@@ -38,11 +38,11 @@ Description
   The service has been initialized successfully.
 
 ``UNAVAILABLE``
-  An error occurred that inidicates that the service is not available, but
+  An error occurred that indicates that the service is not available, but
   might become available in the future. No reload is necessary to reconnect.
 
 ``SUSPENDED``
-  Àn error occurred that inidicates that the service is not available, but
+  Àn error occurred that indicates that the service is not available, but
   might become available in the future. The service will be reloaded
   automatically on next usage.
 

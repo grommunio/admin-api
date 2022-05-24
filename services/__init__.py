@@ -9,7 +9,7 @@ class ServiceUnavailableError(Exception):
     """Service not available.
 
     Thrown to indicate that the service is not available,
-    either because initialization failed or an error occured
+    either because initialization failed or an error occurred
     that is typically caused by the external service being unreachable
     (in contrast to errors caused by e.g. faulty data).
 

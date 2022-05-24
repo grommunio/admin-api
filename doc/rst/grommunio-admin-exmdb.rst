@@ -76,7 +76,7 @@ Options
 Notes
 =====
 
-- Folder IDs and permssions can be given in decimal,
+- Folder IDs and permissions can be given in decimal,
   hexadecimal (`0x`-prefix), octal (`0`-prefix) or binary (`0b`-prefix).
 - Currently, the permission value echoed by the `grant` and `revoke` commands
   is the one sent to the server and might differ from the value actually

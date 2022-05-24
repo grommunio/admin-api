@@ -159,7 +159,7 @@ class Classes(DataModel, DB.Base):
     @validates("members")
     def validateMembers(self, key, member, *args):
         if self._filters is not None:
-            raise ValueError("Cannot explicitely add member to filter defined class")
+            raise ValueError("Cannot explicitly add member to filter defined class")
         return member
 
     @property

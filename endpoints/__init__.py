@@ -278,7 +278,7 @@ def defaultListHandler(Model, filters=(), order=None, result="response", automat
     """Handle operations on lists.
 
     Handles list (GET), create (POST) and batch delete (DELETE) requests for the given model.
-    Automatically delegates to appripriate default function according to request method.
+    Automatically delegates to appropriate default function according to request method.
 
     Parameters
     ----------
@@ -317,7 +317,7 @@ def defaultObjectHandler(Model, ID, name, filters=()):
     """Handle operations on objects.
 
     Handles detail (GET), update (PATCH) or delete (DELETE) requests.
-    Automatically delegates to appripriate default function according to request method.
+    Automatically delegates to appropriate default function according to request method.
 
     Parameters
     ----------

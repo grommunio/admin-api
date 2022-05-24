@@ -83,7 +83,7 @@ class GenericObject:
 def setDirectoryOwner(path, uid=None, gid=None):
     """Recursively set directory ownership of path.
 
-    If neither uid nor gid is set, the function returns immediatly without touching any files.
+    If neither uid nor gid is set, the function returns immediately without touching any files.
 
     Parameters
     ----------
@@ -110,7 +110,7 @@ def setDirectoryOwner(path, uid=None, gid=None):
 def setDirectoryPermission(path, mode):
     """Recursively set directory permissions of path.
 
-    If mode is not set, the function returns immediatly without touching any files.
+    If mode is not set, the function returns immediately without touching any files.
 
     Parameters
     ----------

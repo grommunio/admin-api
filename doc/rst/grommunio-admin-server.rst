@@ -25,7 +25,7 @@ Subcommand to show and manipulate server entries.
 
 If at least one server is specified, newly created users and domains will be
 associated with one of the servers. The destination server may be specified
-explicitely, or is chosen automatically according to `options.serverPolicy`.
+explicitly, or is chosen automatically according to `options.serverPolicy`.
 
 
 Commands

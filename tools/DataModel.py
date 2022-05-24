@@ -70,7 +70,7 @@ class DataModel:
             flags : str, optional
                 Comma separated list of flags. Recognized values are:
                     - ref: The attribute is a relationship that should be dereferenced
-                    - call: The attribude is a method that returns the actual value
+                    - call: The attribute is a method that returns the actual value
                     - sort: The attribute is available for sorting. Can also be set with _sortables_
                     - patch: The attribute can be set/updated
                     - init: Like `patch` but only if the current value is `None`
@@ -217,7 +217,7 @@ class DataModel:
             return self._alias or self.attr
 
         def writable(self, base):
-            """Check whether tha attribute is writable."""
+            """Check whether the attribute is writable."""
             return "patch" in self.flags or (self.value(base) is None and "init" in self.flags)
 
         def tf(self, value):
@@ -409,7 +409,7 @@ class DataModel:
         Raises
         ------
         InvalidAttributeError
-            An atrribute in the patch is not recognized
+            An attribute in the patch is not recognized
         MismatchROError
             An attribute that is not writable differs in the patch.
 
@@ -540,7 +540,7 @@ class DataModel:
         """Apply valid sort expressions to query.
 
         Valid sorts are determined by the `_sortables_` class property. Uses values stored in the "sort" key from args.
-        Values can be given in the format of "column" or "coloumn,order", where order can be one of "asc" or "desc". If no
+        Values can be given in the format of "column" or "column,order", where order can be one of "asc" or "desc". If no
         order is specified, "asc" is used by default.
         If more than one sort value is given, all values are applied to the query in order given.
 
@@ -556,7 +556,7 @@ class DataModel:
         Returns
         -------
         Query
-            Query with applied order by expresions
+            Query with applied order by expressions
         """
         cls._init()
         for s in sorts:
@@ -615,7 +615,7 @@ def _addFlags(kwargs, flags):
 
 
 def RefProp(attr, mask=None, target=None, **kwargs):
-    """Create a refernce property."""
+    """Create a reference property."""
     _addFlags(kwargs, "ref")
     return DataModel.Prop(attr, mask=mask, target=target, **kwargs)
 
@@ -651,7 +651,7 @@ def BoolP(attr, **kwargs):
 
 
 def Proxy(attr, proxy, **kwargs):
-    """Create a proxy propery."""
+    """Create a proxy property."""
     return DataModel.Prop(attr, target=attr, proxy=proxy, **kwargs)
 
 

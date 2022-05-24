@@ -77,7 +77,7 @@ Options
 ``-v``, ``--verbose``
    Be more verbose
 ``-y``, ``--yes``
-   Delete mutiple entries without prompting
+   Delete multiple entries without prompting
 
 Fields
 ======

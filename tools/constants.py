@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020-2021 grommunio GmbH
 
-SERIAL_ENDIAN = "little"  # Endianess used for binary serialization
+SERIAL_ENDIAN = "little"  # Endianness used for binary serialization
 
 
 class _ReverseLookup:

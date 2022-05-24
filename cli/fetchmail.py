@@ -267,7 +267,7 @@ def _setupCliFetchmailParser(subp: ArgumentParser):
         parser.add_argument("--srcAuth", default=idef("password"), choices=_auths, help="Source server authentication")
         parser.add_argument("--srcFolder", help="Source folder")
         parser.add_argument("--srcPassword", required=init, help="Source user password")
-        parser.add_argument("--srcServer", required=init, help="Source server adress")
+        parser.add_argument("--srcServer", required=init, help="Source server address")
         parser.add_argument("--srcUser", required=init, help="Source user")
         parser.add_argument("--sslCertCheck", default=idef(0), type=getBool, choices=bvals, help="Force SSL certificate check")
         parser.add_argument("--sslCertPath", help="Path to certificate directory or empty for system default")

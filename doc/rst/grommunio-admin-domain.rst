@@ -81,7 +81,7 @@ Fields
 ``--tel TEL``
    Telephone number of domain administrator or primary contact
 ``-u MAXUSER``, ``--maxUser MAXUSER``
-   Maxmimum number of users in the domain
+   Maximum number of users in the domain
 
 See Also
 ========

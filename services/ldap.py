@@ -411,7 +411,7 @@ class LdapService:
         return self._asUser(response[0])
 
     def searchUsers(self, query, domains=None, limit=25, pageSize=1000):
-        """Search for ldap users matchig the query.
+        """Search for ldap users matching the query.
 
         Parameters
         ----------

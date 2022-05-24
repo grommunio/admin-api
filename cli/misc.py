@@ -174,7 +174,7 @@ def cliShell(args):
                 if args.debug:
                     import traceback
                     cli.print(cli.col(traceback.format_exc(), attrs=["dark"]))
-                cli.print(cli.col("An exception occured ({}): {}".format(type(err).__name__,
+                cli.print(cli.col("An exception occurred ({}): {}".format(type(err).__name__,
                                                                          " - ".join(str(arg) for arg in err.args)),
                                   "red"))
     except EOFError:

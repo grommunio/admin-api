@@ -81,7 +81,7 @@ class Table:
                 Data to display
             align : str, optional
                 Alignment, can be one of 'a' (auto), 'c' (center), 'l' (left) or 'r' (right).
-                Automatic alignment chooses 'r' for numbers and 'l' for everythin else.
+                Automatic alignment chooses 'r' for numbers and 'l' for everything else.
                 The default is 'a'.
             color : str, optional
                 Color to apply to the text. The default is None.

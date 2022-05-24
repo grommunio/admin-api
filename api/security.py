@@ -34,7 +34,7 @@ except Exception:
             pubFile.write(jwtPubkey.public_bytes(out.Encoding.PEM, out.PublicFormat.PKCS1))
         os.chmod(_priFile, 0o600)
     except Exception as err:
-        logger.info("An exception occured ("+type(err).__name__+"): "+" - ".join(str(arg) for arg in err.args))
+        logger.info("An exception occurred ("+type(err).__name__+"): "+" - ".join(str(arg) for arg in err.args))
         logger.error("Failed to save JWT RSA keys, logins will not persist across API restarts")
 
 

@@ -267,7 +267,7 @@ class TasQServer:
         synced : bool, optional
             Whether to synchronize the task with the database. The default is True.
         permission : PermissionBase, optional
-            Restrict acces to users wih permission. The default is None.
+            Restrict access to users with permission. The default is None.
         inline : bool, optional
             Do not execute async, but dispatch in current thread.
             If set to None, only execute inline if TasQ server is not running.
@@ -399,7 +399,7 @@ class TasQServer:
     def online(cls):
         """Try to enable online mode.
 
-        Has no effect if online mode is already enabled or explicitely disabled.
+        Has no effect if online mode is already enabled or explicitly disabled.
 
         Returns
         -------

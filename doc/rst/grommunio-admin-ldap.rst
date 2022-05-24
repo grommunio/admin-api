@@ -24,7 +24,7 @@ Description
 ===========
 
 The grommunio admin ldap module provides functions for configuring and
-testing the LDAP connection and dowloading or updating users.
+testing the LDAP connection and downloading or updating users.
 
 Commands
 ========

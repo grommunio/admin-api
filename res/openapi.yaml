@@ -421,7 +421,7 @@ paths:
         - $ref: '#/components/parameters/systemdUnit'
       responses:
         '200':
-          description: Inforamtion about service returned
+          description: Information about service returned
           content:
             application/json:
               schema:
@@ -3229,7 +3229,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/CSRFToken'
         - name: force
-          description: Update configutation even if validation failed
+          description: Update configuration even if validation failed
           in: query
           schema:
             type: boolean
@@ -4639,7 +4639,7 @@ components:
           description: Base DN to use for user search
         objectID:
           type: string
-          description: Name of an attribute that uniquely idetifies an LDAP object
+          description: Name of an attribute that uniquely identifies an LDAP object
         users:
           type: object
           description: Configuration for user search
@@ -4668,10 +4668,10 @@ components:
                 description: Name of a template defined in res/ldapTemplates.yaml
             attributes:
               type: object
-              description: LDAP attribute -> PropTag mapping to used for LDAP import. Any mappings specified take precendence over active templates
+              description: LDAP attribute -> PropTag mapping to used for LDAP import. Any mappings specified take precedence over active templates
               additionalProperties:
                 type: string
-                description: Name of the PropTag the atribute maps to
+                description: Name of the PropTag the attribute maps to
             defaultQuota:
               type: integer
               description: Storage quota of imported users if no mapping exists
@@ -5212,7 +5212,7 @@ components:
           description: Task specific parameters
   responses:
     ServerError:
-      description: An error occured while processing the request
+      description: An error occurred while processing the request
       content:
         application/json:
           schema:

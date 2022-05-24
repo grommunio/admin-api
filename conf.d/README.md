@@ -40,7 +40,7 @@ Possible parameters:
 
 ### Logs ###
 grommunio-admin can provide access to journald logs through the API. Accessible log files can be configured in the `logs` object.
-Each entry in the `logs` object describes a log file. The name of the entry is the name used to acces the file throught the API.  
+Each entry in the `logs` object describes a log file. The name of the entry is the name used to access the file through the API.  
 Possible parameters for each entry:
 - `source` (`string`, required): Name of the systemd unit  
 

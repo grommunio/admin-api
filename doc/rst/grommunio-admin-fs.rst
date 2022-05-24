@@ -16,7 +16,7 @@ Synopsis
 Description
 ===========
 
-Show space used by user and domain home directories or remove unsued
+Show space used by user and domain home directories or remove unused
 files.
 
 Unused files may remain when users or domains are deleted without
