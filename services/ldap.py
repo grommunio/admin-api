@@ -461,16 +461,21 @@ class LdapService:
         servers = [s[:-1] if s.endswith("/") else s for s in config["connection"]["server"].split()]
         pool = servers[0] if len(servers) == 1 else ldap3.ServerPool(servers, "FIRST", active=1)
         connections = config["connection"].get("connections", 4)
-        # pool_lifetime is not required but improves performance. 360 is the slapd default.
-        conn = ldap3.Connection(pool, user=config["connection"].get("bindUser"), password=config["connection"].get("bindPass"),
-                                client_strategy=ldap3.REUSABLE, pool_size=connections, pool_lifetime=360)
+        user = config["connection"].get("bindUser")
+        password = config["connection"].get("bindPass")
+        # Test connection must use SYNC strategy so we can access potential error responses
+        conn = ldap3.Connection(pool, user=user, password=password)
         if config["connection"].get("starttls") and not conn.start_tls():
             logger.warning("Failed to initiate StartTLS connection")
         if not conn.bind():
             raise ldapexc.LDAPBindError("LDAP bind failed ({}): {}".format(conn.result["description"], conn.result["message"]))
         if active:
-            conn.get_response(conn.search(cls._searchBase(config), cls._searchFilters(" ", userconf=config["users"]),
-                                          attributes=[], paged_size=0))
+            conn.search(cls._searchBase(config), cls._searchFilters(" ", userconf=config["users"]),
+                        attributes=[], paged_size=0)
+        # pool_lifetime is not required but improves performance. 360 is the slapd default.
+        conn = ldap3.Connection(pool, user=user, password=password,
+                                client_strategy=ldap3.REUSABLE, pool_size=connections, pool_lifetime=360)
+        conn.bind()
         return conn
 
     @classmethod
