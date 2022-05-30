@@ -788,6 +788,10 @@ class Fetchmail(DataModel, DB.Base):
             raise ValueError("'{}' is not a valid e-mail address".format(value))
         return value
 
+    @validates("srcPassword")
+    def validatePassword(self, key, value, *args):
+        return value.replace("'", "").replace('"', '')
+
     @validates("srcServer")
     def validateServer(self, key, value, *args):
         if not formats.domain.match(value):
@@ -810,7 +814,7 @@ class Fetchmail(DataModel, DB.Base):
         if self.extraOptions:
             fetchoptions += self.extraOptions
         srcFolder = " folder "+self.srcFolder if self.srcFolder and self.protocol not in ("POP3", "ETRN", "ODMR") else ""
-        return "poll {} with proto {} user {}{} there with password {} is {} here {}\n"\
+        return "poll {} with proto {} user {}{} there with password '{}' is {} here {}\n"\
             .format(self.srcServer, self.protocol, self.srcUser, srcFolder, self.srcPassword, self.mailbox, fetchoptions)
 
 

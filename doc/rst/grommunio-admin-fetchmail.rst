@@ -103,7 +103,8 @@ Fields
 ``--srcFolder FOLDER``
    Source folder to fetch from
 ``--srcPassword PASSWORD``
-   Password of the source user
+   Password of the source user. Single (`'`) and double (`"`) quotes are
+   automatically removed.
 ``--srcServer SERVER``
    Source server to fetch from
 ``--srcUser USER``
