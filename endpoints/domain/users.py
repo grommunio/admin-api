@@ -90,14 +90,14 @@ def deleteUserEndpoint(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User #{} not found".format(userID)), 404
-    return deleteUser(user)
+    return deleteUser(user, not request.args.get("deleteChatUser") == "false")
 
 
-def deleteUser(user):
+def deleteUser(user, deleteChatUser):
     if user.ID == 0:
         return jsonify(message="Cannot delete superuser"), 400
     userdata = GenericObject(maildir=user.maildir, homeserver=user.homeserver)
-    user.delete()
+    user.delete(deleteChatUser)
     try:
         DB.session.commit()
     except Exception:

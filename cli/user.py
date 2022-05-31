@@ -113,6 +113,7 @@ def _splitData(args):
     data["storeprops"] = attributes.pop("storeprop", None) or []
     data["storeprops_rm"] = attributes.pop("remove_storeprop", None) or []
     data["noldap"] = attributes.pop("no_ldap", False)
+    data["delchat"] = attributes.pop("delete_chat_user", False)
     return data
 
 
@@ -237,7 +238,7 @@ def cliUserDelete(args):
             return 3
     else:
         cli.print("Deleting user '{}' ({})".format(user.username, user.ID))
-    user.delete()
+    user.delete(not args.keep_chat)
     DB.session.commit()
     cli.print("User deleted.")
     if userdata.maildir == "":
@@ -271,6 +272,10 @@ def cliUserModify(args):
     data = _splitData(args.__dict__)
     if data["noldap"]:
         user.externID = None
+    if data["delchat"]:
+        from services import Service
+        with Service("chat") as chat:
+            chat.deleteUser(user)
     try:
         user.fromdict(data["attributes"])
         if data["aliases"]:
@@ -425,6 +430,7 @@ def _setupCliUser(subp: ArgumentParser):
     delete = sub.add_parser("delete", help="Delete user")
     delete.set_defaults(_handle=cliUserDelete)
     delete.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter
+    delete.add_argument("-c", "--keep-chat", action="store_true", help="Do not permanently delete the chat user")
     delete.add_argument("-k", "--keep-files", action="store_true", help="Do not delete files on disk")
     delete.add_argument("-y", "--yes", action="store_true", help="Do not ask for confirmation")
     list = sub.add_parser("list", help="List users")
@@ -436,6 +442,7 @@ def _setupCliUser(subp: ArgumentParser):
     modify.set_defaults(_handle=cliUserModify)
     modify.add_argument("userspec", help="User ID or name prefix").completer = _cliUserspecCompleter
     _cliAddUserAttributes(modify)
+    modify.add_argument("--delete-chat-user", action="store_true", help="Permanently delete chat user")
     modify.add_argument("--no-ldap", action="store_true", help="Unlink user from ldap object")
     modify.add_argument("--remove-alias", metavar="ALIAS", action="append", help="Remove alias")
     modify.add_argument("--remove-property", action="append", metavar="propspec", help="Remove property from user")

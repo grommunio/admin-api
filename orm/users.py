@@ -581,10 +581,15 @@ class Users(DataModel, DB.Base, NotifyTable):
                           .filter(Users.ID != 0, Users.maildir != "", Users.status != Users.SHARED, *filters)\
                           .count()
 
-    def delete(self):
+    def delete(self, deleteChatUser=True):
         """Delete user from database.
 
         Also cleans up entries in forwards, members and associations tables.
+
+        Parameters
+        ----------
+        filters : iterable, optional
+            Additional filter expressions to use. The default is ().
 
         Returns
         -------
@@ -598,6 +603,10 @@ class Users(DataModel, DB.Base, NotifyTable):
         Forwards.query.filter(Forwards.username == self.username).delete(synchronize_session=False)
         Members.query.filter(Members.username == self.username).delete(synchronize_session=False)
         Associations.query.filter(Associations.username == self.username).delete(synchronize_session=False)
+        if self.chatID is not None:
+            from services import Service
+            with Service("chat", Service.SUPPRESS_ALL) as chat:
+                chat.deleteUser(self) if deleteChatUser else chat.activateUser(self, False)
         DB.session.delete(self)
 
     @staticmethod
@@ -622,7 +631,10 @@ class Users(DataModel, DB.Base, NotifyTable):
                 with UserSetup(user, DB.session) as us:
                     us.run()
                 if chat:
-                    user.chat = chat
+                    try:
+                        user.chat = chat
+                    except ValueError as err:
+                        logger.error("Failed to activate chat: "+err.args[0])
                 DB.session.commit()
                 if not us.success:
                     return "Error during user setup: "+us.error, us.errorCode

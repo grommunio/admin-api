@@ -76,10 +76,35 @@ class GrochatService:
         return self.driver.teams.add_user_to_team(user.domain.chatID, {"team_id": user.domain.chatID, "user_id": user.chatID})
 
     def activateUser(self, user, status):
-        """Archive a user."""
+        """Set user active status.
+
+        Parameters
+        ----------
+        user : orm.users.Users
+            User to (de)activate
+        status : bool
+            Active status of the user
+        """
         if not user.chatID:
             return None
         return self.driver.users.update_user_active_status(user.chatID, {"active": status})
+
+    def deleteUser(self, user):
+        """Permanently delete a user.
+
+        Automatically resets the user's chatID.
+
+        Parameters
+        ----------
+        user : orm.users.Users
+            grommunio user object
+        """
+        if not user.chatID:
+            return None
+        res = self.driver.client.make_request("delete", "/users/"+user.chatID, params={"permanent": "true"})
+        if res.ok:
+            user.chatID = None
+        return res
 
     def getUser(self, userID):
         if not userID:

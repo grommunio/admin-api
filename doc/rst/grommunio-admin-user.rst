@@ -11,12 +11,14 @@ Synopsis
 ========
 
 | **grommunio-admin user** **create** [*--no-defaults*] [*<FIELDS>*] *USERNAME*
-| **grommunio-admin user** **delete** [*-k*] [*-y*] *USERSPEC*
+| **grommunio-admin user** **delete** [*-c*] [*-k*] [*-y*] *USERSPEC*
 | **grommunio-admin user** **list** [*-f ATTRIBUTE=<value>*] [*-s FIELD*]
   [*USERSPEC*]
-| **grommunio-admin user** **modify** [*<FIELDS>*] [*--no-ldap*] [*--remove-alias ALIAS*] [*--remove-property PROPSPEC*] [*--remove-storeprop PROPSPEC*] *USERSPEC*
+| **grommunio-admin user** **modify** [*<FIELDS>*] [*--delete-chat-user*]
+  [*--no-ldap*] [*--remove-alias ALIAS*] [*--remove-property PROPSPEC*]
+  [*--remove-storeprop PROPSPEC*] *USERSPEC*
 | **grommunio-admin user** **query** [*-f ATTRIBUTE=<value>*] [*--format FORMAT*]
-  [*--separator SEPARATOR*][*-s FIELD*] *ATTRIBUTE* [*ATTRIBUTE* …]
+  [*--separator SEPARATOR*][*-s FIELD*] [*ATTRIBUTE* …]
 | **grommunio-admin user** **show** [*-f ATTRIBUTE=<value>*] [*-s FIELD*]
   *USERSPEC*
 
@@ -60,6 +62,10 @@ Options
    E-Mail address of the user
 ``USERSPEC``
    User name prefix or user ID
+``-c``, ``--keep-chat``
+   Deactivate but do not permanently delete chat user
+``--delete-chat-user``
+   Permanently delete chat user
 ``-f FIELD=<value>``, ``--filter FIELD=<value>``
    Filter expression in the form of ‘field=value’. Can be specified
    multiple times to refine filter
