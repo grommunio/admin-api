@@ -463,9 +463,10 @@ class LdapService:
         connections = config["connection"].get("connections", 4)
         user = config["connection"].get("bindUser")
         password = config["connection"].get("bindPass")
+        starttls = config["connection"].get("starttls")
         # Test connection must use SYNC strategy so we can access potential error responses
         conn = ldap3.Connection(pool, user=user, password=password)
-        if config["connection"].get("starttls") and not conn.start_tls():
+        if starttls and not conn.start_tls():
             logger.warning("Failed to initiate StartTLS connection")
         if not conn.bind():
             raise ldapexc.LDAPBindError("LDAP bind failed ({}): {}".format(conn.result["description"], conn.result["message"]))
@@ -473,9 +474,9 @@ class LdapService:
             conn.search(cls._searchBase(config), cls._searchFilters(" ", userconf=config["users"]),
                         attributes=[], paged_size=0)
         # pool_lifetime is not required but improves performance. 360 is the slapd default.
-        conn = ldap3.Connection(pool, user=user, password=password,
+        autobind = ldap3.AUTO_BIND_TLS_BEFORE_BIND if starttls else ldap3.AUTO_BIND_NO_TLS
+        conn = ldap3.Connection(pool, user=user, password=password, auto_bind=autobind,
                                 client_strategy=ldap3.REUSABLE, pool_size=connections, pool_lifetime=360)
-        conn.bind()
         return conn
 
     @classmethod
