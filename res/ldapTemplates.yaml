@@ -44,5 +44,8 @@ ActiveDirectory:
   extensionAttribute13: addressbookextensionattribute13
   extensionAttribute14: addressbookextensionattribute14
   extensionAttribute15: addressbookextensionattribute15
+  mDBOverHardQuotaLimit: storagequotalimit
+  mDBOverQuotaLimit: prohibitsendquota
+  msExchRecipientDisplayType: displaytypeex
 OpenLDAP:
   departmentNumber: departmentname
