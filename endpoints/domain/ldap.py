@@ -118,6 +118,10 @@ def downloadLdapUser(ldap):
         userdata = ldap.downsyncUser(ID, user.properties)
         try:
             user.fromdict(userdata)
+            try:
+                user.syncStore()
+            except Exception:
+                pass
             user.externID = ID
             user.lang = user.lang or lang
             DB.session.commit()

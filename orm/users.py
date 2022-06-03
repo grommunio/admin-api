@@ -58,7 +58,7 @@ class Users(DataModel, DB.Base, NotifyTable):
             return self.__dict[self._name(k)]
 
         def __len__(self):
-            return len(self.__dict__)
+            return len(self.__dict)
 
         def __repr__(self):
             return repr(self.__dict)
@@ -118,6 +118,12 @@ class Users(DataModel, DB.Base, NotifyTable):
         def update(self, data):
             for k, v in data.items():
                 self[k] = v
+
+        def rawmap(self):
+            def getv(prop):
+                return PropTypes.pyType(prop.baseType)(prop.content)
+            return {tag: [getv(p) for p in prop] if PropTypes.ismv(prop.type) else getv(prop)
+                    for tag, prop in self.__struct.items()}
 
     __tablename__ = "users"
 
@@ -253,7 +259,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         self.fromdict(props, *args, **kwargs)
         self.addressStatus = (self.addressStatus or 0) | status
 
-    def fromdict(self, patches, *args, **kwargs):
+    def fromdict(self, patches, syncStore=False, *args, **kwargs):
         if "username" in patches and patches["username"] != self.username:
             from orm.domains import Domains
             username = patches.pop("username")
@@ -274,6 +280,9 @@ class Users(DataModel, DB.Base, NotifyTable):
         if self.chatID:
             with Service("chat", Service.SUPPRESS_INOP) as chat:
                 self._chatUser = chat.updateUser(self, False)
+        if syncStore == "always" or (syncStore and "properties" in patches):
+            self.syncStore()
+
 
     @staticmethod
     def _decodeDisplayType(displaytype):
@@ -610,7 +619,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         DB.session.delete(self)
 
     @staticmethod
-    def create(props, reloadGromoxHttp=True, externID=None, *args, **kwargs):
+    def create(props, reloadGromoxHttp=True, externID=None, sync=True, *args, **kwargs):
         from .misc import Servers
         from tools.misc import AutoClean
         from tools.storage import UserSetup
@@ -638,7 +647,12 @@ class Users(DataModel, DB.Base, NotifyTable):
                 DB.session.commit()
                 if not us.success:
                     return "Error during user setup: "+us.error, us.errorCode
-                return user, 201
+                if sync:
+                    try:
+                        user.syncStore()
+                    except Exception:
+                        pass
+                    return user, 201
         except IntegrityError as err:
             return "Object violates database constraints "+err.orig.args[1], 400
 
@@ -651,6 +665,23 @@ class Users(DataModel, DB.Base, NotifyTable):
     def usernameUpdateHook(self, key, value, *args):
         self.primaryEmail = value
         return value
+
+    def syncStore(self):
+        """Write all properties to the exmdb store.
+
+        For users without a store, this function has no effect.
+        """
+        if not self.maildir:
+            return
+        with Service("exmdb") as exmdb:
+            props = []
+            for tag, value in self.properties.rawmap().items():
+                try:
+                    props.append(exmdb.TaggedPropval(tag, value))
+                except Exception:
+                    pass
+            client = exmdb.user(self)
+            client.setStoreProperties(0, props)
 
 
 class UserProperties(DB.Base):
@@ -712,6 +743,10 @@ class UserProperties(DB.Base):
             self._propvalbin = value
         else:
             self._propvalstr = str(value)
+
+    @property
+    def content(self):
+        return self._propvalbin if self.baseType == PropTypes.BINARY else self._propvalstr
 
 
 class Aliases(DataModel, DB.Base, NotifyTable):

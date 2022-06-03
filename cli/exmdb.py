@@ -173,6 +173,7 @@ def cliExmdbStoreGetDelete(args):
     def printSize(value):
         suffix = ("B", "kiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB")
         index = 0
+        prec = 0
         while value > 1000 and index < len(suffix)-1:
             value /= 1024
             index += 1
