@@ -26,9 +26,11 @@ def getPublicFoldersList(domainID):
     domain = Domains.query.filter(Domains.ID == domainID).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
+    limit = int(request.args.get("limit", 50))
+    offset = int(request.args.get("offset", 0))
     with Service("exmdb") as exmdb:
         client = exmdb.domain(domain)
-        response = exmdb.FolderList(client.getFolderList())
+        response = exmdb.FolderList(client.getFolderList(limit=limit, offset=offset))
     folders = [{"folderid": str(entry.folderId),
                 "displayname": entry.displayName,
                 "comment": entry.comment,

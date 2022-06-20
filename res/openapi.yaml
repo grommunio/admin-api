@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.7.4
+  version: 1.7.5
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2676,6 +2676,8 @@ paths:
       summary: Get list of public folders
       parameters:
         - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/queryOffset'
+        - $ref: '#/components/parameters/queryLimit'
       tags:
         - Domain Admin/Folders
       security:
@@ -5116,7 +5118,7 @@ components:
         maxemailbodytruncsize:
           type: integer
           default: -1
-          description: The truncation size for plain text–formatted email messages (-1=unlimited, 0=header only, >0=truncate to size)
+          description: The truncation size for plain text-formatted email messages (-1=unlimited, 0=header only, >0=truncate to size)
         maxemailhtmlbodytruncsize:
           type: integer
           default: -1
