@@ -213,7 +213,7 @@ def _traceFiles(args):
     defaultConfig = _defaultConfig()
     files = [("default", CTrace(defaultConfig))]
     try:
-        with open("config.yaml") as file:
+        with open("config.yaml", encoding="utf-8") as file:
             fconf = yaml.load(file, Loader=yaml.SafeLoader)
     except Exception as err:
         cli.print(cli.col("Failed to open main config file: "+" - ".join(str(arg) for arg in err.args), "yellow"))
@@ -227,7 +227,7 @@ def _traceFiles(args):
     configFiles = sorted([file.path for file in scandir(confdir) if file.name.endswith(".yaml")])
     for configFile in configFiles:
         try:
-            with open(configFile) as file:
+            with open(configFile, encoding="utf-8") as file:
                 fconf = yaml.load(file, Loader=yaml.SafeLoader)
             configFile = configFile.replace(confdir, "$CONFD")
             upd = CTrace(fconf)
@@ -247,7 +247,7 @@ def _traceKeys(args):
     cli = args._cli
     config = CTrace(_defaultConfig(), "default")
     try:
-        with open("config.yaml") as file:
+        with open("config.yaml", encoding="utf-8") as file:
             fconf = yaml.load(file, Loader=yaml.SafeLoader)
     except Exception as err:
         cli.print(cli.col("Failed to open main config file: "+" - ".join(str(arg) for arg in err.args), "yellow"))
@@ -259,7 +259,7 @@ def _traceKeys(args):
     configFiles = sorted([file.path for file in scandir(confdir) if file.name.endswith(".yaml")])
     for configFile in configFiles:
         try:
-            with open(configFile) as file:
+            with open(configFile, encoding="utf-8") as file:
                 fconf = yaml.load(file, Loader=yaml.SafeLoader)
             configFile = configFile.replace(confdir, "$CONFD")
             upd = CTrace(fconf, configFile)

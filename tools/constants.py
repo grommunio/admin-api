@@ -1233,9 +1233,9 @@ class FolderNames():
             return
         try:
             import yaml
-            with open("res/foldernames.yaml") as file:
+            with open("res/foldernames.yaml", encoding="utf-8") as file:
                 cls._lang = yaml.load(file, Loader=yaml.SafeLoader)
-        except:
+        except Exception:
             pass
 
     @classmethod

@@ -291,7 +291,7 @@ def getUserDelegates(domainID, userID):
     if user is None:
         return jsonify(message="User not found"), 404
     try:
-        with open(user.maildir+"/config/delegates.txt") as file:
+        with open(user.maildir+"/config/delegates.txt", encoding="utf-8") as file:
             delegates = [line.strip() for line in file if line.strip != ""]
     except (FileNotFoundError, PermissionError, TypeError):
         delegates = []
@@ -315,7 +315,7 @@ def setUserDelegates(domainID, userID):
         return jsonify(message="User not found"), 404
     try:
         delegateFile = user.maildir+"/config/delegates.txt"
-        with open(delegateFile, "w") as file:
+        with open(delegateFile, "w", encoding="utf-8") as file:
             file.write("\n".join(data))
     except (FileNotFoundError, PermissionError) as err:
         return jsonify(message="Failed to write delegates: "+" - ".join(str(arg) for arg in err.args)), 500

@@ -420,7 +420,7 @@ class Cli:
             conf = file
             file = path
         if self.fs is None:
-            return open(file, mode)
+            return open(file, mode, encoding=None if "b" in mode else "utf-8")
         if "r" in mode:
             if file not in self.fs:
                 raise FileNotFoundError(2, "No such file or directory in emulated filesystem")

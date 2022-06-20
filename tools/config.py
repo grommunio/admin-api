@@ -94,7 +94,7 @@ def _defaultConfig():
         "sync": {
             "syncStateFolder": "GS-SyncState",
             "defaultPolicy": _defaultSyncPolicy,
-            "policyHosts": ["127.0.0.1", "localhost", "::1"]
+            "policyHosts": ["127.0.0.1", "localhost", "::1", "::ffff:127.0.0.1"]
             },
         "chat": {
             "connection": {},
@@ -146,7 +146,7 @@ def _loadConfig_():
     """
     config = _defaultConfig()
     try:
-        with open("config.yaml", "r") as file:
+        with open("config.yaml", "r", encoding="utf-8") as file:
             _recursiveMerge_(config, yaml.load(file, Loader=yaml.SafeLoader))
     except Exception as err:
         logger.error("Failed to load 'config.yaml': {}".format(" - ".join(str(arg) for arg in err.args)))
@@ -158,7 +158,7 @@ def _loadConfig_():
             configFiles = ()
         for configFile in configFiles:
             try:
-                with open(configFile) as file:
+                with open(configFile, encoding="utf-8") as file:
                     confd = yaml.load(file, Loader=yaml.SafeLoader)
                 if confd is not None:
                     _recursiveMerge_(config, confd)
@@ -181,7 +181,7 @@ def validate():
     from openapi_schema_validator import OAS30Validator
     from openapi_spec_validator.exceptions import ValidationError
     try:
-        with open("res/config.yaml") as file:
+        with open("res/config.yaml", encoding="utf-8") as file:
             configSchema = yaml.load(file, yaml.loader.SafeLoader)
     except Exception:
         return "Could not open schema file"

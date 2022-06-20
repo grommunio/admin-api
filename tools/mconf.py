@@ -26,7 +26,7 @@ _ldapDepServices = ("gromox-http.service", "gromox-midb.service", "gromox-zcore.
 def _loadConf(path):
     from multidict import MultiDict
     try:
-        with open(path) as file:
+        with open(path, encoding="utf-8") as file:
             conf = MultiDict()
             for line in file:
                 if line.strip().startswith("#") or "=" not in line:
@@ -49,7 +49,7 @@ def _fDumpConf(file, conf, censor=()):
 
 
 def _dumpConf(path, conf):
-    with open(path, "w") as file:
+    with open(path, "w", encoding="utf-8") as file:
         _fDumpConf(file, conf)
     uid = Config["mconf"].get("fileUid", Config["options"].get("fileUid"))
     gid = Config["mconf"].get("fileGid", Config["options"].get("fileGid"))

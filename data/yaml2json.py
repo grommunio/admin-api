@@ -8,7 +8,7 @@ if len(sys.argv) != 3:
 try:
     import json
     import yaml
-    with open(sys.argv[1]) as fin, open(sys.argv[2], "w") as fout:
+    with open(sys.argv[1], encoding="utf-8") as fin, open(sys.argv[2], "w", encoding="utf-8") as fout:
         json.dump(yaml.load(fin, yaml.SafeLoader), fout, separators=(",", ":"))
 except BaseException as err:
     print("Failed to convert: "+" - ".join(str(arg) for arg in err.args))

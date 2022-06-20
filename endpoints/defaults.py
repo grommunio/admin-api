@@ -14,7 +14,7 @@ from flask import jsonify, request
 import json
 
 try:
-    with open("res/storelangs.json") as file:
+    with open("res/storelangs.json", encoding="utf-8") as file:
         storeLangs = json.load(file)
 except Exception as err:
     API.logger.warn("Failed to load store languages ({}): {}"

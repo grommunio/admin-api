@@ -42,7 +42,7 @@ class LdapService:
             return
         ldap3.set_config_parameter("POOLING_LOOP_TIMEOUT", 1)
         try:
-            with open("res/ldapTemplates.yaml") as file:
+            with open("res/ldapTemplates.yaml", encoding="utf-8") as file:
                 cls._templates = yaml.load(file, Loader=yaml.SafeLoader)
         except Exception:
             pass

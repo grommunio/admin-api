@@ -7,18 +7,18 @@ BaseRoute = "/api/v1"  # Common prefix for all endpoints
 
 apiSpec = None  # API specification
 apiVersion = None  # API specification version. Extracted from the OpenAPI document.
-backendVersion = "1.7.25"  # Backend version number
+backendVersion = "1.7.26"  # Backend version number
 
 
 def _loadOpenApiSpec():
     global apiVersion, apiSpec
     try:
         import json
-        with open("res/openapi.json", "r") as file:
+        with open("res/openapi.json", "r", encoding="utf-8") as file:
             apiSpec = json.load(file)
     except FileNotFoundError:
         import yaml
-        with open("res/openapi.yaml", "r") as file:
+        with open("res/openapi.yaml", "r", encoding="utf-8") as file:
             apiSpec = yaml.load(file, Loader=yaml.SafeLoader)
     apiVersion = apiSpec["info"]["version"]
 
