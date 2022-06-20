@@ -193,13 +193,21 @@ def _downsyncUser(args, candidate, reloadHttp=True):
             cli.print(cli.col("Failed to update user: "+err.args[0], "red"))
             return ERR_COMMIT
 
+    from orm.misc import DBConf
+    from tools.misc import RecursiveDict
+    defaults = RecursiveDict({"user": {}, "domain": {}})
+    defaults.update(DBConf.getFile("grommunio-admin", "defaults-system", True))
+    defaults.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domain.ID)))
+    defaults = defaults.get("user", {})
+
     with Service("ldap") as ldap:
         userdata = ldap.downsyncUser(candidate.ID)
     if userdata is None:
         cli.print(cli.col("Error retrieving user", "red"))
         return ERR_NO_USER
-    userdata["lang"] = args.lang or ""
-    result, code = Users.create(userdata, reloadGromoxHttp=False, externID=candidate.ID)
+    defaults.update(RecursiveDict(userdata))
+    defaults["lang"] = args.lang or ""
+    result, code = Users.create(defaults, reloadGromoxHttp=False, externID=candidate.ID)
     if code != 201:
         cli.print(cli.col("Failed to create user: "+result, "red"))
         return ERR_COMMIT

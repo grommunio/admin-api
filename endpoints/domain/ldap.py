@@ -129,14 +129,24 @@ def downloadLdapUser(ldap):
         except (InvalidAttributeError, MismatchROError, ValueError) as err:
             DB.session.rollback()
             return jsonify(message=err.args[0]), 500
+
+    checkPermissions(DomainAdminPermission(domain.ID))
+
+    from orm.misc import DBConf
+    from tools.misc import RecursiveDict
+    defaults = RecursiveDict({"user": {}, "domain": {}})
+    defaults.update(DBConf.getFile("grommunio-admin", "defaults-system", True))
+    defaults.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domain.ID)))
+    defaults = defaults.get("user", {})
+
     userdata = ldap.downsyncUser(ID)
     if userdata is None:
         return jsonify(message="Error retrieving user"), 404
-    userdata["lang"] = lang
-    result, code = Users.create(userdata, externID=ID)
+    defaults.update(RecursiveDict(userdata))
+    defaults["lang"] = lang
+    result, code = Users.create(defaults, externID=ID)
     if code != 201:
         return jsonify(message="Failed to create user: "+result), code
-    checkPermissions(DomainAdminPermission(result.domainID))
     DB.session.add(result)
     DB.session.commit()
     return jsonify(result.fulldesc()), 201
