@@ -149,11 +149,17 @@ class Worker:
 
         from orm import DB
         from orm.domains import Domains
+        from orm.misc import DBConf
         from orm.users import Aliases, Users
         from services import Service
         from tools.DataModel import MismatchROError, InvalidAttributeError
+        from tools.misc import RecursiveDict
         import time
         import traceback
+
+        defaults = DBConf.getFile("grommunio-admin", "defaults-system", True).get("user", {})
+        domainDefaults = {}
+
         start = time.time()
         lang = task.params.get("lang", "")
         create = task.params.get("import", False)
@@ -207,12 +213,20 @@ class Worker:
                                            "message": "Exists but not linked to LDAP object"})
                         counts["error"] += 1
                         continue
-                    userData = ldap.downsyncUser(candidate.ID)
+                    domain = Domains.query.filter(Domains.domainname == candidate.email.split("@")[1])\
+                                          .with_entities(Domains.ID).first()
+                    if domain.ID not in domainDefaults:
+                        domainDefaults[domain.ID] = DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domain.ID), True)\
+                                                    .get("user", {})
+                    userData = RecursiveDict(defaults)
+                    userData.update(domainDefaults[domain.ID])
+                    userData.update(RecursiveDict(ldap.downsyncUser(candidate.ID)))
                     if userData is None:
                         syncStatus.append({"username": candidate.email, "code": 500, "message":
                                            "Error retrieving userdata"})
                         counts["error"] += 1
                         continue
+
                     userData["lang"] = lang
                     result, code = Users.create(userData, externID=candidate.ID)
                     if code != 201:
