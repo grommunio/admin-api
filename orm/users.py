@@ -655,6 +655,9 @@ class Users(DataModel, DB.Base, NotifyTable):
                     return user, 201
         except IntegrityError as err:
             return "Object violates database constraints "+err.orig.args[1], 400
+        except Exception as err:
+            DB.session.rollback()
+            return "Failed to create user "+" - ".join(str(arg) for arg in err.args), 500
 
     @classmethod
     def _commit(*args, **kwargs):
