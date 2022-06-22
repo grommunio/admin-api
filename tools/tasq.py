@@ -176,7 +176,7 @@ class Worker:
             for user in users:
                 bump()
                 counts["synced"] += 1
-                userdata = ldap.downsyncUser(user.externID, user.properties)
+                userdata = ldap.downsyncUser(user.externID, dict(user.properties.items()))
                 if userdata is None:
                     syncStatus.append({"ID": user.ID, "username": user.username, "code": 404,
                                        "message": "LDAP object not found"})

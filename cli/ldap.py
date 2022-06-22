@@ -176,13 +176,9 @@ def _downsyncUser(args, candidate, reloadHttp=True):
                         cli.print("Aborted.")
                     return result
         with Service("ldap") as ldap:
-            userdata = ldap.downsyncUser(candidate.ID, user.properties)
+            userdata = ldap.downsyncUser(candidate.ID, dict(user.properties.items()))
         try:
             user.fromdict(userdata, True)
-            try:
-                user.syncStore()
-            except Exception as err:
-                cli.print(cli.col("Failed to synchronize user store: "+" - ".join(str(arg) for arg in err.args)))
             user.externID = candidate.ID
             user.lang = user.lang or args.lang or ""
             DB.session.commit()
