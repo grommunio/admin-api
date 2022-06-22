@@ -58,9 +58,10 @@ def createPublicFolder(domainID):
     if domain is None:
         return jsonify(message="Domain not found"), 404
     data = request.json
+    parentID = int(data.get("parentID") or makeEidEx(1, PublicFIDs.IPMSUBTREE))
     with Service("exmdb") as exmdb:
         client = exmdb.domain(domain)
-        folderId = client.createFolder(domain.ID, data["displayname"], data["container"], data["comment"])
+        folderId = client.createFolder(domain.ID, data["displayname"], data["container"], data["comment"], parentID)
     if folderId == 0:
         return jsonify(message="Folder creation failed"), 500
     return jsonify(folderid=str(folderId),

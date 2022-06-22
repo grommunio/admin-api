@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.7.6
+  version: 1.7.7
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2734,6 +2734,10 @@ paths:
                   enum: [IPF.Note, IPF.Contact, IPF.Appointment, IPF.Stickynote, IPF.Task]
                 comment:
                   type: string
+                parentID:
+                  type: string
+                  description: ID of the parent folder
+                  default: 0
       responses:
         '201':
           description: Folder creation successful
