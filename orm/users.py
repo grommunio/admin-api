@@ -122,7 +122,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         def rawmap(self):
             def getv(prop):
                 return PropTypes.pyType(prop.baseType)(prop.content)
-            return {tag: [getv(p) for p in prop] if PropTypes.ismv(prop.type) else getv(prop)
+            return {tag: [getv(p) for p in prop] if PropTypes.ismv(tag) else getv(prop)
                     for tag, prop in self.__struct.items()}
 
     __tablename__ = "users"
