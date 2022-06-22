@@ -74,14 +74,15 @@ def _login(target, host, args):
     cli = args._cli
     user = args.user or "admin"
     if not args.password and host == "localhost" and not args.passwd:
-        from api.security import mkJWT
+        from api.security import mkJWT, mkCSRF
         debugout("Attempting passwordless login...", end="", flush=True)
         try:
             token = mkJWT({"usr": user})
-            code, response = _remoteExec(None, target, token, "version", cparm=args._cparm)
+            csrf = mkCSRF(token)
+            code, response = _remoteExec(None, target, token, "version", cparm=args._cparm, csrf=csrf)
             if code == 200:
                 debugout(cli.col("success.", "green"))
-                return True, token
+                return True, (token, csrf)
             debugout(cli.col("failed.", "yellow"))
         except Exception:
             debugout(cli.col("error.", "red"))
@@ -96,7 +97,8 @@ def _login(target, host, args):
         if "grommunioAuthJwt" not in data:
             return False, "Login failed: invalid response"
         token = data["grommunioAuthJwt"]
-        code, response = _remoteExec(None, target, token, "version", cparm=args._cparm)
+        csrf = data.get("csrf", "")
+        code, response = _remoteExec(None, target, token, "version", cparm=args._cparm, csrf=csrf)
         if code is None:
             return False, response
         if code == 404:
@@ -107,7 +109,7 @@ def _login(target, host, args):
             if "message" in response:
                 return False, "Remote execution failed: "+response["message"]
             return False, "Remote execution failed with code "+str(code)
-        return True, token
+        return True, (token, csrf)
     except Exception as err:
         return False, "Login failed ({})".format(type(err).__name__)
 
@@ -117,12 +119,13 @@ def _getPath(root, path):
         root = root.get(part, {})
     return root if isinstance(root, str) else None
 
-def _remoteExec(cli, target, token, command, mode="exec", redirectFs=False, cparm={}):
+
+def _remoteExec(cli, target, token, command, mode="exec", redirectFs=False, cparm={}, csrf=""):
     import requests
     try:
         colored = cli.colored if cli is not None else False
         data = {"command": command, "mode": mode, "color": colored, "fs": {} if redirectFs else None}
-        headers = {"Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json", "X-Csrf-Token": csrf}
         response = requests.post(target+"system/cli", json=data, cookies={"grommunioAuthJwt": token}, headers=headers, **cparm)
         return response.status_code, response.json()
     except Exception as err:
@@ -165,11 +168,12 @@ class RemoteCompleter:
 class RemoteCli(Cli):
     actionMap = {"discard": "d", "local": "s", "print": "V", "remote": "r"}
 
-    def __init__(self, parent, target, token, host, redirectFs, autoSave, cparm):
+    def __init__(self, parent, target, token, host, redirectFs, autoSave, cparm, csrf=""):
         super().__init__("remote", fs=parent.fs, stdin=parent.stdin, stdout=parent.stdout, host=host, color=parent.colored)
         self.completer = RemoteCompleter(self, target, token)
         self.__target = target
         self.__token = token
+        self.__csrf = csrf
         self.__parent = parent
         self.__cparm = cparm
         self.__redirectFs = redirectFs
@@ -235,7 +239,8 @@ class RemoteCli(Cli):
                         self.print(self.col("Failed to write file: "+" - ".join(str(arg) for arg in err.args), "yellow"))
 
     def _execute(self, command):
-        code, data = _remoteExec(self, self.__target, self.__token, command, redirectFs=self.__redirectFs, cparm=self.__cparm)
+        code, data = _remoteExec(self, self.__target, self.__token, command, redirectFs=self.__redirectFs, cparm=self.__cparm,
+                                 csrf=self.__csrf)
         if code is None:
             self.print(self.col(data, "red"))
             return 100
@@ -316,9 +321,9 @@ def cliRemote(args):
     if not success:
         cli.print(cli.col(result, "red"))
         return 2
-    token = result
+    token, csrf = result
 
-    remoteCli = RemoteCli(cli, target, token, host, args.redirect_fs, args.auto_save, args._cparm)
+    remoteCli = RemoteCli(cli, target, token, host, args.redirect_fs, args.auto_save, args._cparm, csrf)
     if args.command:
         return remoteCli.execute(args.command)
     return remoteCli.shell()
