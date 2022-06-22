@@ -24,7 +24,8 @@ class ExmdbService:
             return target
 
     __loaded = False
-    __symbols = ("ConnectionError", "ExmdbError", "ExmdbProtocolError", "SerializationError", "ExmdbQueries", "Folder")
+    __symbols = ("ConnectionError", "ExmdbError", "ExmdbProtocolError", "SerializationError", "ExmdbQueries", "Folder",
+                 "Restriction")
     __methods = ("TaggedPropval", "FolderList", "FolderMemberList")
 
     def __init__(self):

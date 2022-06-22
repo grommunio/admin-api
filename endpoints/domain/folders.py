@@ -10,9 +10,9 @@ from flask import request, jsonify
 
 from services import Service
 
-from tools.constants import Permissions, PropTags, EcErrors
+from tools.constants import Permissions, PropTags, EcErrors, PublicFIDs
 from tools.permissions import DomainAdminPermission, DomainAdminROPermission
-from tools.rop import nxTime
+from tools.rop import nxTime, makeEidEx
 from tools.tasq import TasQServer
 
 from datetime import datetime
@@ -28,9 +28,18 @@ def getPublicFoldersList(domainID):
         return jsonify(message="Domain not found"), 404
     limit = int(request.args.get("limit", 50))
     offset = int(request.args.get("offset", 0))
+    parent = int(request.args.get("parent", makeEidEx(1, PublicFIDs.IPMSUBTREE)))
     with Service("exmdb") as exmdb:
+        if "match" in request.args:
+            fuzzyLevel = exmdb.Restriction.FL_SUBSTRING | exmdb.Restriction.FL_IGNORECASE
+            match = request.args["match"]
+            restriction = exmdb.Restriction.OR([
+                exmdb.Restriction.CONTENT(fuzzyLevel, 0, exmdb.TaggedPropval(PropTags.DISPLAYNAME, match)),
+                exmdb.Restriction.CONTENT(fuzzyLevel, 0, exmdb.TaggedPropval(PropTags.COMMENT, match))])
+        else:
+            restriction = exmdb.Restriction.NULL()
         client = exmdb.domain(domain)
-        response = exmdb.FolderList(client.getFolderList(limit=limit, offset=offset))
+        response = exmdb.FolderList(client.listFolders(parent, limit=limit, offset=offset, restriction=restriction))
     folders = [{"folderid": str(entry.folderId),
                 "displayname": entry.displayName,
                 "comment": entry.comment,
