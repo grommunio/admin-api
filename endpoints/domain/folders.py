@@ -28,7 +28,7 @@ def getPublicFoldersList(domainID):
         return jsonify(message="Domain not found"), 404
     limit = int(request.args.get("limit", 50))
     offset = int(request.args.get("offset", 0))
-    parent = int(request.args.get("parent", makeEidEx(1, PublicFIDs.IPMSUBTREE)))
+    parent = int(request.args.get("parentID", makeEidEx(1, PublicFIDs.IPMSUBTREE)))
     with Service("exmdb") as exmdb:
         if "match" in request.args:
             fuzzyLevel = exmdb.Restriction.FL_SUBSTRING | exmdb.Restriction.FL_IGNORECASE

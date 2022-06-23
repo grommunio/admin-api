@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.7.7
+  version: 1.7.8
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2679,7 +2679,7 @@ paths:
         - $ref: '#/components/parameters/queryOffset'
         - $ref: '#/components/parameters/queryLimit'
         - $ref: '#/components/parameters/match'
-        - name: parent
+        - name: parentID
           in: query
           description: ID of the parent folder
           schema:
@@ -2737,7 +2737,7 @@ paths:
                 parentID:
                   type: string
                   description: ID of the parent folder
-                  default: 0
+                  default: "0"
       responses:
         '201':
           description: Folder creation successful
