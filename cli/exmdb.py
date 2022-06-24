@@ -184,12 +184,12 @@ def cliExmdbStoreGetDelete(args):
         from datetime import datetime
         from tools.rop import nxTime
         if pv.type == PropTypes.BINARY:
-            return cli.col("[{} byte{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs="dark"), ""
+            return cli.col("[{} byte{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
         elif pv.type == PropTypes.FILETIME:
             timestring = datetime.fromtimestamp(nxTime(pv.val)).strftime("%Y-%m-%d %H:%M:%S")
             return pv.val, cli.col(timestring, attrs=["dark"])
         elif pv.type == PropTypes.BINARY_ARRAY:
-            return cli.col("[{} value{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs="dark"), ""
+            return cli.col("[{} value{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
         elif PropTypes.ismv(pv.type):
             return "["+", ".join(repr(pv.val))+"]", ""
         return pv.val, cli.col(printSize(pv.val), attrs=["dark"]) if pv.tag in PropTags.sizeTags else ""
