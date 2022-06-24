@@ -10,7 +10,7 @@ from flask import request, jsonify
 
 from services import Service
 
-from tools.constants import Permissions, PropTags, EcErrors, PublicFIDs
+from tools.constants import Permissions, PropTags, ExchangeErrors, PublicFIDs
 from tools.permissions import DomainAdminPermission, DomainAdminROPermission
 from tools.rop import nxTime, makeEidEx
 from tools.tasq import TasQServer
@@ -107,7 +107,7 @@ def updatePublicFolder(domainID, folderID):
         problems = client.setFolderProperties(0, folderID, proptags)
         if len(problems):
             errors = ["{} ({})".format(PropTags.lookup(problem.proptag, hex(problem.proptag)).lower(),
-                                       EcErrors.lookup(problem.err, hex(problem.err))) for problem in problems]
+                                       ExchangeErrors.lookup(problem.err, hex(problem.err))) for problem in problems]
             return jsonify(message="Update failed for tag{} {}".format("" if len(errors) == 1 else "s",
                                                                        ", ".join(errors))), 500
     return jsonify(message="Success.")
