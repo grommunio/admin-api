@@ -93,7 +93,7 @@ def cliDomainCreate(args):
     _dumpDomain(cli, result)
 
 
-def cliDomainDelete(args):
+def cliDomainDeleteRecover(args):
     cli = args._cli
     cli.require("DB")
     from orm import DB
@@ -106,25 +106,10 @@ def cliDomainDelete(args):
         cli.print(cli.col("'{}' is ambiguous".format(args.domainspec), "yellow"))
         return 2
     domain = domains[0]
-    domain.delete()
-    DB.session.commit()
-    _dumpDomain(cli, domain)
-
-
-def cliDomainRecover(args):
-    cli = args._cli
-    cli.require("DB")
-    from orm import DB
-    from .common import domainCandidates
-    domains = domainCandidates(args.domainspec).all()
-    if len(domains) == 0:
-        cli.print(cli.col("No domains found.", "yellow"))
-        return 1
-    if len(domains) > 1:
-        cli.print(cli.col("'{}' is ambiguous".format(args.domainspec), "yellow"))
-        return 2
-    domain = domains[0]
-    domain.recover()
+    if args.delete:
+        domain.delete()
+    else:
+        domain.recover()
     DB.session.commit()
     _dumpDomain(cli, domain)
 
@@ -205,7 +190,7 @@ def _setupCliDomain(subp: ArgumentParser):
     addProperties(create, True)
     delete = sub.add_parser("delete", help="Soft delete domain",
                             description="Set domain status to deleted and deactivate users")
-    delete.set_defaults(_handle=cliDomainDelete)
+    delete.set_defaults(_handle=cliDomainDeleteRecover, delete=True)
     delete.add_argument("domainspec", help="Domain ID or prefix to match domainname against")\
         .completer = _cliDomainDomainspecAutocomp
     list = sub.add_parser("list", help="List domains")
@@ -224,7 +209,7 @@ def _setupCliDomain(subp: ArgumentParser):
     purge.add_argument("-f", "--files", action="store_true", help="Delete domain and user files on disk")
     purge.add_argument("-y", "--yes", action="store_true", help="Do not question the elevated one")
     recover = sub.add_parser("recover", help="Recover soft-deleted domain")
-    recover.set_defaults(_handle=cliDomainRecover)
+    recover.set_defaults(_handle=cliDomainDeleteRecover, delete=False)
     recover.add_argument("domainspec", help="Domain ID or prefix to match domainname against")\
         .completer = _cliDomainDomainspecAutocomp
     show = sub.add_parser("show", help="Show detailed information about one or more domains")
