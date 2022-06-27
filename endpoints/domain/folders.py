@@ -144,10 +144,8 @@ def getPublicFolderOwnerList(domainID, folderID):
     with Service("exmdb") as exmdb:
         client = exmdb.domain(domain)
         response = exmdb.FolderMemberList(client.getFolderMemberList(folderID))
-    owners = [{"memberID": member.id, "displayName": member.name, "username": member.mail}
-              for member in response.members
-              if (member.rights & Permissions.FOLDEROWNER) == Permissions.FOLDEROWNER
-              and not member.special]
+    owners = [{"memberID": member.id, "displayName": member.name, "username": member.mail, "permissions": member.rights}
+              for member in response.members if not member.special]
     return jsonify(data=owners)
 
 
@@ -164,8 +162,25 @@ def addPublicFolderOwner(domainID, folderID):
         return jsonify(message="Domain not found"), 404
     with Service("exmdb") as exmdb:
         client = client = exmdb.domain(domain)
-        client.setFolderMember(folderID, data["username"], client.ownerRights)
+        client.setFolderMember(folderID, data["username"], data.get("permissions", client.ownerRights))
     return jsonify(message="Success"), 201
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners/<int:memberID>", methods=["PUT"])
+@secure(requireDB=True)
+def updatePublicFolderOwner(domainID, folderID, memberID):
+    checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
+    domain = Domains.query.filter(Domains.ID == domainID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    data = request.get_json(silent=True)
+    if data is None or "permissions" not in data:
+        return jsonify(message="Missing required data parameter 'permissions'"), 400
+    with Service("exmdb") as exmdb:
+        client = exmdb.domain(domain)
+        client.setFolderMember(folderID, memberID, data["permissions"], client.SET)
+    return jsonify(message="Success")
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>/owners/<int:memberID>", methods=["DELETE"])
@@ -178,5 +193,5 @@ def deletePublicFolderOwner(domainID, folderID, memberID):
         return jsonify(message="Domain not found"), 404
     with Service("exmdb") as exmdb:
         client = exmdb.domain(domain)
-        client.setFolderMember(folderID, memberID, client.ownerRights, True)
+        client.setFolderMember(folderID, memberID, 0xFFFFFFFF, client.REMOVE)
     return jsonify(message="Success"), 200

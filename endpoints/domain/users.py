@@ -494,7 +494,7 @@ def deleteUserStoreAccess(domainID, userID, username):
         return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
-        client.setFolderMember(makeEidEx(0, PrivateFIDs.IPMSUBTREE), username, Permissions.STOREOWNER, True)
+        client.setFolderMember(makeEidEx(0, PrivateFIDs.IPMSUBTREE), username, Permissions.STOREOWNER, client.REMOVE)
     if DB.minVersion(91):
         primary = Users.query.with_entities(Users.ID).filter(Users.username == username).first()
         if primary is not None:

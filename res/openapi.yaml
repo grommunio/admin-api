@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.7.8
+  version: 1.7.9
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2903,6 +2903,10 @@ paths:
                 username:
                   type: string
                   description: Username (e-mail address) to add to member list
+                permissions:
+                  type: integer
+                  description: Bit mask of permissions to grant the user (defaults to folder owner)
+                  default: 0x100
       responses:
         '201':
           description: Creation successful
@@ -2913,9 +2917,42 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
         '503':
-          $ref: '#/components/responses/DatabaseError'
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /domains/{domainID}/folders/{folderID}/owners/{memberID}:
+    put:
+      summary: Set folder member permissions
+      tags:
+        - Domain Admin/Folders
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/folderID'
+        - $ref: '#/components/parameters/memberID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permissions]
+              properties:
+                permissions:
+                  type: integer
+                  description: Bit mask of permissions to set for the user (defaults to folder owner)
+      responses:
+        '200':
+          description: Update successful
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     delete:
       summary: Remove a user from the owner list
       tags:
@@ -2926,12 +2963,7 @@ paths:
         - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/folderID'
-        - name: memberID
-          description: Member ID of the owner list
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/memberID'
       responses:
         '200':
           description: Member removed
@@ -2942,7 +2974,7 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
         '503':
-          $ref: '#/components/responses/DatabaseError'
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /domains/ldap/search:
     get:
@@ -4113,6 +4145,13 @@ components:
       in: query
       schema:
         type: string
+    memberID:
+      name: memberID
+      description: Member ID of the owner list
+      in: path
+      required: true
+      schema:
+        type: integer
     verbosity:
       name: level
       in: query

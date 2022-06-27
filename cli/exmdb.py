@@ -146,7 +146,8 @@ def cliExmdbFolderPermissionsModify(args):
         if args.recursive:
             folders += exmdb.FolderList(client.listFolders(fid, True)).folders
             fids += tuple(folder.folderId for folder in folders)
-        perms = [client.setFolderMember(fid, args.username, perms, args.revoke) for fid in fids]
+        mode = client.REMOVE if args.revoke else client.ADD
+        perms = [client.setFolderMember(fid, args.username, perms, mode) for fid in fids]
         cli.print("New permissions for user '{}':".format(cli.col(args.username, attrs=["bold"])))
         Table([(_FolderNode(folder).print(cli), _cliExmdbFolderPermissionPrint(cli, perm))
                for folder, perm in zip(folders, perms)]).print(cli)
