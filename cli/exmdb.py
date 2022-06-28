@@ -70,13 +70,41 @@ class _FolderNode():
     def idstr(self):
         return hex(self.ID)
 
-    def print(self, cli, level=-1, pref=""):
+    def _toDict(self, recursive=True):
+        me = dict(ID=self.ID, parentID=self.parentID, name=self.name)
+        if recursive:
+            me["subfolders"] = [sf._toDict(True) for sf in self.subfolders]
+        return me
+
+    def _collectSubfolders(self):
+        sfs = list(self.subfolders)
+        for sf in self.subfolders:
+            sfs += sf._collectSubfolders()
+        return sfs
+
+    def _print_json(self, flat=False):
+        import json
+        me = self._toDict(not flat)
+        if flat:
+            me["subfolders"] = [sf._toDict(False) for sf in self._collectSubfolders()]
+        return json.dumps(me, separators=(",", ":"))
+
+    def _print_pretty(self, cli, level=-1, pref=""):
         content = "{} ({})\n".format(cli.col(self.name, attrs=["bold"]), self.idstr)
         if self.subfolders:
             for sub in self.subfolders[:-1]:
-                content += pref+self.T+sub.print(cli, level+1, pref+self.I)
-            content += pref+self.L+self.subfolders[-1].print(cli, level+1, pref+"  ")
+                content += pref+self.T+sub._print_pretty(cli, level+1, pref+self.I)
+            content += pref+self.L+self.subfolders[-1]._print_pretty(cli, level+1, pref+"  ")
         return content if level >= 0 else content[:-1]
+
+    def print(self, cli, format="pretty"):
+        if format in ("json-flat", "json-tree"):
+            return self._print_json(format == "json-flat")
+        return self._print_pretty(cli)
+
+    def tabledata(self):
+        sfs = self._collectSubfolders()
+        return [(self.ID, self.parentID, self.name)]+[(sf.ID, sf.parentID, sf.name) for sf in sfs]
 
 
 def cliExmdbFolderFind(args):
@@ -112,7 +140,18 @@ def cliExmdbFolderList(args):
             return ret
         root = exmdb.Folder(client.getFolderProperties(0, fid))
         subfolders = exmdb.FolderList(client.listFolders(fid, args.recursive)).folders
-        cli.print(_FolderNode(root, subfolders).print(cli))
+        folder = _FolderNode(root, subfolders)
+        if args.format == "csv":
+            import csv
+            writer = csv.DictWriter(cli.stdout, fieldnames=("ID", "parentID", "name"))
+            writer.writeheader()
+            for row in folder.tabledata():
+                writer.writerow({"ID": row[0], "parentID": row[1], "name": row[2]})
+        elif args.format == "table":
+            from .common import Table
+            Table(folder.tabledata(), header=("ID", "parentID", "name")).print(cli)
+        else:
+            cli.print(folder.print(cli, args.format))
 
 
 def _cliExmdbFolderPermissionPrint(cli, permission):
@@ -277,6 +316,8 @@ def _setupCliExmdb(subp: ArgumentParser):
     list = foldersub.add_parser("list", help="List subfolders")
     list.set_defaults(_handle=cliExmdbFolderList)
     list.add_argument("ID", nargs="?", type=xint, default=0, help="Folder ID")
+    list.add_argument("--format", nargs="?", default="pretty", help="Output format", metavar="FORMAT",
+                      choices=("csv", "json-flat", "json-tree", "pretty", "table"))
     list.add_argument("-r", "--recursive", action="store_true", help="Recursively list subfolders")
     permissions = foldersub.add_parser("permissions")
     permissions.set_defaults(_handle=cliExmdbFolderPermissionsShow)

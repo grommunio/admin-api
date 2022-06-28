@@ -13,7 +13,8 @@ Synopsis
 | **grommunio-admin** **exmdb** *TARGET* *folder* *find* [*-x*] *NAME* [*ID*]
 | **grommunio-admin** **exmdb** *TARGET* *folder* *grant* [*-f*] [*-r*] *ID*
   *USERNAME* *PERMISSION* [*PERMISSION* …]
-| **grommunio-admin** **exmdb** *TARGET* *folder* *list* [*-r*] [*ID*]
+| **grommunio-admin** **exmdb** *TARGET* *folder* *list* [*-r*]
+  [*--format FORMAT*] [*ID*]
 | **grommunio-admin** **exmdb** *TARGET* *folder* *revoke* [*-r*] *ID*
   *USERNAME* [*PERMISSION* …]
 | **grommunio-admin** **exmdb** *TARGET* *store* *delete* *PROPSPEC* [*PROPSPEC*  ...]
@@ -68,6 +69,9 @@ Options
    E-Mail address of a user
 ``-f``, ``--force``
    Grant permissions to non-existing user
+``--format FORMAT``
+   Set output format. Valid values are `csv`, `json-flat`, `json-tree`, `pretty`
+   and `table`. Default is `pretty`.
 ``-r``, ``--recursive``
    Apply recursively to subfolders
 ``-x``, ``--exact``

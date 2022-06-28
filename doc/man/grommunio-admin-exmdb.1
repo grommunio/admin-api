@@ -21,7 +21,8 @@ grommunio-admin exmdb \[em] User or domain store management
 .P
 .PD
 \f[B]grommunio-admin\f[R] \f[B]exmdb\f[R] \f[I]TARGET\f[R]
-\f[I]folder\f[R] \f[I]list\f[R] [\f[I]-r\f[R]] [\f[I]ID\f[R]]
+\f[I]folder\f[R] \f[I]list\f[R] [\f[I]-r\f[R]] [\f[I]--format
+FORMAT\f[R]] [\f[I]ID\f[R]]
 .PD 0
 .P
 .PD
@@ -96,6 +97,11 @@ E-Mail address of a user
 .TP
 \f[B]\f[CB]-f\f[B]\f[R], \f[B]\f[CB]--force\f[B]\f[R]
 Grant permissions to non-existing user
+.TP
+\f[B]\f[CB]--format FORMAT\f[B]\f[R]
+Set output format.
+Valid values are csv, json-flat, json-tree, pretty and table.
+Default is pretty.
 .TP
 \f[B]\f[CB]-r\f[B]\f[R], \f[B]\f[CB]--recursive\f[B]\f[R]
 Apply recursively to subfolders
