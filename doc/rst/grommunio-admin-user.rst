@@ -18,7 +18,7 @@ Synopsis
   [*--no-ldap*] [*--remove-alias ALIAS*] [*--remove-property PROPSPEC*]
   [*--remove-storeprop PROPSPEC*] *USERSPEC*
 | **grommunio-admin user** **query** [*-f ATTRIBUTE=<value>*] [*--format FORMAT*]
-  [*--separator SEPARATOR*][*-s FIELD*] [*ATTRIBUTE* …]
+  [*--separator SEPARATOR*] [*-s FIELD*] [*ATTRIBUTE* …]
 | **grommunio-admin user** **show** [*-f ATTRIBUTE=<value>*] [*-s FIELD*]
   *USERSPEC*
 

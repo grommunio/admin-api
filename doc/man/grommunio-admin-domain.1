@@ -33,6 +33,12 @@ FIELD=<value>\f[R]] [\f[I]-s FIELD\f[R]] [\f[I]DOMAINSPEC\f[R]]
 .PD 0
 .P
 .PD
+\f[B]grommunio-admin domain\f[R] \f[B]query\f[R] [\f[I]-f
+ATTRIBUTE=<value>\f[R]] [\f[I]--format FORMAT\f[R]] [\f[I]--separator
+SEPARATOR\f[R]] [\f[I]-s FIELD\f[R]] [\f[I]ATTRIBUTE\f[R] \&...]
+.PD 0
+.P
+.PD
 \f[B]grommunio-admin domain\f[R] \f[B]recover\f[R] \f[I]DOMAINSPEC\f[R]
 .PD 0
 .P
@@ -59,12 +65,28 @@ Modify domain
 \f[B]\f[CB]purge\f[B]\f[R]
 Permanently delete domain
 .TP
+\f[B]\f[CB]query\f[B]\f[R]
+Query domain attributes
+.TP
 \f[B]\f[CB]recover\f[B]\f[R]
 Recover a soft-deleted domain
 .TP
 \f[B]\f[CB]show\f[B]\f[R]
 Show detailed information about a domain
 .SH Options
+.TP
+\f[B]\f[CB]ATTRIBUTE\f[B]\f[R]
+Attributes to query.
+Available attributes are \f[I]ID\f[R], \f[I]activeUsers\f[R],
+\f[I]address\f[R], \f[I]adminName\f[R], \f[I]chat\f[R],
+\f[I]displayname\f[R], \f[I]domainStatus\f[R], \f[I]domainname\f[R],
+\f[I]endDay\f[R], \f[I]inactiveUsers\f[R], \f[I]maxUser\f[R],
+\f[I]orgID\f[R], \f[I]tel\f[R] and \f[I]title\f[R]
+.RS
+.PP
+If no attributes are specified, \f[I]ID\f[R], \f[I]domainname\f[R] and
+\f[I]domainStatus\f[R] are shown.
+.RE
 .TP
 \f[B]\f[CB]DOMAINNAME\f[B]\f[R]
 Complete name of the domain
@@ -82,11 +104,23 @@ Also delete files from disk
 Filter expression in the form of \[oq]field=value\[cq].
 Can be specified multiple times to refine filter
 .TP
+\f[B]\f[CB]--format FORMAT\f[B]\f[R]
+Output format.
+Can be one of \f[I]csv\f[R], \f[I]json-flat\f[R],
+\f[I]json-structured\f[R] and \f[I]pretty\f[R].
+Default is \f[I]pretty\f[R].
+.TP
 \f[B]\f[CB]--homeserver HOMESERVER\f[B]\f[R]
 ID of the homeserver to place the domain on
 .TP
 \f[B]\f[CB]--no-defaults\f[B]\f[R]
 Do not apply configured default values
+.TP
+\f[B]\f[CB]--separator SEPARATOR\f[B]\f[R]
+String to use for column separation (\f[I]csv\f[R] and \f[I]pretty\f[R]
+only).
+Must have length 1 if format is \f[I]csv\f[R].
+Default is \[dq],\[dq] for \f[I]csv\f[R] and \[dq] \[dq] for pretty.
 .TP
 \f[B]\f[CB]-s FIELD\f[B]\f[R], \f[B]\f[CB]--sort FIELD\f[B]\f[R]
 Sort by field.

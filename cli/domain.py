@@ -7,6 +7,8 @@ from argparse import ArgumentParser
 
 _statusMap = {0: "active", 1: "suspended", 2: "out-of-date", 3: "deleted"}
 _statusColor = {0: "green", 1: "yellow", 2: "yellow", 3: "red"}
+_domainAttributes = ("ID", "activeUsers", "address", "adminName", "chat", "displayname", "domainStatus", "domainname",
+                     "endDay", "inactiveUsers", "maxUser", "orgID", "tel", "title")
 
 
 def _domainStatus(cli, status):
@@ -16,7 +18,7 @@ def _domainStatus(cli, status):
 def _domainQuery(args):
     from .common import domainCandidates
     from orm.domains import Domains
-    query = domainCandidates(args.domainspec)
+    query = domainCandidates(args.domainspec) if "domainspec" in args else Domains.query
     if "filter" in args and args.filter is not None:
         query = Domains.autofilter(query, {f.split("=", 1)[0]: f.split("=", 1)[1] for f in args.filter if "=" in f})
     if "sort" in args and args.sort is not None:
@@ -161,6 +163,25 @@ def cliDomainModify(args):
     _dumpDomain(cli, domain)
 
 
+def cliDomainQuery(args):
+    cli = args._cli
+    cli.require("DB")
+    attrTf = {"domainStatus": lambda v: cli.col(str(v)+"/", attrs=["dark"])+_domainStatus(cli, v)}\
+        if args.format == "pretty" else {}
+
+    from .common import Table
+    from orm.domains import Domains
+    args.attributes = args.attributes or ("ID", "domainname", "domainStatus")
+    query = _domainQuery(args)
+    query = Domains.optimize_query(query, args.attributes)
+    domains = [domain.todict(args.attributes) for domain in query]
+    separator = args.separator or ("," if args.format == "csv" else "  ")
+    data = [[attrTf.get(attr, lambda x: x)(domain.get(attr)) for attr in args.attributes] for domain in domains]
+    header = None if len(args.attributes) <= 1 and len(data) <= 1 and args.format == "pretty" else args.attributes
+    table = Table(data, header, separator, cli.col("(no results)", attrs=["dark"]))
+    table.dump(cli, args.format)
+
+
 def _cliDomainDomainspecAutocomp(prefix, **kwarg):
     from .common import domainCandidates
     from orm.domains import Domains
@@ -172,6 +193,16 @@ def _noComp(**kwargs):
 
 
 def _setupCliDomain(subp: ArgumentParser):
+    class AttrChoice:
+        def __contains__(self, value):
+            return value == [] or value in _domainAttributes
+
+        def __getitem__(self, i):
+            return _domainAttributes[i]
+
+        def __len__(self):
+            return len(_domainAttributes)
+
     def addProperties(parser, init):
         parser.add_argument("-u", "--maxUser", required=init, type=int, help="Maximum number of users")
         parser.add_argument("--address", help="Domain contact address")
@@ -180,6 +211,7 @@ def _setupCliDomain(subp: ArgumentParser):
         parser.add_argument("--orgID", type=int, help="ID of the organization")
         parser.add_argument("--tel", help="Domain contact telephone number")
         parser.add_argument("--title", help="Domain title")
+
     sub = subp.add_subparsers()
     create = sub.add_parser("create", help="Create new domain")
     create.set_defaults(_handle=cliDomainCreate)
@@ -208,6 +240,14 @@ def _setupCliDomain(subp: ArgumentParser):
     purge.add_argument("domainspec", nargs="?", help="Domain ID or prefix to match domainname against").completer = _noComp
     purge.add_argument("-f", "--files", action="store_true", help="Delete domain and user files on disk")
     purge.add_argument("-y", "--yes", action="store_true", help="Do not question the elevated one")
+    query = sub.add_parser("query", help="Query specific domain attributes")
+    query.set_defaults(_handle=cliDomainQuery)
+    query.add_argument("-f", "--filter", action="append", help="Filter by attribute, e.g. -f ID=42")
+    query.add_argument("--format", choices=("csv", "json-flat", "json-structured", "pretty"), help="Set output format",
+                       metavar="FORMAT", default="pretty")
+    query.add_argument("--separator", help="Set column separator")
+    query.add_argument("-s", "--sort", action="append", help="Sort by attribute, e.g. -s username,desc")
+    query.add_argument("attributes", nargs="*", choices=AttrChoice(), help="Attributes to query", metavar="ATTRIBUTE")
     recover = sub.add_parser("recover", help="Recover soft-deleted domain")
     recover.set_defaults(_handle=cliDomainDeleteRecover, delete=False)
     recover.add_argument("domainspec", help="Domain ID or prefix to match domainname against")\

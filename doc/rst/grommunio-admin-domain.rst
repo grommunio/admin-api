@@ -17,6 +17,8 @@ Synopsis
   [*DOMAINSPEC*]
 | **grommunio-admin domain** **modify** [*<FIELDS>*] *DOMAINSPEC*
 | **grommunio-admin domain** **purge** [*--files*] [*-y*] *DOMAINSPEC*
+| **grommunio-admin domain** **query** [*-f ATTRIBUTE=<value>*] [*--format FORMAT*]
+  [*--separator SEPARATOR*] [*-s FIELD*] [*ATTRIBUTE* …]
 | **grommunio-admin domain** **recover** *DOMAINSPEC*
 | **grommunio-admin domain** **show** [*-f FIELD=<value>*] [*-s FIELD*]
   *DOMAINSPEC*
@@ -39,6 +41,8 @@ Commands
    Modify domain
 ``purge``
    Permanently delete domain
+``query``
+   Query domain attributes
 ``recover``
    Recover a soft-deleted domain
 ``show``
@@ -47,6 +51,12 @@ Commands
 Options
 =======
 
+``ATTRIBUTE``
+   Attributes to query. Available attributes are *ID*, *activeUsers*,
+   *address*, *adminName*, *chat*, *displayname*, *domainStatus*, *domainname*,
+   *endDay*, *inactiveUsers*, *maxUser*, *orgID*, *tel* and *title*
+
+   If no attributes are specified, *ID*, *domainname* and *domainStatus* are shown.
 ``DOMAINNAME``
    Complete name of the domain
 ``DOMAINSPEC``
@@ -58,10 +68,16 @@ Options
 ``-f FIELD=<value>``, ``--filter FIELD=<value>``
    Filter expression in the form of ‘field=value’. Can be specified
    multiple times to refine filter
+``--format FORMAT``
+   Output format. Can be one of *csv*, *json-flat*, *json-structured* and
+   *pretty*. Default is *pretty*.
 `` --homeserver HOMESERVER``
    ID of the homeserver to place the domain on
 ``--no-defaults``
    Do not apply configured default values
+``--separator SEPARATOR``
+   String to use for column separation (*csv* and *pretty* only). Must have
+   length 1 if format is *csv*. Default is "," for *csv* and "  " for pretty.
 ``-s FIELD``, ``--sort FIELD``
    Sort by field. Can be given multiple times
 ``-y``, ``--yes``
