@@ -141,15 +141,10 @@ def cliExmdbFolderList(args):
         root = exmdb.Folder(client.getFolderProperties(0, fid))
         subfolders = exmdb.FolderList(client.listFolders(fid, args.recursive)).folders
         folder = _FolderNode(root, subfolders)
-        if args.format == "csv":
-            import csv
-            writer = csv.DictWriter(cli.stdout, fieldnames=("ID", "parentID", "name"))
-            writer.writeheader()
-            for row in folder.tabledata():
-                writer.writerow({"ID": row[0], "parentID": row[1], "name": row[2]})
-        elif args.format == "table":
+        if args.format in ("csv", "table"):
             from .common import Table
-            Table(folder.tabledata(), header=("ID", "parentID", "name")).print(cli)
+            Table(folder.tabledata(), header=("ID", "parentID", "name"), colsep="," if args.format == "csv" else "  ")\
+                .dump(cli, args.format)
         else:
             cli.print(folder.print(cli, args.format))
 

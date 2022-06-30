@@ -322,24 +322,11 @@ def cliUserQuery(args):
     query = _mkUserQuery(args)
     query = Users.optimize_query(query, args.attributes)
     users = [user.todict(args.attributes) for user in query]
+    separator = args.separator or ("," if args.format == "csv" else "  ")
     data = [[attrTf.get(attr, lambda x: x)(user.get(attr)) for attr in args.attributes] for user in users]
-    if args.format == "csv":
-        import csv
-        writer = csv.DictWriter(cli.stdout, fieldnames=args.attributes, delimiter=args.separator or ",")
-        writer.writeheader()
-        for row in data:
-            writer.writerow({name: value for name, value in zip(args.attributes, row)})
-    elif args.format == "json-flat":
-        import json
-        cli.print(json.dumps(data, default=lambda x: str(x), separators=(",", ":")))
-    elif args.format == "json-structured":
-        import json
-        data = [{name: value for name, value in zip(args.attributes, row)} for row in data]
-        cli.print(json.dumps(data))
-    else:
-        header = None if len(args.attributes) <= 1 and len(data) <= 1 else args.attributes
-        Table(data, header=header, empty=cli.col("(no results)", attrs=["dark"]), colsep=args.separator or "   ")\
-            .print(cli)
+    header = None if len(args.attributes) <= 1 and len(data) <= 1 and args.format == "pretty" else args.attributes
+    table = Table(data, header, separator, cli.col("(no results)", attrs=["dark"]))
+    table.dump(cli, args.format)
 
 
 def _cliUserspecCompleter(prefix, **kwargs):

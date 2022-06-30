@@ -92,6 +92,7 @@ class Table:
             """
             self._init()
             self.align = align if align != "a" else "r" if type(data) in (int, float) else "l"
+            self.raw = data
             self.data = str(data).expandtabs()
             self.color = color
             self.on_color = None
@@ -101,6 +102,8 @@ class Table:
         @classmethod
         def _init(cls):
             """Initialize stylemarker re."""
+            if cls.stylemarker is not None:
+                return
             import re
             cls.stylemarker = cls.stylemarker or re.compile("\x1b\\[[\\d]{1,2}m")
 
@@ -209,3 +212,56 @@ class Table:
         if self.data:
             for line in self.data:
                 self.printline(cli, line)
+
+    def csv(self, cli):
+        """Output table as csv.
+
+        Parameters
+        ----------
+        cli : Cli
+            Cli providing printing functionality.
+        """
+        import csv
+        if not (self.header or self.data):
+            return
+        header = [cell.raw for cell in self.header] if self.header else [str(i) for i in range(len(self.data[0]))]
+        writer = csv.DictWriter(cli.stdout, fieldnames=header, delimiter=self.colsep[0] or ",")
+        if self.header:
+            writer.writeheader()
+        for row in self.data:
+            writer.writerow({name: value.raw for name, value in zip(header, row)})
+
+    def json(self, cli, structured):
+        """Output table as JSON
+
+        Parameters
+        ----------
+        cli : Cli
+            Cli providing printing functionality.
+        structured : bool
+            Whether to output data as structured JSON or array-of-arrays
+        """
+        import json
+        if not self.data:
+            cli.print("[]")
+        header = [cell.raw for cell in self.header] if self.header else [str(i) for i in range(len(self.data[0]))]
+        data = [{name: value.raw for name, value in zip(header, row)} for row in self.data] if structured else\
+               [[cell.raw for cell in row] for row in self.data]
+        cli.print(json.dumps(data, default=lambda x: str(x), separators=(",", ":")))
+
+    def dump(self, cli, format):
+        """Dump table contents in specified format
+
+        Parameters
+        ----------
+        cli : Cli
+            Cli providing printing functionality.
+        format : str
+            Output format. Can be one of `csv`, `json-flat` and `json-structured`. Everything else will print the table.
+        """
+        if format == "csv":
+            self.csv(cli)
+        elif format in ("json-flat", "json-structured"):
+            self.json(cli, format == "json-structured")
+        else:
+            self.print(cli)
