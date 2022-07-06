@@ -7,7 +7,7 @@ __all__ = ["domain", "system", "defaults", "misc", "service", "tasq"]
 from flask import request, jsonify
 from orm import DB
 from tools.DataModel import MissingRequiredAttributeError, InvalidAttributeError, MismatchROError
-from jellyfish import damerau_levenshtein_distance as dldist
+from tools.misc import damerau_levenshtein_distance as dldist
 import re
 
 from sqlalchemy.exc import IntegrityError
@@ -79,7 +79,7 @@ def defaultListQuery(Model, filters=(), order=None, result="response", automatch
     query = query.limit(limit).offset(offset)
     objects = query.all()
     if order is None and "sort" not in request.args and automatch and "match" in request.args:
-        scored = ((min(dldist(str(field).lower(), matchStr) for field in obj.matchvalues() if field is not None), obj)
+        scored = ((min(dldist(str(field).lower(), matchStr) for field in obj.matchvalues(fields) if field is not None), obj)
                   for obj in objects)
         objects = [so[1] for so in sorted(scored, key=lambda entry: entry[0])]
     if result == "list":
