@@ -119,7 +119,7 @@ class MLists(DataModel, DB.Base):
                            "domainID": self.domain.ID,
                            "domain": self.domain,
                            "domainStatus": self.domain.domainStatus,
-                           "properties": {"displaytypeex": 1, "displayname": "Mailing List "+self.listname}})
+                           "properties": {"displaytypeex": 1, "displayname": "Distribution list "+self.listname}})
         self.user.maildir = ""
 
     def fromdict(self, data, *args, **kwargs):
