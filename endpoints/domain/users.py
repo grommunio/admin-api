@@ -316,7 +316,7 @@ def setUserDelegates(domainID, userID):
     try:
         delegateFile = user.maildir+"/config/delegates.txt"
         with open(delegateFile, "w", encoding="utf-8") as file:
-            file.write("\n".join(data))
+            file.write("\n".join(data)+"\n")
     except (FileNotFoundError, PermissionError) as err:
         return jsonify(message="Failed to write delegates: "+" - ".join(str(arg) for arg in err.args)), 500
     except TypeError:
