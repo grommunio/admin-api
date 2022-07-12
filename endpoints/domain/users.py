@@ -282,51 +282,90 @@ def getUserSyncData(domainID, userID):
     return jsonify(data=tuple(devices.values()))
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/delegates", methods=["GET"])
-@secure(requireDB=True)
-def getUserDelegates(domainID, userID):
+def getUsernamesFromFile(domainID, userID, name):
     checkPermissions(DomainAdminROPermission(domainID))
-    from orm.users import Users
-    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.username, Users.maildir).first()
-    if user is None:
-        return jsonify(message="User not found"), 404
-    try:
-        with open(user.maildir+"/config/delegates.txt", encoding="utf-8") as file:
-            delegates = [line.strip() for line in file if line.strip != ""]
-    except (FileNotFoundError, PermissionError, TypeError):
-        delegates = []
-    return jsonify(data=delegates)
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/delegates", methods=["PUT"])
-@secure(requireDB=True)
-def setUserDelegates(domainID, userID):
-    checkPermissions(DomainAdminPermission(domainID))
-    data = request.get_json(silent=True)
-    if not isinstance(data, list):
-        return jsonify(message="Invalid or missing data"), 400
-    for entry in data:
-        if not formats.email.match(entry):
-            return jsonify(message="Invalid delegate e-mail '{}'".format(entry))
     from orm.users import Users
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID)\
                       .with_entities(Users.username, Users.maildir).first()
     if user is None:
         return jsonify(message="User not found"), 404
     try:
-        delegateFile = user.maildir+"/config/delegates.txt"
-        with open(delegateFile, "w", encoding="utf-8") as file:
+        with open(user.maildir+"/config/"+name+".txt", encoding="utf-8") as file:
+            content = [line.strip() for line in file if line.strip() != ""]
+    except (FileNotFoundError, PermissionError, TypeError):
+        content = []
+    return jsonify(data=content)
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/delegates", methods=["GET"])
+@secure(requireDB=True)
+def getUserDelegates(domainID, userID):
+    return getUsernamesFromFile(domainID, userID, "delegates")
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sendas", methods=["GET"])
+@secure(requireDB=True)
+def getUserSendas(domainID, userID):
+    return getUsernamesFromFile(domainID, userID, "sendas")
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sendass", methods=["GET"])
+def sendAss(*args, **kwargs):
+    from random import choices
+    from flask import Response
+    content = ("                          /\\          /\\\n                         ( \\\\        // )\n                     "
+               "     \\ \\\\      // /\n                           \\_\\\\||||//_/\n                            \\/ _  _ \\\n "
+               "                          \\/|(O)(O)|\n                          \\/ |      |\n      ___________________\\/  "
+               "\\      /\n     //                //     |____|\n    //                ||     /      \\\n   //|               "
+               " \\|     \\ 0  0 /\n  // \\       )         V    / \\____/\n //   \\     /        (     /\n     \\   /________"
+               "_|  |_/\n       /  /\\   /     |  ||\n      /  / /  /      \\  ||\n      | |  | |        | ||\n      | |  | | "
+               "       | ||\n      |_|  |_|        |_||\n       \\_\\  \\_\\        \\_\\\\\n",
+               "⠄⠄⠸⣿⣿⢣⢶⣟⣿⣖⣿⣷⣻⣮⡿⣽⣿⣻⣖⣶⣤⣭⡉⠄⠄⠄⠄⠄\n⠄⠄⠄⢹⠣⣛⣣⣭⣭⣭⣁⡛⠻⢽⣿⣿⣿⣿⢻⣿⣿⣿⣽⡧⡄⠄⠄⠄\n⠄⠄⠄⠄⣼⣿⣿⣿⣿⣿⣿⣿⣿⣶⣌⡛⢿⣽⢘⣿⣷⣿⡻⠏⣛⣀⠄⠄\n⠄⠄⠄⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⠙⡅"
+               "⣿⠚⣡⣴⣿⣿⣿⡆⠄\n⠄⠄⣰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⠄⣱⣾⣿⣿⣿⣿⣿⣿⠄\n⠄⢀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢸⣿⣿⣿⣿⣿⣿⣿⣿⠄\n⠄⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠣⣿⣿⣿⣿⣿⣿⣿⣿⣿⠄\n⠄⣿⣿⣿⣿⣿⣿⣿"
+               "⣿⣿⣿⣿⣿⣿⠿⠛⠑⣿⣮⣝⣛⠿⠿⣿⣿⣿⣿⠄\n⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⠄⠄⠄⠄⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⠄\n⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇⠄⠄⠄⠄⢹⣿⣿⣿⣿⣿⣿⣿⣿⠁⠄\n⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠏⠄⠄⠄⠄⠄⠸⣿⣿⣿⣿⣿⡿⢟⣣⣀"
+               "\n")
+    return Response(choices(content, (10, 1)), headers={"Content-Type": "text/plain"})
+
+
+def writeUsernamesToFile(domainID, userID, name):
+    checkPermissions(DomainAdminPermission(domainID))
+    data = request.get_json(silent=True)
+    if not isinstance(data, list):
+        return jsonify(message="Invalid or missing data"), 400
+    for entry in data:
+        if not formats.email.match(entry):
+            return jsonify(message="Invalid {} e-mail '{}'".format(name, entry))
+    from orm.users import Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID)\
+                      .with_entities(Users.username, Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    try:
+        filename = user.maildir+"/config/"+name+".txt"
+        with open(filename, "w", encoding="utf-8") as file:
             file.write("\n".join(data)+"\n")
     except (FileNotFoundError, PermissionError) as err:
-        return jsonify(message="Failed to write delegates: "+" - ".join(str(arg) for arg in err.args)), 500
+        return jsonify(message="Failed to write {}: {}".format(name, " - ".join(str(arg) for arg in err.args))), 500
     except TypeError:
-        return jsonify(message="User does not support delegates"), 400
+        return jsonify(message="User does not support "+name), 400
     try:
-        setDirectoryOwner(delegateFile, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
-        setDirectoryPermission(delegateFile, Config["options"].get("filePermissions"))
+        setDirectoryOwner(filename, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
+        setDirectoryPermission(filename, Config["options"].get("filePermissions"))
     except Exception:
         pass
-    return jsonify(message="Delegates updated")
+    return jsonify(message=name.capitalize()+" updated")
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/delegates", methods=["PUT"])
+@secure(requireDB=True)
+def setUserDelegates(domainID, userID):
+    return writeUsernamesToFile(domainID, userID, "delegates")
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sendas", methods=["PUT"])
+@secure(requireDB=True)
+def setUserSendas(domainID, userID):
+    return writeUsernamesToFile(domainID, userID, "sendas")
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<deviceID>", methods=["DELETE"])
