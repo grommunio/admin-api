@@ -218,7 +218,7 @@ def cliWriteFetchmailrc(args):
             return 0
     try:
         vprint("Writing output to "+args.out_file)
-        with cli.open(args.out_file, "w", encoding="utf-8") as file:
+        with cli.open(args.out_file, "w") as file:
             write(_globalConf)
             for record in Fetchmail.query.filter(Fetchmail.active == 1).all():
                 write(str(record))
