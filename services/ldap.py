@@ -7,6 +7,7 @@ from . import ServiceHub, ServiceDisabledError, ServiceUnavailableError
 import ldap3
 import ldap3.core.exceptions as ldapexc
 import re
+import threading
 import yaml
 
 from ldap3.utils.conv import escape_filter_chars
@@ -53,6 +54,7 @@ class LdapService:
         self.init()
         self._config = config or mconf.LDAP
         self._userAttributes = self._checkConfig(self._config)
+        self.lock = threading.Lock()
         if self._config.get("disabled"):
             raise ServiceDisabledError("Service disabled by configuration")
         try:
@@ -196,18 +198,19 @@ class LdapService:
         def complete(result):
             return "attributes" in result and self._userComplete(result["attributes"], (self._config["users"]["username"],))
 
-        if limit:
-            kwargs["paged_size"] = min(limit, kwargs.get("paged_size") or limit)
-        results, control = self.conn.get_response(self.conn.search(*args, **kwargs))
-        results = [result for result in results if complete(result)]
-        cookie = control.get("controls", {}).get("1.2.840.113556.1.4.319", {}).get("value", {}).get("cookie")
-        while cookie and (not limit or len(results) < limit):
-            response, control = self.conn.get_response(self.conn.search(*args, **kwargs, paged_cookie=cookie))
-            results += [result for result in response if complete(result)]
-            cookie = control.get("controls", {}).get("1.2.840.113556.1.4.319", {}).get("value", {}).get("cookie")
-        if limit:
-            return results[:limit]
-        return results
+        with self.lock:
+            if limit:
+                kwargs["paged_size"] = min(limit, kwargs.get("paged_size") or limit)
+            if not self.conn.search(*args, **kwargs):
+                return []
+            results = [result for result in self.conn.response if complete(result)]
+            cookie = self.conn.result.get("controls", {}).get("1.2.840.113556.1.4.319", {}).get("value", {}).get("cookie")
+            while cookie and (not limit or len(results) < limit) and self.conn.search(*args, **kwargs, paged_cookie=cookie):
+                results += [result for result in self.conn.response if complete(result)]
+                cookie = self.conn.result.get("controls", {}).get("1.2.840.113556.1.4.319", {}).get("value", {}).get("cookie")
+            if limit:
+                return results[:limit]
+            return results
 
     @classmethod
     def _searchBase(cls, conf):
@@ -376,7 +379,7 @@ class LdapService:
         Parameters
         ----------
         IDs : list of bytes or str
-            IDs o search
+            IDs to search
 
         Returns
         -------
@@ -460,12 +463,10 @@ class LdapService:
     def testConnection(cls, config, active=True):
         servers = [s[:-1] if s.endswith("/") else s for s in config["connection"]["server"].split()]
         pool = servers[0] if len(servers) == 1 else ldap3.ServerPool(servers, "FIRST", active=1)
-        connections = config["connection"].get("connections", 4)
         user = config["connection"].get("bindUser")
         password = config["connection"].get("bindPass")
         starttls = config["connection"].get("starttls")
-        # Test connection must use SYNC strategy so we can access potential error responses
-        conn = ldap3.Connection(pool, user=user, password=password)
+        conn = ldap3.Connection(pool, user=user, password=password, client_strategy=ldap3.RESTARTABLE)
         if starttls and not conn.start_tls():
             logger.warning("Failed to initiate StartTLS connection")
         if not conn.bind():
@@ -473,10 +474,6 @@ class LdapService:
         if active:
             conn.search(cls._searchBase(config), cls._searchFilters(" ", userconf=config["users"]),
                         attributes=[], paged_size=0)
-        # pool_lifetime is not required but improves performance. 360 is the slapd default.
-        autobind = ldap3.AUTO_BIND_TLS_BEFORE_BIND if starttls else ldap3.AUTO_BIND_NO_TLS
-        conn = ldap3.Connection(pool, user=user, password=password, auto_bind=autobind,
-                                client_strategy=ldap3.REUSABLE, pool_size=connections, pool_lifetime=360)
         return conn
 
     @classmethod

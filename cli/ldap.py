@@ -151,6 +151,7 @@ def _downsyncUser(args, candidate, reloadHttp=True):
         return ERR_DB
     from orm.domains import Domains
     from orm.users import Users
+    from services import ServiceUnavailableError
     from tools.DataModel import MismatchROError, InvalidAttributeError
 
     if "@" not in candidate.email:
@@ -187,6 +188,10 @@ def _downsyncUser(args, candidate, reloadHttp=True):
         except (InvalidAttributeError, MismatchROError, ValueError) as err:
             DB.session.rollback()
             cli.print(cli.col("Failed to update user: "+err.args[0], "red"))
+            return ERR_COMMIT
+        except ServiceUnavailableError:
+            DB.session.commit()
+            cli.print(cli.col("Failed to synchronize user store - service not available", "yellow"))
             return ERR_COMMIT
 
     from orm.misc import DBConf
