@@ -41,5 +41,5 @@ def adminRolesObjectEndpoint(ID):
     checkPermissions(SystemAdminROPermission() if request.method == "GET" else SystemAdminPermission())
     from orm.roles import AdminRoles, AdminUserRoleRelation
     if request.method == "DELETE" and AdminUserRoleRelation.query.filter(AdminUserRoleRelation.roleID == ID).count() > 0:
-        return jsonify(message="Das kannste so nicht machen."), 400
+        return jsonify(message="Cannot delete role that is still in use"), 400
     return defaultObjectHandler(AdminRoles, ID, "Role")
