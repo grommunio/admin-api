@@ -862,7 +862,7 @@ class Fetchmail(DataModel, DB.Base):
             fetchoptions += " fetchall"
         fetchoptions += " keep" if self.keep == 1 else " nokeep"
         if self.extraOptions:
-            fetchoptions += self.extraOptions
+            fetchoptions += " "+self.extraOptions
         srcFolder = " folder "+self.srcFolder if self.srcFolder and self.protocol not in ("POP3", "ETRN", "ODMR") else ""
         return "poll {} with proto {} user {}{} there with password '{}' is {} here {}\n"\
             .format(self.srcServer, self.protocol, self.srcUser, srcFolder, self.srcPassword, self.mailbox, fetchoptions)
