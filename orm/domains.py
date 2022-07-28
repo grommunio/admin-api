@@ -261,6 +261,15 @@ class Domains(DataModel, DB.Base, NotifyTable):
 
     @staticmethod
     def create(props, createRole=True, *args, **kwargs):
+        def rolename(ID, name):
+            maxlen = 32
+            base = "Domain Admin ({}/{})"
+            sublen = len(str(ID))+len(name)
+            if len(base)+sublen-4 > maxlen:
+                name = name[:maxlen-sublen-len(base)+3]+"…"
+            return base.format(ID, name)
+
+
         from .roles import AdminRoles
         from orm.misc import Servers
         from tools.storage import DomainSetup
@@ -285,7 +294,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
                 if chat:
                     domain.chat = chat
                 DB.session.commit()
-            domainAdminRoleName = "Domain Admin ({})".format(domain.domainname)
+            domainAdminRoleName = rolename(domain.ID, domain.domainname)
             if createRole and AdminRoles.query.filter(AdminRoles.name == domainAdminRoleName).count() == 0:
                 DB.session.add(AdminRoles({"name": domainAdminRoleName,
                                            "description": "Domain administrator for "+domain.domainname,
