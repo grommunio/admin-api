@@ -844,7 +844,7 @@ class Fetchmail(DataModel, DB.Base):
 
     @validates("srcServer")
     def validateServer(self, key, value, *args):
-        if not formats.domain.match(value):
+        if not formats.domain.match(value.split(":", 1)[0]):
             raise ValueError("'{}' is not a valid domain".format(value))
         return value
 
@@ -863,9 +863,11 @@ class Fetchmail(DataModel, DB.Base):
         fetchoptions += " keep" if self.keep == 1 else " nokeep"
         if self.extraOptions:
             fetchoptions += " "+self.extraOptions
+        server, service = self.srcServer.split(":", 1) if ":" in self.srcServer else (self.srcServer, None)
+        service = " service "+service if service else ""
         srcFolder = " folder "+self.srcFolder if self.srcFolder and self.protocol not in ("POP3", "ETRN", "ODMR") else ""
-        return "poll {} with proto {} user {}{} there with password '{}' is {} here {}\n"\
-            .format(self.srcServer, self.protocol, self.srcUser, srcFolder, self.srcPassword, self.mailbox, fetchoptions)
+        return "poll {} with proto {}{} user {}{} there with password '{}' is {} here {}\n"\
+            .format(server, self.protocol, service, self.srcUser, srcFolder, self.srcPassword, self.mailbox, fetchoptions)
 
 
 # Available as of n93
