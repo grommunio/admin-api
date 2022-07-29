@@ -6,6 +6,7 @@ from . import ServiceHub, ServiceDisabledError, ServiceUnavailableError
 
 import ldap3
 import ldap3.core.exceptions as ldapexc
+import ldap3.utils.config as ldap3_conf
 import re
 import threading
 import yaml
@@ -16,6 +17,9 @@ from tools.misc import GenericObject
 import logging
 logger = logging.getLogger("ldap")
 
+# Reduce block time when LDAP server is not reachable
+ldap3_conf.set_config_parameter("RESTARTABLE_SLEEPTIME", 1)
+ldap3_conf.set_config_parameter("RESTARTABLE_TRIES", 2)
 
 def handleLdapError(service, error):
     if isinstance(error,
