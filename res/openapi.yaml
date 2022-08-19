@@ -1977,6 +1977,27 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Remove device states
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/userID'
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: Device states removal queued
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
 
   /domains/{domainID}/users/{userID}/sync/{deviceID}:
     delete:

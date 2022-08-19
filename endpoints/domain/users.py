@@ -382,6 +382,20 @@ def removeDevice(domainID, userID, deviceID):
     return jsonify(message="Success")
 
 
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync", methods=["DELETE"])
+@secure(requireDB=True)
+def removeSyncStates(domainID, userID):
+    checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    with Service("exmdb") as exmdb:
+        client = exmdb.user(user)
+        client.removeSyncStates(Config["sync"]["syncStateFolder"])
+    return jsonify(message="Success")
+
+
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/sync/<deviceID>/resync", methods=["PUT"])
 @secure(requireDB=True)
 def resyncDevice(domainID, userID, deviceID):
