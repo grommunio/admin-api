@@ -1959,7 +1959,9 @@ paths:
                           type: integer
                           description: UNIX timestamp of last update
                         asversion:
-                          type: number
+                          oneOf:
+                            - type: string
+                            - type: number
                           description: Sync version
                         foldersSyncable:
                           type: integer
