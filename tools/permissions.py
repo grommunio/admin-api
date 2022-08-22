@@ -543,7 +543,8 @@ class OrgAdminPermission(PermissionBase):
         """
         if isinstance(permission, OrgAdminPermission):
             return self._permits(permission)
-        if isinstance(permission, DomainAdminPermission):
+        # `isinstance()` does not compare the inheritance of DAP and DA-RO-P properly
+        if isinstance(permission, DomainAdminPermission) or isinstance(permission, DomainAdminROPermission):
             if permission.domainID == "*" or self.__org == "*":
                 return True
             from orm.domains import Domains
