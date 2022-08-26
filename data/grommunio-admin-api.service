@@ -8,6 +8,7 @@ WorkingDirectory=/usr/share/grommunio-admin-api/
 ExecStart=/usr/sbin/uwsgi --ini /usr/share/grommunio-admin-api/api-config.ini
 User=grommunio
 Group=nginx
+SupplementaryGroups=grommunio
 Restart=on-failure
 KillSignal=SIGINT
 Type=notify
