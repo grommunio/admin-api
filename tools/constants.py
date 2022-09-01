@@ -988,6 +988,8 @@ class PropTags(_ReverseLookup):
                 MESSAGESIZEEXTENDED, NORMALMESSAGESIZE, NORMALMESSAGESIZEEXTENDED, STORAGEQUOTALIMIT, PROHIBITRECEIVEQUOTA,
                 PROHIBITSENDQUOTA}
 
+    sizeFactor = {PROHIBITRECEIVEQUOTA: 1024, PROHIBITSENDQUOTA: 1024, STORAGEQUOTALIMIT: 1024}
+
     @classmethod
     def deriveTag(cls, tag):
         """Derive numeric tag value from integer or string.

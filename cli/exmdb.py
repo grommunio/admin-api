@@ -226,8 +226,9 @@ def cliExmdbStoreGetDelete(args):
         elif pv.type == PropTypes.BINARY_ARRAY:
             return cli.col("[{} value{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
         elif PropTypes.ismv(pv.type):
-            return "["+", ".join(repr(pv.val))+"]", ""
-        return pv.val, cli.col(printSize(pv.val), attrs=["dark"]) if pv.tag in PropTags.sizeTags else ""
+            return "["+", ".join(repr(val) for val in pv.val)+"]", ""
+        return pv.val, cli.col(printSize(pv.val*PropTags.sizeFactor.get(pv.tag, 1)), attrs=["dark"])\
+            if pv.tag in PropTags.sizeTags else ""
 
     cli = args._cli
     cli.require("DB")
