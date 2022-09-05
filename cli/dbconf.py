@@ -117,7 +117,15 @@ def cliDbconfList(args):
 
 
 def cliDbConfCommit(args):
-    pass
+    cli = args._cli
+    cli.require("DB")
+    from tools import dbconf
+    error = dbconf.commit(args.service, args.file, args.key)
+    if error:
+        cli.print(cli.col("Commit failed: "+error, "yellow"))
+        return 2
+
+
 
 
 def _setupCliDbconf(subp: ArgumentParser):
