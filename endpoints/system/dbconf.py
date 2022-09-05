@@ -116,4 +116,5 @@ def getDbconfFile(service, file):
 @secure()
 def getDbconfCommands():
     checkPermissions(SystemAdminROPermission())
-    return jsonify(key=list(dbconf.keyCommits), file=list(dbconf.fileCommits), service=list(dbconf.serviceCommits))
+    return jsonify(key=list(dbconf.keyMacros)+list(dbconf.keyCommits), file=list(dbconf.fileMacros)+list(dbconf.fileCommits),
+                   service=list(dbconf.serviceMacros)+list(dbconf.serviceCommits))

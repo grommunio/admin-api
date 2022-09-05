@@ -128,7 +128,7 @@ The following commands are available:
 \f[C]postconf -e $ENTRY\f[R]
 .SS File
 .PP
-There are currently no file-level commands.
+\f[C]postconf -e $FILE_S && systemctl reload postfix\f[R]
 .SS Service
 .PP
 \f[C]systemctl reload $SERVICE\f[R]
@@ -136,6 +136,26 @@ There are currently no file-level commands.
 .P
 .PD
 \f[C]systemctl restart $SERVICE\f[R]
+.SH Macros
+.PP
+As the whitelisted commands might be hard to memorize and may be changed
+in the future, macros are provided that expand to whitelisted commands.
+.PP
+The following macros are defined:
+.SS Key
+.PP
+\f[C]#POSTCONF\f[R] -> \f[C]postconf -e $ENTRY\f[R]
+.SS File
+.PP
+\f[C]#POSTCONF\f[R] ->
+\f[C]sudo postconf -e $FILE_S && systemctl reload postfix\f[R]
+.SS Service
+.PP
+\f[C]#RELOAD\f[R] -> \f[C]systemctl reload $SERVICE\f[R]
+.PD 0
+.P
+.PD
+\f[C]#RESTART\f[R] -> \f[C]systemctl restart $SERVICE\f[R]
 .SH Command Variable Expansion
 .PP
 Commands can contain \f[I]$\f[R]-prefixed variables that are expanded
@@ -149,6 +169,10 @@ Expands to \f[C]$KEY=$VALUE\f[R] (key level only)
 .TP
 \f[B]\f[CB]FILE\f[B]\f[R]
 Complete content of the modified file as newline separated key=value
+entries (file level only)
+.TP
+\f[B]\f[CB]FILE_S\f[B]\f[R]
+Complete content of the modified file as space separated key=value
 entries (file level only)
 .TP
 \f[B]\f[CB]FILENAME\f[B]\f[R]

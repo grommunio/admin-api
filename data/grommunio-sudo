@@ -1,0 +1,2 @@
+# Allow grommunio user to execute specific commands as root
+grommunio       ALL = NOPASSWD: /usr/sbin/postconf

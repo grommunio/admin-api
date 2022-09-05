@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(grommunio-admin VERSION 1.5 LANGUAGES NONE)
+project(grommunio-admin VERSION 1.7 LANGUAGES NONE)
 
 include(GNUInstallDirs)
 include(data/gzip.cmake)
@@ -46,3 +46,4 @@ install(FILES data/autocomplete.sh DESTINATION ${CMAKE_INSTALL_FULL_DATADIR}/bas
 install(FILES data/grommunio-admin-api.service data/grommunio-admin-api.socket DESTINATION ${UNITDIR})
 install(FILES data/portrait.jpg DESTINATION ${COMMONDIR})
 install(FILES data/tmpfiles-grommunio-admin-api.conf DESTINATION ${TMPFILESDIR} RENAME grommunio-admin-api.conf)
+install(FILES data/grommunio-sudo DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/sudoers.d)

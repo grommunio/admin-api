@@ -8,9 +8,16 @@ import os
 import shlex
 
 keyCommits = {"postconf -e $ENTRY"}
-fileCommits = {}
+fileCommits = {"sudo postconf -e $FILE_S && systemctl reload postfix"}
 serviceCommits = {"systemctl reload $SERVICE",
                   "systemctl restart $SERVICE"}
+
+keyMacros = {"#POSTCONF": "postconf -e $ENTRY"}
+fileMacros = {"#POSTCONF": "sudo postconf -e $FILE_S && systemctl reload postfix"}
+serviceMacros = {"#RELOAD": "systemctl reload $SERVICE",
+                 "#RESTART": "systemctl restart $SERVICE",
+                 }
+
 
 def subVars(command, data):
     out = ""
@@ -25,10 +32,17 @@ def subVars(command, data):
             out += "$"
         else:
             last = index+1
-            while last != len(command) and command[last].isalnum():
+            while last != len(command) and (command[last].isalnum() or command[last] == '_'):
                 last += 1
             token = command[index+1:last]
-            out += shlex.quote(data[token]) if token in data else ""
+            content = data.get(token)
+            if not content:
+                continue
+            if isinstance(content, tuple):
+                content = content[0].join(shlex.quote(arg) for arg in content[1])
+            else:
+                content = shlex.quote(content)
+            out += content
         index = command.find("$", last)
     out += command[last:]
     return out
@@ -36,6 +50,7 @@ def subVars(command, data):
 
 def _commitKey(exprmap, service, file, key):
     command = exprmap["commit_key"]
+    command = keyMacros.get(command, command)
     if command not in keyCommits:
         return "Command not allowed for key trigger"
     if "$" in command:
@@ -51,14 +66,15 @@ def _commitKey(exprmap, service, file, key):
 
 def _commitFile(exprmap, service, file):
     command = exprmap["commit_file"]
+    command = fileMacros.get(command, command)
     if command not in fileCommits:
         return "Command not allowed for file trigger"
     if "$" in command:
         from orm.misc import DBConf
         entries = DBConf.query.filter(DBConf.service == service, DBConf.file == file)\
                               .with_entities(DBConf.key, DBConf.value).all()
-        filedata = "\n".join(entry.key+"="+entry.value for entry in entries)
-        data = dict(FILE=filedata, FILENAME=file, SERVICE=service)
+        filedata = [entry.key+"="+entry.value for entry in entries]
+        data = dict(FILE=("\n", filedata), FILE_S=(" ", filedata), FILENAME=file, SERVICE=service)
         command = subVars(command, data)
     ret = os.system(command)
     if ret:
@@ -67,6 +83,7 @@ def _commitFile(exprmap, service, file):
 
 def _commitService(exprmap, service):
     command = exprmap.get("commit_service")
+    command = serviceMacros.get(command, command)
     if command is not None:
         if command not in serviceCommits:
             return "Command not allowed for service trigger"

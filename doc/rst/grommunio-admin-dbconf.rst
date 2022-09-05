@@ -114,13 +114,39 @@ Key
 File
 ----
 
-There are currently no file-level commands.
+``postconf -e $FILE_S && systemctl reload postfix``
 
 Service
 -------
 
 | ``systemctl reload $SERVICE``
 | ``systemctl restart $SERVICE``
+
+Macros
+======
+
+As the whitelisted commands might be hard to memorize and may be changed in
+the future, macros are provided that expand to whitelisted commands.
+
+The following macros are defined:
+
+Key
+---
+
+``#POSTCONF`` -> ``postconf -e $ENTRY``
+
+
+File
+----
+
+``#POSTCONF`` -> ``sudo postconf -e $FILE_S && systemctl reload postfix``
+
+Service
+-------
+
+| ``#RELOAD`` -> ``systemctl reload $SERVICE``
+| ``#RESTART`` -> ``systemctl restart $SERVICE``
+
 
 Command Variable Expansion
 ==========================
@@ -134,6 +160,9 @@ The following variables are valid:
    Expands to ``$KEY=$VALUE`` (key level only)
 ``FILE``
    Complete content of the modified file as newline separated key=value
+   entries (file level only)
+``FILE_S``
+   Complete content of the modified file as space separated key=value
    entries (file level only)
 ``FILENAME``
    Name of the modified file (key and file level)
