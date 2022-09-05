@@ -56,12 +56,10 @@ def cliDbconfSet(args):
     cli.print("{}={}".format(entry.key, entry.value or ""))
     if not args.batch:
         from tools import dbconf
-        cli.print("Committing change...")
         error = dbconf.commit(args.service, args.file, args.key)
         if error is not None:
-            cli.print("Commit failed: "+error)
+            cli.print(cli.col("Commit failed: "+error, "yellow"))
             return 2
-        cli.print("Success.")
 
 
 def cliDbconfGet(args):
@@ -126,15 +124,41 @@ def cliDbConfCommit(args):
         return 2
 
 
+def cliDbConfCommands(args):
+    def printEntries(macros, commands, prefix):
+        for macro, command in macros.items():
+            cli.print(prefix+cli.col(macro, attrs=[])+cli.col(" -> "+command, attrs=["dark"]))
+        for command in commands:
+            cli.print(prefix+cli.col(command, attrs=[]))
+        cli.print()
+
+    cli = args._cli
+    prefix = "" if args.level else "  "
+    from tools import dbconf
+    if args.level in (None, "key"):
+        if not args.level:
+            cli.print(cli.col("key-level commands:", attrs=["underline"]))
+        printEntries(dbconf.keyMacros, dbconf.keyCommits, prefix)
+    if args.level in (None, "file"):
+        if not args.level:
+            cli.print(cli.col("file-level commands:", attrs=["underline"]))
+        printEntries(dbconf.fileMacros, dbconf.fileCommits, prefix)
+    if args.level in (None, "service"):
+        if not args.level:
+            cli.print(cli.col("service-level commands:", attrs=["underline"]))
+        printEntries(dbconf.serviceMacros, dbconf.serviceCommits, prefix)
 
 
 def _setupCliDbconf(subp: ArgumentParser):
     sub = subp.add_subparsers()
+    commands = sub.add_parser("commands", help="Show whitelisted commit commands")
+    commands.set_defaults(_handle=cliDbConfCommands)
+    commands.add_argument("level", nargs="?", choices=("key", "file", "service"), help="Show only commands for specific level")
     commit = sub.add_parser("commit", description=_commitHelp, help="Run commit function")
     commit.set_defaults(_handle=cliDbConfCommit)
-    commit.add_argument("service", help="Service to update")
-    commit.add_argument("file", nargs="?", help="File to commit. If omittet, commit all files")
-    commit.add_argument("key", nargs="?", help="Key to commit. If omittet, commit all keys")
+    commit.add_argument("service", help="Service to update").completer = _autocompService
+    commit.add_argument("file", nargs="?", help="File to commit. If omittet, commit all files").completer = _autocompFile
+    commit.add_argument("key", nargs="?", help="Key to commit. If omittet, commit all keys").completer = _autocompKey
     delete = sub.add_parser("delete", help="Delete service, file or key")
     delete.set_defaults(_handle=cliDbconfDelete)
     delete.add_argument("service", help="Service to delete from").completer = _autocompService
