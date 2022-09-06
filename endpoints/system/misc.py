@@ -254,14 +254,23 @@ def getMailqData():
     try:
         postfixMailq = subprocess.run("mailq", stdout=subprocess.PIPE, universal_newlines=True).stdout
     except Exception as err:
-        API.logger.error("Failed to run mailq: {} ({})".format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
+        API.logger.error("Failed to run mailq: {} ({})"
+                         .format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
         postfixMailq = "Failed to run mailq."
     try:
         gromoxMailq = subprocess.run("gromox-mailq", stdout=subprocess.PIPE, universal_newlines=True).stdout
     except Exception as err:
-        API.logger.error("Failed to run gromox-mailq: {} ({})".format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
+        API.logger.error("Failed to run gromox-mailq: {} ({})"
+                         .format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
         gromoxMailq = ""
-    return jsonify(postfixMailq=postfixMailq, gromoxMailq=gromoxMailq)
+    try:
+        postqueue = subprocess.run(["postqueue", "-j"], stdout=subprocess.PIPE, universal_newlines=True).stdout
+        postqueue = [json.loads(line) for line in postqueue.split("\n") if line]
+    except Exception as err:
+        API.logger.error("Failed to run postqueue: {} ({})"
+                         .format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
+        postqueue = []
+    return jsonify(postfixMailq=postfixMailq, gromoxMailq=gromoxMailq, postqueue=postqueue)
 
 
 @API.route(api.BaseRoute+"/system/servers", methods=["GET", "POST"])
