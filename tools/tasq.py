@@ -38,7 +38,7 @@ class Task:
         self.message = message
 
     def __repr__(self):
-        return "<Task #{} '{}({})'>".format(self.ID, self.command, self.params)
+        return "<Task #{} ({}) '{}({})'>".format(self.ID, self.statename, self.command, self.params)
 
 
 class Worker:
@@ -62,7 +62,7 @@ class Worker:
 
     def log(self, level, message):
         if self._finished is None:
-            logger.log(level, message)
+            logger.log(logging.getLevelName(level), message)
         else:
             self._finished.put(Task(0, "control", dict(cmd="log", level=level, message=message)))
 
@@ -83,6 +83,8 @@ class Worker:
                 func(self, task)
                 duration = time()-start
             except Exception as err:
+                import traceback
+                self.log("ERROR", traceback.format_exc(5))
                 task.state = Task.ERROR
                 task.message = " - ".join(str(arg) for arg in err.args)[:160]
         task.state = max(task.state, Task.COMPLETED)
@@ -137,7 +139,7 @@ class Worker:
             if counts["created"]:
                 task.message += ", {}/{} created".format(counts["created"], counts["create"])
             if counts["error"]:
-                task.message += ", {} errors".format(counts["error"])
+                task.message += ", {} error{}".format(counts["error"], "" if counts["error"] == 1 else "s")
 
         def bump():
             nonlocal last
@@ -152,6 +154,7 @@ class Worker:
         from orm.misc import DBConf
         from orm.users import Aliases, Users
         from services import Service
+        from sqlalchemy.exc import IntegrityError
         from tools.DataModel import MismatchROError, InvalidAttributeError
         from tools.misc import RecursiveDict
         import time
@@ -189,16 +192,22 @@ class Worker:
                                        "message": "Synchronization successful"})
                     DB.session.commit()
                 except (MismatchROError, InvalidAttributeError, ValueError):
-                    self.log("ERROR", traceback.format_exc())
+                    self.log("ERROR", traceback.format_exc(2))
+                    DB.session.rollback()
                     syncStatus.append({"ID": user.ID, "username": user.username, "code": 500,
                                        "message": "Synchronization error"})
-                    DB.session.rollback()
                     counts["error"] += 1
+                except IntegrityError as err:
+                    self.log("ERROR", traceback.format_exc(2))
+                    DB.session.rollback()
+                    syncStatus.append({"ID": user.ID, "username": user.username, "code": 400,
+                                       "message": "Database integrity error: "+err.orig.args[1]})
+
                 except Exception:
-                    self.log("ERROR", traceback.format_exc())
+                    self.log("ERROR", traceback.format_exc(2))
+                    DB.session.rollback()
                     syncStatus.append({"ID": user.ID, "username": user.username, "code": 503,
                                        "message": "Unknown error"})
-                    DB.session.rollback()
                     counts["error"] += 1
             if create:
                 synced = {user.externID for user in users}
