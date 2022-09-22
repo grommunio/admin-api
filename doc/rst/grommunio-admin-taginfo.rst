@@ -24,7 +24,7 @@ Options
 =======
 
 ``TAG``
-   Decimal or hexadecimal (with 0x prefix) Tag ID or grommunio tag name
+   Decimal or hexadecimal (with 0x prefix) Tag ID or grommunio tag name glob
 
 See Also
 ========

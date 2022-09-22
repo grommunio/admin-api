@@ -60,15 +60,30 @@ def cliVersion(args):
 
 
 def _setupTaginfo(subp: ArgumentParser):
-    tagID = subp.add_argument("tagID", nargs="+", help="Numeric tag ID in decimal or hexadecimal or tag name")
+    tagID = subp.add_argument("tagID", nargs="+", help="Numeric tag ID in decimal or hexadecimal or tag name glob")
     tagID.completer = proptagCompleter
 
 
 @Cli.command("taginfo", _setupTaginfo, help="Print information about proptags")
 def cliTaginfo(args):
+    def printTag(ID):
+        propname = PropTags.lookup(ID, "unknown")
+        typename = PropTypes.lookup(ID, "unknown")
+        proptype = cli.col("{:04x}".format(ID % (1 << 16)), attrs=["dark"])
+        cli.print("0x{:04x}{} ({}): {}, type {}".format(ID >> 16, proptype, ID, propname, typename))
+
     cli = args._cli
     from tools.constants import PropTags, PropTypes
+    PropTags.lookup(0)
     for tagid in args.tagID:
+        if "*" in tagid or "?" in tagid:
+            import fnmatch
+            import re
+            pattern = re.compile(fnmatch.translate(tagid.upper()))
+            for ID, name in PropTags._lookup.items():
+                if isinstance(ID, int) and pattern.match(name):
+                    printTag(ID)
+            continue
         try:
             ID = int(tagid, 0)
         except Exception:
@@ -76,10 +91,7 @@ def cliTaginfo(args):
             if ID is None or type(ID) != int:
                 cli.print("Unknown tag '{}'".format(tagid))
                 continue
-        propname = PropTags.lookup(ID, "unknown")
-        typename = PropTypes.lookup(ID, "unknown")
-        proptype = cli.col("{:04x}".format(ID % (1 << 16)), attrs=["dark"])
-        cli.print("0x{:04x}{} ({}): {}, type {}".format(ID >> 16, proptype, ID, propname, typename))
+        printTag(ID)
 
 
 def _setupCliShell(subp: ArgumentParser):
