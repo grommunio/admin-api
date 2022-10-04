@@ -866,8 +866,8 @@ class Fetchmail(DataModel, DB.Base):
         server, service = self.srcServer.split(":", 1) if ":" in self.srcServer else (self.srcServer, None)
         service = " service "+service if service else ""
         srcFolder = " folder "+self.srcFolder if self.srcFolder and self.protocol not in ("POP3", "ETRN", "ODMR") else ""
-        return "poll {} with proto {}{} user {}{} there with password '{}' is {} here {}\n"\
-            .format(server, self.protocol, service, self.srcUser, srcFolder, self.srcPassword, self.mailbox, fetchoptions)
+        return "poll {} with proto {}{} user {} there with password '{}' is {} here{} {}\n"\
+            .format(server, self.protocol, service, self.srcUser, self.srcPassword, self.mailbox, srcFolder, fetchoptions)
 
 
 # Available as of n93
