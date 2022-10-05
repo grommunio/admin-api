@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.7.12
+  version: 1.7.13
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2284,6 +2284,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/user'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /domains/{domainID}/users/{userID}/oof:
+    get:
+      summary: Get user's out of office state
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/userID'
+      responses:
+        '200':
+          description: Out-of-office state returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/userOofState'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      summary: Set user's out of office state
+      tags:
+        - Domain Admin/Users
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/userID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/userOofState'
+      responses:
+        '200':
+          description: Out-of-office state updated
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
@@ -5356,6 +5408,39 @@ components:
         params:
           type: object
           description: Task specific parameters
+    userOofState:
+      type: object
+      properties:
+        state:
+          type: integer
+          enum: [0, 1, 2]
+          description: Out-of-office state (0=Disabled, 1=Enabled, 2=Scheduled)
+        externalAudience:
+          type: integer
+          enum: [0, 1, 2]
+          description: External audience setting (0=None, 1=Known, 2=All)
+        startTime:
+          $ref: '#/components/schemas/dateTime'
+        endTime:
+          $ref: '#/components/schemas/dateTime'
+        internalSubject:
+          type: string
+          nullable: true
+          default: Out of Office
+          description: Subject for internal out-of-office reply
+        internalReply:
+          type: string
+          nullable: true
+          description: Internal out-of-office reply body
+        externalSubject:
+          type: string
+          nullable: true
+          default: Out of Office
+          description: Subject for external out-of-office reply
+        externalReply:
+          type: string
+          nullable: true
+          description: External out-of-office reply body
   responses:
     ServerError:
       description: An error occurred while processing the request

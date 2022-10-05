@@ -24,8 +24,11 @@ from tools.permissions import SystemAdminPermission, DomainAdminPermission, Doma
 from tools.rop import nxTime, makeEidEx
 from tools.storage import setDirectoryOwner, setDirectoryPermission
 
+import configparser
 import json
+import os
 import shutil
+import time
 
 from orm import DB
 
@@ -556,4 +559,102 @@ def deleteUserStoreAccess(domainID, userID, username):
             UserSecondaryStores.query.filter(UserSecondaryStores.primaryID == primary.ID,
                                              UserSecondaryStores.secondaryID == user.ID).delete()
         DB.session.commit()
+    return jsonify(message="Success")
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/oof", methods=["GET"])
+@secure(requireDB=True)
+def getUserOof(domainID, userID):
+    def mkTimeStr(timestamp):
+        return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+
+    def getReply(maildir, cat):
+        path = os.path.join(maildir, "config", cat)
+        try:
+            with open(path) as file:
+                reply = file.read()
+                subject = reply.find("Subject: ")
+                subject = None if subject == -1 else reply[subject+9:reply.find("\n", subject)]
+                body = reply.find("\n\n")
+                return subject, ("" if body == -1 else reply[body+2:])
+        except Exception:
+            return None, None
+
+    def addIf(name, value):
+        if value is not None:
+            data[name] = value
+
+    checkPermissions(DomainAdminPermission(domainID))
+    from orm.users import Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    if not user.maildir:
+        return jsonify(message="User has no maildir"), 400
+    data = {"state": 0, "externalAudience": 0}
+    path = os.path.join(user.maildir, "config", "autoreply.cfg")
+    try:
+        parser = configparser.ConfigParser()
+        with open(path) as file:
+            parser.read_string("[none]\n"+file.read())
+    except Exception:
+        return jsonify(data)
+    oofstate = parser["none"]
+    data["state"] = oofstate.getint("oof_state", 0)
+    allowExternal = oofstate.getint("allow_external_oof", 0)
+    externalAudience = oofstate.getint("external_audience", 0)
+    data["externalAudience"] = 0 if not allowExternal else 1 if externalAudience else 2
+    if "start_time" in oofstate:
+        data["startTime"] = mkTimeStr(oofstate.getint("start_time"))
+    if "end_time" in oofstate:
+        data["endTime"] = mkTimeStr(oofstate.getint("end_time"))
+    subject, reply = getReply(user.maildir, "internal-reply")
+    addIf("internalSubject", subject)
+    addIf("internalReply", reply)
+    subject, reply = getReply(user.maildir, "external-reply")
+    addIf("externalSubject", subject)
+    addIf("externalReply", reply)
+    return jsonify(data)
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/oof", methods=["PUT"])
+@secure(requireDB=True)
+def setUserOof(domainID, userID):
+    def getTimestamp(timeStr):
+        return str(int(time.mktime(datetime.strptime(timeStr, "%Y-%m-%d %H:%M:%S").timetuple())))
+
+    def writeBody(maildir, cat, subject, content):
+        path = os.path.join(maildir, "config", cat)
+        if content is None:
+            return os.unlink(path)
+        with open(path, "w", newline="\r\n") as file:
+            file.write('Content-Type: text/html;\n\tcharset="utf-8"\n')
+            if subject:
+                file.write("Subject: "+subject+"\n")
+            file.write("\n")
+            file.write(content)
+
+    checkPermissions(DomainAdminPermission(domainID))
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify(message="Missing or incomplete data"), 400
+    from orm.users import Users
+    user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).with_entities(Users.maildir).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    if not user.maildir:
+        return jsonify(message="User has no maildir"), 400
+    config = os.path.join(user.maildir, "config", "autoreply.cfg")
+    externalAudience = data.get("externalAudience", 0)
+    template = "oof_state = {}\nallow_external_oof = {:d}\nexternal_audience = {:d}\n"
+    with open(config, "w") as file:
+        file.write(template.format(data.get("state", 0), externalAudience != 0, externalAudience == 1))
+        if "startTime" in data:
+            file.write("start_time = "+getTimestamp(data["startTime"])+"\n")
+        if "endTime" in data:
+            file.write("end_time = "+getTimestamp(data["endTime"])+"\n")
+    if "internalReply" in data:
+        writeBody(user.maildir, "internal-reply", data.get("internalSubject"), data["internalReply"])
+    if "externalReply" in data:
+        writeBody(user.maildir, "external-reply", data.get("externalSubject"), data["externalReply"])
     return jsonify(message="Success")
