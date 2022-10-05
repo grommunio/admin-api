@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.7.13
+  version: 1.8.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1331,6 +1331,75 @@ paths:
                     type: array
                     items:
                       type: object
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /system/mailq/flush:
+    post:
+      summary: Flush postfix mail queue
+      tags:
+        - Misc
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - name: queue
+          in: query
+          required: true
+          description: Postfix queue ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Command successful
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /system/mailq/delete:
+    post:
+      summary: Delete entries from postfix mail queue
+      tags:
+        - Misc
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - name: queue
+          in: query
+          description: Comma separated list of postfix queue IDs
+          schema:
+            type: string
+            default: ALL
+      responses:
+        '200':
+          description: Command successful
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /system/mailq/requeue:
+    post:
+      summary: Requeue entries from postfix mail queue
+      tags:
+        - Misc
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - name: queue
+          in: query
+          description: Comma separated list of postfix queue IDs
+          schema:
+            type: string
+            default: ALL
+      responses:
+        '200':
+          description: Command successful
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '500':

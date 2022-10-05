@@ -21,7 +21,6 @@ import os
 import psutil
 import requests
 import shlex
-import subprocess
 import time
 
 from datetime import datetime
@@ -245,32 +244,6 @@ def syncTop():
         if len(remove) > 0:
             r.hdel(sync.get("topdataKey", "grommunio-sync:topdata"), *remove)
     return jsonify(data=data)
-
-
-@API.route(api.BaseRoute+"/system/mailq", methods=["GET"])
-@secure()
-def getMailqData():
-    checkPermissions(SystemAdminROPermission())
-    try:
-        postfixMailq = subprocess.run("mailq", stdout=subprocess.PIPE, universal_newlines=True).stdout
-    except Exception as err:
-        API.logger.error("Failed to run mailq: {} ({})"
-                         .format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
-        postfixMailq = "Failed to run mailq."
-    try:
-        gromoxMailq = subprocess.run("gromox-mailq", stdout=subprocess.PIPE, universal_newlines=True).stdout
-    except Exception as err:
-        API.logger.error("Failed to run gromox-mailq: {} ({})"
-                         .format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
-        gromoxMailq = ""
-    try:
-        postqueue = subprocess.run(["postqueue", "-j"], stdout=subprocess.PIPE, universal_newlines=True).stdout
-        postqueue = [json.loads(line) for line in postqueue.split("\n") if line]
-    except Exception as err:
-        API.logger.error("Failed to run postqueue: {} ({})"
-                         .format(type(err).__name__, " - ".join(str(arg) for arg in err.args)))
-        postqueue = []
-    return jsonify(postfixMailq=postfixMailq, gromoxMailq=gromoxMailq, postqueue=postqueue)
 
 
 @API.route(api.BaseRoute+"/system/servers", methods=["GET", "POST"])
