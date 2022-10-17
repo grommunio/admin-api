@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.8.0
+  version: 1.8.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -903,6 +903,13 @@ paths:
         - System Admin/Domains
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/verbosity'
+        - $ref: '#/components/parameters/queryLimit'
+        - $ref: '#/components/parameters/queryOffset'
+        - $ref: '#/components/parameters/match'
+        - $ref: '#/components/parameters/matchFields'
+        - $ref: '#/components/parameters/propnames'
       responses:
         '200':
           description: User list returned
@@ -1649,7 +1656,7 @@ paths:
           description: Filter by username
           in: query
           schema:
-            $ref: '#/components/schemas/intList'
+            type: string
         - $ref: '#/components/parameters/propnames'
       responses:
         '200':
@@ -4551,8 +4558,8 @@ components:
       additionalProperties: true
     userStatus:
       type: integer
-      description: User status (0=Normal, 1=Suspended, 2=Out-of-date, 3=Deleted, 4=Shared Mailbox)
-      enum: [0, 1, 2, 3, 4]
+      description: User status (0=Normal, 1=Suspended, 2=Out-of-date, 3=Deleted, 4=Shared Mailbox, 5=Contact)
+      enum: [0, 1, 2, 3, 4, 5]
     forward:
       type: object
       nullable: true

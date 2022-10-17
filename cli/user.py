@@ -7,8 +7,8 @@ from .common import proptagCompleter
 
 from argparse import ArgumentParser
 
-_statusMap = {0: "active", 1: "suspended", 2: "out-of-date", 3: "deleted"}
-_statusColor = {0: "green", 1: "yellow", 2: "yellow", 3: "red"}
+_statusMap = {0: "active", 1: "suspended", 2: "out-of-date", 3: "deleted", 4: "shared", 5: "contact"}
+_statusColor = {0: "green", 1: "yellow", 2: "yellow", 3: "red", 4: "cyan", 5: "blue"}
 _userAttributes = ("ID", "aliases", "changePassword", "chat", "chatAdmin", "domainID", "forward", "homeserverID", "lang",
                    "ldapID", "maildir", "pop3_imap", "privArchive", "privChat", "privFiles", "privVideo", "publicAddress",
                    "smtp", "status", "username")
@@ -210,12 +210,23 @@ def cliUserCreate(args):
     props["username"] = args.username
     props["aliases"] = data["aliases"]
     properties = data["properties"] = {}
+    if args.domain:
+        from .common import domainCandidates
+        domain = domainCandidates(args.domain).with_entities(Domains.ID).all()
+        if len(domain) == 0:
+            cli.print(cli.col("Domain not found.", "red"))
+            return 2
+        if len(domain) != 1:
+            cli.print(cli.col("Domain specification is ambiguous.", "red"))
+            return 3
+        props["domainID"] = domain[0].ID
+
     for pv in data["props"]+data["storeprops"]:
         if "=" in pv:
             prop, val = pv.split("=", 1)
             properties[prop] = val
     props["properties"] = properties
-    result, code = Users.create(props)
+    result, code = Users.mkContact(props) if props.get("status", 0) == Users.CONTACT else Users.create(props)
     if code != 201:
         cli.print(cli.col("Could not create user: "+result, "red"))
         return 1
@@ -352,6 +363,8 @@ def _cliParseStatus(value):
         return Users.DELETED
     if value == "shared":
         return Users.SHARED
+    if value == "contact":
+        return Users.CONTACT
     raise ValueError("Unknown user status '{}'".format(value))
 
 
@@ -377,6 +390,7 @@ def _cliAddUserAttributes(parser: ArgumentParser):
     parser.add_argument("--changePassword", type=getBool, metavar="<bool>", help="Whether the user can change the password")
     parser.add_argument("--chat", type=optBool, metavar="<bool>", help="Whether to create a chat user")
     parser.add_argument("--chatAdmin", type=getBool, metavar="<bool>", help="Whether the user has chat admin privileges")
+    parser.add_argument("--domain", metavar="DOMAINSPEC", help="Domain name or ID to create the user for")
     parser.add_argument("--homeserver", type=int, metavar="ID", help="ID of the home server or 0 for local user")
     parser.add_argument("--lang", help="User store language")
     parser.add_argument("--ldapID", help="Identifier of the LDAP object linked to the user")

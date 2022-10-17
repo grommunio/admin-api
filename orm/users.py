@@ -212,6 +212,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     OUTOFDATE = 2
     DELETED = 3
     SHARED = 4
+    CONTACT = 5
     USER_MASK = 0x07
     DOMAIN_MASK = 0x30
 
@@ -234,10 +235,13 @@ class Users(DataModel, DB.Base, NotifyTable):
             domain = None
         if domain is None:
             return "Invalid domain"
-        if "@" in data["username"]:
-            dname = data["username"].split("@", 1)[1]
-            if domain.domainname != dname and domain.displayname != dname:
-                return "Domain specifications do not match"
+        if data.get("status") != Users.CONTACT:
+            if "@" in data["username"]:
+                dname = data["username"].split("@", 1)[1]
+                if domain.domainname != dname and domain.displayname != dname:
+                    return "Domain specifications do not match"
+            else:
+                data["username"] += "@"+domain.domainname
         data["domain"] = domain
         data["domainID"] = domain.ID
         domainUsers = Users.count(Users.domainID == domain.ID)
@@ -260,6 +264,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         self.addressStatus = (self.addressStatus or 0) | status
 
     def fromdict(self, patches, syncStore=False, *args, **kwargs):
+        isContact = patches.get("status", self.status) != Users.CONTACT
         if "username" in patches and patches["username"] != self.username:
             from orm.domains import Domains
             username = patches.pop("username")
@@ -269,9 +274,11 @@ class Users(DataModel, DB.Base, NotifyTable):
                 if dname != domain.domainname and dname != domain.displayname:
                     raise ValueError("Domain specifications mismatch.")
                 self.username = uname+"@"+domain.domainname
-            else:
+            elif not isContact:
                 self.username = username+"@"+domain.domainname
-            if not formats.email.match(self.username):
+            else:
+                self.username = username
+            if not isContact and not formats.email.match(self.username):
                 raise ValueError("'{}' is not a valid e-mail address".format(self.username))
         DataModel.fromdict(self, patches, args, kwargs)
         displaytype = self.properties.get("displaytypeex", 0)
@@ -470,7 +477,7 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @hybrid_property
     def status(self):
-        return self.addressStatus & self.USER_MASK
+        return (self.addressStatus or 0) & self.USER_MASK
 
     @status.setter
     def status(self, val):
@@ -619,7 +626,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         DB.session.delete(self)
 
     @staticmethod
-    def create(props, reloadGromoxHttp=True, externID=None, sync=True, *args, **kwargs):
+    def create(props, externID=None, sync=True, *args, **kwargs):
         from .misc import Servers
         from tools.misc import AutoClean
         from tools.storage import UserSetup
@@ -658,6 +665,34 @@ class Users(DataModel, DB.Base, NotifyTable):
         except Exception as err:
             DB.session.rollback()
             return "Failed to create user "+" - ".join(str(arg) for arg in err.args), 500
+
+    @classmethod
+    def mkContact(cls, props, externID=None, *args, **kwargs):
+        smtpaddress = props.get("username")
+        props["status"] = Users.CONTACT
+        props["username"] = "temp"
+        error = Users.checkCreateParams(props)
+        if smtpaddress:
+            props["properties"][PropTags.SMTPADDRESS] = smtpaddress
+        props["properties"][PropTags.DISPLAYTYPEEX] = Users.REMOTE_MAILUSER
+        if error is not None:
+            return error, 400
+        try:
+            user = Users(props)
+            user.externID = externID
+        except (InvalidAttributeError, MismatchROError, MissingRequiredAttributeError, ValueError) as err:
+            return err.args[0], 400
+        try:
+            DB.session.add(user)
+            DB.session.flush()
+            user.username = "contact-"+str(user.ID)
+            DB.session.commit()
+            return user, 201
+        except IntegrityError as err:
+            return "Object violates database constraints "+err.orig.args[1], 400
+        except Exception as err:
+            DB.session.rollback()
+            return "Failed to create contact"+" - ".join(str(arg) for arg in err.args), 500
 
     @classmethod
     def _commit(*args, **kwargs):

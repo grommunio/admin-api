@@ -68,7 +68,8 @@ def createUser(domainID):
     data["domainID"] = domainID
     if SystemAdminPermission() not in request.auth["user"].permissions():
         data.pop("homeserver", None)
-    result, code = Users.create(data, reloadGromoxHttp=True)
+    isContact = data.get("status") == Users.CONTACT
+    result, code = Users.mkContact(data) if isContact else Users.create(data)
     if code != 201:
         return jsonify(message=result), code
     return jsonify(result.fulldesc()), 201
