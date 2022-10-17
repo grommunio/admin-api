@@ -158,7 +158,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     homeserver = OptionalNC(104, None,
                             relationship("Servers", foreign_keys=homeserverID, primaryjoin="Users.homeserverID == Servers.ID"))
 
-    _dictmapping_ = ((Id(), Text("username", flags="init")),
+    _dictmapping_ = ((Id(), Text("username", flags="patch")),
                      (Id("domainID", flags="init"),
                       {"attr": "ldapID", "flags": "patch"},
                       Int("status", flags="patch")),

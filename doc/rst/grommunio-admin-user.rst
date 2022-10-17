@@ -129,6 +129,8 @@ Fields
    Set property defined by propspec to value
 ``--storeprop propspec=value``
    Set store property defined by propspec to value
+``--username``
+   Rename user
 
 See Also
 ========

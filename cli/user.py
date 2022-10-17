@@ -434,6 +434,7 @@ def _setupCliUser(subp: ArgumentParser):
     modify.add_argument("--remove-alias", metavar="ALIAS", action="append", help="Remove alias")
     modify.add_argument("--remove-property", action="append", metavar="propspec", help="Remove property from user")
     modify.add_argument("--remove-storeprop", action="append", metavar="propspec", help="Remove property from user's store")
+    modify.add_argument("--username", help="Rename user")
     query = sub.add_parser("query", help="Query specific user attributes")
     query.set_defaults(_handle=cliUserQuery)
     query.add_argument("-f", "--filter", action="append", help="Filter by attribute, e.g. -f ID=42")

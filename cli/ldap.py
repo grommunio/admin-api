@@ -152,6 +152,7 @@ def _downsyncUser(args, candidate, reloadHttp=True):
     from orm.domains import Domains
     from orm.users import Users
     from services import ServiceUnavailableError
+    from sqlalchemy.exc import IntegrityError
     from tools.DataModel import MismatchROError, InvalidAttributeError
 
     if "@" not in candidate.email:
@@ -179,9 +180,9 @@ def _downsyncUser(args, candidate, reloadHttp=True):
         with Service("ldap") as ldap:
             userdata = ldap.downsyncUser(candidate.ID, dict(user.properties.items()))
         try:
-            user.fromdict(userdata, True)
             user.externID = candidate.ID
             user.lang = user.lang or args.lang or ""
+            user.fromdict(userdata, True)
             DB.session.commit()
             cli.print("User updated.")
             return SUCCESS
@@ -192,6 +193,10 @@ def _downsyncUser(args, candidate, reloadHttp=True):
         except ServiceUnavailableError:
             DB.session.commit()
             cli.print(cli.col("Failed to synchronize user store - service not available", "yellow"))
+            return ERR_COMMIT
+        except IntegrityError as err:
+            DB.session.rollback()
+            cli.print(cli.col("Failed to update user: "+err.orig.args[1], "red"))
             return ERR_COMMIT
 
     from orm.misc import DBConf
