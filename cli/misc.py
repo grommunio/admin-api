@@ -101,6 +101,41 @@ def _setupCliShell(subp: ArgumentParser):
     subp.add_argument("-n", "--no-history", action="store_true", help="Disable typed history")
 
 
+def _historyDir():
+    import os
+    filePath = os.environ.get("XDG_CONFIG_HOME") or os.environ.get("HOME")+"/.config"
+    return filePath+"/grommunio-admin"
+
+
+def _loadHistory(args):
+    cli = args._cli
+    import os
+    import readline
+    if not args.no_history:
+        filePath = os.path.expanduser("~/.grommunio-admin.history")
+        try:
+            readline.read_history_file(filePath)
+            if args.debug:
+                cli.print(cli.col("Loaded {} history entries".format(readline.get_current_history_length()), attrs=["dark"]))
+            os.unlink(filePath)
+            return
+        except Exception as err:
+            if args.debug:
+                cli.print(cli.col("Failed to read legacy history file '{}': {}"
+                                  .format(filePath, type(err).__name__ + " - ".join(str(arg) for arg in err.args)),
+                                  attrs=["dark"]))
+        filePath = _historyDir()+"/history"
+        try:
+            readline.read_history_file(filePath)
+            if args.debug:
+                cli.print(cli.col("Loaded {} history entries".format(readline.get_current_history_length()), attrs=["dark"]))
+        except Exception as err:
+            if args.debug:
+                cli.print(cli.col("Failed to read history file '{}': {}"
+                                  .format(filePath, type(err).__name__ + " - ".join(str(arg) for arg in err.args)),
+                                  attrs=["dark"]))
+
+
 @Cli.command("shell", _setupCliShell, help="Start interactive shell")
 def cliShell(args):
     cli = args._cli
@@ -130,16 +165,7 @@ def cliShell(args):
             readline.set_completer_delims("")
             readline.parse_and_bind("tab: complete")
             readline.set_history_length(1000)
-            if not args.no_history:
-                try:
-                    import os
-                    readline.read_history_file(os.path.expanduser("~/.grommunio-admin.history"))
-                    if args.debug:
-                        cli.print(cli.col("Loaded {} history entries".format(readline.get_current_history_length()), attrs=["dark"]))
-                except Exception as err:
-                    if args.debug:
-                        cli.print(cli.col("Failed to read history file: "+type(err).__name__ +
-                                          " - ".join(str(arg) for arg in err.args), attrs=["dark"]))
+            _loadHistory(args)
             rlAvail = True
         except Exception as err:
             if args.debug:
@@ -147,8 +173,8 @@ def cliShell(args):
                                   " - ".join(str(arg) for arg in err.args), attrs=["dark"]))
             cli.print("Install readline module to enable autocompletion")
     elif cli.mode == "standalone":
-        cli.print(cli.col("WARNING: The CLI is still under development and subject to changes. Be careful when using scripts.\n",
-                          "yellow"), file=sys.stderr)
+        cli.print(cli.col("WARNING: The CLI is still under development and subject to changes."
+                          " Be careful when using scripts.\n", "yellow"), file=sys.stderr)
     try:
         while True:
             rlEnable(True)
@@ -194,10 +220,12 @@ def cliShell(args):
     if rlAvail and not args.no_history:
         try:
             import os
-            readline.write_history_file(os.path.expanduser("~/.grommunio-admin.history"))
+            filePath = _historyDir()
+            os.makedirs(filePath, exist_ok=True)
+            readline.write_history_file(filePath+"/history")
         except Exception as err:
             if args.debug:
-                cli.print(cli.col("Failed to write history file: "+type(err).__name__+
+                cli.print(cli.col("Failed to write history file: "+type(err).__name__ +
                                   " - ".join(str(arg) for arg in err.args), attrs=["dark"]))
 
 
