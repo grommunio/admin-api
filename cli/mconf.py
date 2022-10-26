@@ -88,6 +88,9 @@ def _cliMconfSave(args):
 
 
 def _cliMconfModify(args):
+    if "action" not in args or args.action not in ("add", "remove", "set", "unset"):
+        args.parser.print_usage()
+        return -2
     cli = args._cli
     config = _getConfig(cli, args.config)
     if config is None:
@@ -159,13 +162,14 @@ def _setupCliMconfAddValue(parser: ArgumentParser):
 
 
 def _setupCliMconf(subp: ArgumentParser):
+    Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     dump = sub.add_parser("dump", help="Dump configuration file to stdout")
     dump.set_defaults(_handle=_cliMconfDump)
     dump.add_argument("config", choices=_configs)
     dump.add_argument("-c", "--censor", action="store_true", help="Hide confidential information")
     modify = sub.add_parser("modify", help="Modify configuration")
-    modify.set_defaults(_handle=_cliMconfModify)
+    modify.set_defaults(_handle=_cliMconfModify, parser=modify)
     modify.add_argument("config", choices=_configs)
     modify.add_argument("-d", "--defer", action="store_true", help="Do not write changes to disk")
     modifysub = modify.add_subparsers()

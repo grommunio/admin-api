@@ -295,6 +295,7 @@ def _setupCliExmdb(subp: ArgumentParser):
     sub = subp.add_subparsers()
 
     folder = sub.add_parser("folder", help="Access folders")
+    Cli.parser_stub(folder)
     foldersub = folder.add_subparsers()
     find = foldersub.add_parser("find", help="Find folder by name")
     find.set_defaults(_handle=cliExmdbFolderFind)
@@ -330,6 +331,7 @@ def _setupCliExmdb(subp: ArgumentParser):
     revoke.add_argument("-r", "--recursive", action="store_true", help="Apply to subfolders recursively")
 
     store = sub.add_parser("store", help="Access store properties")
+    Cli.parser_stub(store)
     storesub = store.add_subparsers()
     get = storesub.add_parser("get", help="Query store properties")
     get.set_defaults(_handle=cliExmdbStoreGetDelete, command="get")

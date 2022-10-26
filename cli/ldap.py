@@ -538,7 +538,4 @@ def _cliLdapParserSetup(subp: ArgumentParser):
 
 @Cli.command("ldap", _cliLdapParserSetup, help="LDAP configuration, diagnostics and synchronization")
 def cliLdap(args):
-    if hasattr(args, "_handle") and args._handle != cliLdap:
-        return args._handle(args) or 0
-    else:
-        return cliLdapInfo(args)
+    return cliLdapInfo(args)

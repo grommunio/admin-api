@@ -90,6 +90,7 @@ def _serviceCompleter(prefix, parsed_args, **kwargs):
 
 
 def _cliSetupServiceParser(subp: ArgumentParser):
+    Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     disable = sub.add_parser("disable", help="Manually disable service")
     disable.set_defaults(_handle=cliServiceDisable)

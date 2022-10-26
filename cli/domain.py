@@ -212,6 +212,7 @@ def _setupCliDomain(subp: ArgumentParser):
         parser.add_argument("--tel", help="Domain contact telephone number")
         parser.add_argument("--title", help="Domain title")
 
+    Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     create = sub.add_parser("create", help="Create new domain")
     create.set_defaults(_handle=cliDomainCreate)

@@ -422,6 +422,7 @@ def _setupCliUser(subp: ArgumentParser):
         def __len__(self):
             return len(_userAttributes)
 
+    Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     create = sub.add_parser("create",  help="Create user")
     create.add_argument("username", help="E-Mail address of the user")

@@ -217,6 +217,7 @@ def _setupCliMlist(subp: ArgumentParser):
         ar.add_argument("attribute", choices=("recipient", "sender"), help="Attribute to modify")
         ar.add_argument("entry", help="Which entry to "+command)
 
+    Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     add = sub.add_parser("add", help="Add recipient or sender")
     arArgs(add, "add")

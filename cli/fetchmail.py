@@ -273,6 +273,7 @@ def _setupCliFetchmailParser(subp: ArgumentParser):
         parser.add_argument("--sslCertPath", help="Path to certificate directory or empty for system default")
         parser.add_argument("--useSSL", default=idef(1), type=getBool, choices=bvals, help="Enable SSL")
 
+    Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     create = sub.add_parser("create", help="Create new fetchmail entry")
     create.add_argument("userspec", help="Target user").completer = userspecAutocomp

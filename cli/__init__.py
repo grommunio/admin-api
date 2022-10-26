@@ -223,8 +223,8 @@ class Cli:
         subparsers = self.parser.add_subparsers()
         for name, handler, parserSetup, kwargs in sorted(self.funcs):
             subp = subparsers.add_parser(name, **kwargs)
-            parserSetup(subp)
             subp.set_defaults(_handle=handler)
+            parserSetup(subp)
         redirect(self.parser)
 
     SUCCESS = 0
@@ -486,6 +486,20 @@ class Cli:
             completions.append(completion)
         self.__completing = False
         return completions
+
+    @staticmethod
+    def parser_stub(parser):
+        """Print usage for parser.
+
+        Convenience function to setup a stub for a parser.
+        Used for sub-parsers that do not have their own handler function.
+
+        Parameters
+        ----------
+        parser : ArgumentParser
+            Parser to create help stub for
+        """
+        parser.set_defaults(_handle=lambda *args: parser.print_usage())
 
 
 from . import config, dbconf, dbtools, domain, exmdb, fetchmail, fs, ldap, mconf, misc, mlist, remote, server, services, user

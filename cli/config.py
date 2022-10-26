@@ -323,6 +323,7 @@ def _configKeyspecCompleter(prefix, **kwargs):
 
 
 def _setupCliConfigParser(subp: ArgumentParser):
+    Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     check = sub.add_parser("check", help="Check if configuration is valid")
     check.set_defaults(_handle=cliConfigCheck)

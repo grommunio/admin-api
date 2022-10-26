@@ -115,6 +115,7 @@ def _setupCliServersParser(subp: ArgumentParser):
     def addProperties(parser, init):
         parser.add_argument("-e", "--extname", required=init, help="External host name")
         parser.add_argument("-H", "--hostname", required=init, help="Internal host name")
+    Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     create = sub.add_parser("create", help="Create new server entry")
     create.set_defaults(_handle=cliServersCreate)

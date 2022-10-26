@@ -150,6 +150,7 @@ def cliDbConfCommands(args):
 
 
 def _setupCliDbconf(subp: ArgumentParser):
+    Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     commands = sub.add_parser("commands", help="Show whitelisted commit commands")
     commands.set_defaults(_handle=cliDbConfCommands)

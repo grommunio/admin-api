@@ -110,6 +110,7 @@ def cliFsClean(args):
 
 
 def _setupCliFsParser(subp: ArgumentParser):
+    Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     clean = sub.add_parser("clean", help="Remove unused user and domain files")
     clean.description = "Delete orphaned domain and user directories that may be left behind when removing a domain or user "\
