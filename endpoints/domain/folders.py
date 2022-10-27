@@ -17,6 +17,13 @@ from tools.tasq import TasQServer
 
 from datetime import datetime
 
+def folderToDict(folder):
+    return {"folderid": str(folder.folderId),
+            "displayname": folder.displayName,
+            "comment": folder.comment,
+            "creationtime": datetime.fromtimestamp(nxTime(folder.creationTime)).strftime("%Y-%m-%d %H:%M:%S"),
+            "container": folder.container}
+
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["GET"])
 @secure(requireDB=True)
@@ -40,13 +47,33 @@ def getPublicFoldersList(domainID):
             restriction = exmdb.Restriction.NULL()
         client = exmdb.domain(domain)
         response = exmdb.FolderList(client.listFolders(parent, limit=limit, offset=offset, restriction=restriction))
-    folders = [{"folderid": str(entry.folderId),
-                "displayname": entry.displayName,
-                "comment": entry.comment,
-                "creationtime": datetime.fromtimestamp(nxTime(entry.creationTime)).strftime("%Y-%m-%d %H:%M:%S"),
-                "container": entry.container}
-               for entry in response.folders]
+    folders = [folderToDict(entry) for entry in response.folders]
     return jsonify(data=folders)
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/folders/tree", methods=["GET"])
+@secure(requireDB=True)
+def getFolderTree(domainID):
+    checkPermissions(DomainAdminROPermission(domainID))
+    from orm.domains import Domains
+    domain = Domains.query.filter(Domains.ID == domainID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    parentID = int(request.args.get("folderID", makeEidEx(1, PublicFIDs.IPMSUBTREE)))
+    tags = (PropTags.FOLDERID, PropTags.PARENTFOLDERID, PropTags.DISPLAYNAME)
+    with Service("exmdb") as exmdb:
+        client = exmdb.domain(domain)
+        parent = exmdb.Folder(client.getFolderProperties(0, parentID, tags))
+        folders = exmdb.FolderList(client.listFolders(parentID, True, tags))
+    idmap = {folder.folderId: {"folderid": str(folder.folderId), "name": folder.displayName}
+             for folder in folders.folders}
+    idmap[parentID] = {"folderid": str(parent.folderId), "name": parent.displayName}
+    for folder in folders.folders:
+        parentFolder = idmap[folder.parentId]
+        if "children" not in parentFolder:
+            parentFolder["children"] = []
+        parentFolder["children"].append(idmap[folder.folderId])
+    return jsonify(idmap[parentID])
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["POST"])
@@ -82,11 +109,7 @@ def getPublicFolder(domainID, folderID):
     with Service("exmdb") as exmdb:
         client = exmdb.domain(domain)
         response = exmdb.Folder(client.getFolderProperties(0, folderID))
-    return jsonify({"folderid": str(response.folderId),
-                    "displayname": response.displayName,
-                    "comment": response.comment,
-                    "creationtime": datetime.fromtimestamp(nxTime(response.creationTime)).strftime("%Y-%m-%d %H:%M:%S"),
-                    "container": response.container})
+    return jsonify(folderToDict(response))
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>", methods=["PATCH"])

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.8.1
+  version: 1.8.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2969,6 +2969,37 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/{domainID}/folders/tree:
+    get:
+      summary: Get hierarchical view of folders
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - name: folderID
+          in: query
+          description: ID of the root folder
+          schema:
+            type: integer
+            default: 144115188075855873
+      tags:
+        - Domain Admin/Folders
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Tree of folders returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publicFolderRef'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
   /domains/{domainID}/folders/{folderID}:
     get:
       summary: Get public folder
@@ -4792,6 +4823,18 @@ components:
           $ref: '#/components/schemas/dateTime'
         container:
           type: string
+    publicFolderRef:
+      type: object
+      properties:
+        folderid:
+          type: string
+        name:
+          type: string
+        children:
+          type: array
+          description: List of child folders (in the same format as the parent)
+          items:
+            type: object
     service:
       type: object
       properties:
