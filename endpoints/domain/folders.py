@@ -60,12 +60,12 @@ def getFolderTree(domainID):
     if domain is None:
         return jsonify(message="Domain not found"), 404
     parentID = int(request.args.get("folderID", makeEidEx(1, PublicFIDs.IPMSUBTREE)))
-    tags = (PropTags.FOLDERID, PropTags.PARENTFOLDERID, PropTags.DISPLAYNAME)
+    tags = (PropTags.FOLDERID, PropTags.PARENTFOLDERID, PropTags.DISPLAYNAME, PropTags.CONTAINERCLASS)
     with Service("exmdb") as exmdb:
         client = exmdb.domain(domain)
         parent = exmdb.Folder(client.getFolderProperties(0, parentID, tags))
         folders = exmdb.FolderList(client.listFolders(parentID, True, tags))
-    idmap = {folder.folderId: {"folderid": str(folder.folderId), "name": folder.displayName}
+    idmap = {folder.folderId: {"folderid": str(folder.folderId), "name": folder.displayName, "container": folder.container}
              for folder in folders.folders}
     idmap[parentID] = {"folderid": str(parent.folderId), "name": parent.displayName}
     for folder in folders.folders:

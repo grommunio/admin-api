@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.8.2
+  version: 1.8.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -4829,6 +4829,8 @@ components:
         folderid:
           type: string
         name:
+          type: string
+        container:
           type: string
         children:
           type: array
