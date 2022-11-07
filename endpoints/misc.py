@@ -22,7 +22,6 @@ def chkState():
     """Check status of the API."""
     return jsonify(message="API is operational",
                    database=DB is not None and DB.testConnection() is None,
-                   ldap=Service.available("ldap"),
                    tasq=TasQServer.running())
 
 

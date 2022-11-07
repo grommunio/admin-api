@@ -14,15 +14,15 @@ grommunio-admin ldap — LDAP tools
 Synopsis
 ========
 
-| **grommunio-admin ldap** **check** [*-r* [*-m*] [*-y*]]
-| **grommunio-admin ldap** **configure**
-| **grommunio-admin ldap** **downsync** [*-a*] [*-c*] [*-f*] [*-l*]
-  [*-p PAGE_SIZE*] [*-y*] [*USER* [*USER* …]]
-| **grommunio-admin ldap** **dump** *USER*
-| **grommunio-admin ldap** **info**
-| **grommunio-admin ldap** **reload**
-| **grommunio-admin ldap** **search** [*-n MAX_RESULTS*] [*-p PAGE_SIZE*]
-  [*USER*]
+| **grommunio-admin ldap** **check** [*-o ORGSPEC*] [*-r* [*-m*] [*-y*]]
+| **grommunio-admin ldap** **configure** [*-d*] [*-o ORGSPEC*]
+| **grommunio-admin ldap** **downsync** [*-c*] [*-f*] [*-l*]
+  [*-o ORGSPEC*] [*-p PAGE_SIZE*] [*USER* [*USER* …]]
+| **grommunio-admin ldap** **dump** [*-o ORGSPEC*] *USER*
+| **grommunio-admin ldap** **info** [*-o ORGSPEC*]
+| **grommunio-admin ldap** **reload** [*-o ORGSPEC*]
+| **grommunio-admin ldap** **search** [*-n MAX_RESULTS*] [*-o ORGSPEC*]
+  [*-p PAGE_SIZE*] [*USER*]
 
 Description
 ===========
@@ -54,23 +54,23 @@ Options
 
 ``USER``
    LDAP object ID or search string
-``-a``, ``--auto``
-   Never prompt, exit with error on conflicts. Implies -y.
 ``-c``, ``--complete``
    Import or update all users from the LDAP tree
 ``-f``, ``--force``
    Force update users that are linked to a different or no LDAP object
 ``-l``, ``--lang``
    Set language for imported users. Default is to not set any language.
-``-p PAGE_SIZE``, ``--page-size PAGE_SIZE``
-   Set batch size for paged search. Can be decreased when running into timeout
-   errors with slow LDAP servers. Default is 1000.
 ``-m``, ``--remove-maildirs``
    Also remove user files from disk
 ``-n MAX_RESULTS``, ``--max-results MAX_RESULTS``
    Maximum number of results or 0 to disable limit (default 0).
    Note that the actual number of results may exceed the limit due to paging
    and filtering.
+``-o ORGSPEC``, ``--organization ORGSPEC``
+   Use organization specific LDAP connection. Supports organization ID or name.
+``-p PAGE_SIZE``, ``--page-size PAGE_SIZE``
+   Set batch size for paged search. Can be decreased when running into timeout
+   errors with slow LDAP servers. Default is 1000.
 ``-r``, ``--remove``
    Remove imported users of which the linked LDAP object could not be
    found

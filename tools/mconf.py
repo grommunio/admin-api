@@ -66,7 +66,7 @@ def _addIfDef(dc, d, sc, s, all=False, type=None):
 
 
 def _reloadServices(*services):
-    with Service("systemd", Service.SUPPRESS_ALL) as sysd:
+    with Service("systemd", errors=Service.SUPPRESS_ALL) as sysd:
         sysd.tryReloadRestartService(*services)
 
 ###############################################################################
@@ -104,7 +104,6 @@ def _flattenLdap(conf):
         _addIfDef(LDAP, "ldap_bind_user", conf["connection"], "bindUser")
         _addIfDef(LDAP, "ldap_bind_pass", conf["connection"], "bindPass")
         _addIfDef(LDAP, "ldap_start_tls", conf["connection"], "starttls")
-        _addIfDef(LDAP, "data_connections", conf["connection"], "connections")
     _addIfDef(LDAP, "ldap_search_base", conf, "baseDn")
     _addIfDef(LDAP, "ldap_object_id", conf, "objectID")
     if "users" in conf:

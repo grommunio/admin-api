@@ -60,288 +60,291 @@ def _getl(cli, prompt="", defaults=[]):
     return values
 
 
-def _reloadGromoxHttp(cli):
-    from services import Service
-    with Service("systemd", Service.SUPPRESS_ALL) as sysd:
-        sysd.reloadService("gromox-http.service")
+def _getUsernameOrg(username):
+    if "@" not in username:
+        return None
+    from orm.domains import Domains
+    domain = Domains.query.filter(Domains.domainname == username.split("@", 1)[1]).with_entities(Domains.orgID).first()
+    if domain is None:
+        return None
+    return domain.orgID
+
+
+def _getOrgID(spec):
+    from orm.domains import Orgs
+    if spec == "0":
+        return 0
+    if Orgs.query.filter(Orgs.ID == spec).count() == 1:
+        return int(spec)
+    org = Orgs.query.filter(Orgs.name == spec).with_entities(Orgs.ID).first()
+    if org is None:
+        raise ValueError("Organization '{}' not found".format(spec))
+    return org.ID
+
+
+def _getOrgIDs(args):
+    from orm.domains import OrgParam
+    if "organization" not in args or not args.organization:
+        return (0,)
+    if "*" in args.organization:
+        return [0]+OrgParam.ldapOrgs()
+    return tuple(_getOrgID(spec) for spec in args.organization)
+
+
+def _getOrgName(orgID):
+    if orgID == 0:
+        return "(no organization)"
+    from orm.domains import Orgs
+    org = Orgs.query.filter(Orgs.ID == orgID).with_entities(Orgs.name).first()
+    if org is None:
+        return "(unknown organozation)"
+    return org.name
+
+
+def _userOrgFilter(args, orgIDs=None):
+    from orm.users import Users
+    return (Users.orgID.in_(orgIDs or _getOrgIDs(args)),)
 
 
 def cliLdapInfo(args):
     cli = args._cli
-    cli.require("LDAP")
     from services import Service
-    with Service("ldap", Service.SUPPRESS_INOP) as ldap:
-        cli.print("Successfully connected to {}:{} as {}".format(cli.col(ldap.conn.server.host, attrs=["bold"]),
-                                                                 cli.col(ldap.conn.server.port, attrs=["dark"]),
-                                                                 ldap._config["connection"].get("bindUser", "<anonymous>")))
+    for orgID in _getOrgIDs(args):
+        with Service("ldap", orgID, errors=Service.SUPPRESS_INOP) as ldap:
+            cli.print("Successfully connected to {}:{} as {}".format(cli.col(ldap.conn.server.host, attrs=["bold"]),
+                                                                     cli.col(ldap.conn.server.port, attrs=["dark"]),
+                                                                     ldap._config["connection"].get("bindUser", "<anonymous>")))
 
 
-def _getCandidate(cli, expr, auto):
-    from services import Service
-    with Service("ldap") as ldap:
-        try:
-            candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
-            if candidate is not None:
-                return candidate
-        except Exception:
-            pass
-        matches = ldap.searchUsers(expr)
-        if len(matches) == 0:
-            cli.print(cli.col("Could not find user matching '{}'".format(expr), "red"))
-            return ERR_NO_USER
-        if len(matches) == 1:
-            return matches[0]
-        else:
-            if auto:
-                exact = [candidate for candidate in matches if candidate.name == expr or candidate.email == expr]
-                if len(exact) == 1:
-                    return exact[0]
-                cli.print(cli.col("Multiple candidates for '{}' found - aborting".format(expr), "red"))
-                return ERR_AMBIG
-            cli.print("Found {} users matching '{}':".format(len(matches), expr))
-            exactIndex = None
-            for i in range(len(matches)):
-                exact = matches[i].name == expr or matches[i].email == expr
-                cli.print(cli.col("{: 2d}: {} ({})".format(i, matches[i].name, matches[i].email),
-                                  attrs=("bold",) if exact else ()), cli.col("(exact match)" if exact else "", attrs=["dark"]))
-                exactIndex = i if exact else exactIndex
-            candidate = None
-            while candidate is None:
-                try:
-                    index = _getc(cli, "Choose index of user (0-{}) or CTRL+C to abort".format(len(matches)-1),
-                                  choices=range(len(matches)), getter=_geti, default=exactIndex)
-                    if index is None or not 0 <= index < len(matches):
-                        continue
-                    candidate = matches[index]
-                except (EOFError, KeyboardInterrupt):
-                    cli.print("k bye.")
-                    return ERR_USR_ABRT
-                except ValueError:
-                    continue
-        return candidate
-
-
-def _getCandidates(expr):
-    from services import Service
-    with Service("ldap") as ldap:
+def _getCandidate(cli, expr, ldap):
+    try:
         candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
-        return [candidate] if candidate is not None else ldap.searchUsers(expr)
+        if candidate is not None:
+            return candidate
+    except Exception:
+        pass
+    matches = ldap.searchUsers(expr)
+    if len(matches) == 0:
+        cli.print(cli.col("Could not find user matching '{}'".format(expr), "red"))
+        return None
+    if len(matches) == 1:
+        return matches[0]
+    for match in matches:
+        if match.email == expr:
+            return match
+    cli.print(cli.col("'{}' is ambiguous: ", "red"))
+    cli.print(cli.col("\n  ".join(match.email for match in matches), "yellow"))
+    return None
 
 
-def _downsyncUser(args, candidate, reloadHttp=True):
+def _getCandidates(expr, ldap):
+    candidate = ldap.getUserInfo(ldap.unescapeFilterChars(expr))
+    return [candidate] if candidate is not None else ldap.searchUsers(expr)
+
+
+def _downsyncUser(args, user, externID=None):
     cli = args._cli
-    from services import Service
-    if args.yes or args.auto:
-        cli.print("Synchronizing user '{}' ({})".format(candidate.name, candidate.email))
-    else:
-        result = cli.choice("Synchronize user '{}' ({})? [(y)es/(N)o/(a)ll/(c)ancel]: "
-                            .format(candidate.name, candidate.email), ("y", "n", "a", "c"), "n")
-        if result in ("c", None):
-            cli.print("Aborted.")
-            return Cli.ERR_USR_ABRT
-        if result == "n":
-            cli.print("User skipped.")
-            return Cli.ERR_DECLINE
-        if result == "a":
-            args.auto = True
-
     from orm import DB
-    if DB is None:
-        cli.print("Database not configured")
-        return ERR_DB
-    from orm.domains import Domains
-    from orm.users import Users
-    from services import ServiceUnavailableError
+    from services import Service, ServiceUnavailableError
     from sqlalchemy.exc import IntegrityError
     from tools.DataModel import MismatchROError, InvalidAttributeError
 
-    if "@" not in candidate.email:
-        cli.print(cli.col("Cannot derive domain from e-mail address, aborting.", "red"))
-        return ERR_INVALID_DATA
-    domain = Domains.query.filter(Domains.domainname == candidate.email.split("@")[1]).with_entities(Domains.ID).first()
-    if domain is None:
-        cli.print(cli.col("Cannot import user: Domain not found", "red"))
-        return ERR_INVALID_DATA
-    user = Users.query.filter(Users.externID == candidate.ID).first() or\
-        Users.query.filter(Users.username == candidate.email).first()
-    if user is not None:
-        if user.externID != candidate.ID and not args.force:
-            if args.auto:
-                cli.print(cli.col("Cannot import user: User exists " +
-                          ("locally" if user.externID is None else "and is associated with another LDAP object"), "red"))
-                return ERR_CONFLICT
-            else:
-                result = cli.confirm("Force update "+("local only user" if user.externID is None else
-                                                      "user linked to different LDAP object")+"? [y/N]: ")
-                if result != Cli.SUCCESS:
-                    if result == Cli.ERR_USR_ABRT:
-                        cli.print("Aborted.")
-                    return result
-        with Service("ldap") as ldap:
-            userdata = ldap.downsyncUser(candidate.ID, dict(user.properties.items()))
-        try:
-            user.externID = candidate.ID
-            user.lang = user.lang or args.lang or ""
-            user.fromdict(userdata, True)
-            DB.session.commit()
-            cli.print("User updated.")
-            return SUCCESS
-        except (InvalidAttributeError, MismatchROError, ValueError) as err:
-            DB.session.rollback()
-            cli.print(cli.col("Failed to update user: "+err.args[0], "red"))
-            return ERR_COMMIT
-        except ServiceUnavailableError:
-            DB.session.commit()
-            cli.print(cli.col("Failed to synchronize user store - service not available", "yellow"))
-            return ERR_COMMIT
-        except IntegrityError as err:
-            DB.session.rollback()
-            cli.print(cli.col("Failed to update user: "+err.orig.args[1], "red"))
-            return ERR_COMMIT
+    cli.print("Synchronizing {}...".format(user.username), end="")
 
+    userdata = None
+    with Service("ldap", user.orgID, errors=Service.SUPPRESS_INOP) as ldap:
+        userdata = ldap.downsyncUser(externID or user.externID, user.properties)
+
+    if userdata is None:
+        return "Failed to get user data"
+    try:
+        user.fromdict(userdata)
+        user.externID = externID or user.externID
+        DB.session.commit()
+    except (InvalidAttributeError, MismatchROError, ValueError) as err:
+        DB.session.rollback()
+        return err.args[0]
+    except ServiceUnavailableError:
+        DB.session.commit()
+        cli.print(cli.col("Failed to synchronize user store - service not available", "yellow"))
+        return
+    except IntegrityError as err:
+        DB.session.rollback()
+        return err.orig.args[1]
+    cli.print(cli.col("success.", "green"))
+
+
+def _importUser(args, candidate, ldap):
+    cli = args._cli
+    from orm.domains import Domains
     from orm.misc import DBConf
+    from orm.users import Users
     from tools.misc import RecursiveDict
+
+    existing = Users.query.filter(Users.username == candidate.email).first()
+    if existing:
+        if existing.externID == candidate.ID:
+            return _downsyncUser(args, existing)
+        if args.force:
+            cli.print(cli.col("Changing linked LDAP object of '{}' to {}"
+                              .format(candidate.email, ldap.escape_filter_chars(candidate.ID)), "yellow"))
+            return _downsyncUser(args, existing, candidate.ID)
+        msg = "and is linked to another LDAP object" if existing.externID else "locally"
+        return "User already exists "+msg
+
+    cli.print("Importing user {}...".format(candidate.email), end="", flush=True)
+
+    domain = Domains.query.filter(Domains.domainname == candidate.email.split("@")[1]).with_entities(Domains.ID).first()
     defaults = RecursiveDict({"user": {}, "domain": {}})
     defaults.update(DBConf.getFile("grommunio-admin", "defaults-system", True))
     defaults.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domain.ID)))
     defaults = defaults.get("user", {})
 
-    with Service("ldap") as ldap:
-        userdata = ldap.downsyncUser(candidate.ID)
-    if userdata is None:
-        cli.print(cli.col("Error retrieving user", "red"))
-        return ERR_NO_USER
+    userdata = ldap.downsyncUser(candidate.ID)
     defaults.update(RecursiveDict(userdata))
     defaults["lang"] = args.lang or ""
-    result, code = Users.create(defaults, reloadGromoxHttp=False, externID=candidate.ID)
+    result, code = Users.create(defaults, externID=candidate.ID)
     if code != 201:
-        cli.print(cli.col("Failed to create user: "+result, "red"))
-        return ERR_COMMIT
-    cli.print("User '{}' created with ID {}.".format(cli.col(result.username, attrs=["bold"]),
-                                                     cli.col(result.ID, attrs=["bold"])))
-    if reloadHttp:
-        Users.NTcommit()
-    return SUCCESS
+        return result
+    cli.print(cli.col("success.", "green"))
+
+
+def _downsyncOrg(args, orgID, ldap):
+    cli = args._cli
+    from orm.domains import Domains
+    from orm.users import Users
+    domainnames = [d.domainname for d in Domains.query.filter(Domains.orgID == orgID).with_entities(Domains.domainname)]
+    if len(domainnames) == 0:
+        cli.print(cli.col("Organization '{}' has no domains - skipping.".format(_getOrgName(orgID)), "yellow"))
+        return (0, 0)
+    synced = set()
+    success, failed = 0, 0
+    for user in Users.query.filter(Users.orgID == orgID, Users.externID != None):
+        error = _downsyncUser(args, user)
+        if error:
+            cli.print(cli.col(error, "red"))
+            failed += 1
+        else:
+            synced.add(user.username)
+            success += 1
+    if args.complete:
+        from services import Service
+        with Service("ldap", orgID) as ldap:
+            candidates = [candidate for candidate in ldap.searchUsers() if candidate.email not in synced]
+            for candidate in candidates:
+                if "@" not in candidate.email or candidate.email.split("@", 1)[1] not in domainnames:
+                    cli.print(cli.col("Skipping '{}': invalid domain.".format(candidate.email), "yellow"))
+                    failed += 1
+                    continue
+                error = _importUser(args, candidate, ldap)
+                if error:
+                    failed += 1
+                    cli.print(cli.col(error, "red"))
+                else:
+                    success += 1
+    return (success, failed)
+
+
+def _downsyncSpecific(args, orgIDs):
+    if "user" not in args or not args.user:
+        return (0, 0)
+    cli = args._cli
+    from orm.users import Users
+    success, failed = (0, 0)
+    for username in args.user:
+        user = Users.query.filter(Users.username == username).first()
+        if user:
+            error = _downsyncUser(args, user)
+            if error:
+                cli.print(cli.col(error, "red"))
+                failed += 1
+            else:
+                success += 1
+        else:
+            from services import Service
+            with Service("ldap", orgIDs[0]) as ldap:
+                candidate = _getCandidate(cli, username, ldap)
+                if not candidate:
+                    continue
+                orgID = _getUsernameOrg(candidate.email)
+                if orgID != orgIDs[0]:
+                    cli.print(cli.col("Skipping '{}': invalid domain".format(candidate.email), "red"))
+                    continue
+                error = _importUser(args, candidate, ldap)
+                if error:
+                    cli.print(cli.col(error, "red"))
+                    failed += 1
+                else:
+                    success += 1
+    return success, failed
 
 
 def cliLdapDownsync(args):
-    def checkDomain(candidate):
-        domain = candidate.email.split("@")[-1]
-        if domain not in domainCache:
-            domainCache[domain] = Domains.query.filter(Domains.domainname == domain).count()
-        return domainCache[domain]
-
     cli = args._cli
-    cli.require("DB", "LDAP")
-    from services import Service
-    from orm.domains import Domains
+    cli.require("DB")
     from orm.users import Aliases, Users
-    error = False
-    domainCache = {}
-    if args.user is not None and len(args.user) != 0:
-        for expr in args.user:
-            candidate = _getCandidate(cli, expr, args.auto)
-            if isinstance(candidate, int):
-                error = True
-                if candidate == ERR_USR_ABRT:
-                    break
-                continue
-            if not checkDomain(candidate):
-                cli.print(cli.col("Skipped {} ({}) - domain not found".format(candidate.name, candidate.email), "yellow"))
-                continue
-            result = _downsyncUser(args, candidate)
-            if result == ERR_USR_ABRT:
-                break
-            error = error or result != SUCCESS
-        return ERR_GENERIC if error else SUCCESS
-    elif args.complete:
-        with Service("ldap") as ldap:
-            candidates = ldap.searchUsers(None, limit=None, pageSize=args.page_size)
-        if len(candidates) == 0:
-            cli.print(cli.col("No LDAP users found.", "yellow"))
-            return SUCCESS
-        cli.print("Synchronizing {} user{}...".format(len(candidates), "" if len(candidates) == 1 else "s"))
-        error = False
-        Aliases.NTactive(False)
-        Users.NTactive(False)
-        for candidate in candidates:
-            if not checkDomain(candidate):
-                cli.print(cli.col("Skipped {} ({}) - domain not found".format(candidate.name, candidate.email), "yellow"))
-                continue
-            result = _downsyncUser(args, candidate, False)
-            error = error or result != SUCCESS
-            if result == ERR_USR_ABRT:
-                break
-        Aliases.NTactive(True, True)
-        Users.NTactive(True, True)
-        _reloadGromoxHttp(cli)
-        return ERR_GENERIC if error else SUCCESS
-    from orm.users import Users
-    users = Users.query.filter(Users.externID != None).with_entities(Users.externID).all()
-    if len(users) == 0:
-        cli.print("No imported users found. You can import users using `ldap downsync <name>` or `ldap downsync --complete`.")
-        return SUCCESS
-    with Service("ldap") as ldap:
-        candidates = ldap.getAll(user.externID for user in users)
-    if len(candidates) != len(users):
-        cli.print(cli.col("Some ldap references seem to be broken - please run ldap check", "yellow"))
-    if len(candidates) == 0:
-        cli.print("No users to synchronize")
-        return SUCCESS
-    error = False
-    cli.print("Synchronizing {} user{}...".format(len(candidates), "" if len(candidates) == 1 else "s"))
+    from services import Service
     Aliases.NTactive(False)
     Users.NTactive(False)
-    for candidate in candidates:
-        result = _downsyncUser(args, candidate, False)
-        error = error or result != SUCCESS
-        if result == ERR_USR_ABRT:
-            break
-    Aliases.NTactive(True, True)
-    Users.NTactive(True, True)
-    _reloadGromoxHttp(cli)
-    return ERR_GENERIC if error else SUCCESS
+    orgIDs = _getOrgIDs(args)
+    success, failed = _downsyncSpecific(args, orgIDs)
+    if not success+failed:
+        for orgID in orgIDs:
+            with Service("ldap", orgID) as ldap:
+                os, of = _downsyncOrg(args, orgID, ldap)
+                success += os
+                failed += of
+    Aliases.NTactive(True)
+    Users.NTactive(True)
+    cli.print(cli.col("{} synchronized, {} failed".format(success, failed), attrs=["dark"]))
 
 
 def cliLdapSearch(args):
     cli = args._cli
-    cli.require("LDAP")
     from services import Service
-    with Service("ldap") as ldap:
-        matches = ldap.searchUsers(args.query, limit=args.max_results or None, pageSize=args.page_size)
-        if len(matches) == 0:
-            cli.print(cli.col("No "+("matches" if args.query else "entries"), "yellow"))
-            return ERR_NO_USER
-        for match in matches:
-            cli.print("{}: {} ({})".format(cli.col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), match.name,
-                                           match.email if match.email else cli.col("N/A", "red")))
-        cli.print("({} match{})".format(len(matches), "" if len(matches) == 1 else "es"))
+    from .common import Table
+    orgIDs = _getOrgIDs(args)
+    for orgID in orgIDs:
+        with Service("ldap", orgID) as ldap:
+            if len(orgIDs) > 1:
+                cli.print(cli.col(_getOrgName(orgID), "green"))
+            matches = ldap.searchUsers(args.query, limit=args.max_results or None, pageSize=args.page_size)
+            data = [(cli.col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), match.name,
+                     match.email if match.email else cli.col("N/A", "red"))
+                    for match in matches]
+            table = Table(data, ("ID", "Name", "E-Mail"), empty=cli.col("(No results)", attrs=["dark"]))
+            table.print(cli)
+            if len(matches):
+                cli.print(cli.col("({} result{})".format(len(matches), "s" if len(matches) != 1 else ""), attrs=["dark"]))
 
 
 def cliLdapCheck(args):
     cli = args._cli
-    cli.require("DB", "LDAP")
+    cli.require("DB")
     from services import Service, ServiceUnavailableError
     from time import time
     from orm import DB
     from orm.users import Users
-    users = Users.query.filter(Users.externID != None).with_entities(Users.ID, Users.username, Users.externID, Users.maildir)\
-                       .all()
+    users = Users.query.filter(Users.externID != None, *_userOrgFilter(args))\
+                       .with_entities(Users.ID, Users.username, Users.externID, Users.maildir, Users.orgID).all()
     if len(users) == 0:
         cli.print("No imported users found. You can import users using 'ldap downsync <name>' or 'ldap downsync --complete'.")
         return
     cli.print("Checking {} user{}...".format(len(users), "" if len(users) == 1 else "s"))
     count, last = 0, time()
     orphaned = []
-    with Service("ldap") as ldap:
-        for user in users:
-            if ldap.getUserInfo(user.externID) is None:
-                orphaned.append(user)
-            count += 1
-            if time()-last > 1:
-                last = time()
-                cli.print("\t{}/{} checked ({:.0f}%), {} orphaned"
-                          .format(count, len(users), count/len(users)*100, len(orphaned)))
+    for user in users:
+        try:
+            with Service("ldap", user.orgID) as ldap:
+                if ldap.getUserInfo(user.externID) is None:
+                    orphaned.append(user)
+                count += 1
+                if time()-last > 1:
+                    last = time()
+                    cli.print("\t{}/{} checked ({:.0f}%), {} orphaned"
+                              .format(count, len(users), count/len(users)*100, len(orphaned)))
+        except ServiceUnavailableError:
+            cli.print(cli.col("\tFailed to check user '"+user.username+"' - LDAP not available", "red"))
     if len(orphaned) == 0:
         cli.print("Everything is ok")
         return
@@ -384,13 +387,16 @@ def cliLdapCheck(args):
 
 def cliLdapDump(args):
     cli = args._cli
-    cli.require("LDAP")
+    ldapArgs = (args.organization,) if args.organization else ()
     from services import Service
-    with Service("ldap") as ldap:
+    results = 0
+    with Service("ldap", *ldapArgs) as ldap:
         for expr in args.user:
-            for candidate in _getCandidates(expr):
+            for candidate in _getCandidates(expr, ldap):
                 cli.print(cli.col("ID: "+ldap.escape_filter_chars(candidate.ID), attrs=["bold"]))
                 cli.print(str(ldap.dumpUser(candidate.ID)))
+                results += 1
+    cli.print(cli.col("({} result{})".format(results, "s" if results != 1 else ""), attrs=["dark"]))
 
 
 def _applyTemplate(index, conf):
@@ -458,81 +464,129 @@ def _getConf(cli, old):
     return conf
 
 
-def _cliLdapConfigure(args):
-    cli = args._cli
-    try:
-        from services.ldap import LdapService
+def _cliLdapGetConf(args):
+    if args.organization:
+        from orm.domains import OrgParam
+        args.organization = _getOrgID(args)
+        old = OrgParam.loadLdap(args.organization)
+    if not args.organization or not old:
         from tools import mconf
-        LdapService.init()
         old = mconf.LDAP
+    return old
+
+
+def _cliLdapSaveConf(args, conf):
+    if not args.organization:
+        from tools import mconf
+        return mconf.dumpLdap(conf)
+    from orm.domains import OrgParam
+    OrgParam.saveLdap(args.organization, conf)
+
+
+def _cliLdapConfigure(args):
+    from services import ServiceHub
+    try:
+        cli = args._cli
+        if args.delete:
+            if not args.organization:
+                cli.print(cli.col("Cannot delete default configuration"))
+                return 2
+            orgID = _getOrgID(args)
+            from orm.domains import OrgParam
+            OrgParam.wipeLdap(orgID)
+            cli.print("Configuration deleted.")
+            ServiceHub.load("ldap", orgID, force_reload=True)
+            return
+
+        from services.ldap import LdapService
+        LdapService.init()
+        old = _cliLdapGetConf(args)
         while True:
             new = _getConf(cli, old)
             cli.print("Checking new configuration...")
             error = LdapService.testConfig(new)
             if error is None:
                 cli.print("Configuration successful.")
-                error = mconf.dumpLdap(new)
+                _cliLdapSaveConf(args, new)
                 cli.print("Configuration saved" if error is None else ("Failed to save configuration: "+error))
                 break
             cli.print(cli.col(error, "yellow"))
             action = _getc(cli, "Restart configuration? (r=Restart, a=Amend, s=Save anyway, q=quit)",
                            "a", ("y", "a", "s", "q"))
             if action == "s":
-                error = mconf.dumpLdap(new)
-                cli.print("Configuration saved" if error is None else ("Failed to save configuration: "+error))
+                _cliLdapSaveConf(args, new)
             if action in "sq":
                 break
             if action == "a":
                 old = new
-            if action == "r":
-                old = mconf.LDAP
     except (KeyboardInterrupt, EOFError):
         cli.print(cli.col("\nAborted."))
         return 1
-    from services import ServiceHub
-    ServiceHub.load("ldap", force_reload=True)
+    except ValueError as err:
+        cli.print(cli.col(err.args[0], "red"))
+    ldapArgs = (args.organization,) if args.organization else ()
+    ServiceHub.load("ldap", *ldapArgs, force_reload=True)
 
 
 def cliLdapReload(args):
-    cli = args._cli
     from services import ServiceHub
-    ServiceHub.load("ldap", force_reload=True)
+    cli = args._cli
+    ldapArgs = (args.organization,) if args.organization else ()
+    ServiceHub.load("ldap", *ldapArgs, force_reload=True)
     cli.print("Reload successful" if ServiceHub["ldap"].state == ServiceHub.LOADED else cli.col("Reload failed", "red"))
     return int(ServiceHub["ldap"].state != ServiceHub.LOADED)
+
+
+def _cliOrgspecCompleter(prefix, **kwargs):
+    from orm.domains import Orgs
+    return (org.name for org in Orgs.query.filter(Orgs.name.ilike(prefix+"%")).with_entities(Orgs.name).all())
 
 
 def _cliLdapParserSetup(subp: ArgumentParser):
     sub = subp.add_subparsers()
     check = sub.add_parser("check", help="Check LDAP objects of imported users still exist")
     check.set_defaults(_handle=cliLdapCheck)
-    check.add_argument("-r", "--remove", action="store_true", help="Prompt for user deletion if orphaned users exist")
     check.add_argument("-m", "--remove-maildirs", action="store_true", help="When deleting users, also remove their mail "
                                                                             "directories from disk")
+    check.add_argument("-o", "--organization", metavar="ORGSPEC", action="append",
+                       help="Use organization specific LDAP connection").completer = _cliOrgspecCompleter
+    check.add_argument("-r", "--remove", action="store_true", help="Prompt for user deletion if orphaned users exist")
     check.add_argument("-y", "--yes", action="store_true", help="Do not prompt for user deletion (only with -r)")
     configure = sub.add_parser("configure", help="Run interactive LDAP configuration")
     configure.set_defaults(_handle=_cliLdapConfigure)
+    configure.add_argument("-d", "--delete", action="store_true", help="Do not configure anything, but delete configuration")
+    configure.add_argument("-o", "--organization", metavar="ORGSPEC", help="Use organization specific LDAP connection")\
+        .completer = _cliOrgspecCompleter
     downsync = sub.add_parser("downsync", help="Import or update users from ldap")
     downsync.set_defaults(_handle=cliLdapDownsync)
     downsync.add_argument("user", nargs="*", help="LDAP ID or user search query string. If omitted, all users linked to an "
                                                   "LDAP object are updated.")
-    downsync.add_argument("-a", "--auto", action="store_true", help="Do not prompt, exit with error instead. Implies -y.")
     downsync.add_argument("-c", "--complete", action="store_true", help="Import/update all users in the ldap tree")
     downsync.add_argument("-f", "--force", action="store_true", help="Force synchronization of unassociated users")
     downsync.add_argument("-l", "--lang", help="Default language for imported users")
+    downsync.add_argument("-o", "--organization", metavar="ORGSPEC", help="Use organization specific LDAP connection")\
+        .completer = _cliOrgspecCompleter
     downsync.add_argument("-p", "--page-size", type=int, default=1000, help="Page size when downloading users")
-    downsync.add_argument("-y", "--yes", action="store_true", help="Proceed automatically if target is unambiguous")
     dump = sub.add_parser("dump", help="Dump LDAP object")
     dump.set_defaults(_handle=cliLdapDump)
+    dump.add_argument("-o", "--organization", metavar="ORGSPEC", help="Use organization specific LDAP connection")\
+        .completer = _cliOrgspecCompleter
     dump.add_argument("user", nargs="+", help="User ID or search query string")
     info = sub.add_parser("info", help="Check LDAP status")
     info.set_defaults(_handle=cliLdapInfo)
+    info.add_argument("-o", "--organization", metavar="ORGSPEC", action="append",
+                      help="Use organization specific LDAP connection").completer = _cliOrgspecCompleter
     reload = sub.add_parser("reload", help="Reload LDAP configuration")
     reload.set_defaults(_handle=cliLdapReload)
+    reload.add_argument("-o", "--organization", metavar="ORGSPEC", help="Use organization specific LDAP connection")\
+        .completer = _cliOrgspecCompleter
     search = sub.add_parser("search", help="Search LDAP tree")
     search.set_defaults(_handle=cliLdapSearch)
     search.add_argument("query", nargs="?", help="Optional search query, omit to return all users")
     search.add_argument("-n", "--max-results", type=int, default=0,
                         help="Maximum number of results or 0 to disable limit (default: 0)")
+    search.add_argument("-o", "--organization", metavar="ORGSPEC", action="append",
+                        help="Use organization specific LDAP connection").completer = _cliOrgspecCompleter
     search.add_argument("-p", "--page-size", type=int, default=1000, help="Page size when downloading users")
 
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
-from . import ServiceHub, ServiceDisabledError, ServiceUnavailableError
+from . import ServiceHub, ServiceDisabledError, ServiceUnavailableError, InstanceDefault
 
 import ldap3
 import ldap3.core.exceptions as ldapexc
@@ -21,13 +21,35 @@ logger = logging.getLogger("ldap")
 ldap3_conf.set_config_parameter("RESTARTABLE_SLEEPTIME", 1)
 ldap3_conf.set_config_parameter("RESTARTABLE_TRIES", 2)
 
+
 def handleLdapError(service, error):
     if isinstance(error,
-                  (ldapexc.LDAPSocketOpenError, ldapexc.LDAPSocketSendError, ldapexc.LDAPSessionTerminatedByServerError)):
+                  (ldapexc.LDAPSocketOpenError, ldapexc.LDAPSocketSendError, ldapexc.LDAPSessionTerminatedByServerError,
+                   ldapexc.LDAPMaximumRetriesError)):
         return ServiceHub.SUSPENDED
 
 
-@ServiceHub.register("ldap", handleLdapError, maxreloads=3)
+def argname(orgID=None):
+    if orgID is not None:
+        from orm.domains import Orgs
+        org = Orgs.query.filter(Orgs.ID == orgID).with_entities(Orgs.name).first()
+        return org.name if org else None
+
+
+def orgid(orgspec):
+    if orgspec is None:
+        return 0
+    try:
+        return int(orgspec)
+    except ValueError:
+        from orm.domains import Orgs
+        org = Orgs.query.filter(Orgs.name == orgspec).with_entities(Orgs.ID).first()
+        if org is None:
+            raise
+        return org.ID
+
+
+@ServiceHub.register("ldap", handleLdapError, maxreloads=3, argspec=((), (orgid,)), argname=argname)
 class LdapService:
     __initialized = False
     _templates = {}
@@ -53,10 +75,13 @@ class LdapService:
             pass
         cls.__initialized = True
 
-    def __init__(self, config=None):
+    def __init__(self, orgID=None):
         from tools import mconf
         self.init()
-        self._config = config or mconf.LDAP
+        if orgID is None:
+            self._config = mconf.LDAP
+        else:
+            self._config = self._loadOrgConfig(orgID)
         self._userAttributes = self._checkConfig(self._config)
         self.lock = threading.Lock()
         if self._config.get("disabled"):
@@ -66,8 +91,8 @@ class LdapService:
         except ldap3.core.exceptions.LDAPInvalidDnError:
             raise ServiceUnavailableError("Invalid base DN")
         except Exception as err:
-            msg = " - ".join(str(arg) for arg in err.args) or type(err).__name__
-            raise ServiceUnavailableError("Failed to connect to server: "+msg)
+            msg = str(err.args[0]) if len(err.args) else type(err).__name__
+            raise ServiceUnavailableError("Failed to connect to server: "+msg, *err.args[1:])
         if "defaultQuota" in self._config["users"]:
             self._defaultProps = {prop: self._config["users"]["defaultQuota"] for prop in
                                   ("storagequotalimit", "prohibitsendquota", "prohibitreceivequota")}
@@ -89,9 +114,10 @@ class LdapService:
         """
         users = self._config["users"]
         reducedUsername = self._reduce(obj["attributes"][users["username"]])
+        displayname = obj["attributes"].get(users["displayName"]) or ""
         return GenericObject(ID=obj["raw_attributes"][self._config["objectID"]][0],
                              username=reducedUsername,
-                             name=obj["attributes"][users["displayName"]],
+                             name=displayname,
                              email=reducedUsername)
 
     @classmethod
@@ -259,6 +285,14 @@ class LdapService:
             searchexpr = ""
         return "(&{}{}{}{})".format(filterexpr, searchexpr, domainexpr, userconf.get("filter", ""))
 
+    @classmethod
+    def _loadOrgConfig(cls, orgID):
+        from orm.domains import OrgParam
+        config = OrgParam.loadLdap(orgID)
+        if config is None:
+            raise InstanceDefault()
+        return config
+
     def _userComplete(self, user, required=None):
         """Check if LDAP object provides all required fields.
 
@@ -417,7 +451,7 @@ class LdapService:
             return None
         return self._asUser(response[0])
 
-    def searchUsers(self, query, domains=None, limit=25, pageSize=1000):
+    def searchUsers(self, query=None, domains=None, limit=25, pageSize=1000):
         """Search for ldap users matching the query.
 
         Parameters
@@ -448,7 +482,8 @@ class LdapService:
                                 attributes=[IDattr, name, email],
                                 paged_size=pageSize,
                                 limit=limit)
-        return exact+[self._asUser(result) for result in response]
+        results = exact+[self._asUser(result) for result in response]
+        return results
 
     @classmethod
     def testConfig(cls, config):

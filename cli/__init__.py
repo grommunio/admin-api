@@ -304,10 +304,6 @@ class Cli:
             err = DB.testConnection()
             if err is not None:
                 raise CliError(err)
-        if "LDAP" in args:
-            from services import ServiceHub
-            if not ServiceHub.get("ldap").available:
-                raise CliError("LDAP not available")
 
     def input(self, prompt="", secret=False):
         """Display input prompt.

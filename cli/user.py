@@ -258,7 +258,7 @@ def cliUserDelete(args):
     cli.print("Unloading store...", end="", flush=True)
 
     from services import Service
-    with Service("exmdb", Service.SUPPRESS_INOP) as exmdb:
+    with Service("exmdb", errors=Service.SUPPRESS_INOP) as exmdb:
         client = exmdb.user(user)
         client.unloadStore()
         cli.print("Done.", end="")

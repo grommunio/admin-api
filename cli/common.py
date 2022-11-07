@@ -105,7 +105,7 @@ class Table:
             if cls.stylemarker is not None:
                 return
             import re
-            cls.stylemarker = cls.stylemarker or re.compile("\x1b\\[[\\d]{1,2}m")
+            cls.stylemarker = re.compile("\x1b\\[[\\d]{1,2}m")
 
         def _width(self):
             """Return effective width of the string (without style markers and expanded tabs)."""
@@ -159,11 +159,12 @@ class Table:
             return
         self.colsep = colsep
         head = self.header or self.data[0]
-        self.columns = len(head)
-        self.colwidth = tuple(col.width for col in head)
+        self.columns = max(max(len(row) for row in data) if data else 0, len(head))
+        self.colwidth = tuple(head[i].width if i < len(head) else 0 for i in range(self.columns))
         if self.data:
             for line in self.data:
-                self.colwidth = tuple(max(self.colwidth[i], line[i].width) for i in range(self.columns))
+                self.colwidth = tuple(max(self.colwidth[i], line[i].width if i < len(line) else 0)
+                                      for i in range(self.columns))
 
     @classmethod
     def _styled(cls, data, *args, **kwargs):
@@ -195,7 +196,7 @@ class Table:
         line : [Styled]
             List of cells to print
         """
-        cli.print(self.colsep.join(line[i].print(cli, self.colwidth[i], i == self.columns-1) for i in range(self.columns)))
+        cli.print(self.colsep.join(line[i].print(cli, self.colwidth[i], i == self.columns-1) for i in range(len(line))))
 
     def print(self, cli):
         """Print the table.
@@ -205,8 +206,9 @@ class Table:
         cli : Cli
             Cli providing printing functionality.
         """
-        if not (self.header or self.data) and self.empty:
+        if not self.data and self.empty:
             cli.print(self.empty)
+            return
         if self.header:
             self.printline(cli, self.header)
         if self.data:

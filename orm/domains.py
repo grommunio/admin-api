@@ -11,14 +11,13 @@ from services import Service
 import idna
 import json
 
-from sqlalchemy import Column, func, select, ForeignKey
+import sqlalchemy
+from sqlalchemy import Column, func, inspect, select, ForeignKey
 from sqlalchemy.dialects.mysql import DATE, INTEGER, TEXT, TINYINT, VARCHAR
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import column_property, validates, relationship, selectinload
 from sqlalchemy.types import TypeDecorator
-
-from .users import Users
 
 
 class Orgs(DataModel, DB.Base):
@@ -51,6 +50,94 @@ class Orgs(DataModel, DB.Base):
         if Orgs.query.filter(Orgs.ID != self.ID, Orgs.name == value).count():
             raise ValueError("Organization '{}' already exists".format(value))
         return value
+
+
+# Introduced in n109
+class OrgParam(DB.Base):
+    __tablename__ = "orgparam"
+
+    orgID = Column("org_id", INTEGER(10, unsigned=True), ForeignKey(Orgs.ID), primary_key=True)
+    key = Column("key", VARCHAR(32), nullable=False, primary_key=True)
+    value = Column("value", VARCHAR(255))
+
+    def __init__(self, orgID, key, value):
+        self.orgID = orgID
+        self.key = key
+        self.value = value
+
+    @classmethod
+    def loadLdap(cls, orgID):
+        def _addIfDef(dc, d, sc, s, all=False, type=None):
+            def tf(v):
+                return v if type is None else type(v)
+            if s in sc:
+                dc[d] = tf(sc[s]) if not all else [tf(v) for v in sc[s].split(",")]
+
+        entries = cls.query.filter(cls.orgID == orgID, cls.key.like("ldap_%")).with_entities(cls.key, cls.value).all()
+        if len(entries) == 0:
+            return None
+        plain = {entry.key: entry.value for entry in entries}
+
+        config = {"connection": {}, "users": {}}
+        _addIfDef(config, "disabled", plain, "ldap_disabled", type=lambda x: x.lower() in ("true", "yes", "1"))
+        _addIfDef(config["connection"], "server", plain, "ldap_uri")
+        _addIfDef(config["connection"], "bindUser", plain, "ldap_binddn")
+        _addIfDef(config["connection"], "bindPass", plain, "ldap_bindpw")
+        _addIfDef(config["connection"], "starttls", plain, "ldap_start_tls", type=lambda x: x.lower() in ("true", "yes", "1"))
+        _addIfDef(config["connection"], "connections", plain, "data_connections", type=int)
+        _addIfDef(config, "baseDn", plain, "ldap_basedn")
+        _addIfDef(config, "objectID", plain, "ldap_object_id")
+        _addIfDef(config["users"], "username", plain, "ldap_mail_attr")
+        _addIfDef(config["users"], "filter", plain, "ldap_user_filter")
+        _addIfDef(config["users"], "searchAttributes", plain, "ldap_user_search_attrs", all=True)
+        _addIfDef(config["users"], "displayName", plain, "ldap_user_displayname")
+        _addIfDef(config["users"], "defaultQuota", plain, "ldap_user_default_quota", type=int)
+        _addIfDef(config["users"], "templates", plain, "ldap_user_templates", all=True)
+        _addIfDef(config["users"], "aliases", plain, "ldap_user_aliases")
+        if "ldap_user_attributes" in plain:
+            config["users"]["attributes"] = {entry.split(" ", 1)[0]: entry.split(" ", 1)[1]
+                                             for entry in plain.getall("ldap_user_attributes") if " " in entry}
+        return config
+
+    @classmethod
+    def saveLdap(cls, orgID, config):
+        def _addIfDef(dc, d, sc, s):
+            if s in sc and sc[s] is not None:
+                dc[d] = ",".join(str(x) for x in sc[s]) if isinstance(sc[s], list) else str(sc[s])
+
+        flat = {}
+        _addIfDef(flat, "ldap_disabled", config, "disabled")
+        if "connection" in config:
+            _addIfDef(flat, "ldap_uri", config["connection"], "server")
+            _addIfDef(flat, "ldap_binddn", config["connection"], "bindUser")
+            _addIfDef(flat, "ldap_bindpw", config["connection"], "bindPass")
+            _addIfDef(flat, "ldap_start_tls", config["connection"], "starttls")
+        _addIfDef(flat, "ldap_basedn", config, "baseDn")
+        _addIfDef(flat, "ldap_object_id", config, "objectID")
+        if "users" in config:
+            _addIfDef(flat, "ldap_mail_attr", config["users"], "username")
+            _addIfDef(flat, "ldap_user_displayname", config["users"], "displayName")
+            _addIfDef(flat, "ldap_user_filter", config["users"], "filter")
+            _addIfDef(flat, "ldap_user_search_attrs", config["users"], "searchAttributes")
+            _addIfDef(flat, "ldap_user_default_quota", config["users"], "defaultQuota")
+            _addIfDef(flat, "ldap_user_templates", config["users"], "templates")
+            _addIfDef(flat, "ldap_user_aliases", config["users"], "aliases")
+            if "attributes" in config["users"] and config["users"]["attributes"]:
+                flat["ldap_user_attributes"] = ["{} {}".format(key, value)
+                                                for key, value in config["users"]["attributes"].items()]
+        cls.query.filter(cls.orgID == orgID).delete(synchronize_session=False)
+        for key, value in flat.items():
+            DB.session.add(OrgParam(orgID, key, value))
+        DB.session.commit()
+
+    @classmethod
+    def wipeLdap(cls, orgID):
+        cls.query.filter(cls.orgID == orgID, cls.key.like("ldap_%")).delete(synchronize_session=False)
+        DB.session.commit()
+
+    @classmethod
+    def ldapOrgs(cls):
+        return [entry[0] for entry in cls.query.with_entities(cls.orgID.distinct()).filter(cls.key.like("ldap_%"))]
 
 
 class Domains(DataModel, DB.Base, NotifyTable):
@@ -86,8 +173,6 @@ class Domains(DataModel, DB.Base, NotifyTable):
     chatID = OptionalC(79, "NULL", Column("chat_id", VARCHAR(26)))
     _syncPolicy = OptionalC(77, "NULL", Column("sync_policy", TEXT))
 
-    activeUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus == 0)).as_scalar())
-    inactiveUsers = column_property(select([func.count(Users.ID)]).where((Users.domainID == ID) & (Users.addressStatus != 0)).as_scalar())
     org = relationship(Orgs, back_populates="domains")
     homeserver = OptionalNC(105, None,
                             relationship("Servers", foreign_keys=homeserverID, primaryjoin="Domains.homeserverID==Servers.ID"))
@@ -123,7 +208,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
     def fromdict(self, patches, *args, **kwargs):
         DataModel.fromdict(self, patches, args, kwargs)
         if self.chatID:
-            with Service("chat", Service.SUPPRESS_INOP) as chat:
+            with Service("chat", errors=Service.SUPPRESS_INOP) as chat:
                 self._team = chat.updateTeam(self)
 
     @property
@@ -156,7 +241,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
         if not self.chatID:
             return False
         if self._team is None:
-            with Service("chat", Service.SUPPRESS_ALL) as grochat:
+            with Service("chat", errors=Service.SUPPRESS_ALL) as grochat:
                 self._team = grochat.getTeam(self.chatID)
         return self._team["delete_at"] == 0 if self._team else False
 
@@ -192,7 +277,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
             users = ["grommunio-sync:policycache-"+user.username
                      for user in Users.query.with_entities(Users.username).filter(Users.domainID == self.ID)]
             if len(users) > 0:
-                with Service("redis", Service.SUPPRESS_INOP) as r:
+                with Service("redis", errors=Service.SUPPRESS_INOP) as r:
                     r.delete(*users)
         return value
 
@@ -269,7 +354,6 @@ class Domains(DataModel, DB.Base, NotifyTable):
                 name = name[:maxlen-sublen-len(base)+3]+"…"
             return base.format(ID, name)
 
-
         from .roles import AdminRoles
         from orm.misc import Servers
         from tools.storage import DomainSetup
@@ -316,12 +400,31 @@ class Domains(DataModel, DB.Base, NotifyTable):
 
     @classmethod
     def _commit(cls, *args, **kwargs):
-        with Service("systemd", Service.SUPPRESS_ALL) as sysd:
+        with Service("systemd", errors=Service.SUPPRESS_ALL) as sysd:
             sysd.reloadService("gromox-delivery.service", "gromox-delivery-queue.service",
                                "gromox-http.service")
 
 
+from .users import Users
 from . import misc
 
+if sqlalchemy.__version__.split(".") >= ["1", "4"]:
+    inspect(Domains).add_property("activeUsers",
+                                  column_property(select([func.count(Users.ID)])
+                                                  .where((Users.domainID == Domains.ID) & (Users.addressStatus == 0))
+                                                  .scalar_subquery()))
+    inspect(Domains).add_property("inactiveUsers",
+                                  column_property(select([func.count(Users.ID)])
+                                                  .where((Users.domainID == Domains.ID) & (Users.addressStatus != 0))
+                                                  .scalar_subquery()))
+else:
+    inspect(Domains).add_property("activeUsers",
+                                  column_property(select([func.count(Users.ID)])
+                                                  .where((Users.domainID == Domains.ID) & (Users.addressStatus == 0))
+                                                  .as_scalar()))
+    inspect(Domains).add_property("inactiveUsers",
+                                  column_property(select([func.count(Users.ID)])
+                                                  .where((Users.domainID == Domains.ID) & (Users.addressStatus != 0))
+                                                  .as_scalar()))
 
 Domains.NTregister()

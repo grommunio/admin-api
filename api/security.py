@@ -208,7 +208,7 @@ def loginUser(username, password):
     if user is None:
         return False, "Invalid username or password"
     if user.externID is not None:
-        with Service("ldap") as ldap:
+        with Service("ldap", user.orgID) as ldap:
             error = ldap.authUser(user.externID, password)
             if error:
                 return False, error

@@ -28,6 +28,14 @@ class ServiceDisabledError(Exception):
     pass
 
 
+class InstanceDefault(Exception):
+    """Service parametrization not supported.
+
+    Thrown in the service constructor to indicate that parametrization is
+    either not supported or the given parameters would offer the same
+    functionality the default instance does."""
+
+
 class _ServiceHubMeta(type):
     def __contains__(cls, value):
         return value in cls._services
@@ -41,6 +49,7 @@ class _ServiceHubMeta(type):
 
 class ServiceHub(metaclass=_ServiceHubMeta):
     _services = {}
+    _instances = {}
 
     UNINITIALIZED = -1  # State has not been set
     LOADED = 0          # Service is available
@@ -57,24 +66,48 @@ class ServiceHub(metaclass=_ServiceHubMeta):
               DISABLED: "DISABLED"}
 
     class ServiceInfo:
-        def __init__(self, name, mgrclass, exchandler, maxreloads, maxfailures, reloadlocktime):
+        def __init__(self, name, mgrclass, exchandler, maxreloads, maxfailures, reloadlocktime, argspec, argname):
+            self._argname = argname
+            self._argspec = argspec
+            self._maxfailures = maxfailures
+            self._maxreloads = maxreloads
+            self._name = name
+            self._reloadlocktime = reloadlocktime
+            self.exchandler = exchandler
+            self.logger = logging.getLogger(self._name)
             self.mgrclass = mgrclass
+
+        def checkArgs(self, *args):
+            for spec in self._argspec:
+                if len(spec) != len(args):
+                    continue
+                try:
+                    return tuple(t(a) for t, a in zip(spec, args))
+                except Exception:
+                    pass
+            raise ValueError("Invalid service parameters")
+
+    class ServiceInstance:
+        def __init__(self, service, *args):
+            self._args = args
+            self._failures = 0
+            self._lastreload = 0
+            self._name = ServiceHub.servicename(service._name, *args)
+            self._reloads = 0
+            self._service = service
             self._state = ServiceHub.UNINITIALIZED
             self.exc = None
-            self._name = name
-            self.exchandler = exchandler
+            self.logger = service.logger.getChild("".join("{:02x}".format(x) for x in self._name.encode("utf8")))
+            self.logger.name = self.name
             self.manager = None
-            self._reloads = 0
-            self._maxreloads = maxreloads
-            self._failures = 0
-            self._maxfailures = maxfailures
-            self._lastreload = 0
-            self._reloadlocktime = reloadlocktime
-            self.logger = logging.getLogger(name)
+            self.load()
 
-        def __str__(self):
+        def __repr__(self):
             statename = {-1: "UNINITIALIZED", 0: "LOADED", 1: "UNAVAILABLE", 2: "SUSPENDED", 3: "ERROR"}
-            return "<Service '{}' state {}>".format(self._name, statename.get(self._state))
+            return "<Service '{}' state {}>".format(self.name, statename.get(self._state))
+
+        def _checkArgs(self):
+            return self._service.checkArgs(*self._args)
 
         def disable(self):
             self.state = ServiceHub.DISABLED
@@ -83,9 +116,9 @@ class ServiceHub(metaclass=_ServiceHubMeta):
         def failed(self, newstate, exception):
             self._failures += 1
             self.exc = exception
-            if self._maxfailures is not None and self._failures > self._maxfailures:
+            if self._service._maxfailures is not None and self._failures > self._service._maxfailures:
                 self.state = ServiceHub.ERROR
-                self._failures = self._maxfailures
+                self._failures = self._service._maxfailures
                 self.logger.info("Service deactivated after too many errors")
                 return False
             self.state = newstate
@@ -94,24 +127,27 @@ class ServiceHub(metaclass=_ServiceHubMeta):
         def load(self, force_reload=False):
             from time import time
             if (self._state not in (ServiceHub.UNINITIALIZED, ServiceHub.SUSPENDED) or
-               time()-self._lastreload < self._reloadlocktime) and not force_reload:
+               time()-self._lastreload < self._service._reloadlocktime) and not force_reload:
                 return
             self._reloads += 1
             try:
-                self.manager = self.mgrclass()
+                self._checkArgs()
+                self.manager = self._service.mgrclass(*self._args)
                 self.state = ServiceHub.LOADED
                 self._reloads = 0
                 self.logger.info("Service loaded successfully")
                 return
             except ServiceUnavailableError as err:
                 self.exc = err
-                self.logger.warning("Failed to load service: "+err.args[0])
-                self.state = ServiceHub.SUSPENDED if self._reloads <= self._maxreloads else ServiceHub.ERROR
-                self._reloads = min(self._reloads, self._maxreloads)
+                self.logger.warning("Failed to load service: "+" - ".join(str(arg) for arg in err.args))
+                self.state = ServiceHub.SUSPENDED if self._reloads <= self._service._maxreloads else ServiceHub.ERROR
+                self._reloads = min(self._reloads, self._service._maxreloads)
             except ServiceDisabledError as err:
                 self.exc = err
                 self.logger.warning("Failed to load service: "+err.args[0])
                 self.state = ServiceHub.DISABLED
+            except InstanceDefault:
+                raise
             except Exception as err:
                 self.exc = err
                 self.logger.error("Failed to load service: "+" - ".join(str(arg) for arg in err.args))
@@ -129,11 +165,11 @@ class ServiceHub(metaclass=_ServiceHubMeta):
 
         @property
         def maxfailures(self):
-            return self._maxfailures
+            return self._service._maxfailures
 
         @property
         def maxreloads(self):
-            return self._maxreloads
+            return self._service._maxreloads
 
         @property
         def name(self):
@@ -159,7 +195,8 @@ class ServiceHub(metaclass=_ServiceHubMeta):
             return ServiceHub.statename(self._state)
 
     @classmethod
-    def register(cls, name, exchandler=lambda *args, **kwargs: None, maxreloads=0, maxfailures=None, reloadlocktime=1):
+    def register(cls, name, exchandler=lambda *args, **kwargs: None, maxreloads=0, maxfailures=None, reloadlocktime=1,
+                 argspec=((),), argname=None):
         """Decorator to register a new service provider class.
 
         Register a new class as service provider.
@@ -193,33 +230,61 @@ class ServiceHub(metaclass=_ServiceHubMeta):
             The default is None.
         reloadlocktime : float, optional
             Minimum time (in seconds) between automatic reloads. The default is 1.
+        argspec : tuple of tuples of types, optional
+            Allowed types for arguments. Default is `((),)` (no arguments).
+        argname : function, optional
+            Function returning a sensible name for given arguments, or None for fallback naming. Default is None.
         """
         def inner(mgrclass):
-            cls._services[name] = cls.ServiceInfo(name, mgrclass, exchandler, maxreloads, maxfailures, reloadlocktime)
+            cls._services[name] = cls.ServiceInfo(name, mgrclass, exchandler, maxreloads, maxfailures, reloadlocktime,
+                                                  argspec, argname)
             return mgrclass
         return inner
 
     @classmethod
-    def get(cls, name):
-        if name not in cls._services:
-            raise ServiceUnavailableError("Service '{}' does not exist.".format(name))
-        service = cls._services[name]
-        service.load()
-        return service
+    def load(cls, service, *args, force_reload=False):
+        if service not in cls._services:
+            raise ServiceUnavailableError("Service '{}' does not exist.".format(service))
+
+        args = cls._services[service].checkArgs(*args)
+        instanceKey = (service, *args)
+        if force_reload or instanceKey not in cls._instances:
+            try:
+                cls._instances[instanceKey] = cls.ServiceInstance(cls._services[service], *args)
+            except InstanceDefault:
+                cls._instances[instanceKey] = cls.load(service)
+        else:
+            cls._instances[instanceKey].load()
+        return cls._instances[instanceKey]
 
     @classmethod
-    def load(cls, *services, force_reload=False):
-        if len(services):
-            for service in services:
-                if service in cls._services:
-                    cls._services[service].load(force_reload)
-        else:
-            for service in cls._services.values():
-                service.load()
+    def unload(cls, instance):
+        servicekey = (instance._service._name, *instance._args)
+        if servicekey in cls._services:
+            del cls._services[servicekey]
 
     @classmethod
     def statename(cls, state):
         return cls._names.get(state, "UNKNOWN")
+
+    @classmethod
+    def services(cls):
+        return [service for service in cls._services]
+
+    @classmethod
+    def instances(cls, service=None):
+        return [(key[1:], value) for key, value in cls._instances.items() if service is None or key[0] == service]
+
+    @classmethod
+    def servicename(cls, service, *args):
+        base = service+"@"
+        if service in cls._services and cls._services[service]._argname:
+            cls._services[service].checkArgs(*args)
+            name = cls._services[service]._argname(*args)
+            if name is not None:
+                return base+name
+        base += "default" if not args else repr(args[0]) if len(args) == 1 else "["+",".join(repr(arg) for arg in args)+"]"
+        return base
 
 
 class Service:
@@ -234,16 +299,17 @@ class Service:
         def __getattr__(self, name):
             raise ServiceUnavailableError("Service '{}' is currently not available".format(self.name))
 
-    def __init__(self, name, suppress=0):
+    def __init__(self, name, *args, errors=SUPPRESS_NONE):
+        displayname = ServiceHub.servicename(name, *args)
         try:
-            self.__suppress = suppress
-            self.__service = ServiceHub.get(name)
-            self.plugin = self.__service.mgrclass
-            self.__mgr = self.__service.manager if self.__service.available else self.Stub(name)
+            self.__suppress = errors
+            self.__service = ServiceHub.load(name, *args)
+            self.plugin = self.__service._service.mgrclass
+            self.__mgr = self.__service.manager if self.__service.available else self.Stub(displayname)
         except Exception:
-            if suppress == self.SUPPRESS_ALL:
+            if errors == self.SUPPRESS_ALL:
                 self.__service = None
-                self.__mgr = self.Stub(name)
+                self.__mgr = self.Stub(displayname)
             else:
                 raise
 
@@ -253,7 +319,7 @@ class Service:
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None or isinstance(exc_value, ServiceUnavailableError):
             return self.__suppress != 0
-        excresult = self.__service.exchandler(self.__service, exc_value)
+        excresult = self.__service._service.exchandler(self.__service, exc_value)
         if isinstance(excresult, tuple):
             newstate, msg = excresult
         else:
@@ -269,7 +335,11 @@ class Service:
             return True
 
     @staticmethod
-    def available(name):
-        return name in ServiceHub and ServiceHub.get(name).available
+    def available(name, *args):
+        return name in ServiceHub and ServiceHub.load(name, *args).available
+
+    def service(self):
+        return self.__mgr
+
 
 from . import chat, exmdb, ldap, redis, systemd

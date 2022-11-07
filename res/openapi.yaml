@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.8.3
+  version: 1.9.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -26,9 +26,6 @@ paths:
                   database:
                     type: boolean
                     description: Whether the database connection is initialized
-                  ldap:
-                    type: boolean
-                    description: Whether the LDAP connection is initialized
                   tasq:
                     type: boolean
                     description: Whether the TasQ server is running
@@ -268,6 +265,28 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/DatabaseError'
+
+  /service/userinfo/{username}:
+    get:
+      summary: Get basic user information
+      tags:
+        - Service
+      security:
+        - JWTCookie: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/username'
+      responses:
+        '200':
+          description: User info returned
+          content:
+            application/json:
+             schema:
+              type: object
+              properties:
+                ldap:
+                  description: Whether the user is linked to an LDAP object
+                  type: boolean
 
   /system/dashboard:
     get:
@@ -3231,6 +3250,8 @@ paths:
         - JWTCookie: []
       parameters:
         - $ref: '#/components/parameters/queryLimit'
+        - $ref: '#/components/parameters/domain'
+        - $ref: '#/components/parameters/organization'
         - name: query
           in: query
           description: Search term
@@ -3238,13 +3259,6 @@ paths:
           schema:
             type: string
             minLength: 3
-        - name: domain
-          description: Restrict search to specific domain IDs
-          in: query
-          required: false
-          explode: false
-          schema:
-            $ref: '#/components/schemas/intList'
       responses:
         '200':
           description: List of users returned
@@ -3297,6 +3311,8 @@ paths:
             type: boolean
             default: false
         - $ref: '#/components/parameters/defaultLang'
+        - $ref: '#/components/parameters/domain'
+        - $ref: '#/components/parameters/organization'
       responses:
         '200':
           description: An existing user was updated with LDAP data
@@ -3328,6 +3344,9 @@ paths:
         - LDAP
       security:
         - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domain'
+        - $ref: '#/components/parameters/organization'
       responses:
         '200':
           description: A list of orphaned users is returned
@@ -3465,6 +3484,8 @@ paths:
       security:
         - JWTCookie: []
       parameters:
+        - $ref: '#/components/parameters/domain'
+        - $ref: '#/components/parameters/organization'
         - name: ID
           in: query
           required: true
@@ -3778,6 +3799,119 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/DatabaseError'
+
+  /system/orgs/{ID}/ldap:
+    get:
+      summary: Get organization specific LDAP configuration
+      tags:
+        - System Admin/Organizations
+        - LDAP
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: LDAP configuration returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ldapAvailable:
+                    type: boolean
+                    description: Whether the LDAP is currently available
+                  data:
+                    $ref: '#/components/schemas/ldapConfig'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    put:
+      summary: Set organization specific LDAP configuration
+      tags:
+        - System Admin/Organizations
+        - LDAP
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ldapConfig'
+      responses:
+        '200':
+          description: LDAP configuration updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Reset organization specific LDAP configuration
+      tags:
+        - System Admin/Organizations
+        - LDAP
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: LDAP configuration removed
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /system/orgs/{ID}/ldap/downsync:
+    post:
+      summary: Update all LDAP imported users in this organization
+      tags:
+        - LDAP
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - $ref: '#/components/parameters/ID'
+        - $ref: '#/components/parameters/completeSync'
+        - $ref: '#/components/parameters/defaultLang'
+        - $ref: '#/components/parameters/timeout'
+      responses:
+        '200':
+          description: Update process successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/syncStatus'
+        '202':
+          $ref: '#/components/responses/Queued'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /system/servers:
     get:
@@ -4296,6 +4430,13 @@ components:
       required: true
       schema:
         type: integer
+    domain:
+      name: domain
+      description: ID of the domain
+      in: query
+      required: false
+      schema:
+        type: integer
     domainID:
       name: domainID
       description: ID of the domain
@@ -4333,6 +4474,13 @@ components:
       description: Import new users from LDAP
       schema:
         type: boolean
+    organization:
+      name: organization
+      description: ID of the organization
+      in: query
+      required: false
+      schema:
+        type: integer
     systemdUnit:
       name: unit
       description: Name of the unit to signal

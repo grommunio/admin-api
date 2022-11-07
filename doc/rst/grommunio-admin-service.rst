@@ -14,9 +14,8 @@ grommunio-admin service — grommunio-admin external service interface control
 Synopsis
 ========
 
-| **grommunio-admin service** *disable* [*SERVICE* [*SERVICE* [...]]]
-| **grommunio-admin service** [*-r*] *load* [*SERVICE* [*SERVICE* [...]]]
-| **grommunio-admin service** [*-v*] *status* [*SERVICE* [*SERVICE* [...]]]
+| **grommunio-admin service** [*-r*] *load* *SERVICE* [*ARGS* …]
+| **grommunio-admin service** [*-v*] *status* [*SERVICE* [*SERVICE* […]]]
 
 
 Description
@@ -30,8 +29,10 @@ Description
 | Note that the CLI runs separately from the API backend. If introspection of
   the running server instance is required, use the *connect* command to access
   the server instance.
-
-| Each service has a state, reflecting the connection status. The following
+| As of version 1.9, each service acts as a blueprint for parameterized
+  instances. Currently only the LDAP service supports parameters, allowing for
+  organization-specific ldap connections.
+| Each instance has a state, reflecting the connection status. The following
   states are used:
 
 ``UNLOADED``
@@ -60,11 +61,6 @@ Description
 
 Commands
 ========
-
-disable
--------
-
-| Disable the service. Requires reload to enable.
 
 load
 -----
@@ -115,4 +111,5 @@ See Also
 ========
 
 **grommunio-admin**\ (1), **grommunio-admin-config**\ (1),
-**grommunio-admin-connect**\ (1), **grommunio-admin-mconf**\ (1)
+**grommunio-admin-connect**\ (1), **grommunio-admin-ldap**\ (1)
+**grommunio-admin-mconf**\ (1)

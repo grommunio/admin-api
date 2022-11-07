@@ -10,11 +10,11 @@ from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp, Bool, Date
 from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
 from tools.rop import nxTime
 
-from sqlalchemy import Column, ForeignKey, event, func
+from sqlalchemy import Column, ForeignKey, event, func, inspect, select
 from sqlalchemy.dialects.mysql import ENUM, INTEGER, TEXT, TIMESTAMP, TINYINT, VARBINARY, VARCHAR
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import relationship, selectinload, validates
+from sqlalchemy.orm import column_property, relationship, selectinload, validates
 
 import crypt
 import json
@@ -285,11 +285,10 @@ class Users(DataModel, DB.Base, NotifyTable):
         if displaytype in (0, 1, 7, 8):
             self._deprecated_addressType, self._deprecated_subType = self._decodeDisplayType(displaytype)
         if self.chatID:
-            with Service("chat", Service.SUPPRESS_INOP) as chat:
+            with Service("chat", errors=Service.SUPPRESS_INOP) as chat:
                 self._chatUser = chat.updateUser(self, False)
         if syncStore == "always" or (syncStore and "properties" in patches):
             self.syncStore()
-
 
     @staticmethod
     def _decodeDisplayType(displaytype):
@@ -504,7 +503,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         if not self.chatID:
             return False
         if self._chatUser is None:
-            with Service("chat", Service.SUPPRESS_INOP) as chat:
+            with Service("chat", errors=Service.SUPPRESS_INOP) as chat:
                 self._chatUser = chat.getUser(self.chatID)
         return self.domain.chat and self._chatUser["delete_at"] == 0 if self._chatUser else False
 
@@ -563,7 +562,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     @validates("_syncPolicy")
     def triggerSyncPolicyUpdate(self, key, value, *args):
         if value != self._syncPolicy:
-            with Service("redis", Service.SUPPRESS_INOP) as r:
+            with Service("redis", errors=Service.SUPPRESS_INOP) as r:
                 r.delete("grommunio-sync:policycache-"+self.username)
         return value
 
@@ -621,7 +620,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         Associations.query.filter(Associations.username == self.username).delete(synchronize_session=False)
         if self.chatID is not None:
             from services import Service
-            with Service("chat", Service.SUPPRESS_ALL) as chat:
+            with Service("chat", errors=Service.SUPPRESS_ALL) as chat:
                 chat.deleteUser(self) if deleteChatUser else chat.activateUser(self, False)
         DB.session.delete(self)
 
@@ -696,7 +695,7 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @classmethod
     def _commit(*args, **kwargs):
-        with Service("systemd", Service.SUPPRESS_ALL) as sysd:
+        with Service("systemd", errors=Service.SUPPRESS_ALL) as sysd:
             sysd.reloadService("gromox-http.service", "gromox-zcore.service")
 
     @validates("username")
@@ -813,7 +812,7 @@ class Aliases(DataModel, DB.Base, NotifyTable):
 
     @classmethod
     def _commit(*args, **kwargs):
-        with Service("systemd", Service.SUPPRESS_ALL) as sysd:
+        with Service("systemd", errors=Service.SUPPRESS_ALL) as sysd:
             sysd.reloadService("gromox-delivery.service", "gromox-http.service", "gromox-zcore.service")
 
 
@@ -975,11 +974,19 @@ class Forwards(DataModel, DB.Base):
         return value
 
 
-from . import domains, misc, roles
+from .domains import Domains
+from . import misc, roles
 
 
 Users.NTregister()
 Aliases.NTregister()
+
+if sqlalchemy.__version__.split(".") >= ["1", "4"]:
+    inspect(Users).add_property("orgID", column_property(select(Domains.orgID)
+                                                         .where(Domains.ID == Users.domainID).scalar_subquery()))
+else:
+    inspect(Users).add_property("orgID", column_property(select([Domains.orgID])
+                                                         .where(Domains.ID == Users.domainID).as_scalar()))
 
 
 @event.listens_for(Users, "expire")

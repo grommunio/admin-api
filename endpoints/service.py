@@ -110,3 +110,14 @@ def setWipeStatus(username):
         with Service("redis") as redis:
             redis.hdel("grommunio-sync:provisioningcache", *refresh)
     return jsonify(message="Success."), 201
+
+
+@API.route(api.BaseRoute+"/service/userinfo/<username>", methods=["GET"])
+@secure(requireDB=True, requireAuth="optional", authLevel="user")
+def getUserInfo(username):
+    from orm.users import Users
+    user = Users.query.filter(Users.username == username).with_entities(Users.domainID, Users.externID).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    checkAccess(DomainAdminROPermission(user.domainID))
+    return jsonify(ldap=user.externID is not None)

@@ -106,7 +106,7 @@ def deleteUser(user, deleteChatUser):
         DB.session.commit()
     except Exception:
         return jsonify(message="Cannot delete user: Database commit failed."), 500
-    with Service("exmdb", Service.SUPPRESS_INOP) as exmdb:
+    with Service("exmdb", errors=Service.SUPPRESS_INOP) as exmdb:
         client = exmdb.user(userdata)
         client.unloadStore()
     if request.args.get("deleteFiles") == "true":

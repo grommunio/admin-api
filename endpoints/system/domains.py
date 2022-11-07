@@ -11,6 +11,9 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
+from services import ServiceHub, Service
+from services.ldap import LdapService
+
 from tools.permissions import SystemAdminPermission, SystemAdminROPermission
 from tools.permissions import DomainAdminROPermission, OrgAdminPermission, DomainPurgePermission
 
@@ -44,6 +47,45 @@ def orgDeleteEndpoint(ID):
 
 ###################################################################################################
 
+@API.route(api.BaseRoute+"/system/orgs/<int:ID>/ldap", methods=["GET"])
+@secure(requireDB=109)
+def getOrgLdapConfig(ID):
+    checkPermissions(OrgAdminPermission(ID))
+    from orm.domains import OrgParam
+    config = OrgParam.loadLdap(ID) or {}
+    return jsonify(ldapAvailable=Service.available("ldap", ID) if config else False, data=config)
+
+
+@API.route(api.BaseRoute+"/system/orgs/<int:ID>/ldap", methods=["PUT"])
+@secure(requireDB=109)
+def updateOrgLdapConfig(ID):
+    checkPermissions(OrgAdminPermission(ID))
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify(message="Missing configuration"), 400
+    error = LdapService.testConfig(data)
+    forced = False
+    if error:
+        if request.args.get("force") == "true":
+            forced = True
+        else:
+            return jsonify(message=error), 400
+    from orm.domains import OrgParam
+    OrgParam.saveLdap(ID, data)
+    ServiceHub.load("ldap", ID, force_reload=True)
+    return jsonify(message="Force updated LDAP configuration" if forced else "LDAP configuration updated")
+
+
+@API.route(api.BaseRoute+"/system/orgs/<int:ID>/ldap", methods=["DELETE"])
+@secure(requireDB=109)
+def deleteOrgLdapConfig(ID):
+    checkPermissions(OrgAdminPermission(ID))
+    from orm.domains import OrgParam
+    OrgParam.wipeLdap(ID)
+    ServiceHub.load("ldap", ID, force_reload=True)
+    return jsonify(message="Success.")
+
+###################################################################################################
 
 @API.route(api.BaseRoute+"/system/domains", methods=["GET"])
 @secure(requireDB=True)
