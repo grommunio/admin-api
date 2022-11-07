@@ -21,7 +21,7 @@ add_custom_command(
 
 add_custom_target(openapi ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/openapi.json)
 
-file(CREATE_LINK ${INSTALLDIR}/main.py grommunio-admin SYMBOLIC)
+file(CREATE_LINK ${INSTALLDIR}/main.py ${CMAKE_CURRENT_BINARY_DIR}/grommunio-admin SYMBOLIC)
 
 install(DIRECTORY doc/man/ DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(DIRECTORY api cli endpoints orm services tools DESTINATION ${INSTALLDIR})
