@@ -9,21 +9,59 @@ from orm import DB
 from services import Service
 from tools.config import Config
 
-import openapi_core
-from openapi_core.shortcuts import RequestValidator, ResponseValidator
-if openapi_core.__version__.split(".") < ["0", "13", "0"]:
-    from openapi_core.wrappers.flask import FlaskOpenAPIRequest, FlaskOpenAPIResponse
-else:
-    from openapi_core.contrib.flask import FlaskOpenAPIRequest, FlaskOpenAPIResponse
-
 from . import apiSpec
+
+
+class OpenApiCompat:
+    def __init__(self, apiSpec):
+        import openapi_core
+        self.version = [int(part) for part in openapi_core.__version__.split(".")]
+        if self.version < [0, 13, 0]:
+            from openapi_core.wrappers.flask import FlaskOpenAPIRequest, FlaskOpenAPIResponse
+        else:
+            from openapi_core.contrib.flask import FlaskOpenAPIRequest, FlaskOpenAPIResponse
+        if self.version < [0, 15, 0]:
+            from openapi_core import create_spec
+        else:
+            from openapi_core.spec.shortcuts import create_spec
+        self.spec = create_spec(apiSpec)
+        if self.version < [0, 15, 0]:
+            from openapi_core.shortcuts import RequestValidator, ResponseValidator
+            self.requestValidator = RequestValidator(self.spec)
+            self.responseValidator = ResponseValidator(self.spec)
+            self.validateRequest = lambda request: self.requestValidator.validate(FlaskOpenAPIRequest(request))
+            self.validateResponse = lambda request, response: \
+                self.responseValidator.validate(FlaskOpenAPIRequest(request), FlaskOpenAPIResponse(response)).errors
+        else:
+            self.FlaskOpenAPIRequest, self.FlaskOpenAPIResponse = FlaskOpenAPIRequest, FlaskOpenAPIResponse
+            self.validateRequest = self._validateRequest_15_0
+            self.validateResponse = self._validateResponse_15_0
+
+    @staticmethod
+    def _suppressError(exc):
+        def matchBuggedError(err):
+            return isinstance(err, ValidationError) and err.message == "None for not nullable" and "$ref" in err.schema
+        from openapi_core.unmarshalling.schemas.exceptions import InvalidSchemaValue
+        from jsonschema.exceptions import ValidationError
+        if not isinstance(exc, InvalidSchemaValue):
+            return False
+        return all(matchBuggedError(err) for err in exc.schema_errors)
+
+    def _validateRequest_15_0(self, request):
+        from openapi_core.validation.request import openapi_request_validator as reqval
+        result = reqval.validate(self.spec, self.FlaskOpenAPIRequest(request))
+        return result
+
+    def _validateResponse_15_0(self, request, response):
+        from openapi_core.validation.response import openapi_response_validator as resval
+        result = resval.validate(self.spec, self.FlaskOpenAPIRequest(request), self.FlaskOpenAPIResponse(response))
+        return [error for error in result.errors if not self._suppressError(error)]
 
 
 if "servers" in Config["openapi"]:
     apiSpec["servers"] += Config["openapi"]["servers"]
-apiSpec = openapi_core.create_spec(apiSpec)
-requestValidator, responseValidator = RequestValidator(apiSpec), ResponseValidator(apiSpec)
 
+validator = OpenApiCompat(apiSpec)
 
 API = Flask("grommunio Admin API")  # Core API object
 API.config["JSON_SORT_KEYS"] = False  # Do not sort response fields. Crashes when returning lists...
@@ -50,7 +88,7 @@ def validateRequest(flask_request):
         True if the request is valid, False otherwise
     string
         Error message if validation failed, None otherwise"""
-    result = requestValidator.validate(FlaskOpenAPIRequest(flask_request))
+    result = validator.validateRequest(flask_request)
     if result.errors:
         return False, jsonify(message="Bad Request", errors=[type(error).__name__ for error in result.errors]), result.errors
     return True, None, None
@@ -106,15 +144,15 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic", service=None, v
                     ret = func(*args, **kwargs)
                 response = make_response(ret)
                 try:
-                    result = responseValidator.validate(FlaskOpenAPIRequest(request), FlaskOpenAPIResponse(response))
+                    result = validator.validateResponse(request, response)
                 except AttributeError:
                     result = None
-                if result is not None and result.errors:
+                if result:
                     if Config["openapi"]["validateResponse"]:
-                        API.logger.error("Response validation failed: "+str(result.errors))
+                        API.logger.error("Response validation failed: "+str(result))
                         return jsonify(message="The server generated an invalid response."), 500
                     else:
-                        API.logger.warn("Response validation failed: "+str(result.errors))
+                        API.logger.warn("Response validation failed: "+str(result))
                 return ret
 
             if requireAuth:
@@ -152,4 +190,4 @@ def noCache(response):
     return response
 
 
-from . import errors
+from . import errors as _

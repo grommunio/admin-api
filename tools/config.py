@@ -178,8 +178,13 @@ def validate():
     str
         Error message, or None if validation succeeds
     """
+    import openapi_spec_validator
     from openapi_schema_validator import OAS30Validator
-    from openapi_spec_validator.exceptions import ValidationError
+    version = [int(part) for part in openapi_spec_validator.__version__.split(".")]
+    if version < [0, 5, 0]:
+        from openapi_spec_validator.exceptions import ValidationError
+    else:
+        from openapi_spec_validator.validation.exceptions import ValidationError
     try:
         with open("res/config.yaml", encoding="utf-8") as file:
             configSchema = yaml.load(file, yaml.loader.SafeLoader)
