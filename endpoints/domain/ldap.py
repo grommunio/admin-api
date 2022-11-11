@@ -57,8 +57,10 @@ def searchLdap():
     limit = int(request.args.get("limit", 50))
     domainnames = [domain.domainname for domain in domains]
     with Service("ldap", orgID) as ldap:
-        ldapusers = ldap.searchUsers(request.args["query"], domainnames, limit=limit or None)
-    return jsonify(data=[{"ID": ldap.escape_filter_chars(u.ID), "name": u.name, "email": u.email} for u in ldapusers])
+        ldapusers = ldap.searchUsers(request.args.get("query"), domainnames, limit=limit or None,
+                                     filterIncomplete=request.args.get("showAll") != "true")
+    return jsonify(data=[{"ID": ldap.escape_filter_chars(u.ID), "name": u.name, "email": u.email,
+                          "type": u.type, "error": u.error} for u in ldapusers])
 
 
 def ldapDownsync(orgID=None, domainID=None):
@@ -92,6 +94,40 @@ def ldapDownsyncDomain(domainID):
     return ldapDownsync(domainID=domainID)
 
 
+def importContact(candidate, ldap, orgID, domains):
+    from orm.domains import Domains
+    from orm.users import Users
+    imported = synced = failed = 0
+    domains = Domains.query.filter(Domains.orgID == orgID, Domains.ID.in_([domain.ID for domain in domains]))\
+                           .with_entities(Domains.ID, Domains.domainname).all()
+    existing = Users.query.filter(Users.domainID.in_(domain.ID for domain in domains), Users.externID == candidate.ID).all()
+    for user in existing:
+        userdata = ldap.downsyncUser(candidate.ID, user.properties)
+        try:
+            user.fromdict(userdata)
+            DB.session.commit()
+            synced += 1
+        except (InvalidAttributeError, MismatchROError, ValueError):
+            DB.session.rollback()
+            failed += 1
+    existingDomains = {user.domainID for user in existing}
+    domains = [domain for domain in domains if domain.ID not in existingDomains]
+    for domain in domains:
+        contactData = ldap.downsyncUser(candidate.ID)
+        contactData["domainID"] = domain.ID
+        result, code = Users.mkContact(contactData, candidate.ID)
+        if code != 201:
+            failed += 1
+        else:
+            user = result
+            imported += 1
+    if synced+imported == 1 and not failed:
+        return jsonify(user.fulldesc()), (201 if imported else 200)
+    msg = ", ".join("{} {}".format(count, cat)
+                    for count, cat in ((synced, "synced"), (imported, "imported"), (failed, "failed")))
+    return jsonify(message=msg)
+
+
 @API.route(api.BaseRoute+"/domains/ldap/importUser", methods=["POST"])
 @secure(requireDB=True, authLevel="user")
 def importLdapUser():
@@ -99,7 +135,7 @@ def importLdapUser():
     from services.ldap import LdapService
     from orm.domains import Domains
     from orm.users import Users
-    orgID, _ = _getTarget()
+    orgID, domains = _getTarget()
     ldap = Service("ldap", orgID).service()
 
     if "ID" not in request.args:
@@ -114,6 +150,8 @@ def importLdapUser():
     userinfo = ldap.getUserInfo(ID)
     if userinfo is None:
         return jsonify(message="LDAP user not found"), 404
+    if userinfo.type == "contact":
+        return importContact(userinfo, ldap, orgID, domains)
 
     domain = Domains.query.filter(Domains.domainname == userinfo.email.split("@")[1], Domains.orgID == orgID)\
                           .with_entities(Domains.ID).first()

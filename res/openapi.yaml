@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.9.0
+  version: 1.9.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3259,6 +3259,12 @@ paths:
           schema:
             type: string
             minLength: 3
+        - name: showAll
+          in: query
+          description: Do not filter un-importable results
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: List of users returned
@@ -3280,7 +3286,15 @@ paths:
                           description: Display name of the person
                         email:
                           type: string
+                          nullable: true
                           description: E-mail address of the person
+                        type:
+                          type: string
+                          description: Type of the entry (either 'user' or 'contact')
+                        error:
+                          type: string
+                          nullable: true
+                          description: Why the entry cannot be imported (showAll=true only)
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '500':
@@ -3319,7 +3333,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/user'
+                anyOf:
+                  - type: object
+                    properties:
+                      message:
+                        description: Contact import for multiple domains at once
+                  - $ref: '#/components/schemas/user'
         '201':
           description: A new user was created from LDAP data
           content:

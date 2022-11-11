@@ -50,7 +50,7 @@ PAGE_SIZE\f[R]] [\f[I]USER\f[R] [\f[I]USER\f[R] \&...]]
 .PD 0
 .P
 .PD
-\f[B]grommunio-admin ldap\f[R] \f[B]search\f[R] [\f[I]-n
+\f[B]grommunio-admin ldap\f[R] \f[B]search\f[R] [\f[I]-a\f[R]] [\f[I]-n
 MAX_RESULTS\f[R]] [\f[I]-o ORGSPEC\f[R]] [\f[I]-p PAGE_SIZE\f[R]]
 [\f[I]USER\f[R]]
 .SH Description
@@ -84,6 +84,9 @@ Search for users
 .TP
 \f[V]USER\f[R]
 LDAP object ID or search string
+.TP
+\f[V]-a\f[R], \f[V]--all\f[R]
+Show all results, not only importable objects
 .TP
 \f[V]-c\f[R], \f[V]--complete\f[R]
 Import or update all users from the LDAP tree

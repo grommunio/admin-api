@@ -12,8 +12,6 @@ import threading
 import yaml
 
 from ldap3.utils.conv import escape_filter_chars
-from tools.misc import GenericObject
-
 import logging
 logger = logging.getLogger("ldap")
 
@@ -47,6 +45,91 @@ def orgid(orgspec):
         if org is None:
             raise
         return org.ID
+
+
+class SearchResult:
+    def __init__(self, ldap, resultType, data):
+        self._ldap = ldap
+        userconf = ldap._config["users"]
+        self.ID = data["raw_attributes"][ldap._config["objectID"]][0]
+        self.data = data["attributes"]
+        self.name = data["attributes"].get(userconf["displayName"]) or ""
+        self.type = resultType
+        self.error = None
+        if resultType == "user":
+            if userconf["username"] in data["attributes"] and data["attributes"][userconf["username"]]:
+                self.email = self.username = self._reduce(data["attributes"][userconf["username"]])
+            else:
+                self.email = self.username = None
+                self.error = "Missing username"
+        elif resultType == "contact":
+            self.username = None
+            if userconf["contactname"] in data["attributes"]:
+                self.email = self._reduce(data["attributes"][userconf["contactname"]])
+            else:
+                self.email = None
+                self.error = "Missing e-mail address"
+        else:
+            self.error = "Unknown type"
+
+    def __repr__(self):
+        return "<{} {}>".format(self.type, self.email)
+
+    def _chkConvert(self, requested):
+        if self.error:
+            raise ValueError("Cannot create {} data: {}".format(requested, self.error))
+        if self.type != requested:
+            raise TypeError("Cannot create {} data from {} object".format(requested, self.type))
+
+    @staticmethod
+    def _reduce(value, tail=False):
+        """Reduce potentially multi-valued attribute to scalar.
+
+        Parameters
+        ----------
+        value : Any
+            Value to reduce
+        tail : bool, optional
+            Return additional elements in second return value. The default is False.
+
+        Returns
+        -------
+        Any
+            Scalar value (tail=False) or two-tuple containing the scalar and additional elements (tail=True).
+        """
+        res = (value[0], value[1:]) if isinstance(value, (list, tuple)) else (value, [])
+        return res if tail else res[0]
+
+    def userdata(self, props=None):
+        if self.type == "contact":
+            return self.contactdata(props)
+        self._chkConvert("user")
+        ldap = self._ldap
+        ldapuser = self.data
+        username, aliases = self._reduce(ldapuser[ldap._config["users"]["username"]], tail=True)
+        userdata = dict(username=username.lower(), aliases=aliases)
+        userdata["properties"] = props or ldap._defaultProps.copy()
+        userdata["properties"].update({prop: " ".join(str(a) for a in ldapuser[attr]) if isinstance(ldapuser[attr], list)
+                                       else ldapuser[attr] for attr, prop in ldap._userAttributes.items() if attr in ldapuser})
+        if ldap._config["users"].get("aliases"):
+            aliasattr = ldap._config["users"]["aliases"]
+            if ldapuser.get(aliasattr) is not None:
+                from tools import formats
+                aliases = ldapuser[aliasattr]
+                aliases = aliases if isinstance(aliases, list) else [aliases]
+                aliases = [alias[5:] if alias.lower().startswith("smtp:") else alias for alias in aliases]
+                userdata["aliases"] += [alias for alias in aliases if formats.email.match(alias)]
+        return userdata
+
+    def contactdata(self, props=None):
+        self._chkConvert("contact")
+        ldap = self._ldap
+        ldapuser = self.data
+        userdata = {}
+        userdata["properties"] = props or ldap._defaultProps.copy()
+        userdata["properties"].update({prop: " ".join(str(a) for a in ldapuser[attr]) if isinstance(ldapuser[attr], list)
+                                       else ldapuser[attr] for attr, prop in ldap._userAttributes.items() if attr in ldapuser})
+        return userdata
 
 
 @ServiceHub.register("ldap", handleLdapError, maxreloads=3, argspec=((), (orgid,)), argname=argname)
@@ -99,26 +182,19 @@ class LdapService:
         else:
             self._defaultProps = {}
 
-    def _asUser(self, obj):
-        """Convert LDAP result to user object.
-
-        Parameters
-        ----------
-        obj : dict
-            LDAP result
-
-        Returns
-        -------
-        GenericObject
-            Object with extracted ID, username, (display) name and email
-        """
-        users = self._config["users"]
-        reducedUsername = self._reduce(obj["attributes"][users["username"]])
-        displayname = obj["attributes"].get(users["displayName"]) or ""
-        return GenericObject(ID=obj["raw_attributes"][self._config["objectID"]][0],
-                             username=reducedUsername,
-                             name=displayname,
-                             email=reducedUsername)
+    def _attrSet(self, name, mode="user"):
+        if isinstance(name, (list, tuple)):
+            return name
+        common = (self._config["objectID"],)
+        if name == "idonly":
+            return common
+        if name == "all":
+            return common+("*",)
+        userconf = self._config["users"]
+        common += (userconf["displayName"],)
+        if mode == "user":
+            return common+(userconf["username"],)
+        return (common+(userconf["contactname"],)) if self._config["enableContacts"] else common
 
     @classmethod
     def _checkConfig(cls, config):
@@ -143,6 +219,11 @@ class LdapService:
             userAttributes.update(cls._templates.get(_template, {}))
         userAttributes.update(config["users"].get("attributes", {}))
         userAttributes[config["users"]["displayName"]] = "displayname"
+        for key, value in userAttributes.items():
+            if value == "smtpaddress":
+                config["users"]["contactname"] = key
+                break
+        config["enableContacts"] = bool(config["users"].get("contactFilter") and config["users"].get("contactname"))
         return userAttributes
 
     def _matchFilters(self, ID):
@@ -160,11 +241,7 @@ class LdapService:
         str
             A string containing LDAP match filter expression.
         """
-        filters = ")(".join(f for f in self._config["users"].get("filters", ()))
-        return "(&({}={}){}{})".format(self._config["objectID"],
-                                       self.escape_filter_chars(ID),
-                                       ("("+filters+")") if len(filters) else "",
-                                       self._config["users"].get("filter", ""))
+        return "({}={})".format(self._config["objectID"], self.escape_filter_chars(ID))
 
     def _matchFiltersMulti(self, IDs):
         """Generate match filters string for multiple IDs.
@@ -181,36 +258,14 @@ class LdapService:
         str
             A string containing LDAP match filter expression.
         """
-        filters = self._config["users"].get("filters", ())
-        filters = ("("+")(".join(filters) + ")") if len(filters) > 0 else ""
-        IDfilters = "(|{})".format("".join("({}={})".format(self._config["objectID"], self.escape_filter_chars(ID))
-                                           for ID in IDs))
-        return "(&{}{}{})".format(filters, IDfilters, self._config["users"].get("filter", ""))
-
-    @staticmethod
-    def _reduce(value, tail=False):
-        """Reduce potentially multi-valued attribute to scalar.
-
-        Parameters
-        ----------
-        value : Any
-            Value to reduce
-        tail : bool, optional
-            Return additional elements in second return value. The default is False.
-
-        Returns
-        -------
-        Any
-            Scalar value (tail=False) or two-tuple containing the scalar and additional elements (tail=True).
-        """
-        res = (value[0], value[1:]) if isinstance(value, (list, tuple)) else (value, [])
-        return res if tail else res[0]
+        return "(|{})".format("".join("({}={})".format(self._config["objectID"], self.escape_filter_chars(ID)) for ID in IDs))
 
     @property
     def _sbase(self):
         return self._searchBase(self._config)
 
-    def _search(self, *args, limit=25, **kwargs):
+    def _search(self, baseFilter, *args, attributes=None, domains=None, filterIncomplete=True, limit=25, userconf=None,
+                **kwargs):
         """Perform async search query.
 
         Parameters
@@ -225,22 +280,36 @@ class LdapService:
         list
             Search result list
         """
-        def complete(result):
-            return "attributes" in result and self._userComplete(result["attributes"], (self._config["users"]["username"],))
+        def filtered(results):
+            return list(filter(lambda r: r.error is None, results)) if filterIncomplete else list(results)
 
-        with self.lock:
-            if limit:
-                kwargs["paged_size"] = min(limit, kwargs.get("paged_size") or limit)
-            if not self.conn.search(*args, **kwargs):
+        def searchPaged(typeFilter, type, *args, **kwargs):
+            filterExpr = "(&{}{})".format(baseFilter, typeFilter) if baseFilter and typeFilter else baseFilter or typeFilter
+            if not self.conn.search(self._sbase, filterExpr, *args, **kwargs):
                 return []
-            results = [result for result in self.conn.response if complete(result)]
+            results = filtered(SearchResult(self, type, result) for result in self.conn.response)
             cookie = self.conn.result.get("controls", {}).get("1.2.840.113556.1.4.319", {}).get("value", {}).get("cookie")
-            while cookie and (not limit or len(results) < limit) and self.conn.search(*args, **kwargs, paged_cookie=cookie):
-                results += [result for result in self.conn.response if complete(result)]
+            while cookie and (not limit or len(results) < limit) and \
+                  self.conn.search(self._sbase, filterExpr, *args, **kwargs, paged_cookie=cookie):
+                results += filtered(SearchResult(self, type, result) for result in self.conn.response)
                 cookie = self.conn.result.get("controls", {}).get("1.2.840.113556.1.4.319", {}).get("value", {}).get("cookie")
+            return results[:limit] if limit and len(results) > limit else results
+
+        if limit:
+            kwargs["paged_size"] = min(limit, kwargs.get("paged_size") or limit)
+        userconf = userconf or self._config["users"]
+        username = userconf["username"]
+        domainexpr = "(|{})".format("".join("({}=*@{})".format(username, d) for d in domains)) if domains is not None else ""
+        filterexpr = "".join("("+f+")" for f in userconf.get("filters", ()))
+        userFilter = "(&{}{}{})".format(filterexpr, userconf.get("filter", ""), domainexpr)
+        with self.lock:
+            results = searchPaged(userFilter, "user", *args, attributes=self._attrSet(attributes, "user"), **kwargs)
             if limit:
-                return results[:limit]
-            return results
+                limit -= len(results)
+            if self._config["enableContacts"] and (limit is None or limit > 0):
+                results += searchPaged(self._config["users"]["contactFilter"], "contact", *args,
+                                       attributes=self._attrSet(attributes, "contact"), **kwargs)
+        return results
 
     @classmethod
     def _searchBase(cls, conf):
@@ -275,15 +344,12 @@ class LdapService:
         str
             A string including all search filters.
         """
-        username = userconf["username"]
-        filterexpr = "".join("("+f+")" for f in userconf.get("filters", ()))
-        domainexpr = "(|{})".format("".join("({}=*@{})".format(username, d) for d in domains)) if domains is not None else ""
-        if query is not None:
+        if query:
             query = cls.escape_filter_chars(query)
             searchexpr = "(|{})".format("".join(("("+sattr+"=*"+query+"*)" for sattr in userconf["searchAttributes"])))
         else:
             searchexpr = ""
-        return "(&{}{}{}{})".format(filterexpr, searchexpr, domainexpr, userconf.get("filter", ""))
+        return "{}".format(searchexpr) if searchexpr else ""
 
     @classmethod
     def _loadOrgConfig(cls, orgID):
@@ -292,28 +358,6 @@ class LdapService:
         if config is None:
             raise InstanceDefault()
         return config
-
-    def _userComplete(self, user, required=None):
-        """Check if LDAP object provides all required fields.
-
-        If no required fields are specified, the default `objectID`,
-        `users.username` and `users.displayname` config values are used.
-
-        Parameters
-        ----------
-        user : LDAP object
-            Ldap object to check
-        required : iterable, optional
-            List of field names. The default is None.
-
-        Returns
-        -------
-        bool
-            True if all required fields are present, False otherwise
-
-        """
-        props = required or (self._config["users"]["username"], self._config["users"]["displayName"], self._config["objectID"])
-        return all(prop in user and user[prop] not in (None, []) for prop in props)
 
     def authUser(self, ID, password):
         """Attempt ldap bind for user with given ID and password
@@ -330,12 +374,12 @@ class LdapService:
         str
             Error message if authentication failed or None if successful
         """
-        response = self._search(self._sbase, self._matchFilters(ID))
+        response = self._search(self._matchFilters(ID), attributes="idonly")
         if len(response) == 0:
             return "Invalid Username or password"
         if len(response) > 1:
             return "Multiple entries found - please contact your administrator"
-        userDN = response[0]["dn"]
+        userDN = response[0].data["dn"]
         try:
             ldap3.Connection(self._config["connection"].get("server"), user=userDN, password=password, auto_bind=True)
         except ldapexc.LDAPBindError:
@@ -364,30 +408,14 @@ class LdapService:
             Dictionary representation of the LDAP user
         """
         try:
-            response = self._search(self._sbase, self._matchFilters(ID), attributes=["*", self._config["objectID"]])
+            response = self._search(self._matchFilters(ID), attributes="all")
         except Exception:
             return None
         if len(response) == 0:
             return None
         if len(response) > 1:
             raise RuntimeError("Multiple entries found - aborting")
-        ldapuser = response[0]["attributes"]
-        if not self._userComplete(ldapuser, (self._config["users"]["username"],)):
-            return None
-        username, aliases = self._reduce(ldapuser[self._config["users"]["username"]], tail=True)
-        userdata = dict(username=username.lower(), aliases=aliases)
-        userdata["properties"] = props or self._defaultProps.copy()
-        userdata["properties"].update({prop: " ".join(str(a) for a in ldapuser[attr]) if isinstance(ldapuser[attr], list)
-                                       else ldapuser[attr] for attr, prop in self._userAttributes.items() if attr in ldapuser})
-        if self._config["users"].get("aliases"):
-            aliasattr = self._config["users"]["aliases"]
-            if ldapuser.get(aliasattr) is not None:
-                from tools import formats
-                aliases = ldapuser[aliasattr]
-                aliases = aliases if isinstance(aliases, list) else [aliases]
-                aliases = [alias[5:] if alias.lower().startswith("smtp:") else alias for alias in aliases]
-                userdata["aliases"] += [alias for alias in aliases if formats.email.match(alias)]
-        return userdata
+        return response[0].userdata()
 
     def dumpUser(self, ID):
         """Download complete user description.
@@ -402,8 +430,11 @@ class LdapService:
         ldap3.abstract.entry.Entry
             LDAP object or None if not found or ambiguous
         """
-        res = self._search(self._sbase, self._matchFilters(ID), attributes=["*", self._config["objectID"]])
-        return yaml.dump({"DN": res[0]["dn"]})+yaml.dump({"attributes": dict(res[0]["attributes"])}) if len(res) == 1 else None
+        res = self._search(self._matchFilters(ID), attributes="all")
+        if len(res) != 1:
+            return None
+        res = res[0].data
+        return yaml.dump({"DN": res["dn"]})+yaml.dump({"attributes": dict(res["attributes"])})
 
     @staticmethod
     def escape_filter_chars(text, encoding=None):
@@ -424,10 +455,7 @@ class LdapService:
         list
             List of GenericObjects with information about found users
         """
-        users = self._config["users"]
-        username, name = users["username"], users["displayName"]
-        ress = self._search(self._sbase, self._matchFiltersMulti(IDs), attributes=[username, name, self._config["objectID"]])
-        return [self._asUser(res) for res in ress if self._userComplete(res["attributes"])]
+        return self._search(self._matchFiltersMulti(IDs))
 
     def getUserInfo(self, ID):
         """Get e-mail address of an ldap user.
@@ -441,17 +469,15 @@ class LdapService:
         GenericObject
             Object containing LDAP ID, username and display name of the user
         """
-        users = self._config["users"]
-        username, name = users["username"], users["displayName"]
         try:
-            response = self._search(self._sbase, self._matchFilters(ID), attributes=[username, name, self._config["objectID"]])
+            response = self._search(self._matchFilters(ID))
         except ldapexc.LDAPInvalidValueError:
             return None
-        if len(response) != 1 or not self._userComplete(response[0]["attributes"]):
+        if len(response) != 1:
             return None
-        return self._asUser(response[0])
+        return response[0]
 
-    def searchUsers(self, query=None, domains=None, limit=25, pageSize=1000):
+    def searchUsers(self, query=None, domains=None, limit=25, pageSize=1000, filterIncomplete=True):
         """Search for ldap users matching the query.
 
         Parameters
@@ -470,20 +496,17 @@ class LdapService:
         list
             List of user objects containing ID, e-mail and name
         """
-        IDattr = self._config["objectID"]
-        name, email = self._config["users"]["displayName"], self._config["users"]["username"]
         try:
             exact = self.getUserInfo(self.unescapeFilterChars(query))
             exact = [] if exact is None else [exact]
         except Exception:
             exact = []
-        response = self._search(self._sbase,
-                                self._searchFilters(query, self._config["users"], domains),
-                                attributes=[IDattr, name, email],
+        response = self._search(self._searchFilters(query, self._config["users"], domains),
+                                domains=domains,
                                 paged_size=pageSize,
-                                limit=limit)
-        results = exact+[self._asUser(result) for result in response]
-        return results
+                                limit=limit,
+                                filterIncomplete=filterIncomplete)
+        return exact+response
 
     @classmethod
     def testConfig(cls, config):

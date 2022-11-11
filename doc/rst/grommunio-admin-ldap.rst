@@ -21,7 +21,7 @@ Synopsis
 | **grommunio-admin ldap** **dump** [*-o ORGSPEC*] *USER*
 | **grommunio-admin ldap** **info** [*-o ORGSPEC*]
 | **grommunio-admin ldap** **reload** [*-o ORGSPEC*]
-| **grommunio-admin ldap** **search** [*-n MAX_RESULTS*] [*-o ORGSPEC*]
+| **grommunio-admin ldap** **search** [*-a*] [*-n MAX_RESULTS*] [*-o ORGSPEC*]
   [*-p PAGE_SIZE*] [*USER*]
 
 Description
@@ -54,6 +54,8 @@ Options
 
 ``USER``
    LDAP object ID or search string
+``-a``, ``--all``
+   Show all results, not only importable objects
 ``-c``, ``--complete``
    Import or update all users from the LDAP tree
 ``-f``, ``--force``

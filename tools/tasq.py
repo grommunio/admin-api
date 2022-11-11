@@ -190,11 +190,35 @@ class Worker:
             return dict(ID=result.ID, username=result.username, code=201, message="User created")
         return dict(username=candidate.email, code=code, message=result)
 
-    def _ldapSyncImport(self, ldap, orgID, domainnames, synced, lang, bump):
+    def _ldapSyncImportContact(self, candidate, ldap, orgID, domains):
+        from orm.domains import Domains
+        from orm.users import Users
+        domains = Domains.query.filter(Domains.orgID == orgID, Domains.ID.in_([domain.ID for domain in domains]))\
+                               .with_entities(Domains.ID, Domains.domainname).all()
+        existing = Users.query.filter(Users.domainID.in_(domain.ID for domain in domains), Users.externID == candidate.ID)\
+                              .with_entities(Users.domainID).all()
+        existingDomains = {user.domainID for user in existing}
+        domains = [domain for domain in domains if domain.ID not in existingDomains]
+        status = []
+        for domain in domains:
+            contactData = ldap.downsyncUser(candidate.ID)
+            contactData["domainID"] = domain.ID
+            result, code = Users.mkContact(contactData, candidate.ID)
+            if code == 201:
+                status.append(dict(ID=result.ID, username=result.username, code=201, message="Contact created"))
+            else:
+                status.append(dict(username=candidate.email, code=code, message=result))
+        return status
+
+    def _ldapSyncImport(self, ldap, orgID, domains, synced, lang, bump):
         syncStatus = []
         candidates = [candidate for candidate in ldap.searchUsers() if candidate.email not in synced]
+        domainnames = {domain.domainname for domain in domains}
         for candidate in candidates:
             bump()
+            if candidate.type == "contact":
+                syncStatus += self._ldapSyncImportContact(candidate, ldap, orgID, domains)
+                continue
             if "@" not in candidate.email or (domainnames and candidate.email.split("@", 1)[1] not in domainnames):
                 syncStatus.append(dict(username=candidate.email, code=400, message="Invalid domain."))
                 continue
@@ -234,18 +258,17 @@ class Worker:
         Users.NTactive(False)
 
         if domainID is not None:
-            domain = Domains.query.filter(Domains.ID == domainID).with_entities(Domains.domainname, Domains.orgID).first()
-            domainnames = [domain.domainname]
-            orgIDs = [domain.orgID]
+            domains = Domains.query.filter(Domains.ID == domainID)\
+                                   .with_entities(Domains.ID, Domains.domainname, Domains.orgID).all()
+            orgIDs = [domains[0].orgID]
             userfilter = [Users.domainID == domainID]
         elif orgID is not None:
-            domains = Domains.query.filter(Domains.orgID == orgID).with_entities(Domains.domainname).all()
-            domainnames = [domain.domainname for domain in domains]
+            domains = Domains.query.filter(Domains.orgID == orgID).with_entities(Domains.ID, Domains.domainname).all()
             orgIDs = [orgID]
             userfilter = [Users.orgID == orgID]
         else:
             orgIDs = [0]+OrgParam.ldapOrgs()
-            domainnames = None
+            domains = None
             userfilter = ()
 
         users = Users.query.filter(Users.externID != None, *userfilter).all()
@@ -273,10 +296,10 @@ class Worker:
             for orgID in orgIDs:
                 try:
                     with Service("ldap", orgID) as ldap:
-                        status = self._ldapSyncImport(ldap, orgID, domainnames, synced, task.params.get("lang"), bump)
+                        status = self._ldapSyncImport(ldap, orgID, domains, synced, task.params.get("lang"), bump)
                     counts["synced"] += sum(1 for s in status if s["code"] == 200)
                     counts["created"] += sum(1 for s in status if s["code"] == 201)
-                    counts["error"] += sum(1 for s in status if s["code"] not in (200, 2001))
+                    counts["error"] += sum(1 for s in status if s["code"] not in (200, 201))
                     syncStatus += status
                 except ServiceUnavailableError:
                     pass

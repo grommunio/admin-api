@@ -48,4 +48,5 @@ ActiveDirectory:
   mDBOverQuotaLimit: prohibitsendquota
   msExchRecipientDisplayType: displaytypeex
 OpenLDAP:
+  mail: smtpaddress
   departmentNumber: departmentname

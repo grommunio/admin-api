@@ -174,6 +174,37 @@ def _downsyncUser(args, user, externID=None):
     cli.print(cli.col("success.", "green"))
 
 
+def _importContact(args, candidate, ldap, orgID, syncExisting=False):
+    from orm.domains import Domains
+    from orm.users import Users
+    cli = args._cli
+    success = failed = 0
+    domains = Domains.query.filter(Domains.orgID == orgID).with_entities(Domains.ID, Domains.domainname).all()
+    existing = Users.query.filter(Users.orgID == orgID, Users.externID == candidate.ID).all()
+    if syncExisting:
+        for user in existing:
+            error = _downsyncUser(args, user)
+            if error:
+                failed += 1
+                cli.print(cli.col(error, "red"))
+            else:
+                success += 1
+    existingDomains = {user.domainID for user in existing}
+    domains = [domain for domain in domains if domain.ID not in existingDomains]
+    for domain in domains:
+        cli.print("Importing {} ({})...".format(candidate.email, domain.domainname), end="")
+        contactData = ldap.downsyncUser(candidate.ID)
+        contactData["domainID"] = domain.ID
+        result, code = Users.mkContact(contactData, candidate.ID)
+        if code != 201:
+            failed += 1
+            cli.print(cli.col(result, "red"))
+        else:
+            success += 1
+            cli.print(cli.col("success.", "green"))
+    return success, failed
+
+
 def _importUser(args, candidate, ldap):
     cli = args._cli
     from orm.domains import Domains
@@ -190,9 +221,9 @@ def _importUser(args, candidate, ldap):
                               .format(candidate.email, ldap.escape_filter_chars(candidate.ID)), "yellow"))
             return _downsyncUser(args, existing, candidate.ID)
         msg = "and is linked to another LDAP object" if existing.externID else "locally"
-        return "User already exists "+msg
+        return candidate.type.capitalize()+" already exists "+msg
 
-    cli.print("Importing user {}...".format(candidate.email), end="", flush=True)
+    cli.print("Importing {} {}...".format(candidate.type, candidate.email), end="", flush=True)
 
     domain = Domains.query.filter(Domains.domainname == candidate.email.split("@")[1]).with_entities(Domains.ID).first()
     defaults = RecursiveDict({"user": {}, "domain": {}})
@@ -218,20 +249,26 @@ def _downsyncOrg(args, orgID, ldap):
         cli.print(cli.col("Organization '{}' has no domains - skipping.".format(_getOrgName(orgID)), "yellow"))
         return (0, 0)
     synced = set()
-    success, failed = 0, 0
+    success = failed = 0
     for user in Users.query.filter(Users.orgID == orgID, Users.externID != None):
         error = _downsyncUser(args, user)
         if error:
             cli.print(cli.col(error, "red"))
             failed += 1
         else:
-            synced.add(user.username)
+            if user.status != Users.CONTACT:
+                synced.add(user.username)
             success += 1
     if args.complete:
         from services import Service
         with Service("ldap", orgID) as ldap:
             candidates = [candidate for candidate in ldap.searchUsers() if candidate.email not in synced]
             for candidate in candidates:
+                if candidate.type == "contact":
+                    os, of = _importContact(args, candidate, ldap, orgID, False)
+                    success += os
+                    failed += of
+                    continue
                 if "@" not in candidate.email or candidate.email.split("@", 1)[1] not in domainnames:
                     cli.print(cli.col("Skipping '{}': invalid domain.".format(candidate.email), "yellow"))
                     failed += 1
@@ -250,9 +287,12 @@ def _downsyncSpecific(args, orgIDs):
         return (0, 0)
     cli = args._cli
     from orm.users import Users
-    success, failed = (0, 0)
+    success = failed = 0
     for username in args.user:
-        user = Users.query.filter(Users.username == username).first()
+        users = Users.query.filter(Users.username == username).all()
+        if len(users) > 1:
+            cli.print(cli.col("Skipping '{}': Multiple targets found".format(username), "red"))
+        user = users[0] if len(users) else None
         if user:
             error = _downsyncUser(args, user)
             if error:
@@ -265,10 +305,17 @@ def _downsyncSpecific(args, orgIDs):
             with Service("ldap", orgIDs[0]) as ldap:
                 candidate = _getCandidate(cli, username, ldap)
                 if not candidate:
+                    failed += 1
+                    continue
+                if candidate.type == "contact":
+                    os, of = _importContact(args, candidate, ldap, orgIDs[0], True)
+                    success += os
+                    failed += of
                     continue
                 orgID = _getUsernameOrg(candidate.email)
                 if orgID != orgIDs[0]:
                     cli.print(cli.col("Skipping '{}': invalid domain".format(candidate.email), "red"))
+                    failed += 1
                     continue
                 error = _importUser(args, candidate, ldap)
                 if error:
@@ -300,6 +347,10 @@ def cliLdapDownsync(args):
 
 
 def cliLdapSearch(args):
+    def typename(match):
+        color = "yellow" if match.error else "green" if match.type == "user" else "blue"
+        return cli.col(match.type, color)
+
     cli = args._cli
     from services import Service
     from .common import Table
@@ -308,11 +359,15 @@ def cliLdapSearch(args):
         with Service("ldap", orgID) as ldap:
             if len(orgIDs) > 1:
                 cli.print(cli.col(_getOrgName(orgID), "green"))
-            matches = ldap.searchUsers(args.query, limit=args.max_results or None, pageSize=args.page_size)
+            matches = ldap.searchUsers(args.query, limit=args.max_results or None, pageSize=args.page_size,
+                                       filterIncomplete=not args.all)
+            hasErr = any(match.error is not None for match in matches)
             data = [(cli.col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), match.name,
-                     match.email if match.email else cli.col("N/A", "red"))
+                     match.email if match.email else cli.col("N/A", "red"), typename(match),
+                     cli.col(match.error or "", "yellow"))
                     for match in matches]
-            table = Table(data, ("ID", "Name", "E-Mail"), empty=cli.col("(No results)", attrs=["dark"]))
+            table = Table(data, ("ID", "Name", "E-Mail", "Type", "Note" if hasErr else ""),
+                          empty=cli.col("(No results)", attrs=["dark"]))
             table.print(cli)
             if len(matches):
                 cli.print(cli.col("({} result{})".format(len(matches), "s" if len(matches) != 1 else ""), attrs=["dark"]))
@@ -583,6 +638,7 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     search = sub.add_parser("search", help="Search LDAP tree")
     search.set_defaults(_handle=cliLdapSearch)
     search.add_argument("query", nargs="?", help="Optional search query, omit to return all users")
+    search.add_argument("-a", "--all", action="store_true", help="Also show users that cannot be imported")
     search.add_argument("-n", "--max-results", type=int, default=0,
                         help="Maximum number of results or 0 to disable limit (default: 0)")
     search.add_argument("-o", "--organization", metavar="ORGSPEC", action="append",
