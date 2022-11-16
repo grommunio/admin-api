@@ -634,6 +634,8 @@ def setUserOof(domainID, userID):
                 file.write("Subject: "+subject+"\n")
             file.write("\n")
             file.write(content)
+        setDirectoryOwner(path, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
+        setDirectoryPermission(path, Config["options"].get("filePermissions"))
 
     checkPermissions(DomainAdminPermission(domainID))
     data = request.get_json(silent=True)
@@ -654,6 +656,8 @@ def setUserOof(domainID, userID):
             file.write("start_time = "+getTimestamp(data["startTime"])+"\n")
         if "endTime" in data:
             file.write("end_time = "+getTimestamp(data["endTime"])+"\n")
+    setDirectoryOwner(config, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
+    setDirectoryPermission(config, Config["options"].get("filePermissions"))
     if "internalReply" in data:
         writeBody(user.maildir, "internal-reply", data.get("internalSubject"), data["internalReply"])
     if "externalReply" in data:
