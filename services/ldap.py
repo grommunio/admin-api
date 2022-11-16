@@ -52,6 +52,7 @@ class SearchResult:
         self._ldap = ldap
         userconf = ldap._config["users"]
         self.ID = data["raw_attributes"][ldap._config["objectID"]][0]
+        self.DN = data.get("dn")
         self.data = data["attributes"]
         self.name = data["attributes"].get(userconf["displayName"]) or ""
         self.type = resultType
@@ -379,7 +380,7 @@ class LdapService:
             return "Invalid Username or password"
         if len(response) > 1:
             return "Multiple entries found - please contact your administrator"
-        userDN = response[0].data["dn"]
+        userDN = response[0].DN
         try:
             ldap3.Connection(self._config["connection"].get("server"), user=userDN, password=password, auto_bind=True)
         except ldapexc.LDAPBindError:
@@ -433,8 +434,8 @@ class LdapService:
         res = self._search(self._matchFilters(ID), attributes="all")
         if len(res) != 1:
             return None
-        res = res[0].data
-        return yaml.dump({"DN": res["dn"]})+yaml.dump({"attributes": dict(res["attributes"])})
+        res = res[0]
+        return yaml.dump({"DN": res.DN})+yaml.dump({"attributes": dict(res.data)})
 
     @staticmethod
     def escape_filter_chars(text, encoding=None):

@@ -172,7 +172,7 @@ class Worker:
         existing = Users.query.filter(Users.username == candidate.email).first()
         if existing:
             if existing.externID == candidate.ID:
-                return self.ldapSyncUser(existing, ldap)
+                return self._ldapSyncUser(existing, ldap)
             msg = "and is linked to another LDAP object" if existing.externID else "locally"
             return dict(username=candidate.email, code=409, message="User already exists "+msg)
 

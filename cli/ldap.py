@@ -522,7 +522,7 @@ def _getConf(cli, old):
 def _cliLdapGetConf(args):
     if args.organization:
         from orm.domains import OrgParam
-        args.organization = _getOrgID(args)
+        args.organization = _getOrgID(args.organization)
         old = OrgParam.loadLdap(args.organization)
     if not args.organization or not old:
         from tools import mconf
