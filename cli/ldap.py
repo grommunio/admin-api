@@ -512,6 +512,7 @@ def _getConf(cli, old):
     conf["users"]["defaultQuota"] = _geti(cli, "Default storage quota for imported users (0=unlimited)",
                                           users.get("defaultQuota", 0))
     conf["users"]["filter"] = _getv(cli, "Enter filter expression for user search", users.get("filter", ""))
+    conf["users"]["contactFilter"] = _getv(cli, "Enter filter expression for contact search", users.get("contactFilter", ""))
     conf["users"]["searchAttributes"] = _getl(cli, "Enter attributes used for searching (one per line)",
                                               users.get("searchAttributes", []))
     if not conf["users"]["defaultQuota"]:
