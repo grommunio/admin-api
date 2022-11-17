@@ -347,10 +347,9 @@ class LdapService:
         """
         if query:
             query = cls.escape_filter_chars(query)
-            searchexpr = "(|{})".format("".join(("("+sattr+"=*"+query+"*)" for sattr in userconf["searchAttributes"])))
+            return "(|{})".format("".join(("("+sattr+"=*"+query+"*)" for sattr in userconf["searchAttributes"])))
         else:
-            searchexpr = ""
-        return "{}".format(searchexpr) if searchexpr else ""
+            return ""
 
     @classmethod
     def _loadOrgConfig(cls, orgID):
@@ -519,6 +518,8 @@ class LdapService:
             return "Incomplete LDAP configuration: "+err.args[0]
         except ValueError as err:
             return "Invalid LDAP configuration: "+err.args[0]
+        except ldapexc.LDAPAttributeError as err:
+            return "Bad attribute configuration: "+err.args[0]
         except Exception as err:
             return "Could not connect to LDAP server: "+" - ".join(str(v) for v in err.args)
 
@@ -535,8 +536,15 @@ class LdapService:
         if not conn.bind():
             raise ldapexc.LDAPBindError("LDAP bind failed ({}): {}".format(conn.result["description"], conn.result["message"]))
         if active:
-            conn.search(cls._searchBase(config), cls._searchFilters(" ", userconf=config["users"]),
-                        attributes=[], paged_size=0)
+            userconf = config["users"]
+            filterexpr = "".join("("+f+")" for f in userconf.get("filters", ()))
+            userFilter = "(&{}{})".format(filterexpr, userconf.get("filter", ""))
+            attrs = (config["objectID"], userconf["displayName"], userconf["username"])
+            conn.search(cls._searchBase(config), userFilter, attributes=attrs, paged_size=0)
+            if config.get("enableContacts"):
+                contactFilter = "(&{}{})".format(filterexpr, userconf.get("contactFilter", ""))
+                attrs = (config["objectID"], userconf["displayName"], userconf["contactname"])
+                conn.search(cls._searchBase(config), contactFilter, attributes=attrs, paged_size=0)
         return conn
 
     @classmethod
