@@ -63,6 +63,7 @@ def _dumpUser(cli, user, indent=0):
     cli.print("{}username: {}".format(" "*indent, user.username))
     cli.print("{}domainID: {}".format(" "*indent, user.domainID))
     cli.print("{}homeserver: {}".format(" "*indent, homeserver))
+    cli.print("{}lang: {}".format(" "*indent, user.lang or cli.col("(not set)", attrs=["dark"])))
     cli.print("{}maildir: {}".format(" "*indent, user.maildir or cli.col("(not set)", attrs=["dark"])))
     cli.print("{}privilegeBits: {} {}".format(" "*indent, user.privilegeBits, cli.col(privstr(), attrs=["dark"])))
     cli.print("{}addressStatus: {} ({}|{})".format(" "*indent, user.addressStatus,

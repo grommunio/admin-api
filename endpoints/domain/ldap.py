@@ -189,7 +189,7 @@ def importLdapUser():
     if userdata is None:
         return jsonify(message="Error retrieving user"), 404
     defaults.update(RecursiveDict(userdata))
-    defaults["lang"] = lang
+    defaults["lang"] = lang or defaults.get("lang", "")
     result, code = Users.create(defaults, externID=ID)
     if code != 201:
         return jsonify(message="Failed to create user: "+result), code

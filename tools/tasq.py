@@ -184,7 +184,7 @@ class Worker:
 
         userdata = ldap.downsyncUser(candidate.ID)
         defaults.update(RecursiveDict(userdata))
-        defaults["lang"] = lang or ""
+        defaults["lang"] = lang or defaults.get("lang", "")
         result, code = Users.create(defaults, externID=candidate.ID)
         if code == 201:
             return dict(ID=result.ID, username=result.username, code=201, message="User created")

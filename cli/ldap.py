@@ -233,7 +233,7 @@ def _importUser(args, candidate, ldap):
 
     userdata = ldap.downsyncUser(candidate.ID)
     defaults.update(RecursiveDict(userdata))
-    defaults["lang"] = args.lang or ""
+    defaults["lang"] = args.lang or defaults.get("lang", "")
     result, code = Users.create(defaults, externID=candidate.ID)
     if code != 201:
         return result
