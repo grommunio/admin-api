@@ -21,7 +21,7 @@ def userListEndpointUnrestricted():
     checkPermissions(SystemAdminROPermission())
     from orm.users import Users, UserProperties
     verbosity = int(request.args.get("level", 1))
-    query, limit, offset, count = defaultListHandler(Users, result="query")
+    query, limit, offset, count = defaultListHandler(Users, (Users.ID != 0,), result="query")
     sorts = request.args.getlist("sort")
     for s in sorts:
         sprop, sorder = s.split(",", 1) if "," in s else (s, "asc")
