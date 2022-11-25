@@ -374,7 +374,7 @@ class LdapService:
         str
             Error message if authentication failed or None if successful
         """
-        response = self._search(self._matchFilters(ID), attributes="idonly")
+        response = self._search(self._matchFilters(ID), attributes="idonly", filterIncomplete=False)
         if len(response) == 0:
             return "Invalid Username or password"
         if len(response) > 1:
