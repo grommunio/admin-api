@@ -4,7 +4,7 @@
 [![latest version](https://shields.io/github/v/tag/grommunio/admin-api)](https://github.com/grommunio/admin-api/tags)
 [![code size](https://img.shields.io/github/languages/code-size/grommunio/admin-api)](https://github.com/grommunio/admin-api)
 
-**grommunio Admin API is the central API component of grommunio managing appliance(s), domain(s), users(s) and more. grommunio API orchestrates any compontents and architectures required to operate and manage the entire grommunio stack.**
+**grommunio Admin API is the central API component of grommunio managing appliance(s), domain(s), users(s) and more. grommunio API orchestrates any components and architectures required to operate and manage the entire grommunio stack.**
 
 <details open="open">
 <summary>Overview</summary>
