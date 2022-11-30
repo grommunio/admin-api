@@ -1,7 +1,8 @@
 openapi: 3.0.0
 info:
   title: grommunio Admin API
-  version: 1.9.1
+  description: grommunio administration REST API
+  version: 1.9.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -10,6 +11,7 @@ paths:
   /status:
     summary: API state check
     get:
+      operationId: getStatus
       summary: Check API connectivity and status
       tags:
         - Misc
@@ -33,6 +35,7 @@ paths:
   /about:
     get:
       summary: Get general information about the backend
+      operationId: getAbout
       tags:
         - Misc
       responses:
@@ -57,6 +60,7 @@ paths:
   /login:
     post:
       summary: Login user
+      operationId: postLogin
       tags:
         - Misc
       requestBody:
@@ -96,6 +100,7 @@ paths:
   /profile:
     get:
       summary: Get information about currently logged in user
+      operationId: getProfile
       tags:
         - Misc
       security:
@@ -124,6 +129,7 @@ paths:
   /passwd:
     put:
       summary: Change current users password
+      operationId: putPasswd
       tags:
         - Misc
         - Service
@@ -162,6 +168,7 @@ paths:
   /service/syncPolicy/{username}:
     get:
       summary: Get sync policy for specific user
+      operationId: getUserSyncPolicy
       tags:
         - Service
       security:
@@ -187,6 +194,7 @@ paths:
   /service/wipe/{username}:
     get:
       summary: Get device wipe status for user
+      operationId: getUserDeviceWipeStatus
       tags:
         - Service
       security:
@@ -222,6 +230,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Set device wipe status for user
+      operationId: setUserDeviceWipeStatus
       tags:
         - Service
       security:
@@ -269,6 +278,7 @@ paths:
   /service/userinfo/{username}:
     get:
       summary: Get basic user information
+      operationId: getUserInformation
       tags:
         - Service
       security:
@@ -291,6 +301,7 @@ paths:
   /system/dashboard:
     get:
       summary: Get System dashboard data
+      operationId: getDashboard
       tags:
         - System Admin/Dashboard
       security:
@@ -407,6 +418,7 @@ paths:
   /system/dashboard/services:
     get:
       summary: Get list of services
+      operationId: getServicesList
       tags:
         - System Admin/Dashboard
       security:
@@ -432,6 +444,7 @@ paths:
   /system/dashboard/services/{unit}:
     get:
       summary: Get information about a specific service
+      operationId: getServiceInfo
       tags:
         - System Admin/Dashboard
       security:
@@ -453,6 +466,7 @@ paths:
   /system/dashboard/services/{unit}/{action}:
     post:
       summary: Send signal to a service
+      operationId: sendServiceSignal
       tags:
         - System Admin/Dashboard
       security:
@@ -478,6 +492,7 @@ paths:
   /system/dbconf/:
     get:
       summary: Get list of services
+      operationId: getServicesListDBConf
       tags:
         - System Admin/DBConf
       security:
@@ -504,6 +519,7 @@ paths:
   /system/dbconf/commands:
     get:
       summary: Get lists of allowed commit commands
+      operationId: getCommandList
       tags:
         - System Admin/DBConf
       security:
@@ -536,6 +552,7 @@ paths:
   /system/dbconf/{service}/:
     get:
       summary: Get list of configuration files for service
+      operationId: getServiceFiles
       tags:
         - System Admin/DBConf
       security:
@@ -562,6 +579,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Rename or merge service
+      operationId: patchServiceFiles
       tags:
         - System Admin/DBConf
       security:
@@ -589,6 +607,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete service configurations
+      operationId: deleteServiceConfig
       tags:
         - System Admin/DBConf
       security:
@@ -611,6 +630,7 @@ paths:
   /system/dbconf/{service}/{file}/:
     get:
       summary: Get configuration file
+      operationId: getConfigFile
       tags:
         - System Admin/DBConf
       security:
@@ -636,6 +656,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     put:
       summary: Upload configuration file. If the file exists it is overwritten
+      operationId: putConfigFile
       tags:
         - System Admin/DBConf
       security:
@@ -663,6 +684,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update or rename configuration file
+      operationId: patchConfigFile
       tags:
         - System Admin/DBConf
       security:
@@ -693,6 +715,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete configuration file
+      operationId: deleteConfigFile
       tags:
         - System Admin/DBConf
       security:
@@ -714,6 +737,7 @@ paths:
   /system/domains:
     get:
       summary: Get lists of domains
+      operationId: getDomains
       tags:
         - System Admin/Domains
       security:
@@ -794,6 +818,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Create new domain
+      operationId: postDomain
       tags:
         - System Admin/Domains
       security:
@@ -828,6 +853,7 @@ paths:
   /system/domains/{domainID}:
     get:
       summary: Get detailed info about domain
+      operationId: getDomainInfo
       tags:
         - System Admin/Domains
       security:
@@ -852,6 +878,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update domain
+      operationId: patchDomain
       tags:
         - System Admin/Domains
       security:
@@ -881,6 +908,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete domain
+      operationId: deleteDomain
       description: Removes domain (purge=true) or marks it as deleted (purge=false)
       tags:
         - System Admin/Domains
@@ -918,6 +946,7 @@ paths:
   /system/users:
     get:
       summary: Get list of all users
+      operationId: getAllUsers
       tags:
         - System Admin/Domains
       security:
@@ -951,6 +980,7 @@ paths:
   /system/roles/permissions:
     get:
       summary: Get list of available permissions
+      operationId: getPermissions
       tags:
         - System Admin/Roles
       security:
@@ -972,6 +1002,7 @@ paths:
   /system/roles:
     get:
       summary: Get list of available roles
+      operationId: getRoles
       tags:
         - System Admin/Roles
       security:
@@ -1017,6 +1048,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Create a new role
+      operationId: postRole
       tags:
         - System Admin/Roles
       security:
@@ -1045,6 +1077,7 @@ paths:
   /system/roles/{ID}:
     get:
       summary: Get role
+      operationId: getRole
       tags:
         - System Admin/Roles
       security:
@@ -1069,6 +1102,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update a role
+      operationId: patchRole
       tags:
         - System Admin/Roles
       security:
@@ -1098,6 +1132,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete role
+      operationId: deleteRole
       tags:
         - System Admin/Roles
       security:
@@ -1120,6 +1155,7 @@ paths:
   /system/license:
     get:
       summary: Get information about the currently installed License
+      operationId: getLicense
       tags:
         - System Admin/License
       security:
@@ -1139,6 +1175,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     put:
       summary: Upload new license file
+      operationId: putLicense
       tags:
         - System Admin/License
       security:
@@ -1160,6 +1197,7 @@ paths:
   /system/license/certificate.pem:
     get:
       description: Download the certificate file
+      operationId: downloadCert
       tags:
         - System Admin/License
       security:
@@ -1175,6 +1213,7 @@ paths:
   /system/logs:
     get:
       summary: Get available log files
+      operationId: getLogs
       tags:
         - System Admin/Logs
       security:
@@ -1199,6 +1238,7 @@ paths:
   /system/logs/{file}:
     get:
       summary: Get log file content
+      operationId: getLog
       description: Returns the n last lines of the log file, similar to the `tail` command line tool
       tags:
         - System Admin/Logs
@@ -1265,6 +1305,7 @@ paths:
   /system/antispam/{path}:
     get:
       summary: Make call to grommunio-antispam
+      operationId: getAntispam
       description: Proxies any request including query parameters to the grommunio-antispam backend
       tags:
         - System Admin/Proxies
@@ -1288,6 +1329,7 @@ paths:
   /system/vhostStatus:
     get:
       summary: Get list of vhosts
+      operationId: getVhosts
       tags:
         - System Admin/Proxies
       security:
@@ -1312,6 +1354,7 @@ paths:
   /system/vhostStatus/{host}:
     get:
       summary: Make call nginx vhost status endpoint
+      operationId: getVhostStatus
       tags:
         - System Admin/Proxies
       security:
@@ -1334,6 +1377,7 @@ paths:
   /system/mailq:
     get:
       summary: Retrieve mailq output
+      operationId: getMailq
       tags:
         - Misc
       security:
@@ -1365,6 +1409,7 @@ paths:
   /system/mailq/flush:
     post:
       summary: Flush postfix mail queue
+      operationId: flushMailq
       tags:
         - Misc
       security:
@@ -1388,6 +1433,7 @@ paths:
   /system/mailq/delete:
     post:
       summary: Delete entries from postfix mail queue
+      operationId: deleteMailq
       tags:
         - Misc
       security:
@@ -1411,6 +1457,7 @@ paths:
   /system/mailq/requeue:
     post:
       summary: Requeue entries from postfix mail queue
+      operationId: postRequeue
       tags:
         - Misc
       security:
@@ -1434,6 +1481,7 @@ paths:
   /chkFormat:
     get:
       summary: Check format of input
+      operationId: checkFormat
       tags:
         - Misc
       parameters:
@@ -1473,6 +1521,7 @@ paths:
   /system/cli:
     post:
       summary: Remote CLI invocation
+      operationId: remoteCLI
       tags:
         - Misc
       security:
@@ -1549,6 +1598,7 @@ paths:
   /system/sync/top:
     get:
       summary: Get grommunio-sync usage information
+      operationId: syncTop
       description: Get current usage. Should be called at least twice to provide useful information.
       tags:
         -  Misc
@@ -1624,6 +1674,7 @@ paths:
   /domains:
     get:
       summary: Get list of domains the user has access to
+      operationId: getUserDomains
       tags:
         -  Misc
       security:
@@ -1653,6 +1704,7 @@ paths:
   /domains/{domainID}/users:
     get:
       summary: Get lists of users
+      operationId: getUsers
       tags:
         - Domain Admin/Users
       security:
@@ -1697,6 +1749,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Create new user
+      operationId: postUser
       tags:
         - Domain Admin/Users
       security:
@@ -1726,6 +1779,7 @@ paths:
   /domains/{domainID}/users/{userID}:
     get:
       summary: Get information about a specific user
+      operationId: getUser
       tags:
         - Domain Admin/Users
       security:
@@ -1751,6 +1805,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update user
+      operationId: patchUser
       tags:
         - Domain Admin/Users
       security:
@@ -1781,6 +1836,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete user
+      operationId: deleteUser
       tags:
         - Domain Admin/Users
       security:
@@ -1818,6 +1874,7 @@ paths:
   /domains/{domainID}/users/{userID}/delegates:
     get:
       summary: Get list of users that can send mails on the users behalf
+      operationId: getDelegates
       tags:
         - Domain Admin/Users
       security:
@@ -1847,6 +1904,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     put:
       summary: Set list of users that can send mails on the users behalf
+      operationId: putDelegates
       tags:
         - Domain Admin/Users
       security:
@@ -1877,6 +1935,7 @@ paths:
   /domains/{domainID}/users/{userID}/sendas:
     get:
       summary: Get list of users that can send mails as the user
+      operationId: getSendas
       tags:
         - Domain Admin/Users
       security:
@@ -1906,6 +1965,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     put:
       summary: Set list of users that can send mails as the user
+      operationId: putSendas
       tags:
         - Domain Admin/Users
       security:
@@ -1936,6 +1996,7 @@ paths:
   /domains/{domainID}/users/{userID}/storeProps:
     get:
       summary: Get user store properties
+      operationId: getStoreProps
       tags:
         - Domain Admin/Users
       security:
@@ -1964,6 +2025,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update store properties
+      operationId: patchStoreProps
       tags:
        - Domain Admin/Users
       parameters:
@@ -2003,6 +2065,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete user store props
+      operationId: deleteStoreProps
       tags:
         - Domain Admin/Users
       security:
@@ -2027,6 +2090,7 @@ paths:
   /domains/{domainID}/users/{userID}/sync:
     get:
       summary: Get status of synced devices
+      operationId: getSyncedDevices
       tags:
         - Domain Admin/Users
       security:
@@ -2079,6 +2143,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Remove device states
+      operationId: removeDeviceStates
       tags:
         - Domain Admin/Users
       security:
@@ -2102,6 +2167,7 @@ paths:
   /domains/{domainID}/users/{userID}/sync/{deviceID}:
     delete:
       summary: Remove device (issue a resync)
+      operationId: removeDeviceResync
       tags:
         - Domain Admin/Users
       security:
@@ -2126,6 +2192,7 @@ paths:
   /domains/{domainID}/users/{userID}/sync/{deviceID}/resync:
     put:
       summary: Request a device resync
+      operationId: putDeviceResync
       tags:
         - Domain Admin/Users
       security:
@@ -2150,6 +2217,7 @@ paths:
   /domains/{domainID}/users/{userID}/sync/{deviceID}/wipe:
     post:
       summary: Request a device wipe
+      operationId: postDeviceWipe
       tags:
         - Domain Admin/Users
       security:
@@ -2183,6 +2251,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Cancel wipe request
+      operationId: cancelWipe
       tags:
         - Domain Admin/Users
       security:
@@ -2208,6 +2277,7 @@ paths:
   /domains/{domainID}/users/{userID}/storeAccess:
     get:
       summary: Get list of users that can access the users store
+      operationId: getStoreAccessUsers
       tags:
         - Domain Admin/Users
       security:
@@ -2235,6 +2305,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Grant store access to another user
+      operationId: postStoreAccessUser
       tags:
         - Domain Admin/Users
       security:
@@ -2265,6 +2336,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     put:
       summary: Overwrite the list of users with store access
+      operationId: putStoreAccessUser
       tags:
         - Domain Admin/Users
       security:
@@ -2299,6 +2371,7 @@ paths:
   /domains/{domainID}/users/{userID}/storeAccess/{username}:
     delete:
       summary: Remove user from store access list
+      operationId: deleteStoreAccessUser
       tags:
         - Domain Admin/Users
       security:
@@ -2324,6 +2397,7 @@ paths:
   /domains/{domainID}/users/{userID}/password:
     put:
       summary: Set user password
+      operationId: setPassword
       tags:
         - Domain Admin/Users
       security:
@@ -2356,6 +2430,7 @@ paths:
   /domains/{domainID}/users/{userID}/downsync:
     put:
       summary: Update user from LDAP
+      operationId: putDownsync
       tags:
         - Domain Admin/Users
         - LDAP
@@ -2391,6 +2466,7 @@ paths:
   /domains/{domainID}/users/{userID}/oof:
     get:
       summary: Get user's out of office state
+      operationId: oofSizeLarge
       tags:
         - Domain Admin/Users
       security:
@@ -2415,6 +2491,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
     put:
       summary: Set user's out of office state
+      operationId: setOofSize
       tags:
         - Domain Admin/Users
       security:
@@ -2443,6 +2520,7 @@ paths:
   /domains/{domainID}/syncPolicy:
     get:
       summary: Get effective domain sync policy
+      operationId: getDomainSyncPolicy
       tags:
         - Domain Admin/Users
       security:
@@ -2471,6 +2549,7 @@ paths:
   /domains/{domainID}/users/{userID}/roles:
     patch:
       summary: Update user roles
+      operationId: patchUserRoles
       tags:
         - System Admin/Roles
       security:
@@ -2522,6 +2601,7 @@ paths:
   /domains/{domainID}/mlists:
     get:
       summary: Get list of mailing lists
+      operationId: getMlists
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/verbosity'
@@ -2577,6 +2657,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Create new mailing list
+      operationId: postMlists
       parameters:
         - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
@@ -2608,6 +2689,7 @@ paths:
   /domains/{domainID}/mlists/{ID}:
     get:
       summary: Get information about a mailing list
+      operationId: getMlist
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/ID'
@@ -2633,6 +2715,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update mailing list
+      operationId: patchMlist
       parameters:
         - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
@@ -2663,6 +2746,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete mailing list
+      operationId: deleteMlist
       parameters:
         - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
@@ -2686,6 +2770,7 @@ paths:
   /domains/{domainID}/classes:
     get:
       summary: Get list of classes
+      operationId: getClasses
       tags:
         -  Domain Admin/Classes
       security:
@@ -2734,6 +2819,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Create new class
+      operationId: postClass
       tags:
         - Domain Admin/Classes
       security:
@@ -2763,6 +2849,7 @@ paths:
   /domains/{domainID}/classes/testFilter:
     post:
       summary: Test class filter specification
+      operationId: testFilter
       tags:
         - Domain Admin/Classes
       security:
@@ -2802,6 +2889,7 @@ paths:
   /domains/{domainID}/classes/tree:
     get:
       summary: Generate class hierarchy tree
+      operationId: getClassesTree
       tags:
         - Domain Admin/Classes
       security:
@@ -2830,6 +2918,7 @@ paths:
   /domains/{domainID}/classes/{ID}:
     get:
       summary: Get information about class
+      operationId: getClass
       tags:
         - Domain Admin/Classes
       security:
@@ -2855,6 +2944,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Modify class
+      operationId: patchClass
       tags:
         - Domain Admin/Classes
       security:
@@ -2885,6 +2975,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete class
+      operationId: deleteClass
       tags:
         - Domain Admin/Classes
       security:
@@ -2908,6 +2999,7 @@ paths:
   /domains/{domainID}/folders:
     get:
       summary: Get list of public folders
+      operationId: getFolders
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/queryOffset'
@@ -2945,6 +3037,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Create a new public folder
+      operationId: postFolders
       parameters:
         - $ref: '#/components/parameters/CSRFToken'
         - $ref: '#/components/parameters/domainID'
@@ -2991,6 +3084,7 @@ paths:
   /domains/{domainID}/folders/tree:
     get:
       summary: Get hierarchical view of folders
+      operationId: getFolderTree
       parameters:
         - $ref: '#/components/parameters/domainID'
         - name: folderID
@@ -3022,6 +3116,7 @@ paths:
   /domains/{domainID}/folders/{folderID}:
     get:
       summary: Get public folder
+      operationId: getFolder
       parameters:
         - $ref: '#/components/parameters/domainID'
         - $ref: '#/components/parameters/folderID'
@@ -3046,6 +3141,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update public folder
+      operationId: patchFolder
       tags:
         - Domain Admin/Folders
       security:
@@ -3082,6 +3178,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete public folder
+      operationId: deleteFolder
       tags:
         - Domain Admin/Folders
       security:
@@ -3122,6 +3219,7 @@ paths:
   /domains/{domainID}/folders/{folderID}/owners:
     get:
       summary: Get list of folder owners
+      operationId: getOwners
       tags:
         - Domain Admin/Folders
       security:
@@ -3149,6 +3247,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Add a user to the owner list
+      operationId: postOwner
       tags:
         - Domain Admin/Folders
       security:
@@ -3187,6 +3286,7 @@ paths:
   /domains/{domainID}/folders/{folderID}/owners/{memberID}:
     put:
       summary: Set folder member permissions
+      operationId: setMember
       tags:
         - Domain Admin/Folders
       security:
@@ -3220,6 +3320,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
     delete:
       summary: Remove a user from the owner list
+      operationId: deleteMember
       tags:
         - Domain Admin/Folders
       security:
@@ -3244,6 +3345,7 @@ paths:
   /domains/ldap/search:
     get:
       summary: Perform LDAP user search
+      operationId: searchLDAP
       tags:
         - LDAP
       security:
@@ -3305,6 +3407,7 @@ paths:
   /domains/ldap/importUser:
     post:
       summary: Import user from ldap
+      operationId: importLdapUser
       tags:
         - LDAP
       security:
@@ -3359,6 +3462,7 @@ paths:
   /domains/ldap/check:
     get:
       summary: Check status of ldap imported users
+      operationId: checkUsers
       tags:
         - LDAP
       security:
@@ -3392,6 +3496,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
     delete:
       summary: Check status of ldap import users and delete orphaned
+      operationId: deleteOrphaned
       tags:
         - LDAP
       security:
@@ -3433,6 +3538,7 @@ paths:
   /domains/ldap/downsync:
     post:
       summary: Update all LDAP imported users
+      operationId: updateAllUsers
       tags:
         - LDAP
       security:
@@ -3464,6 +3570,7 @@ paths:
   /domains/{domainID}/ldap/downsync:
     post:
       summary: Update all LDAP imported users in this domain
+      operationId: updateAllDomainUsers
       tags:
         - LDAP
       security:
@@ -3498,6 +3605,7 @@ paths:
   /domains/ldap/dump:
     get:
       summary: Dump LDAP object
+      operationId: dumpLDAP
       tags:
        - LDAP
       security:
@@ -3533,6 +3641,7 @@ paths:
   /system/mconf/ldap:
     get:
       summary: Get the current LDAP configuration
+      operationId: getLDAPConf
       tags:
         - LDAP
         - System Admin/MConf
@@ -3559,6 +3668,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
     put:
       summary: Set new LDAP configuration
+      operationId: setLDAPConf
       tags:
         - LDAP
         - System Admin/MConf
@@ -3587,6 +3697,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
     delete:
       summary: Remove LDAP configuration and disable service
+      operationId: deleteLDAPConf
       tags:
         - LDAP
         - System Admin/MConf
@@ -3607,6 +3718,7 @@ paths:
   /system/mconf/authmgr:
     get:
       summary: Get the current authmgr configuration
+      operationId: getAuthmgr
       tags:
         - System Admin/MConf
       security:
@@ -3629,6 +3741,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
     put:
       summary: Set new authmgr configuration
+      operationId: setAuthmgr
       tags:
         - System Admin/MConf
       security:
@@ -3655,6 +3768,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
     delete:
       summary: Reset authmgr configuration to default
+      operationId: deleteAuthmgr
       tags:
         - System Admin/MConf
       security:
@@ -3672,6 +3786,7 @@ paths:
   /system/orgs:
     get:
       summary: Get a list of organizations
+      operationId: getOrgs
       tags:
         - System Admin/Organizations
       security:
@@ -3718,6 +3833,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Create new organization
+      operationId: postOrgs
       tags:
         - System Admin/Organizations
       security:
@@ -3746,6 +3862,7 @@ paths:
   /system/orgs/{ID}:
     get:
       summary: Get detailed information about an organization
+      operationId: getOrg
       tags:
         - System Admin/Organizations
       security:
@@ -3770,6 +3887,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update organization
+      operationId: patchOrg
       tags:
         - System Admin/Organizations
       security:
@@ -3799,6 +3917,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete organization
+      operationId: deleteOrg
       description: Delete the organization. Associated domains are made organizationless (orgID=0)
       tags:
         - System Admin/Organizations
@@ -3822,6 +3941,7 @@ paths:
   /system/orgs/{ID}/ldap:
     get:
       summary: Get organization specific LDAP configuration
+      operationId: getOrgLDAPConf
       tags:
         - System Admin/Organizations
         - LDAP
@@ -3852,6 +3972,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     put:
       summary: Set organization specific LDAP configuration
+      operationId: setOrgLDAPConf
       tags:
         - System Admin/Organizations
         - LDAP
@@ -3878,6 +3999,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Reset organization specific LDAP configuration
+      operationId: deleteOrgLDAPConf
       tags:
         - System Admin/Organizations
         - LDAP
@@ -3901,6 +4023,7 @@ paths:
   /system/orgs/{ID}/ldap/downsync:
     post:
       summary: Update all LDAP imported users in this organization
+      operationId: updateOrgLDAPUsers
       tags:
         - LDAP
       security:
@@ -3935,6 +4058,7 @@ paths:
   /system/servers:
     get:
       summary: Get a list of servers
+      operationId: getServers
       tags:
         - System Admin/Servers
       security:
@@ -3986,6 +4110,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     post:
       summary: Register a new server
+      operationId: postServers
       tags:
         - System Admin/Servers
       security:
@@ -4014,6 +4139,7 @@ paths:
   /system/servers/{ID}:
     get:
       summary: Get detailed information about a server
+      operationId: getServer
       tags:
         - System Admin/Servers
       security:
@@ -4038,6 +4164,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update server
+      operationId: patchServer
       tags:
         - System Admin/Servers
       security:
@@ -4067,6 +4194,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Delete server
+      operationId: deleteServer
       tags:
         - System Admin/Servers
       security:
@@ -4089,6 +4217,7 @@ paths:
   /tasq/notify:
     post:
       summary: Notify the TasQ server of externally added tasks
+      operationId: notify
       description: Load any waiting tasks from the database
       tags:
         - TasQ
@@ -4105,6 +4234,7 @@ paths:
   /tasq/status:
     get:
       summary: Get current status of the TasQ system
+      operationId: taskQStatus
       tags:
         - TasQ
       responses:
@@ -4132,6 +4262,7 @@ paths:
   /tasq/start:
     post:
       summary: Start the builtin TasQ server
+      operationId: startTaskq
       tags:
         - TasQ
       security:
@@ -4154,6 +4285,7 @@ paths:
   /tasq/stop:
     post:
       summary: Stop the builtin TasQ server
+      operationId: stopTaskq
       tags:
         - TasQ
       security:
@@ -4176,6 +4308,7 @@ paths:
   /tasq/tasks:
     get:
       summary: Get list of currently running tasks
+      operationId: getTasks
       tags:
         - TasQ
       security:
@@ -4234,6 +4367,7 @@ paths:
   /tasq/tasks/{ID}:
     get:
       summary: Get information about a specific task
+      operationId: getTask
       tags:
         - TasQ
       security:
@@ -4259,6 +4393,7 @@ paths:
   /defaults/createParams:
     get:
       summary: Get default create parameters
+      operationId: getCreateParams
       tags:
         - Defaults
       security:
@@ -4288,6 +4423,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update create default parameters
+      operationId: patchCreateParams
       tags:
         - Defaults
       security:
@@ -4310,6 +4446,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     put:
       summary: Replace create default parameters
+      operationId: putCreateParams
       tags:
         - Defaults
       security:
@@ -4334,6 +4471,7 @@ paths:
   /defaults/createParams/{domainID}:
     get:
       summary: Get default create parameter overrides for domain
+      operationId: getDomainDefaultParams
       tags:
         - Defaults
       security:
@@ -4358,6 +4496,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     patch:
       summary: Update create default parameter overrides for domain
+      operationId: patchDomainDefaultParams
       tags:
         - Defaults
       security:
@@ -4381,6 +4520,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     put:
       summary: Replace create default parameter overrides for domain
+      operationId: putDomainDefaultParams
       tags:
         - Defaults
       security:
@@ -4406,6 +4546,7 @@ paths:
   /defaults/storeLangs:
     get:
       summary: Get list of available user store languages
+      operationId: getStoreLangs
       tags:
         - Defaults
       responses:
