@@ -365,7 +365,7 @@ def cliLdapSearch(args):
             data = [(cli.col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), match.name,
                      match.email if match.email else cli.col("N/A", "red"), typename(match),
                      cli.col(match.error or "", "yellow"))
-                    for match in matches]
+                    for match in matches if match.ID]
             table = Table(data, ("ID", "Name", "E-Mail", "Type", "Note" if hasErr else ""),
                           empty=cli.col("(No results)", attrs=["dark"]))
             table.print(cli)

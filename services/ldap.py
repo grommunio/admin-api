@@ -51,12 +51,17 @@ class SearchResult:
     def __init__(self, ldap, resultType, data):
         self._ldap = ldap
         userconf = ldap._config["users"]
-        self.ID = data["raw_attributes"][ldap._config["objectID"]][0]
         self.DN = data.get("dn")
-        self.data = data["attributes"]
-        self.name = data["attributes"].get(userconf["displayName"]) or ""
         self.type = resultType
         self.error = None
+        if "raw_attributes" in data and "attributes" in data:
+            self.ID = data["raw_attributes"][ldap._config["objectID"]][0]
+            self.data = data["attributes"]
+            self.name = data["attributes"].get(userconf["displayName"]) or ""
+        else:
+            self.ID = self.data = self.name = self.email = None
+            self.error = "Not a valid object"
+            return
         if resultType == "user":
             if userconf["username"] in data["attributes"] and data["attributes"][userconf["username"]]:
                 self.email = self.username = self._reduce(data["attributes"][userconf["username"]])
@@ -310,7 +315,7 @@ class LdapService:
             if self._config["enableContacts"] and (limit is None or limit > 0):
                 results += searchPaged(self._config["users"]["contactFilter"], "contact", *args,
                                        attributes=self._attrSet(attributes, "contact"), **kwargs)
-        return results
+        return results+[SearchResult(self, "user", {})]
 
     @classmethod
     def _searchBase(cls, conf):
