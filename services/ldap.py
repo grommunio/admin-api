@@ -270,7 +270,7 @@ class LdapService:
     def _sbase(self):
         return self._searchBase(self._config)
 
-    def _search(self, baseFilter, *args, attributes=None, domains=None, filterIncomplete=True, limit=25, userconf=None,
+    def _search(self, baseFilter, *args, attributes=None, domains=None, filterIncomplete=True, limit=None, userconf=None,
                 **kwargs):
         """Perform async search query.
 
@@ -482,7 +482,7 @@ class LdapService:
             return None
         return response[0]
 
-    def searchUsers(self, query=None, domains=None, limit=25, pageSize=1000, filterIncomplete=True):
+    def searchUsers(self, query=None, domains=None, limit=None, pageSize=1000, filterIncomplete=True):
         """Search for ldap users matching the query.
 
         Parameters
@@ -492,9 +492,9 @@ class LdapService:
         domains : list of str, optional
             Optional domain filter. The default is None.
         limit : int, optional
-            Maximum number of results to return or None for no limit. Default is 25.
+            Maximum number of results to return or None for no limit. Default is None.
         pageSize : int, optional
-            Perform a paged search with given page size. Default is None.
+            Perform a paged search with given page size. Default is 1000.
 
         Returns
         -------
