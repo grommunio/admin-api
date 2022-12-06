@@ -315,7 +315,7 @@ class LdapService:
             if self._config["enableContacts"] and (limit is None or limit > 0):
                 results += searchPaged(self._config["users"]["contactFilter"], "contact", *args,
                                        attributes=self._attrSet(attributes, "contact"), **kwargs)
-        return results+[SearchResult(self, "user", {})]
+        return results
 
     @classmethod
     def _searchBase(cls, conf):
