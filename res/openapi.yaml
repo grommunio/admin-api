@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.9.2
+  version: 1.9.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3065,6 +3065,8 @@ paths:
                   type: string
                   description: ID of the parent folder
                   default: "0"
+                syncToMobile:
+                  type: boolean
       responses:
         '201':
           description: Folder creation successful
@@ -3165,6 +3167,8 @@ paths:
                   enum: [IPF.Note, IPF.Contact, IPF.Appointment, IPF.Stickynote, IPF.Task]
                 comment:
                   type: string
+                syncToMobile:
+                  type: boolean
       responses:
         '200':
             description: Folder update successful
@@ -5131,6 +5135,8 @@ components:
           $ref: '#/components/schemas/dateTime'
         container:
           type: string
+        syncToMobile:
+          type: boolean
     publicFolderRef:
       type: object
       properties:
@@ -5714,6 +5720,7 @@ components:
             - type: string
               default: ''
               enum: ['']
+              x-ms-enum: [No]
               description: Unlimited attachment size
             - type: integer
               description: The maximum attachment size, as determined by the security policy.

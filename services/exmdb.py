@@ -25,7 +25,7 @@ class ExmdbService:
 
     __loaded = False
     __symbols = ("ConnectionError", "ExmdbError", "ExmdbProtocolError", "SerializationError", "ExmdbQueries", "Folder",
-                 "Restriction")
+                 "GUID", "PropertyName", "Restriction")
     __methods = ("TaggedPropval", "FolderList", "FolderMemberList")
 
     def __init__(self):

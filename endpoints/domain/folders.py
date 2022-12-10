@@ -10,19 +10,32 @@ from flask import request, jsonify
 
 from services import Service
 
-from tools.constants import Permissions, PropTags, ExchangeErrors, PublicFIDs
+from tools.constants import PropTags, PropTypes, ExchangeErrors, PublicFIDs
 from tools.permissions import DomainAdminPermission, DomainAdminROPermission
 from tools.rop import nxTime, makeEidEx
 from tools.tasq import TasQServer
 
 from datetime import datetime
 
+
 def folderToDict(folder):
     return {"folderid": str(folder.folderId),
             "displayname": folder.displayName,
             "comment": folder.comment,
             "creationtime": datetime.fromtimestamp(nxTime(folder.creationTime)).strftime("%Y-%m-%d %H:%M:%S"),
-            "container": folder.container}
+            "container": folder.container,
+            "syncMobile": folder.syncToMobile}
+
+
+def setPublicFolderMobileSync(exmdb, client, domainname, folderId, value):
+    synctomobile = client.resolveNamedProperties(True, [exmdb.PropertyName(exmdb.GUID.PSETID_GROMOX, "synctomobile")])[0]
+    synctomobile = (synctomobile << 16) | PropTypes.BYTE
+    if not synctomobile:
+        return
+    problems = client.setFolderProperties(0, folderId, [exmdb.TaggedPropval(synctomobile, value)])
+    with Service("redis") as redis:
+        redis.delete("grommunio-sync:sharedfolders-"+domainname)
+    return problems
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders", methods=["GET"])
@@ -46,7 +59,10 @@ def getPublicFoldersList(domainID):
         else:
             restriction = exmdb.Restriction.NULL()
         client = exmdb.domain(domain)
-        response = exmdb.FolderList(client.listFolders(parent, limit=limit, offset=offset, restriction=restriction))
+        synctomobile = client.resolveNamedProperties(True, [exmdb.PropertyName(exmdb.GUID.PSETID_GROMOX, "synctomobile")])[0]
+        synctomobile = (synctomobile << 16) | PropTypes.BYTE
+        response = exmdb.FolderList(client.listFolders(parent, limit=limit, offset=offset, restriction=restriction,
+                                                       proptags=client.defaultFolderProps+[synctomobile]), synctomobile)
     folders = [folderToDict(entry) for entry in response.folders]
     return jsonify(data=folders)
 
@@ -89,13 +105,16 @@ def createPublicFolder(domainID):
     with Service("exmdb") as exmdb:
         client = exmdb.domain(domain)
         folderId = client.createFolder(domain.ID, data["displayname"], data["container"], data["comment"], parentID)
-    if folderId == 0:
-        return jsonify(message="Folder creation failed"), 500
+        if folderId == 0:
+            return jsonify(message="Folder creation failed"), 500
+        if "syncMobile" in data:
+            setPublicFolderMobileSync(exmdb, client, domain.domainname, folderId, data["syncMobile"])
     return jsonify(folderid=str(folderId),
                    displayname=data["displayname"],
                    comment=data["comment"],
                    creationtime=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                   container=data["container"]), 201
+                   container=data["container"],
+                   syncMobile=data.get("syncMobile")), 201
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/folders/<int:folderID>", methods=["GET"])
@@ -108,7 +127,10 @@ def getPublicFolder(domainID, folderID):
         return jsonify(message="Domain not found"), 404
     with Service("exmdb") as exmdb:
         client = exmdb.domain(domain)
-        response = exmdb.Folder(client.getFolderProperties(0, folderID))
+        synctomobile = client.resolveNamedProperties(True, [exmdb.PropertyName(exmdb.GUID.PSETID_GROMOX, "synctomobile")])[0]
+        synctomobile = (synctomobile << 16) | PropTypes.BYTE
+        response = exmdb.Folder(client.getFolderProperties(0, folderID, client.defaultFolderProps+[synctomobile]),
+                                synctomobile)
     return jsonify(folderToDict(response))
 
 
@@ -124,10 +146,12 @@ def updatePublicFolder(domainID, folderID):
     supported = ((PropTags.COMMENT, "comment"), (PropTags.DISPLAYNAME, "displayname"), (PropTags.CONTAINERCLASS, "container"))
     with Service("exmdb") as exmdb:
         proptags = [exmdb.TaggedPropval(tag, data[tagname]) for tag, tagname in supported if tagname in data]
-        if not len(proptags):
+        if not len(proptags) and "syncMobile" not in data:
             return jsonify(message="Nothing to do")
         client = exmdb.domain(domain)
         problems = client.setFolderProperties(0, folderID, proptags)
+        if "syncMobile" in data:
+            problems += setPublicFolderMobileSync(exmdb, client, domain.domainname, folderID, data["syncMobile"])
         if len(problems):
             errors = ["{} ({})".format(PropTags.lookup(problem.proptag, hex(problem.proptag)).lower(),
                                        ExchangeErrors.lookup(problem.err, hex(problem.err))) for problem in problems]
