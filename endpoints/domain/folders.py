@@ -210,6 +210,8 @@ def addPublicFolderOwner(domainID, folderID):
     with Service("exmdb") as exmdb:
         client = client = exmdb.domain(domain)
         client.setFolderMember(folderID, data["username"], data.get("permissions", client.ownerRights))
+    with Service("redis") as redis:
+        redis.delete("grommunio-sync:sharedfolders-"+domain.domainname)
     return jsonify(message="Success"), 201
 
 
@@ -227,6 +229,8 @@ def updatePublicFolderOwner(domainID, folderID, memberID):
     with Service("exmdb") as exmdb:
         client = exmdb.domain(domain)
         client.setFolderMember(folderID, memberID, data["permissions"], client.SET)
+    with Service("redis") as redis:
+        redis.delete("grommunio-sync:sharedfolders-"+domain.domainname)
     return jsonify(message="Success")
 
 
@@ -241,4 +245,6 @@ def deletePublicFolderOwner(domainID, folderID, memberID):
     with Service("exmdb") as exmdb:
         client = exmdb.domain(domain)
         client.setFolderMember(folderID, memberID, 0xFFFFFFFF, client.REMOVE)
+    with Service("redis") as redis:
+        redis.delete("grommunio-sync:sharedfolders-"+domain.domainname)
     return jsonify(message="Success"), 200
