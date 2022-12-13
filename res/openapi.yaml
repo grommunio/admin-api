@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.9.3
+  version: 1.9.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -3635,6 +3635,8 @@ paths:
                     type: string
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '403':
+          description: User not allowed to view domain
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
