@@ -4,7 +4,7 @@
 [![latest version](https://shields.io/github/v/tag/grommunio/admin-api)](https://github.com/grommunio/admin-api/tags)
 [![code size](https://img.shields.io/github/languages/code-size/grommunio/admin-api)](https://github.com/grommunio/admin-api)
 
-**grommunio Admin API is the central API component of grommunio managing appliance(s), domain(s), users(s) and more. grommunio API orchestrates any components and architectures required to operate and manage the entire grommunio stack.**
+grommunio Admin API is the central API component of grommunio managing appliance(s), domain(s), users(s) and more. grommunio API orchestrates any components and architectures required to operate and manage the entire grommunio stack.
 
 <details open="open">
 <summary>Overview</summary>
@@ -72,8 +72,8 @@ or
 
 ## Support
 
-- Support is available through **[grommunio GmbH](https://grommunio.com)** and its partners.
-- grommunio Admin API community is available here: **[grommunio Community](https://community.grommunio.com)**
+- Support is available through [grommunio GmbH](https://grommunio.com) and its partners.
+- grommunio Admin API community is available here: [grommunio Community](https://community.grommunio.com)
 
 For direct contact to the maintainers (for example to supply information about a security-related responsible disclosure), you can contact grommunio directly at [dev@grommunio.com](mailto:dev@grommunio.com)
 
@@ -96,6 +96,6 @@ This repository follows coding style loosely based on PEP8 standard (exception: 
 
 ## License
 
-This project is licensed under the **GNU Affero General Public License v3**.
+This project is licensed under the GNU Affero General Public License v3.
 
 See [LICENSE](LICENSE.txt) for more information.
