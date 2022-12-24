@@ -1,8 +1,41 @@
 polkit.addRule(function(action, subject) {
-	if ((action.id == "org.freedesktop.systemd1.manage-units" ||
-	    action.id == "org.freedesktop.systemd1.manage-unit-files" ||
-	    action.id == "org.freedesktop.systemd1.reload-daemon") &&
-	    subject.user == "grommunio") {
+	const services = [
+		"grommunio-admin-api.service",
+		"grommunio-admin-api.socket",
+		"grommunio-antispam.service",
+		"grommunio-cui@tty1.service",
+		"grommunio-fetchmail.timer",
+		"grommunio-index.timer",
+		"gromox-delivery-queue.service",
+		"gromox-delivery.service",
+		"gromox-event.service",
+		"gromox-http.service",
+		"gromox-imap.service",
+		"gromox-midb.service",
+		"gromox-pop3.service",
+		"gromox-timer.service",
+		"gromox-zcore.service",
+		"nginx.service",
+		"php-fpm.service",
+		"postfix.service",
+		"redis@grommunio.service"
+	];
+	if (
+		(
+			(
+				action.id == "org.freedesktop.systemd1.manage-units" 
+				||
+				action.id == "org.freedesktop.systemd1.manage-unit-files" 
+				||
+				action.id == "org.freedesktop.systemd1.reload-daemon"
+			) 
+			&& 
+			subject.user == "grommunio" 
+			&&
+			services.includes(action.lookup("unit")) == true
+		)
+	)
+	{
 		return polkit.Result.YES;
 	}
 });
