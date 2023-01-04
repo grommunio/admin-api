@@ -18,21 +18,21 @@ polkit.addRule(function(action, subject) {
 		"nginx.service",
 		"php-fpm.service",
 		"postfix.service",
-		"redis@grommunio.service"
+		"redis@grommunio.service",
 	];
 	if (
 		(
 			(
-				action.id == "org.freedesktop.systemd1.manage-units" 
+				(
+					action.id == "org.freedesktop.systemd1.manage-units"
+					&&
+					services.includes(action.lookup("unit")) == true
+				)
 				||
-				action.id == "org.freedesktop.systemd1.manage-unit-files" 
-				||
-				action.id == "org.freedesktop.systemd1.reload-daemon"
-			) 
+				action.id == "org.freedesktop.systemd1.manage-unit-files"
+			)
 			&& 
-			subject.user == "grommunio" 
-			&&
-			services.includes(action.lookup("unit")) == true
+			subject.user == "grommunio"
 		)
 	)
 	{
