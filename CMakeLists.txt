@@ -29,6 +29,7 @@ install(DIRECTORY res DESTINATION ${INSTALLDIR})
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/openapi.json DESTINATION ${INSTALLDIR}/res OPTIONAL)
 install(PROGRAMS main.py DESTINATION ${INSTALLDIR})
 install(FILES data/api-config.ini data/config.yaml DESTINATION ${INSTALLDIR})
+install(FILES data/polkit-10-grommunio.rules DESTINATION ${CMAKE_INSTALL_FULL_DATADIR}/polkit-1/rules.d RENAME 10-grommunio.rules)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/grommunio-admin TYPE SBIN)
 
 install(DIRECTORY DESTINATION ${CONFDIR}/conf.d)
