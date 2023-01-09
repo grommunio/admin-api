@@ -588,9 +588,9 @@ def cliLdapReload(args):
     from services import ServiceHub
     cli = args._cli
     ldapArgs = (args.organization,) if args.organization else ()
-    ServiceHub.load("ldap", *ldapArgs, force_reload=True)
-    cli.print("Reload successful" if ServiceHub["ldap"].state == ServiceHub.LOADED else cli.col("Reload failed", "red"))
-    return int(ServiceHub["ldap"].state != ServiceHub.LOADED)
+    res = ServiceHub.load("ldap", *ldapArgs, force_reload=True)
+    cli.print("Reload successful" if res.state == ServiceHub.LOADED else cli.col("Reload failed", "red"))
+    return int(res.state != ServiceHub.LOADED)
 
 
 def _cliOrgspecCompleter(prefix, **kwargs):
@@ -620,8 +620,8 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     downsync.add_argument("-c", "--complete", action="store_true", help="Import/update all users in the ldap tree")
     downsync.add_argument("-f", "--force", action="store_true", help="Force synchronization of unassociated users")
     downsync.add_argument("-l", "--lang", help="Default language for imported users")
-    downsync.add_argument("-o", "--organization", metavar="ORGSPEC", help="Use organization specific LDAP connection")\
-        .completer = _cliOrgspecCompleter
+    downsync.add_argument("-o", "--organization", metavar="ORGSPEC", action="append",
+                          help="Use organization specific LDAP connection").completer = _cliOrgspecCompleter
     downsync.add_argument("-p", "--page-size", type=int, default=1000, help="Page size when downloading users")
     dump = sub.add_parser("dump", help="Dump LDAP object")
     dump.set_defaults(_handle=cliLdapDump)
