@@ -70,7 +70,7 @@ class SearchResult:
                 self.error = "Missing username"
         elif resultType == "contact":
             self.username = None
-            if userconf["contactname"] in data["attributes"]:
+            if userconf["contactname"] in data["attributes"] and data["attributes"][userconf["contactname"]]:
                 self.email = self._reduce(data["attributes"][userconf["contactname"]])
             else:
                 self.email = None

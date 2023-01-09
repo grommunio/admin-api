@@ -245,11 +245,13 @@ class Worker:
             if counts["error"]:
                 task.message += ", {} error{}".format(counts["error"], "" if counts["error"] == 1 else "s")
 
+        from orm import DB
         from orm.domains import Domains, OrgParam
         from orm.users import Aliases, Users
         from services import Service, ServiceUnavailableError
         import time
 
+        DB.session.rollback()
         start = last = time.time()
         orgID = task.params.get("orgID")
         domainID = task.params.get("domainID")
@@ -268,7 +270,7 @@ class Worker:
             userfilter = [Users.orgID == orgID]
         else:
             orgIDs = [0]+OrgParam.ldapOrgs()
-            domains = None
+            domains = Domains.query.with_entities(Domains.ID, Domains.domainname).all()
             userfilter = ()
 
         users = Users.query.filter(Users.externID != None, *userfilter).all()
