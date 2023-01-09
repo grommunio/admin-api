@@ -18,6 +18,7 @@ from sqlalchemy.orm import column_property, relationship, selectinload, validate
 
 import crypt
 import json
+import sys
 
 from datetime import datetime
 
@@ -328,7 +329,12 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @password.setter
     def password(self, pw):
-        self._password = crypt.crypt(pw, crypt.mksalt(crypt.METHOD_SHA512))
+        # On OpenBSD only blowfish is supported
+        if sys.platform.startswith("openbsd"):
+            _method = crypt.METHOD_BLOWFISH
+        else:
+            _method = crypt.METHOD_SHA512
+        self._password = crypt.crypt(pw, crypt.mksalt(_method))
 
     def chkPw(self, pw):
         return crypt.crypt(pw, self.password) == self.password
