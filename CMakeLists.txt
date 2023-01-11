@@ -32,6 +32,7 @@ install(FILES data/api-config.ini data/config.yaml DESTINATION ${INSTALLDIR})
 install(FILES data/polkit-10-grommunio.rules DESTINATION ${CMAKE_INSTALL_FULL_DATADIR}/polkit-1/rules.d RENAME 10-grommunio.rules)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/grommunio-admin TYPE SBIN)
 
+install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/grommunio-admin-api DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
 install(DIRECTORY DESTINATION ${CONFDIR}/conf.d)
 install(DIRECTORY DESTINATION ${COMMONCONFDIR}/license)
 install(FILES data/api.conf DESTINATION ${NGINXDIR})

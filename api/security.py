@@ -24,9 +24,10 @@ try:
 except Exception:
     import logging
     logger.warn("Could not load JWT RSA keys ('{}', '{}'), generating new...".format(_priFile, _pubFile))
+    from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import asymmetric, serialization as out
     import os
-    jwtPrivkey = asymmetric.rsa.generate_private_key(65537, Config["security"]["rsaKeySize"])
+    jwtPrivkey = asymmetric.rsa.generate_private_key(65537, Config["security"]["rsaKeySize"], default_backend())
     jwtPubkey = jwtPrivkey.public_key()
     try:
         with open(_priFile, "wb") as priFile, open(_pubFile, "wb") as pubFile:

@@ -82,8 +82,8 @@ def _defaultConfig():
             "serverPolicy": "round-robin"
             },
         "security": {
-            "jwtPrivateKeyFile": "/etc/grommunio-admin-api/jwt-privkey.pem",
-            "jwtPublicKeyFile": "/etc/grommunio-admin-api/jwt-pubkey.pem",
+            "jwtPrivateKeyFile": "/var/lib/grommunio-admin-api/auth-private.pem",
+            "jwtPublicKeyFile": "/var/lib/grommunio-admin-api/auth-public.pem",
             "rsaKeySize": 4096,
             },
         "mconf": {
