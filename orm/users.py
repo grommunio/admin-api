@@ -180,6 +180,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                       {"attr": "syncPolicy", "flags": "patch"},
                       {"attr": "chat", "flags": "patch"},
                       {"attr": "chatAdmin", "flags": "patch"},
+                      Int("orgID"),
                       RefProp("homeserver", "homeserverID", flags="patch", filter="set", qopt=selectinload)),
                      ({"attr": "password", "flags": "init, hidden"},
                       Text("maildir", flags="hidden"),))
