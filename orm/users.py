@@ -130,7 +130,7 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
     username = Column("username", VARCHAR(320, charset="ascii"), nullable=False, unique=True)
-    primaryEmail = OptionalC(89, "NULL", Column("primary_email", VARCHAR(320, charset="ascii"), unique=True))
+    altname = OptionalC(111, "NULL", Column("altname", VARCHAR(64), unique=True))
     _password = Column("password", VARCHAR(40), nullable=False, server_default="")
     domainID = Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     maildir = Column("maildir", VARCHAR(128), nullable=False, server_default="")
@@ -162,7 +162,8 @@ class Users(DataModel, DB.Base, NotifyTable):
     _dictmapping_ = ((Id(), Text("username", flags="patch")),
                      (Id("domainID", flags="init"),
                       {"attr": "ldapID", "flags": "patch"},
-                      Int("status", flags="patch")),
+                      Int("status", flags="patch"),
+                      Text("altname", flags="patch")),
                      (Text("lang", flags="patch"),
                       BoolP("pop3_imap", flags="patch"),
                       BoolP("smtp", flags="patch"),
@@ -706,9 +707,16 @@ class Users(DataModel, DB.Base, NotifyTable):
             sysd.reloadService("gromox-http.service", "gromox-zcore.service")
 
     @validates("username")
-    def usernameUpdateHook(self, key, value, *args):
-        self.primaryEmail = value
+    def validateUsername(self, key, value, *args):
+        if not self.username == value and Users.query.filter(Users.altname == value).count():
+            raise ValueError("Username is already used as alternative name")
         return value
+
+    @validates("altname")
+    def validateAltname(self, key, value, *args):
+        if Users.query.filter(Users.username == value).count():
+            raise ValueError("Alternative name is already in use")
+        return value or None
 
     def syncStore(self):
         """Write all properties to the exmdb store.
