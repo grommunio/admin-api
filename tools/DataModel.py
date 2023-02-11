@@ -404,7 +404,7 @@ class DataModel:
         patches : dict
             Dictionary containing updates.
         init : boolean, optional
-            Whether the object is initialized (otherwise its an update operation). The default is False.
+            Whether the object is initialized (otherwise it is an update operation). The default is False.
 
         Raises
         ------
