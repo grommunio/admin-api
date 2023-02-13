@@ -336,7 +336,7 @@ def cliUserQuery(args):
     users = [user.todict(args.attributes) for user in query]
     separator = args.separator or ("," if args.format == "csv" else "  ")
     data = [[attrTf.get(attr, lambda x: x)(user.get(attr)) for attr in args.attributes] for user in users]
-    header = None if len(args.attributes) <= 1 and len(data) <= 1 and args.format == "pretty" else args.attributes
+    header = None if len(args.attributes) <= 1 and args.format == "pretty" else args.attributes
     table = Table(data, header, separator, cli.col("(no results)", attrs=["dark"]))
     table.dump(cli, args.format)
 

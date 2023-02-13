@@ -107,6 +107,39 @@ class _FolderNode():
         return [(self.ID, self.parentID, self.name)]+[(sf.ID, sf.parentID, sf.name) for sf in sfs]
 
 
+def cliExmdbFolderDelete(args):
+    cli = args._cli
+    cli.require("DB")
+    from services import Service
+    from tools.constants import PublicFIDs, PrivateFIDs
+    from tools.rop import makeEidEx, gcToValue
+    with Service("exmdb") as exmdb:
+        ret, client = _getClient(args, exmdb)
+        if ret:
+            return ret
+        try:
+            fids = [makeEidEx(1, int(args.folderspec, 0))]
+        except ValueError:
+            rootID = makeEidEx(1, PrivateFIDs.ROOT if _isPrivate(args) else PublicFIDs.ROOT)
+            folders = exmdb.FolderList(client.findFolder(args.folderspec, rootID)).folders
+            fids = [folder.folderId for folder in folders]
+        if len(fids) == 0:
+            cli.print(cli.col("No folders found", "red"))
+            return 1
+        if len(fids) > 1 and not args.all:
+            cli.print(cli.col(f"'{args.folderspec}' is ambiguous. Use -a to delete all or specify the folder ID.", "red"))
+            return 2
+        for fid in fids:
+            try:
+                success = client.deleteFolder(fid, args.clear)
+                if success:
+                    cli.print("Deleted folder 0x{:x}".format(gcToValue(fid)))
+                else:
+                    cli.print(cli.col("Could not delete folder 0x{:x}".format(gcToValue(fid)), "yellow"))
+            except exmdb.ExmdbError:
+                cli.print(cli.col("Failed to delete folder 0x{:x}".format(gcToValue(fid)), "yellow"))
+
+
 def cliExmdbFolderFind(args):
     cli = args._cli
     cli.require("DB")
@@ -297,11 +330,16 @@ def _setupCliExmdb(subp: ArgumentParser):
     folder = sub.add_parser("folder", help="Access folders")
     Cli.parser_stub(folder)
     foldersub = folder.add_subparsers()
+    delete = foldersub.add_parser("delete", help="Delete folder")
+    delete.set_defaults(_handle=cliExmdbFolderDelete)
+    delete.add_argument("-a", "--all", action="store_true", help="Delete all matching folders")
+    delete.add_argument("--clear", action="store_true", help="Empty folder before deleting")
+    delete.add_argument("folderspec", help="ID or name of folder")
     find = foldersub.add_parser("find", help="Find folder by name")
     find.set_defaults(_handle=cliExmdbFolderFind)
     find.add_argument("-x", "--exact", action="store_true", help="Only report exact matches instead of substring matches")
     find.add_argument("name", help="Name of the folder to find")
-    find.add_argument("ID", nargs="?", type=xint, help="Folder ID")
+    find.add_argument("ID", nargs="?", type=xint, help="ID of the folder to search in")
     grant = foldersub.add_parser("grant", help="Grant permissions to user")
     grant.set_defaults(_handle=cliExmdbFolderPermissionsModify, revoke=False)
     grant.add_argument("ID", type=xint, help="Folder ID")

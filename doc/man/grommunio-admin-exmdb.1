@@ -22,6 +22,12 @@ grommunio-admin exmdb \[em] User or domain store management
 .SH Synopsis
 .PP
 \f[B]grommunio-admin\f[R] \f[B]exmdb\f[R] \f[I]TARGET\f[R]
+\f[I]folder\f[R] \f[I]delete\f[R] [\f[I]-a\f[R]] [--clear]
+\f[I]FOLDERSPEC\f[R]
+.PD 0
+.P
+.PD
+\f[B]grommunio-admin\f[R] \f[B]exmdb\f[R] \f[I]TARGET\f[R]
 \f[I]folder\f[R] \f[I]find\f[R] [\f[I]-x\f[R]] \f[I]NAME\f[R]
 [\f[I]ID\f[R]]
 .PD 0
@@ -66,6 +72,9 @@ exmdb protocol.
 .SH Commands
 .SS Folder subcommand
 .TP
+\f[V]delete\f[R]
+Delete folder by ID or name.
+.TP
 \f[V]find\f[R]
 Find folders with given name
 .TP
@@ -94,6 +103,9 @@ Set store properties
 \f[V]ID\f[R]
 ID of the folder
 .TP
+\f[V]FOLDERSPEC\f[R]
+ID or name of the folder
+.TP
 \f[V]NAME\f[R]
 Name of the folder
 .TP
@@ -108,6 +120,13 @@ Name of the domain or e-mail address of the user
 .TP
 \f[V]USERNAME\f[R]
 E-Mail address of a user
+.TP
+\f[V]-a\f[R], \f[V]--all\f[R]
+Do not stop if target is ambiguous but apply to all.
+.TP
+\f[V]--clear\f[R]
+Delete folder contents.
+Required for non-empty folders.
 .TP
 \f[V]-f\f[R], \f[V]--force\f[R]
 Grant permissions to non-existing user

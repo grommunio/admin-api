@@ -14,6 +14,7 @@ grommunio-admin exmdb — User or domain store management
 Synopsis
 ========
 
+| **grommunio-admin** **exmdb** *TARGET* *folder* *delete* [*-a*] [--clear] *FOLDERSPEC*
 | **grommunio-admin** **exmdb** *TARGET* *folder* *find* [*-x*] *NAME* [*ID*]
 | **grommunio-admin** **exmdb** *TARGET* *folder* *grant* [*-f*] [*-r*] *ID*
   *USERNAME* *PERMISSION* [*PERMISSION* …]
@@ -36,6 +37,8 @@ Commands
 Folder subcommand
 -----------------
 
+``delete``
+   Delete folder by ID or name.
 ``find``
    Find folders with given name
 ``grant``
@@ -61,6 +64,8 @@ Options
 =======
 ``ID``
    ID of the folder
+``FOLDERSPEC``
+   ID or name of the folder
 ``NAME``
    Name of the folder
 ``PERMISSION``
@@ -71,6 +76,10 @@ Options
    Name of the domain or e-mail address of the user
 ``USERNAME``
    E-Mail address of a user
+``-a``, ``--all``
+   Do not stop if target is ambiguous but apply to all.
+``--clear``
+   Delete folder contents. Required for non-empty folders.
 ``-f``, ``--force``
    Grant permissions to non-existing user
 ``--format FORMAT``
