@@ -18,6 +18,7 @@ sqlalchemy = "*"
 redis = "*"
 systemd-python = "*"
 multidict = "*"
+cryptography = "*"
 
 [dev-packages]
 
