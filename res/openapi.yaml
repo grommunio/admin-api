@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.9.6
+  version: 1.9.7
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -5816,6 +5816,10 @@ components:
           enum: [0, 1]
           default: 0
           description: Whether the device is required to send signed S/MIME messages.
+        reqstoragecardenc:
+          type: integer
+          default: 0
+          description: Require encryption on storage card (0=no, 1=yes)
         unapprovedinromapplist:
           type: array
           description: A list of in-ROM applications that are not approved for execution.

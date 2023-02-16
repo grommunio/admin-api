@@ -52,6 +52,7 @@ def _defaultConfig():
       "reqmansyncroam": 0,
       "reqsignedsmimealgorithm": 0,
       "reqsignedsmimemessages": 0,
+      "reqstoragecardenc": 0,
       "unapprovedinromapplist": []
     }
     return {
