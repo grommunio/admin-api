@@ -177,6 +177,8 @@ class Worker:
             return dict(username=candidate.email, code=409, message="User already exists "+msg)
 
         domain = Domains.query.filter(Domains.domainname == candidate.email.split("@")[1]).with_entities(Domains.ID).first()
+        if domain is None:
+            return dict(username=candidate.email, code=400, message="Invalid domain.")
         defaults = RecursiveDict({"user": {}, "domain": {}})
         defaults.update(DBConf.getFile("grommunio-admin", "defaults-system", True))
         defaults.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domain.ID)))
