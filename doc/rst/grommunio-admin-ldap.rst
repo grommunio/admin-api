@@ -21,8 +21,8 @@ Synopsis
 | **grommunio-admin ldap** **dump** [*-o ORGSPEC*] *USER*
 | **grommunio-admin ldap** **info** [*-o ORGSPEC*]
 | **grommunio-admin ldap** **reload** [*-o ORGSPEC*]
-| **grommunio-admin ldap** **search** [*-a*] [*-n MAX_RESULTS*] [*-o ORGSPEC*]
-  [*-p PAGE_SIZE*] [*USER*]
+| **grommunio-admin ldap** **search** [*-a*] [*--format FORMAT*]
+  [*-n MAX_RESULTS*] [*-o ORGSPEC*] [*-p PAGE_SIZE*] [*USER*]
 
 Description
 ===========
@@ -60,6 +60,9 @@ Options
    Import or update all users from the LDAP tree
 ``-f``, ``--force``
    Force update users that are linked to a different or no LDAP object
+``--format FORMAT``
+   Output format. Can be one of *csv*, *json-flat*, *json-structured* and
+   *pretty*. Default is *pretty*.
 ``-l``, ``--lang``
    Set language for imported users. Default is to not set any language.
 ``-m``, ``--remove-maildirs``

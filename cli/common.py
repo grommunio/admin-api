@@ -230,6 +230,8 @@ class Table:
         writer = csv.DictWriter(cli.stdout, fieldnames=header, delimiter=self.colsep[0] or ",")
         if self.header:
             writer.writeheader()
+        if not self.data:
+            return
         for row in self.data:
             writer.writerow({name: value.raw for name, value in zip(header, row)})
 
@@ -246,6 +248,7 @@ class Table:
         import json
         if not self.data:
             cli.print("[]")
+            return
         header = [cell.raw for cell in self.header] if self.header else [str(i) for i in range(len(self.data[0]))]
         data = [{name: value.raw for name, value in zip(header, row)} for row in self.data] if structured else\
                [[cell.raw for cell in row] for row in self.data]

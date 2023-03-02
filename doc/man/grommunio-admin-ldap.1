@@ -50,9 +50,9 @@ PAGE_SIZE\f[R]] [\f[I]USER\f[R] [\f[I]USER\f[R] \&...]]
 .PD 0
 .P
 .PD
-\f[B]grommunio-admin ldap\f[R] \f[B]search\f[R] [\f[I]-a\f[R]] [\f[I]-n
-MAX_RESULTS\f[R]] [\f[I]-o ORGSPEC\f[R]] [\f[I]-p PAGE_SIZE\f[R]]
-[\f[I]USER\f[R]]
+\f[B]grommunio-admin ldap\f[R] \f[B]search\f[R] [\f[I]-a\f[R]]
+[\f[I]--format FORMAT\f[R]] [\f[I]-n MAX_RESULTS\f[R]] [\f[I]-o
+ORGSPEC\f[R]] [\f[I]-p PAGE_SIZE\f[R]] [\f[I]USER\f[R]]
 .SH Description
 .PP
 The grommunio admin ldap module provides functions for configuring and
@@ -93,6 +93,12 @@ Import or update all users from the LDAP tree
 .TP
 \f[V]-f\f[R], \f[V]--force\f[R]
 Force update users that are linked to a different or no LDAP object
+.TP
+\f[V]--format FORMAT\f[R]
+Output format.
+Can be one of \f[I]csv\f[R], \f[I]json-flat\f[R],
+\f[I]json-structured\f[R] and \f[I]pretty\f[R].
+Default is \f[I]pretty\f[R].
 .TP
 \f[V]-l\f[R], \f[V]--lang\f[R]
 Set language for imported users.

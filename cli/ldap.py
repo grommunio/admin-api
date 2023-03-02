@@ -349,9 +349,13 @@ def cliLdapDownsync(args):
 def cliLdapSearch(args):
     def typename(match):
         color = "yellow" if match.error else "green" if match.type == "user" else "blue"
-        return cli.col(match.type, color)
+        return col(match.type, color)
+
+    def col(text, *pargs, **kwargs):
+        return cli.col(text, *pargs, **kwargs) if pretty else text
 
     cli = args._cli
+    pretty = args.format == "pretty"
     from services import Service
     from .common import Table
     orgIDs = _getOrgIDs(args)
@@ -362,14 +366,14 @@ def cliLdapSearch(args):
             matches = ldap.searchUsers(args.query, limit=args.max_results or None, pageSize=args.page_size,
                                        filterIncomplete=not args.all)
             hasErr = any(match.error is not None for match in matches)
-            data = [(cli.col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), match.name,
-                     match.email if match.email else cli.col("N/A", "red"), typename(match),
-                     cli.col(match.error or "", "yellow"))
+            data = [(col(ldap.escape_filter_chars(match.ID), attrs=["bold"]), typename(match),
+                     match.email if match.email else col("N/A", "red"), match.name,
+                     col(match.error or "", "yellow"))
                     for match in matches if match.ID]
-            table = Table(data, ("ID", "Name", "E-Mail", "Type", "Note" if hasErr else ""),
-                          empty=cli.col("(No results)", attrs=["dark"]))
-            table.print(cli)
-            if len(matches):
+            table = Table(data, ("ID", "Type", "E-Mail", "Name", "Note" if hasErr or not pretty else ""),
+                          empty=cli.col("(No results)", attrs=["dark"]) if pretty else None)
+            table.dump(cli, args.format)
+            if len(matches) and not pretty:
                 cli.print(cli.col("({} result{})".format(len(matches), "s" if len(matches) != 1 else ""), attrs=["dark"]))
 
 
@@ -640,6 +644,8 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     search.set_defaults(_handle=cliLdapSearch)
     search.add_argument("query", nargs="?", help="Optional search query, omit to return all users")
     search.add_argument("-a", "--all", action="store_true", help="Also show users that cannot be imported")
+    search.add_argument("--format", choices=("csv", "json-flat", "json-structured", "pretty"), help="Set output format",
+                        metavar="FORMAT", default="pretty")
     search.add_argument("-n", "--max-results", type=int, default=0,
                         help="Maximum number of results or 0 to disable limit (default: 0)")
     search.add_argument("-o", "--organization", metavar="ORGSPEC", action="append",
