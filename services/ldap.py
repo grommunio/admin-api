@@ -57,7 +57,7 @@ class SearchResult:
         if "raw_attributes" in data and "attributes" in data:
             self.ID = data["raw_attributes"][ldap._config["objectID"]][0]
             self.data = data["attributes"]
-            self.name = data["attributes"].get(userconf["displayName"]) or ""
+            self.name = self._reduce(data["attributes"].get(userconf["displayName"])) or ""
         else:
             self.ID = self.data = self.name = self.email = None
             self.error = "Not a valid object"
