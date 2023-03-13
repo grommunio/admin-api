@@ -103,7 +103,10 @@ class SearchResult:
         Any
             Scalar value (tail=False) or two-tuple containing the scalar and additional elements (tail=True).
         """
-        res = (value[0], value[1:]) if isinstance(value, (list, tuple)) else (value, [])
+        if isinstance(value, (list, tuple)):
+            res = (value[0], value[1:]) if value else (None, [])
+        else:
+            res = (value, [])
         return res if tail else res[0]
 
     def userdata(self, props=None):
