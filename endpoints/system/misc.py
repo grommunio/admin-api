@@ -15,6 +15,7 @@ from services import Service
 from tools.config import Config
 from tools.license import getLicense, updateCertificate
 from tools.permissions import SystemAdminPermission, SystemAdminROPermission
+from tools.dnsHealth import getHostByName
 
 import json
 import os
@@ -264,3 +265,18 @@ def getServerObject(ID):
         if server is not None and server.users+server.domains != 0:
             return jsonify(message="Cannot delete server with users or domains"), 400
     return defaultObjectHandler(Servers, ID, "")
+
+
+@API.route(api.BaseRoute+"/system/servers/dnsCheck", methods=["GET"])
+@secure(requireDB=105)
+def getServersDNSChecks():
+    checkPermissions(SystemAdminROPermission())
+    from orm.misc import Servers
+    objects = Servers.query.all()
+    uniqueHostnames = [o.hostname for o in objects]
+    uniqueExternalNames = set(o.extname for o in objects)
+
+    hostsDNSCheck = {hostname: getHostByName(hostname) for hostname in uniqueHostnames}
+    extDNSCheck = {extname: getHostByName(extname) for extname in uniqueExternalNames}
+
+    return jsonify({"host": hostsDNSCheck, "ext": extDNSCheck})

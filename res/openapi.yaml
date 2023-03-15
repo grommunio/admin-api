@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.9.9
+  version: 1.10.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1700,6 +1700,31 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /domains/{domainID}/dnsCheck:
+    get:
+      summary: Get detailed dns check for domain
+      operationId: getDomainDnsCheck
+      tags:
+        - Misc
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: Dns check returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domainDnsCheck'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
 
   /domains/{domainID}/users:
     get:
@@ -4220,6 +4245,37 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /system/servers/dnsCheck:
+    get:
+      summary: Get a dns check result for all servers
+      operationId: getServerDnsCheck
+      tags:
+        - System Admin/Servers
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Dns check of servers returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  host:
+                    type: object
+                    additionalProperties:
+                      type: boolean
+                  ext:
+                    type: object
+                    additionalProperties:
+                      type: boolean
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
   /tasq/notify:
     post:
       summary: Notify the TasQ server of externally added tasks
@@ -4779,6 +4835,15 @@ components:
       type: string
       description: Precise date/time string including fractional seconds
       pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,6}$'
+    intExtDns:
+      type: object
+      properties:
+        internalDNS:
+          type: string
+          nullable: true
+        externalDNS:
+          type: string
+          nullable: true
     domainCommon:
       type: object
       properties:
@@ -4849,6 +4914,53 @@ components:
           properties:
             homeserver:
               $ref: '#/components/schemas/homeserverID'
+    domainDnsCheck:
+      type: object
+      properties:
+        localIp:
+          type: string
+          description: The IP the internal DNS server resolved from the domain
+          nullable: true
+        externalIp:
+          type: string
+          description: The IP the external DNS server resolved from the domain
+          nullable: true
+        mxRecords:
+          $ref: '#/components/schemas/intExtDns'
+        autodiscover:
+          $ref: '#/components/schemas/intExtDns'
+        autoconfig:
+          $ref: '#/components/schemas/intExtDns'
+        txt:
+          $ref: '#/components/schemas/intExtDns'
+        dkim:
+          $ref: '#/components/schemas/intExtDns'
+        dmarc:
+          $ref: '#/components/schemas/intExtDns'
+        caldavTXT:
+          $ref: '#/components/schemas/intExtDns'
+        carddavTXT:
+          $ref: '#/components/schemas/intExtDns'
+        autodiscoverSRV:
+          $ref: '#/components/schemas/intExtDns'
+        submissionSRV:
+          $ref: '#/components/schemas/intExtDns'
+        imapSRV:
+          $ref: '#/components/schemas/intExtDns'
+        imapsSRV:
+          $ref: '#/components/schemas/intExtDns'
+        pop3SRV:
+          $ref: '#/components/schemas/intExtDns'
+        pop3sSRV:
+          $ref: '#/components/schemas/intExtDns'
+        caldavSRV:
+          $ref: '#/components/schemas/intExtDns'
+        caldavsSRV:
+          $ref: '#/components/schemas/intExtDns'
+        carddavSRV:
+          $ref: '#/components/schemas/intExtDns'
+        carddavsSRV:
+          $ref: '#/components/schemas/intExtDns'
     homeserverID:
       type: integer
       description: ID of the homeserver

@@ -6,11 +6,14 @@ from .. import defaultListHandler
 
 import api
 from api.core import API, secure
+from api.security import checkPermissions
 
 from tools.permissions import SystemAdminPermission, DomainAdminROPermission, OrgAdminPermission
+from tools.dnsHealth import fullDNSCheck
 
-from flask import request
+from flask import request, jsonify
 from sqlalchemy import or_
+
 
 @API.route(api.BaseRoute+"/domains", methods=["GET"])
 @secure(requireDB=True, authLevel="user")
@@ -25,3 +28,15 @@ def getAvailableDomains():
         domainFilters = () if "*" in domainIDs or "*" in orgIDs else \
                         (or_(Domains.ID.in_(domainIDs), Domains.orgID.in_(orgIDs)),)
     return defaultListHandler(Domains, filters=domainFilters)
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/dnsCheck", methods=["GET"])
+@secure(requireDB=True)
+def checkDomainDNS(domainID):
+    checkPermissions(DomainAdminROPermission(domainID))
+    from orm.domains import Domains
+    domain = Domains.query.filter(Domains.ID == domainID).with_entities(Domains.domainname).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    dnsCheck = fullDNSCheck(domain.domainname)
+    return jsonify(dnsCheck)

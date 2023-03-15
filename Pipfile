@@ -19,6 +19,7 @@ redis = "*"
 systemd-python = "*"
 multidict = "*"
 cryptography = "*"
+dnspython = "*"
 
 [dev-packages]
 
