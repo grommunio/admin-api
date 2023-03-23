@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.9.7
+  version: 1.9.8
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -256,7 +256,7 @@ paths:
                   description: Source IP of the status update (default is the request origin).
                 status:
                   type: integer
-                  enum: [0, 1, 2, 4, 8]
+                  enum: [0, 1, 2, 4, 8, 16, 32, 64]
                 time:
                   type: integer
                   description: UNIX timestamp of the status update (default is time of the request)
