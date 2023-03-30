@@ -50,3 +50,6 @@ ActiveDirectory:
 OpenLDAP:
   mail: smtpaddress
   departmentNumber: departmentname
+Univention:
+  mail: smtpaddress
+  departmentNumber: departmentname
