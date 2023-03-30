@@ -481,7 +481,7 @@ def setUserStoreAccess(domainID, userID):
     if data is None or "username" not in data:
         return jsonify(message="Invalid data"), 400
     primary = Users.query.with_entities(Users.ID).filter(Users.username == data["username"],
-                                                         Users.domainID == domainID).first()
+                                                         Users.orgID == user.orgID).first()
     if primary is None:
         return jsonify(message="Could not find user to grant access to"), 404
     eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
@@ -508,12 +508,12 @@ def setUserStoreAccessMulti(domainID, userID):
     data = request.get_json(silent=True)
     if data is None or "usernames" not in data:
         return jsonify(message="Invalid data"), 400
-    primary = Users.query.filter(Users.username.in_(data["usernames"]), Users.domainID == domainID)\
-                         .with_entities(Users.ID).all()
+    primary = Users.query.filter(Users.username.in_(data["usernames"]), Users.orgID == user.orgID)\
+                         .with_entities(Users.ID, Users.username).all()
     eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
-        res = client.setFolderMembers(eid, data["usernames"], Permissions.STOREOWNER)
+        res = client.setFolderMembers(eid, [user.username for user in primary], Permissions.STOREOWNER)
     if DB.minVersion(91):
         UserSecondaryStores.query.filter(UserSecondaryStores.secondaryID == user.ID).delete(synchronize_session=False)
         if len(primary):
