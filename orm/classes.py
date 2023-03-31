@@ -42,25 +42,6 @@ class Hierarchy(DataModel, DB.Base):
         return self
 
 
-class Members(DataModel, DB.Base):
-    __tablename__ = "members"
-
-    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    username = Column("username", VARCHAR(128), nullable=False, index=True)
-    classID = Column("class_id", INTEGER(10, unsigned=True), nullable=False, index=True)
-
-    _dictmapping_ = ((Id(),
-                      Text("username", flags="patch"),
-                      Id("classID", flags="patch")),)
-
-    def __init__(self, username, *args):
-        self.username = username
-
-    def fromdict(self, username):
-        self.username = username
-        return self
-
-
 class Classes(DataModel, DB.Base):
     __tablename__ = "classes"
 
@@ -78,15 +59,12 @@ class Classes(DataModel, DB.Base):
                             primaryjoin=(ID == Hierarchy.classID),
                             foreign_keys=Hierarchy.classID, back_populates="cParent")
 
-    members = relationship(Members, primaryjoin=ID == Members.classID, foreign_keys=Members.classID,
-                           cascade="all, delete-orphan", single_parent=True, lazy="selectin")
     mlist = relationship("MLists", primaryjoin="Classes.listname == MLists.listname", foreign_keys=listname,
                          cascade="all, delete-orphan", single_parent=True, back_populates="class_")
 
     _dictmapping_ = ((Id(), Text("classname", flags="patch")),
                      (Text("listname"),),
                      (RefProp("cParents", alias="parentClasses", link="classID", flat="cParent"),
-                      RefProp("members", flags="patch, managed", link="username", flat="username"),
                       RefProp("children", flat="child"),
                       {"attr": "filters", "flags": "patch"}))
 
@@ -156,17 +134,11 @@ class Classes(DataModel, DB.Base):
             toplevel.pop(h.childID, None)
         return list(toplevel.values())
 
-    @validates("members")
-    def validateMembers(self, key, member, *args):
-        if self._filters is not None:
-            raise ValueError("Cannot explicitly add member to filter defined class")
-        return member
-
     @property
     def filters(self):
         try:
             data = json.loads(self._filters)
-        except:
+        except Exception:
             return None
         for disj in data:
             for expr in disj:
@@ -179,8 +151,6 @@ class Classes(DataModel, DB.Base):
         if data is None or len(data) == 0:
             self._filters = None
             return
-        if len(self.members) != 0:
-            raise ValueError("Cannot specify filter and members at the same time")
         for disj in data:
             for expr in disj:
                 if expr["prop"] not in self.filterColumns:

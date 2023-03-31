@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.9.8
+  version: 1.9.9
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -5431,12 +5431,6 @@ components:
                 $ref: '#/components/schemas/ID'
               classname:
                 type: string
-        members:
-          type: array
-          description: List of class members
-          items:
-            type: string
-            description: E-Mail address of the class members
         filters:
           $ref: '#/components/schemas/classFilters'
     classWrite:
@@ -5449,12 +5443,6 @@ components:
           description: List of parent class IDs
           items:
             type: integer
-        members:
-          type: array
-          description: List of class members
-          items:
-            type: string
-            description: E-Mail address of the class members
         filters:
           $ref: '#/components/schemas/classFilters'
     classTreeElement:

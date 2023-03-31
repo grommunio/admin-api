@@ -607,7 +607,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     def delete(self, deleteChatUser=True):
         """Delete user from database.
 
-        Also cleans up entries in forwards, members and associations tables.
+        Also cleans up entries in forwards and associations tables.
 
         Parameters
         ----------
@@ -620,11 +620,9 @@ class Users(DataModel, DB.Base, NotifyTable):
             Error message or None if successful.
         """
         from .mlists import Associations
-        from .classes import Members
         if self.ID == 0:
             raise ValueError("Cannot delete superuser")
         Forwards.query.filter(Forwards.username == self.username).delete(synchronize_session=False)
-        Members.query.filter(Members.username == self.username).delete(synchronize_session=False)
         Associations.query.filter(Associations.username == self.username).delete(synchronize_session=False)
         if self.chatID is not None:
             from services import Service
