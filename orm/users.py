@@ -141,7 +141,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     lang = Column("lang", VARCHAR(32), nullable=False, server_default="")
     homeserverID = OptionalC(104, "0", Column("homeserver", TINYINT(unsigned=True), nullable=False, server_default="0"))
     _syncPolicy = OptionalC(76, "NULL", Column("sync_policy", TEXT))
-    _deprecated_maxSize = Column("max_size", INTEGER(10), nullable=False, default=0)
+    _deprecated_maxSize = OptionalC(-111, "0", Column("max_size", INTEGER(10), nullable=False, default=0))
     _deprecated_addressType = OptionalC(-86, "NULL", Column("address_type", TINYINT, nullable=False, server_default="0"))
     _deprecated_subType = OptionalC(-85, "NULL", Column("sub_type", TINYINT, nullable=False, server_default="0"))
     _deprecated_groupID = Column("group_id", INTEGER(10, unsigned=True), nullable=False, index=True, default=0)
