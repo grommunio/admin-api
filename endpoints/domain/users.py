@@ -166,6 +166,8 @@ def rdUserStoreProps(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
+    if not user.maildir:
+        return jsonify(message="User has no store"), 400
     props = [prop for prop in request.args.get("properties", "").split(",") if prop != ""]
     try:
         user.properties = {prop: None for prop in props}
@@ -260,6 +262,8 @@ def getUserSyncData(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
+    if not user.maildir:
+        return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         devices = {}
         client = exmdb.user(user)
@@ -380,6 +384,8 @@ def removeDevice(domainID, userID, deviceID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
+    if not user.maildir:
+        return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
         client.removeDevice(Config["sync"]["syncStateFolder"], deviceID)
@@ -396,6 +402,8 @@ def removeSyncStates(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
+    if not user.maildir:
+        return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
         client.removeSyncStates(Config["sync"]["syncStateFolder"])
@@ -410,6 +418,8 @@ def resyncDevice(domainID, userID, deviceID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
+    if not user.maildir:
+        return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
         res = client.resyncDevice(Config["sync"]["syncStateFolder"], deviceID, userID)
@@ -475,7 +485,7 @@ def setUserStoreAccess(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
-    if user.maildir is None:
+    if not user.maildir:
         return jsonify(message="User has no store"), 400
     data = request.get_json(silent=True)
     if data is None or "username" not in data:
@@ -503,7 +513,7 @@ def setUserStoreAccessMulti(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
-    if user.maildir is None:
+    if not user.maildir:
         return jsonify(message="User has no store"), 400
     data = request.get_json(silent=True)
     if data is None or "usernames" not in data:
@@ -531,7 +541,7 @@ def getUserStoreAccess(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
-    if user.maildir is None:
+    if not user.maildir:
         return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
@@ -549,7 +559,7 @@ def deleteUserStoreAccess(domainID, userID, username):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
-    if user.maildir is None:
+    if not user.maildir:
         return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
