@@ -51,6 +51,20 @@ properties:
         type: integer
         description: Time in seconds after which database connection closed by the server and a new one is needed
         default: 28800
+  dns:
+    type: object
+    description: DNS health check configuration
+    properties:
+      dudIP:
+        type: string
+        description: Default-routed IP address used for local IP detection
+        default: 172.16.254.254
+      externalResolvers:
+        type: array
+        description: List of external DNS resolvers to use
+        default: [1.1.1.1, 1.0.0.0]
+        items:
+          type: string
   options:
     type: object
     properties:

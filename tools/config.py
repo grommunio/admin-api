@@ -59,6 +59,10 @@ def _defaultConfig():
         "DB": {
             "sessionTimout": 28800,
             },
+        "dns": {
+            "dudIP": "172.16.254.254",
+            "externalResolvers": ["1.1.1.1", "1.0.0.1"]
+            },
         "openapi": {
             "validateRequest": True,
             "validateResponse": True

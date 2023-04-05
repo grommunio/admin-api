@@ -5,6 +5,8 @@
 from dns import resolver
 import socket
 
+from .config import Config
+
 
 def getHostByName(domain):
     try:
@@ -21,7 +23,7 @@ def getLocalIp():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.settimeout(0)
     try:
-        s.connect(('172.16.254.254', 1))
+        s.connect((Config["dns"]["dudIP"], 1))
         IP = s.getsockname()[0]
     except Exception:
         IP = '127.0.0.1'
@@ -30,7 +32,7 @@ def getLocalIp():
 
 
 externalResolver = resolver.Resolver()
-externalResolver.nameservers = ["1.1.1.1", "1.0.0.1"]  # TODO: Configurable
+externalResolver.nameservers = Config["dns"]["externalResolvers"]
 
 
 def fullDNSCheck(domain: str):
