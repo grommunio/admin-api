@@ -79,6 +79,9 @@ Options
 ``-r``, ``--remove``
    Remove imported users of which the linked LDAP object could not be
    found
+``-t TYPES``, ``--types TYPES``
+   Comma separated list of object types to search for. Supported are *user*,
+   *contact* and *group*.
 ``-y``, ``--yes``
    Do not prompt for confirmation, assume yes
 

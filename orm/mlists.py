@@ -21,8 +21,10 @@ class Associations(DataModel, DB.Base):
     _dictmapping_ = ((Id(), Text("username", flags="init")),
                      (Id("listID", flags="init"),))
 
-    def fromdict(self, username, *args, **kwargs):
+    def fromdict(self, username, listID=None, *args, **kwargs):
         self.username = username
+        if listID is not None:
+            self.listID = listID
         return self
 
 
@@ -54,7 +56,8 @@ class MLists(DataModel, DB.Base):
                      (Id("domainID", flags="init"),
                       Int("listPrivilege", flags="patch", filter="set")),
                      (RefProp("associations", flags="patch, managed", link="username", flat="username", qopt=selectinload),
-                      RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload)))
+                      RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload),
+                      Text("displayname", flags="patch")))
 
     user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname, cascade="all, delete-orphan", single_parent=True)
     associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID,
@@ -110,13 +113,21 @@ class MLists(DataModel, DB.Base):
         self.domain = props.pop("domain")
         self.listType = props.pop("listType", 0)
         self.listPrivilege = props.pop("listPrivilege", 0)
-        self.fromdict(props, *args, **kwargs)
-        self.user = Users({"username": self.listname,
+        self.user = Users({"username": props.get("listname"),
                            "domainID": self.domain.ID,
                            "domain": self.domain,
                            "domainStatus": self.domain.domainStatus,
-                           "properties": {"displaytypeex": 1, "displayname": "Distribution list "+self.listname}})
+                           "properties": {"displaytypeex": 1}})
         self.user.maildir = ""
+        self.fromdict(props, *args, **kwargs)
+
+    @property
+    def displayname(self):
+        return self.user.properties.get("displayname")
+
+    @displayname.setter
+    def displayname(self, value):
+        self.user.properties["displayname"] = value
 
     @validates("associations")
     def validateAssociations(self, key, assoc, *args):

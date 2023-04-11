@@ -78,7 +78,7 @@ class OrgParam(DB.Base):
             return None
         plain = {entry.key: entry.value for entry in entries}
 
-        config = {"connection": {}, "users": {}}
+        config = {"connection": {}, "groups": {}, "users": {}}
         _addIfDef(config, "disabled", plain, "ldap_disabled", type=lambda x: x.lower() in ("true", "yes", "1"))
         _addIfDef(config["connection"], "server", plain, "ldap_uri")
         _addIfDef(config["connection"], "bindUser", plain, "ldap_binddn")
@@ -95,6 +95,9 @@ class OrgParam(DB.Base):
         _addIfDef(config["users"], "defaultQuota", plain, "ldap_user_default_quota", type=int)
         _addIfDef(config["users"], "templates", plain, "ldap_user_templates", all=True)
         _addIfDef(config["users"], "aliases", plain, "ldap_user_aliases")
+        _addIfDef(config["groups"], "groupaddr", plain, "ldap_group_addr")
+        _addIfDef(config["groups"], "groupfilter", plain, "ldap_group_filter")
+        _addIfDef(config["groups"], "groupname", plain, "ldap_group_name")
         if "ldap_user_attributes" in plain:
             config["users"]["attributes"] = {entry.split(" ", 1)[0]: entry.split(" ", 1)[1]
                                              for entry in plain.getall("ldap_user_attributes") if " " in entry}
@@ -127,6 +130,10 @@ class OrgParam(DB.Base):
             if "attributes" in config["users"] and config["users"]["attributes"]:
                 flat["ldap_user_attributes"] = ["{} {}".format(key, value)
                                                 for key, value in config["users"]["attributes"].items()]
+        if "groups" in config:
+            _addIfDef(flat, "ldap_group_addr", config["groups"], "groupaddr")
+            _addIfDef(flat, "ldap_group_filter", config["groups"], "groupfilter")
+            _addIfDef(flat, "ldap_group_name", config["groups"], "groupname")
         cls.query.filter(cls.orgID == orgID).delete(synchronize_session=False)
         for key, value in flat.items():
             DB.session.add(OrgParam(orgID, key, value))

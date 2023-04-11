@@ -73,7 +73,7 @@ def _reloadServices(*services):
 
 
 def _transformLdap(conf):
-    LDAP = {"connection": {}, "users": {}}
+    LDAP = {"connection": {}, "groups": {}, "users": {}}
     _addIfDef(LDAP, "disabled", conf, "ldap_disabled", type=lambda x: x.lower() in ("true", "yes", "1"))
     _addIfDef(LDAP["connection"], "server", conf, "ldap_host")
     _addIfDef(LDAP["connection"], "bindUser", conf, "ldap_bind_user")
@@ -91,6 +91,9 @@ def _transformLdap(conf):
     _addIfDef(LDAP["users"], "defaultQuota", conf, "ldap_user_default_quota", type=int)
     _addIfDef(LDAP["users"], "templates", conf, "ldap_user_templates", all=True)
     _addIfDef(LDAP["users"], "aliases", conf, "ldap_user_aliases")
+    _addIfDef(LDAP["groups"], "groupaddr", conf, "ldap_group_addr")
+    _addIfDef(LDAP["groups"], "groupfilter", conf, "ldap_group_filter")
+    _addIfDef(LDAP["groups"], "groupname", conf, "ldap_group_name")
     if "ldap_user_attributes" in conf:
         LDAP["users"]["attributes"] = {entry.split(" ", 1)[0]: entry.split(" ", 1)[1]
                                        for entry in conf.getall("ldap_user_attributes") if " " in entry}
@@ -119,6 +122,10 @@ def _flattenLdap(conf):
         _addIfDef(LDAP, "ldap_user_aliases", conf["users"], "aliases")
         if "attributes" in conf["users"]:
             LDAP["ldap_user_attributes"] = ["{} {}".format(key, value) for key, value in conf["users"]["attributes"].items()]
+    if "groups" in conf:
+        _addIfDef(LDAP, "ldap_group_addr", conf["groups"], "groupaddr")
+        _addIfDef(LDAP, "ldap_group_filter", conf["groups"], "groupfilter")
+        _addIfDef(LDAP, "ldap_group_name", conf["groups"], "groupname")
     return LDAP
 
 

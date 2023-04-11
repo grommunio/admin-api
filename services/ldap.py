@@ -50,14 +50,14 @@ def orgid(orgspec):
 class SearchResult:
     def __init__(self, ldap, resultType, data):
         self._ldap = ldap
-        userconf = ldap._config["users"]
+        userconf, groupconf = ldap._config["users"], ldap._config["groups"]
         self.DN = data.get("dn")
         self.type = resultType
         self.error = None
         if "raw_attributes" in data and "attributes" in data:
             self.ID = data["raw_attributes"][ldap._config["objectID"]][0]
             self.data = data["attributes"]
-            self.name = self._reduce(data["attributes"].get(userconf["displayName"])) or ""
+            self.name = self._reduce(data["attributes"].get(userconf["displayName"], ""))
         else:
             self.ID = self.data = self.name = self.email = None
             self.error = "Not a valid object"
@@ -74,6 +74,11 @@ class SearchResult:
                 self.email = self._reduce(data["attributes"][userconf["contactname"]])
             else:
                 self.email = None
+                self.error = "Missing e-mail address"
+        elif resultType == "group":
+            self.email = self._reduce(data["attributes"].get(groupconf["groupaddr"], ""))
+            self.name = self._reduce(data["attributes"].get(groupconf["groupname"], ""))
+            if not self.email:
                 self.error = "Missing e-mail address"
         else:
             self.error = "Unknown type"
@@ -112,6 +117,8 @@ class SearchResult:
     def userdata(self, props=None):
         if self.type == "contact":
             return self.contactdata(props)
+        elif self.type == "group":
+            return self.groupdata(props)
         self._chkConvert("user")
         ldap = self._ldap
         ldapuser = self.data
@@ -140,6 +147,10 @@ class SearchResult:
                                        else ldapuser[attr] for attr, prop in ldap._userAttributes.items() if attr in ldapuser})
         return userdata
 
+    def groupdata(self, props=None):
+        self._chkConvert("group")
+        return dict(listname=self.email, listType=0, displayname=self.name)
+
 
 @ServiceHub.register("ldap", handleLdapError, maxreloads=3, argspec=((), (orgid,)), argname=argname)
 class LdapService:
@@ -153,7 +164,10 @@ class LdapService:
                   "connection": "ldap_host",
                   "username": "ldap_mail_attr",
                   "searchAttributes": "ldap_user_search_attrs",
-                  "displayName": "ldap_user_displayname"}
+                  "displayName": "ldap_user_displayname",
+                  "groupaddr": "ldap_group_addr",
+                  "groupfilter": "ldap_group_filter",
+                  "groupname": "ldap_group_name"}
 
     @classmethod
     def init(cls):
@@ -199,11 +213,15 @@ class LdapService:
             return common
         if name == "all":
             return common+("*",)
+        if mode == "group":
+            groupconf = self._config["groups"]
+            return common+(groupconf["groupaddr"], groupconf["groupname"])
         userconf = self._config["users"]
         common += (userconf["displayName"],)
         if mode == "user":
             return common+(userconf["username"],)
-        return (common+(userconf["contactname"],)) if self._config["enableContacts"] else common
+        elif mode == "contact":
+            return (common+(userconf["contactname"],)) if self._config["enableContacts"] else common
 
     @classmethod
     def _checkConfig(cls, config):
@@ -233,6 +251,11 @@ class LdapService:
                 config["users"]["contactname"] = key
                 break
         config["enableContacts"] = bool(config["users"].get("contactFilter") and config["users"].get("contactname"))
+        if config["groups"]:
+            for required in ("groupaddr", "groupfilter", "groupname"):
+                if required not in config["groups"] or not config["groups"][required]:
+                    raise KeyError("Missing required config value '{}'"
+                                   .format(cls._configMap.get(required, "groups."+required)))
         return userAttributes
 
     def _matchFilters(self, ID):
@@ -274,7 +297,7 @@ class LdapService:
         return self._searchBase(self._config)
 
     def _search(self, baseFilter, *args, attributes=None, domains=None, filterIncomplete=True, limit=None, userconf=None,
-                **kwargs):
+                types=None, customFilter="", **kwargs):
         """Perform async search query.
 
         Parameters
@@ -293,7 +316,7 @@ class LdapService:
             return list(filter(lambda r: r.error is None, results)) if filterIncomplete else list(results)
 
         def searchPaged(typeFilter, type, *args, **kwargs):
-            filterExpr = "(&{}{})".format(baseFilter, typeFilter) if baseFilter and typeFilter else baseFilter or typeFilter
+            filterExpr = "(&{}{}{})".format(baseFilter, typeFilter, customFilter)
             if not self.conn.search(self._sbase, filterExpr, *args, **kwargs):
                 return []
             results = filtered(SearchResult(self, type, result) for result in self.conn.response)
@@ -306,18 +329,25 @@ class LdapService:
 
         if limit:
             kwargs["paged_size"] = min(limit, kwargs.get("paged_size") or limit)
+        types = types or ("user", "contact", "group")
         userconf = userconf or self._config["users"]
         username = userconf["username"]
         domainexpr = "(|{})".format("".join("({}=*@{})".format(username, d) for d in domains)) if domains is not None else ""
         filterexpr = "".join("("+f+")" for f in userconf.get("filters", ()))
         userFilter = "(&{}{}{})".format(filterexpr, userconf.get("filter", ""), domainexpr)
         with self.lock:
-            results = searchPaged(userFilter, "user", *args, attributes=self._attrSet(attributes, "user"), **kwargs)
-            if limit:
-                limit -= len(results)
-            if self._config["enableContacts"] and (limit is None or limit > 0):
-                results += searchPaged(self._config["users"]["contactFilter"], "contact", *args,
+            results = []
+            if "user" in types:
+                results += searchPaged(userFilter, "user", *args, attributes=self._attrSet(attributes, "user"), **kwargs)
+                limit = None if limit is None else limit-len(results)
+            if self._config["enableContacts"] and "contact" in types and (limit is None or limit > 0):
+                contacts = searchPaged(self._config["users"]["contactFilter"], "contact", *args,
                                        attributes=self._attrSet(attributes, "contact"), **kwargs)
+                results += contacts
+                limit = None if limit is None else limit-len(contacts)
+            if self._config["groups"] and "group" in types and (limit is None or limit > 0):
+                results += searchPaged(self._config["groups"]["groupfilter"], "group", *args,
+                                       attributes=self._attrSet(attributes, "group"), **kwargs)
         return results
 
     @classmethod
@@ -485,7 +515,8 @@ class LdapService:
             return None
         return response[0]
 
-    def searchUsers(self, query=None, domains=None, limit=None, pageSize=1000, filterIncomplete=True):
+    def searchUsers(self, query=None, domains=None, limit=None, pageSize=1000, filterIncomplete=True, types=None,
+                    customFilter="", attributes=None):
         """Search for ldap users matching the query.
 
         Parameters
@@ -498,6 +529,10 @@ class LdapService:
             Maximum number of results to return or None for no limit. Default is None.
         pageSize : int, optional
             Perform a paged search with given page size. Default is 1000.
+        types: iterable, optional
+            Only search for specified types. Default is ("users", "contacts", "groups")
+        customFilter: str, optional
+            Custom filter expression to add to the search. Default is ""
 
         Returns
         -------
@@ -513,7 +548,9 @@ class LdapService:
                                 domains=domains,
                                 paged_size=pageSize,
                                 limit=limit,
-                                filterIncomplete=filterIncomplete)
+                                filterIncomplete=filterIncomplete,
+                                types=types,
+                                customFilter=customFilter)
         return exact+response
 
     @classmethod
