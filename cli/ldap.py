@@ -107,6 +107,10 @@ def _getOrgName(orgID):
     return org.name
 
 
+def _isSuccess(code):
+    return code//100 == 2
+
+
 def _userOrgFilter(args, orgIDs=None):
     from orm.users import Users
     return (Users.orgID.in_(orgIDs or _getOrgIDs(args)),)
@@ -131,14 +135,14 @@ def _getCandidate(cli, expr, ldap):
         pass
     matches = ldap.searchUsers(expr)
     if len(matches) == 0:
-        cli.print(cli.col("Could not find user matching '{}'".format(expr), "red"))
+        cli.print(cli.col("Could not find LDAP object matching '{}'".format(expr), "red"))
         return None
     if len(matches) == 1:
         return matches[0]
     for match in matches:
         if match.email == expr:
             return match
-    cli.print(cli.col("'{}' is ambiguous: ", "red"))
+    cli.print(cli.col(f"'{expr}' is ambiguous: ", "red"))
     cli.print(cli.col("\n  ".join(match.email for match in matches), "yellow"))
     return None
 
@@ -148,239 +152,133 @@ def _getCandidates(expr, ldap):
     return [candidate] if candidate is not None else ldap.searchUsers(expr)
 
 
-def _downsyncUser(args, user, externID=None):
+def _downsync(args, user, externID=None, syncMembers=False, **kwargs):
+    from tools.ldap import downsyncGroup, downsyncUser
     cli = args._cli
-    from orm import DB
-    from services import Service, ServiceUnavailableError
-    from sqlalchemy.exc import IntegrityError
-    from tools.DataModel import MismatchROError, InvalidAttributeError
 
     cli.print("Synchronizing {}...".format(user.username), end="", flush=True)
 
-    userdata = None
-    with Service("ldap", user.orgID, errors=Service.SUPPRESS_INOP) as ldap:
-        userdata = ldap.downsyncUser(externID or user.externID, user.properties)
-
-    if userdata is None:
-        return "Failed to get user data"
-    try:
-        user.fromdict(userdata)
-        user.externID = externID or user.externID
-        DB.session.commit()
-    except (InvalidAttributeError, MismatchROError, ValueError) as err:
-        DB.session.rollback()
-        return err.args[0]
-    except ServiceUnavailableError:
-        DB.session.commit()
-        cli.print(cli.col("Failed to synchronize user store - service not available", "yellow"))
-        return
-    except IntegrityError as err:
-        DB.session.rollback()
-        return err.orig.args[1]
-    cli.print(cli.col("success.", "green"))
+    isGroup = user.properties["displaytypeex"] == 1
+    if not isGroup:
+        message, code = downsyncUser(user, externID)
+    else:
+        from orm.mlists import MLists
+        mlist = MLists.query.filter(MLists.listname == user.username).first()
+        if not mlist:
+            cli.print(cli.col(f"Failed to synchronize {user.username}: no such group"))
+            return False
+        message, code = downsyncGroup(mlist, externID)
+    cli.print(cli.col(message, "green" if _isSuccess(code) else "red"))
+    if syncMembers and isGroup:
+        _syncGroupMembers(args, mlist.user.orgID, mlist.user.externID)
+    return _isSuccess(code)
 
 
-def _downsyncGroup(args, mlist, externID=None):
+def _importContact(args, candidate, ldap, orgID, syncExisting=False, **kwargs):
+    from tools.ldap import importContact
+    styleGood = {"color": "green"}
+    styleNeutral = {"attrs": ["dark"]}
+    styleBad = {"color": "red"}
+
     cli = args._cli
-    from orm import DB
-    from services import Service
-    from sqlalchemy.exc import IntegrityError
-    from tools.DataModel import MismatchROError, InvalidAttributeError
-
-    cli.print("Synchronizing {}...".format(mlist.listname), end="", flush=True)
-
-    listdata = None
-    with Service("ldap", mlist.user.orgID, errors=Service.SUPPRESS_INOP) as ldap:
-        listdata = ldap.downsyncUser(externID or mlist.user.externID, mlist.user.properties)
-
-    if listdata is None:
-        return "Failed to get group data"
-    try:
-        mlist.fromdict(listdata)
-        mlist.user.externID = externID or mlist.user.externID
-        DB.session.commit()
-    except (InvalidAttributeError, MismatchROError, ValueError) as err:
-        DB.session.rollback()
-        return err.args[0]
-    except IntegrityError as err:
-        DB.session.rollback()
-        return err.orig.args[1]
-    cli.print(cli.col("success.", "green"))
+    cli.print("Importing {}...".format(candidate.email), end="", flush=True)
+    synced, imported, errors = importContact(candidate, ldap, orgID, syncExisting)
+    cli.print(cli.col(f"{len(synced)} synced", **styleGood if synced else styleNeutral)+", ", end="")
+    cli.print(cli.col(f"{len(imported)} imported", **styleGood if imported else styleNeutral)+", ", end="")
+    cli.print(cli.col(f"{len(errors)} failed", **styleBad if errors else styleNeutral))
+    for error in errors:
+        cli.print(cli.col("  "+error[0], "yellow"))
+    return len(synced)+len(imported), len(errors)
 
 
-def _importContact(args, candidate, ldap, orgID, syncExisting=False):
-    from orm.domains import Domains
-    from orm.users import Users
+def _importUser(args, candidate, ldap, **kwargs):
+    from tools.ldap import importUser
     cli = args._cli
-    success = failed = 0
-    domains = Domains.query.filter(Domains.orgID == orgID).with_entities(Domains.ID, Domains.domainname).all()
-    existing = Users.query.filter(Users.orgID == orgID, Users.externID == candidate.ID).all()
-    if syncExisting:
-        for user in existing:
-            error = _downsyncUser(args, user)
-            if error:
-                failed += 1
-                cli.print(cli.col(error, "red"))
-            else:
-                success += 1
-    existingDomains = {user.domainID for user in existing}
-    domains = [domain for domain in domains if domain.ID not in existingDomains]
-    for domain in domains:
-        cli.print("Importing {} ({})...".format(candidate.email, domain.domainname), end="", flush=True)
-        contactData = ldap.downsyncUser(candidate.ID)
-        contactData["domainID"] = domain.ID
-        result, code = Users.mkContact(contactData, candidate.ID)
-        if code != 201:
-            failed += 1
-            cli.print(cli.col(result, "red"))
-        else:
-            success += 1
-            cli.print(cli.col("success.", "green"))
-    return success, failed
-
-
-def _importUser(args, candidate, ldap):
-    cli = args._cli
-    from orm.domains import Domains
-    from orm.misc import DBConf
-    from orm.users import Users
-    from tools.misc import RecursiveDict
-
-    existing = Users.query.filter(Users.username == candidate.email).first()
-    if existing:
-        if existing.externID == candidate.ID:
-            return _downsyncUser(args, existing)
-        if args.force:
-            cli.print(cli.col("Changing linked LDAP object of '{}' to {}"
-                              .format(candidate.email, ldap.escape_filter_chars(candidate.ID)), "yellow"))
-            return _downsyncUser(args, existing, candidate.ID)
-        msg = "and is linked to another LDAP object" if existing.externID else "locally"
-        return candidate.type.capitalize()+" already exists "+msg
 
     cli.print("Importing {} {}...".format(candidate.type, candidate.email), end="", flush=True)
-
-    domain = Domains.query.filter(Domains.domainname == candidate.email.split("@")[1]).with_entities(Domains.ID).first()
-    defaults = RecursiveDict({"user": {}, "domain": {}})
-    defaults.update(DBConf.getFile("grommunio-admin", "defaults-system", True))
-    defaults.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domain.ID)))
-    defaults = defaults.get("user", {})
-
-    userdata = ldap.downsyncUser(candidate.ID)
-    defaults.update(RecursiveDict(userdata))
-    defaults["lang"] = args.lang or defaults.get("lang", "")
-    result, code = Users.create(defaults, externID=candidate.ID)
-    if code != 201:
-        return result
-    cli.print(cli.col("success.", "green"))
+    result, code = importUser(candidate, ldap, args.force, args.lang)
+    if not _isSuccess(code):
+        cli.print(cli.col(result, "red"))
+        return 0, 1
+    cli.print(cli.col(f"imported as user #{result.ID}", "green"))
+    return 1, 0
 
 
-def _importGroup(args, candidate, ldap):
+def _importGroup(args, candidate, ldap, syncMembers=False, **kwargs):
+    from tools.ldap import importGroup
     cli = args._cli
-    from orm import DB
-    from orm.mlists import MLists
-    from orm.users import Users
-    xuser = Users.query.filter(Users.username == candidate.email).first()
-    xlist = MLists.query.filter(MLists.listname == candidate.email).first()
-    if xuser and xlist:
-        if xuser.externID == candidate.ID:
-            return _downsyncGroup(args, xlist)
-        if args.force:
-            cli.print(cli.col("Changing linked LDAP object of '{}' to {}"
-                              .format(candidate.email, ldap.escape_filter_chars(candidate.ID)), "yellow"))
-            return _downsyncGroup(args, xlist, candidate.ID)
-        msg = "and is linked to another LDAP object" if xuser.externID else "locally"
-        return candidate.type.capitalize()+" already exists "+msg
 
-    cli.print("Importing group {}...".format(candidate.email), end="", flush=True)
-    listdata = ldap.downsyncUser(candidate.ID)
-    error = MLists.checkCreateParams(listdata)
-    if error:
-        return error
-    try:
-        mlist = MLists(listdata)
-        mlist.user.externID = candidate.ID
-        DB.session.add(mlist)
-        DB.session.commit()
-    except Exception as err:
-        return type(err).__name__+": "+" - ".join(str(arg) for arg in err.args)
-    cli.print(cli.col("success.", "green"))
+    cli.print("Importing {}...".format(candidate.email), end="", flush=True)
+    result, code = importGroup(candidate, ldap, args.force)
+    if not _isSuccess(code):
+        cli.print(cli.col(result, "red"))
+        return 0, 1
+    cli.print(cli.col(f"imported as user #{result.user.ID}/group #{result.ID}", "green"))
+    if syncMembers:
+        _syncGroupMembers(args, result.user.orgID, candidate.ID)
+    return 1, 0
 
 
-def _syncGroupMembers(args, orgID):
+def _import(args, candidate, ldap, orgID, **kwargs):
     cli = args._cli
-    from orm import DB
-    from orm.mlists import Associations, MLists
+    if candidate.type == "contact":
+        return _importContact(args, candidate, ldap, orgID, **kwargs)
+    targetOrg = _getUsernameOrg(candidate.email)
+    if targetOrg != orgID:
+        cli.print(cli.col("Skipping '{}': invalid domain".format(candidate.email), "red"))
+        return 0, 1
+    if candidate.type == "group":
+        return _importGroup(args, candidate, ldap, **kwargs)
+    if candidate.type == "user":
+        return _importUser(args, candidate, ldap, **kwargs)
+    cli.print(cli.col(f"Unknown object type {candidate.type}"))
+
+
+def _syncGroupMembers(args, orgID, groupID=None):
     from orm.users import Users
     from services import Service
+    from tools.ldap import syncGroupMembers
+    cli = args._cli
 
-    users = {user.externID: user.username for user in
-             Users.query.filter(Users.orgID == orgID, Users.externID != None).with_entities(Users.username, Users.externID)}
+    users = {user.externID for user in
+             Users.query.filter(Users.orgID == orgID, Users.externID != None).with_entities(Users.externID)}
 
     with Service("ldap", orgID) as ldap:
-        for ldapgroup in ldap.searchUsers(types=("group",)):
-            group = MLists.query.filter(MLists.listname == ldapgroup.email).first()
-            if group is None or group.user.orgID != orgID:
-                continue
+        ldapgroups = [ldap.getUserInfo(groupID)] if groupID else ldap.searchUsers(types=("group",))
+        for ldapgroup in ldapgroups:
             cli.print(f"Synchronizing members of group {ldapgroup.email}...", end="", flush=True)
-            assocs = {assoc.username: assoc for assoc in Associations.query.filter(Associations.listID == group.ID).all()}
-            add = 0
-            for member in ldap.searchUsers(attributes="idonly", customFilter=f"(memberOf={ldapgroup.DN})"):
-                assoc = assocs.pop(member.email, None)
-                if assoc or member.ID not in users:  # Do nothing if already associated or not known
-                    continue
-                add += 1
-                DB.session.add(Associations(member.email, group.ID))
-            remove = len(assocs)
-            for assoc in assocs.values():
-                DB.session.delete(assoc)
-            DB.session.commit()
-            cli.print(cli.col(f"{add} added, {remove} removed" if add+remove else "no change", "green"))
+            add, remove = syncGroupMembers(orgID, ldapgroup, ldap, users)
+            if None in (add, remove):
+                cli.print(cli.col("group not found", attrs=["dark"]))
+            else:
+                cli.print(cli.col(f"{add} added, {remove} removed" if add+remove else "no changes", "green"))
 
 
 def _downsyncOrg(args, orgID, ldap):
     cli = args._cli
     from orm.domains import Domains
-    from orm.mlists import MLists
     from orm.users import Users
     domainnames = [d.domainname for d in Domains.query.filter(Domains.orgID == orgID).with_entities(Domains.domainname)]
     if len(domainnames) == 0:
         cli.print(cli.col("Organization '{}' has no domains - skipping.".format(_getOrgName(orgID)), "yellow"))
         return (0, 0)
-    synced = {}
+    synced = set()
     success = failed = 0
     for user in Users.query.filter(Users.orgID == orgID, Users.externID != None):
-        if user.properties.get("displaytypeex") == 1:
-            mlist = MLists.query.filter(MLists.listname == user.username).first()
-            error = _downsyncGroup(args, mlist) if mlist else f"Group {user.username} not found"
-        else:
-            error = _downsyncUser(args, user)
-        if error:
-            cli.print(cli.col(error, "red"))
-            failed += 1
-        else:
-            if user.status != Users.CONTACT:
-                synced[user.externID] = user.username
-            success += 1
+        result = _downsync(args, user)
+        if user.status != Users.CONTACT:
+            synced.add(user.username)
+        success += result
+        failed += not result
+
     if args.complete:
         from services import Service
         with Service("ldap", orgID) as ldap:
             candidates = [candidate for candidate in ldap.searchUsers() if candidate.email not in synced]
             for candidate in candidates:
-                if candidate.type == "contact":
-                    os, of = _importContact(args, candidate, ldap, orgID, False)
-                    success += os
-                    failed += of
-                    continue
-                if "@" not in candidate.email or candidate.email.split("@", 1)[1] not in domainnames:
-                    cli.print(cli.col("Skipping '{}': invalid domain.".format(candidate.email), "yellow"))
-                    failed += 1
-                    continue
-                error = (_importGroup if candidate.type == "group" else _importUser)(args, candidate, ldap)
-                if error:
-                    failed += 1
-                    cli.print(cli.col(error, "red"))
-                else:
-                    success += 1
+                os, of = _import(args, candidate, ldap, orgID, syncExisting=False)
+                success += os
+                failed += of
     _syncGroupMembers(args, orgID)
     return (success, failed)
 
@@ -392,17 +290,11 @@ def _downsyncSpecific(args, orgIDs):
     from orm.users import Users
     success = failed = 0
     for username in args.user:
-        users = Users.query.filter(Users.username == username).all()
-        if len(users) > 1:
-            cli.print(cli.col("Skipping '{}': Multiple targets found".format(username), "red"))
-        user = users[0] if len(users) else None
+        user = Users.query.filter(Users.username == username).first()
         if user:
-            error = _downsyncUser(args, user)
-            if error:
-                cli.print(cli.col(error, "red"))
-                failed += 1
-            else:
-                success += 1
+            result = _downsync(args, user, syncMembers=True)
+            success += result
+            failed += not result
         else:
             from services import Service
             with Service("ldap", orgIDs[0]) as ldap:
@@ -410,22 +302,9 @@ def _downsyncSpecific(args, orgIDs):
                 if not candidate:
                     failed += 1
                     continue
-                if candidate.type == "contact":
-                    os, of = _importContact(args, candidate, ldap, orgIDs[0], True)
-                    success += os
-                    failed += of
-                    continue
-                orgID = _getUsernameOrg(candidate.email)
-                if orgID != orgIDs[0]:
-                    cli.print(cli.col("Skipping '{}': invalid domain".format(candidate.email), "red"))
-                    failed += 1
-                    continue
-                error = _importUser(args, candidate, ldap)
-                if error:
-                    cli.print(cli.col(error, "red"))
-                    failed += 1
-                else:
-                    success += 1
+                os, of = _import(args, candidate, ldap, orgIDs[0], syncExisting=True, syncMembers=True)
+                success += os
+                failed += of
     return success, failed
 
 
