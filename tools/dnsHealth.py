@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2023 grommunio GmbH
 
-from dns import resolver
+from dns import resolver, reversename
 import socket
 
 from .config import Config
@@ -85,13 +85,23 @@ def ip(domain: str):
 
 
 def checkMX(domain: str):
-    res = {"internalDNS": None, "externalDNS": None}
+    res = {
+        "internalDNS": None,
+        "externalDNS": None,
+        "reverseLookup": None,
+        "mxDomain": None,
+    }
     try:
         mxRecords = resolver.query(domain, "MX")
-        mxDomain = mxRecords[0].exchange
+        mxDomain = mxRecords[0].exchange # Mail-domain of domain
+        res["mxDomain"] = str(mxDomain)
         try:
-            mxResolved = externalResolver.query(mxDomain, "A")
+            mxResolved = externalResolver.query(mxDomain, "A") # IP of mail-domain
             res["externalDNS"] = ", ".join([str(r) for r in mxResolved])
+
+            # Reverse lookup
+            addresses = [reversename.from_address(str(r)) for r in mxResolved]
+            res["reverseLookup"] = str(resolver.query(addresses[0], "PTR")[0])
         except Exception:
             pass
         try:
