@@ -40,6 +40,7 @@ def fullDNSCheck(domain: str):
     externalIp = checkMyIP()
     mxRecords = checkMX(domain)
     autodiscover = checkAutodiscover(domain)
+    autodiscoverSRV = checkAutodiscoverSRV(domain)
     autoconfig = checkAutoconfig(domain)
     txt = checkTXT(domain)
     dkim = checkDKIM(domain)
@@ -52,6 +53,7 @@ def fullDNSCheck(domain: str):
         "externalIp": externalIp,
         "mxRecords": mxRecords,
         "autodiscover": autodiscover,
+        "autodiscoverSRV": autodiscoverSRV,
         "autoconfig": autoconfig,
         "txt": txt,
         "dkim": dkim,
@@ -124,12 +126,26 @@ def checkAutoconfig(domain: str):
 
 def checkAllSRV(domain: str):
     res = {f"{subdomain}SRV": defaultDNSQuery(f"_{subdomain}._tcp.", domain, recordType="SRV")
-           for subdomain in ["autodiscover", "submission", "imap", "imaps", "pop3", "pop3s", "caldav", "caldavs", "carddav", "carddavs"]}
+           for subdomain in ["submission", "imap", "imaps", "pop3", "pop3s", "caldav", "caldavs", "carddav", "carddavs"]}
     return res
 
 
 def checkAutodiscoverSRV(domain: str):
-    return defaultDNSQuery("_autodiscover._tcp.", domain, recordType="SRV")
+    res = None
+    resExternal = None
+    adIp = None
+    try:
+        records = resolver.query("_autodiscover._tcp." + domain, "SRV")
+        res = ", ".join([str(r) for r in records])
+    except Exception:
+        pass
+    try:
+        records = externalResolver.query("_autodiscover._tcp." + domain, "SRV")
+        resExternal = ", ".join([str(r) for r in records])
+        adIp = ip(str(records[0]).split(" ")[3])
+    except Exception:
+        pass
+    return {"internalDNS": res, "externalDNS": resExternal, "ip": adIp }
 
 
 def checkTXT(domain: str):
@@ -158,11 +174,11 @@ def checkDMARC(domain: str):
 
 
 def checkCaldavTxt(domain: str):
-    return defaultDNSQuery("_caldavs._tcp", domain, recordType="TXT", path="/dav")
+    return defaultDNSQuery("_caldavs._tcp.", domain, recordType="TXT", path="/dav")
 
 
 def checkCarddavTxt(domain: str):
-    return defaultDNSQuery("_carddavs._tcp", domain, recordType="TXT", path="/dav")
+    return defaultDNSQuery("_carddavs._tcp.", domain, recordType="TXT", path="/dav")
 
 
 def defaultDNSQuery(subdomain: str, domain: str, recordType="A", path=""):
