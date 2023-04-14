@@ -619,11 +619,12 @@ class Users(DataModel, DB.Base, NotifyTable):
         str
             Error message or None if successful.
         """
-        from .mlists import Associations
+        from .mlists import Associations, MLists
         if self.ID == 0:
             raise ValueError("Cannot delete superuser")
         Forwards.query.filter(Forwards.username == self.username).delete(synchronize_session=False)
         Associations.query.filter(Associations.username == self.username).delete(synchronize_session=False)
+        MLists.query.filter(MLists.listname == self.username).delete(synchronize_session=False)
         if self.chatID is not None:
             from services import Service
             with Service("chat", errors=Service.SUPPRESS_ALL) as chat:
