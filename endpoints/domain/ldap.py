@@ -11,7 +11,7 @@ from api.core import API, secure
 from api.security import checkPermissions
 
 from services import Service, ServiceUnavailableError
-from tools.DataModel import InvalidAttributeError, MismatchROError
+from tools.ldap import downsyncObject, importObject
 from tools.permissions import SystemAdminPermission, SystemAdminROPermission, DomainAdminPermission, DomainAdminROPermission
 from tools.permissions import OrgAdminPermission
 from tools.tasq import TasQServer
@@ -94,47 +94,11 @@ def ldapDownsyncDomain(domainID):
     return ldapDownsync(domainID=domainID)
 
 
-def importContact(candidate, ldap, orgID, domains):
-    from orm.domains import Domains
-    from orm.users import Users
-    imported = synced = failed = 0
-    domains = Domains.query.filter(Domains.orgID == orgID, Domains.ID.in_([domain.ID for domain in domains]))\
-                           .with_entities(Domains.ID, Domains.domainname).all()
-    existing = Users.query.filter(Users.domainID.in_(domain.ID for domain in domains), Users.externID == candidate.ID).all()
-    for user in existing:
-        userdata = ldap.downsyncUser(candidate.ID, user.properties)
-        try:
-            user.fromdict(userdata)
-            DB.session.commit()
-            synced += 1
-        except (InvalidAttributeError, MismatchROError, ValueError):
-            DB.session.rollback()
-            failed += 1
-    existingDomains = {user.domainID for user in existing}
-    domains = [domain for domain in domains if domain.ID not in existingDomains]
-    for domain in domains:
-        contactData = ldap.downsyncUser(candidate.ID)
-        contactData["domainID"] = domain.ID
-        result, code = Users.mkContact(contactData, candidate.ID)
-        if code != 201:
-            failed += 1
-        else:
-            user = result
-            imported += 1
-    if synced+imported == 1 and not failed:
-        return jsonify(user.fulldesc()), (201 if imported else 200)
-    msg = ", ".join("{} {}".format(count, cat)
-                    for count, cat in ((synced, "synced"), (imported, "imported"), (failed, "failed")))
-    return jsonify(message=msg)
-
-
 @API.route(api.BaseRoute+"/domains/ldap/importUser", methods=["POST"])
 @secure(requireDB=True, authLevel="user")
 def importLdapUser():
     checkPermissions(DomainAdminPermission("*"))
     from services.ldap import LdapService
-    from orm.domains import Domains
-    from orm.users import Users
     orgID, domains = _getTarget()
     ldap = Service("ldap", orgID).service()
 
@@ -149,53 +113,11 @@ def importLdapUser():
     lang = request.args.get("lang", "")
     userinfo = ldap.getUserInfo(ID)
     if userinfo is None:
-        return jsonify(message="LDAP user not found"), 404
-    if userinfo.type == "contact":
-        return importContact(userinfo, ldap, orgID, domains)
+        return jsonify(message="LDAP object not found"), 404
 
-    domain = Domains.query.filter(Domains.domainname == userinfo.email.split("@")[1], Domains.orgID == orgID)\
-                          .with_entities(Domains.ID).first()
-    if domain is None:
-        return jsonify(message="Cannot import user: Domain not found"), 400
-    checkPermissions(DomainAdminPermission(domain.ID))
-    user = Users.query.filter(Users.externID == ID).first() or\
-           Users.query.filter(Users.username == userinfo.email).first()
-    if user is not None:
-        if user.externID != ID and not force == "true":
-            return jsonify(message="Cannot import user: User exists " +
-                           ("locally" if user.externID is None else "and is associated with another LDAP object")), 409
-        userdata = ldap.downsyncUser(ID, user.properties)
-        try:
-            user.fromdict(userdata)
-            try:
-                user.syncStore()
-            except Exception:
-                pass
-            user.externID = ID
-            DB.session.commit()
-            return jsonify(user.fulldesc()), 200
-        except (InvalidAttributeError, MismatchROError, ValueError) as err:
-            DB.session.rollback()
-            return jsonify(message=err.args[0]), 500
+    result, code = importObject(userinfo, ldap, orgID=orgID, force=force, lang=lang, syncMembers=True, syncExisting=True)
 
-    from orm.misc import DBConf
-    from tools.misc import RecursiveDict
-    defaults = RecursiveDict({"user": {}, "domain": {}})
-    defaults.update(DBConf.getFile("grommunio-admin", "defaults-system", True))
-    defaults.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domain.ID)))
-    defaults = defaults.get("user", {})
-
-    userdata = ldap.downsyncUser(ID)
-    if userdata is None:
-        return jsonify(message="Error retrieving user"), 404
-    defaults.update(RecursiveDict(userdata))
-    defaults["lang"] = lang or defaults.get("lang", "")
-    result, code = Users.create(defaults, externID=ID)
-    if code != 201:
-        return jsonify(message="Failed to create user: "+result), code
-    DB.session.add(result)
-    DB.session.commit()
-    return jsonify(result.fulldesc()), 201
+    return jsonify(result), code
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>/downsync", methods=["PUT"])
@@ -206,18 +128,8 @@ def updateLdapUser(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
-    with Service("ldap", user.orgID) as ldap:
-        ldapID = ldap.unescapeFilterChars(request.args["ID"]) if "ID" in request.args else user.externID
-        if ldapID is None:
-            return jsonify(message="Cannot synchronize user: Could not determine LDAP object"), 400
-        userdata = ldap.downsyncUser(ldapID, dict(user.properties.items()))
-        if userdata is None:
-            return jsonify(message="Cannot synchronize user: LDAP object not found"), 404
-        user.fromdict(userdata)
-        user.externID = ldapID
-        user.lang = user.lang or request.args.get("lang", "")
-        DB.session.commit()
-        return jsonify(user.fulldesc())
+    message, code = downsyncObject(user)
+    return jsonify(user.fulldesc())
 
 
 @API.route(api.BaseRoute+"/domains/ldap/check", methods=["GET", "DELETE"])

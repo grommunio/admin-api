@@ -86,7 +86,7 @@ class Worker:
                 import traceback
                 self.log("ERROR", traceback.format_exc(5))
                 task.state = Task.ERROR
-                task.message = " - ".join(str(arg) for arg in err.args)[:160]
+                task.message = type(err).__name__+": "+" - ".join(str(arg) for arg in err.args)[:160]
         task.state = max(task.state, Task.COMPLETED)
         task.message = task.message or "Completed ({:.1f}ms)".format(1000*duration)
         return task
@@ -133,84 +133,25 @@ class Worker:
             client = exmdb.ExmdbQueries(host, exmdb.port, task.params["homedir"], task.params["private"])
             client.deleteFolder(task.params["homedir"], task.params["folderID"], task.params.get("clear", False))
 
-    def _ldapSyncUser(self, user, ldap):
-        from orm import DB
-        from services import ServiceUnavailableError
-        from sqlalchemy.exc import IntegrityError
-        from tools.DataModel import InvalidAttributeError, MismatchROError
-        import traceback
-        try:
-            userdata = ldap.downsyncUser(user.externID, dict(user.properties.items()))
-            if userdata is None:
-                return {"ID": user.ID, "username": user.username, "code": 404, "message": "LDAP object not found"}
-            user.fromdict(userdata)
-            DB.session.commit()
+    def _ldapSyncUser(self, user):
+        from tools.ldap import downsyncObject
+        result, code = downsyncObject(user)
+        if code == 200:
             return {"ID": user.ID, "username": user.username, "code": 200, "message": "Synchronization successful"}
-        except (MismatchROError, InvalidAttributeError, ValueError):
-            self.log("ERROR", traceback.format_exc(2))
-            DB.session.rollback()
-            return {"ID": user.ID, "username": user.username, "code": 500, "message": "Synchronization error"}
-        except IntegrityError as err:
-            self.log("ERROR", traceback.format_exc(2))
-            DB.session.rollback()
-            return {"ID": user.ID, "username": user.username, "code": 400,
-                    "message": "Database integrity error: "+err.orig.args[1]}
-        except ServiceUnavailableError as err:
-            DB.session.rollback()
-            return {"ID": user.ID, "username": user.username, "code": 503, "message": err.args[0]}
-        except Exception:
-            self.log("ERROR", traceback.format_exc(2))
-            DB.session.rollback()
-            return {"ID": user.ID, "username": user.username, "code": 500, "message": "Unknown error"}
+        return {"ID": user.ID, "username": user.username, "code": code, "message": result}
 
     def _ldapSyncImportUser(self, candidate, ldap, lang):
-        from orm.domains import Domains
-        from orm.misc import DBConf
-        from orm.users import Users
-        from tools.misc import RecursiveDict
-
-        existing = Users.query.filter(Users.username == candidate.email).first()
-        if existing:
-            if existing.externID == candidate.ID:
-                return self._ldapSyncUser(existing, ldap)
-            msg = "and is linked to another LDAP object" if existing.externID else "locally"
-            return dict(username=candidate.email, code=409, message="User already exists "+msg)
-
-        domain = Domains.query.filter(Domains.domainname == candidate.email.split("@")[1]).with_entities(Domains.ID).first()
-        if domain is None:
-            return dict(username=candidate.email, code=400, message="Invalid domain.")
-        defaults = RecursiveDict({"user": {}, "domain": {}})
-        defaults.update(DBConf.getFile("grommunio-admin", "defaults-system", True))
-        defaults.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domain.ID)))
-        defaults = defaults.get("user", {})
-
-        userdata = ldap.downsyncUser(candidate.ID)
-        defaults.update(RecursiveDict(userdata))
-        defaults["lang"] = lang or defaults.get("lang", "")
-        result, code = Users.create(defaults, externID=candidate.ID)
+        from tools.ldap import importObject
+        result, code = importObject(candidate, ldap, lang=lang)
         if code == 201:
-            return dict(ID=result.ID, username=result.username, code=201, message="User created")
+            return dict(ID=result["ID"], username=result["username"], code=201, message="User created")
         return dict(username=candidate.email, code=code, message=result)
 
     def _ldapSyncImportContact(self, candidate, ldap, orgID, domains):
-        from orm.domains import Domains
-        from orm.users import Users
-        domains = Domains.query.filter(Domains.orgID == orgID, Domains.ID.in_([domain.ID for domain in domains]))\
-                               .with_entities(Domains.ID, Domains.domainname).all()
-        existing = Users.query.filter(Users.domainID.in_(domain.ID for domain in domains), Users.externID == candidate.ID)\
-                              .with_entities(Users.domainID).all()
-        existingDomains = {user.domainID for user in existing}
-        domains = [domain for domain in domains if domain.ID not in existingDomains]
-        status = []
-        for domain in domains:
-            contactData = ldap.downsyncUser(candidate.ID)
-            contactData["domainID"] = domain.ID
-            result, code = Users.mkContact(contactData, candidate.ID)
-            if code == 201:
-                status.append(dict(ID=result.ID, username=result.username, code=201, message="Contact created"))
-            else:
-                status.append(dict(username=candidate.email, code=code, message=result))
-        return status
+        from tools.ldap import importContact
+        synced, imported, failed = importContact(candidate, ldap, orgID, domains=domains)
+        return [dict(ID=user.ID, username=user.username, code=201, message="Contact created") for user in imported] +\
+               [dict(username=candidate.email, code=code, message=message) for message, code in failed]
 
     def _ldapSyncImport(self, ldap, orgID, domains, synced, lang, bump):
         syncStatus = []
@@ -219,14 +160,31 @@ class Worker:
         for candidate in candidates:
             bump()
             if candidate.type == "contact":
-                syncStatus += self._ldapSyncImportContact(candidate, ldap, orgID, domains)
+                syncStatus += self._ldapSyncImportContact(candidate, ldap, orgID, [domain.ID for domain in domains])
                 continue
-            if "@" not in candidate.email or (domainnames and candidate.email.split("@", 1)[1] not in domainnames):
+            if "@" not in candidate.email or (domainnames is not None and candidate.email.split("@", 1)[1] not in domainnames):
                 syncStatus.append(dict(username=candidate.email, code=400, message="Invalid domain."))
                 continue
-            status = self._ldapSyncImportUser(candidate, ldap, lang)
-            syncStatus.append(status)
+            syncStatus.append(self._ldapSyncImportUser(candidate, ldap, lang))
         return syncStatus
+
+    def _ldapSyncGroupMembers(self, orgID, ldap):
+        from orm.users import Users
+        from tools.ldap import syncGroupMembers
+        self.message = "Synchronizing group members"
+        self.bump()
+        users = {user.externID for user in
+                 Users.query.filter(Users.orgID == orgID, Users.externID != None).with_entities(Users.externID)}
+        status = []
+        for ldapgroup in ldap.searchUsers(types=("group",)):
+            add, remove = syncGroupMembers(orgID, ldapgroup, ldap, users)
+            if None in (add, remove):
+                status.append(dict(username=ldapgroup.email, code=404, message="Group not found"))
+            else:
+                status.append(dict(username=ldapgroup.email, code=200,
+                                   message=f"{add} added to/{remove} removed from member list"
+                                   if add+remove else "member list unchanged"))
+        return status
 
     def ldapSync(self, task):
         def bump():
@@ -240,7 +198,7 @@ class Worker:
         def statusCat(code):
             return "created" if code == 201 else "synced" if code == 200 else "error"
 
-        def updateMessage(task, counts):
+        def updateMessage():
             task.message = "{}/{} synced".format(counts["synced"], counts["sync"])
             if counts["created"]:
                 task.message += ", {} created".format(counts["created"])
@@ -261,18 +219,17 @@ class Worker:
         Aliases.NTactive(False)
         Users.NTactive(False)
 
+        domainFilter = ()
         if domainID is not None:
-            domains = Domains.query.filter(Domains.ID == domainID)\
-                                   .with_entities(Domains.ID, Domains.domainname, Domains.orgID).all()
-            orgIDs = [domains[0].orgID]
+            domainFilter = (Domains.ID == domainID,)
+            domain = Domains.query.filter(Domains.ID == domainID).with_entities(Domains.orgID).first()
+            orgIDs = [domain.orgID]
             userfilter = [Users.domainID == domainID]
         elif orgID is not None:
-            domains = Domains.query.filter(Domains.orgID == orgID).with_entities(Domains.ID, Domains.domainname).all()
             orgIDs = [orgID]
             userfilter = [Users.orgID == orgID]
         else:
             orgIDs = [0]+OrgParam.ldapOrgs()
-            domains = Domains.query.with_entities(Domains.ID, Domains.domainname).all()
             userfilter = ()
 
         users = Users.query.filter(Users.externID != None, *userfilter).all()
@@ -280,14 +237,10 @@ class Worker:
         syncStatus = []
         synced = set()
 
-        Aliases.NTactive(True)
-        Users.NTactive(True)
-
         for user in users:
             bump()
             try:
-                with Service("ldap", user.orgID) as ldap:
-                    status = self._ldapSyncUser(user, ldap)
+                status = self._ldapSyncUser(user)
                 syncStatus.append(status)
                 counts[statusCat(status["code"])] += 1
                 if status["code"] == 200:
@@ -298,20 +251,24 @@ class Worker:
 
         if task.params.get("import"):
             for orgID in orgIDs:
+                domains = Domains.query.filter(Domains.orgID == orgID, *domainFilter)\
+                                       .with_entities(Domains.ID, Domains.domainname).all()
+                ldap = Service("ldap", orgID).service()
                 try:
-                    with Service("ldap", orgID) as ldap:
-                        status = self._ldapSyncImport(ldap, orgID, domains, synced, task.params.get("lang"), bump)
+                    status = self._ldapSyncImport(ldap, orgID, domains, synced, task.params.get("lang"), bump)
                     counts["synced"] += sum(1 for s in status if s["code"] == 200)
                     counts["created"] += sum(1 for s in status if s["code"] == 201)
                     counts["error"] += sum(1 for s in status if s["code"] not in (200, 201))
                     syncStatus += status
+                    self._ldapSyncGroupMembers(orgID, ldap)
                 except ServiceUnavailableError:
                     pass
 
         Aliases.NTactive(True)
         Users.NTactive(True)
 
-        updateMessage(task, counts)
+
+        updateMessage()
         task.message += " ({:.1f}s)".format(time.time()-start)
         task.params["result"] = syncStatus
 
@@ -587,7 +544,7 @@ class TasQServer:
                     from orm.misc import DB, TasQ
                     dbtask = TasQ.query.filter(TasQ.ID == task.ID).first()
                     if dbtask is not None:
-                        dbtask.message = task.message
+                        dbtask.message = task.message or ""
                         dbtask.updated = datetime.now()
                         DB.session.commit()
                 elif cmd == "log":

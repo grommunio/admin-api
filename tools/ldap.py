@@ -92,7 +92,44 @@ def downsyncGroup(mlist, externID=None):
         return err.orig.args[1], 400
 
 
-def importContact(candidate, ldap, orgID, syncExisting=False):
+def downsyncObject(user, externID=None, syncGroupMembers=False):
+    """Synchronize user object from LDAP.
+
+    Dispatches to appropriate synchronization function (user or group)
+    and updates group members if requested.
+
+    Parameters
+    ----------
+    user : TYPE
+        DESCRIPTION.
+    externID : TYPE, optional
+        DESCRIPTION. The default is None.
+    syncGroupMembers : TYPE, optional
+        DESCRIPTION. The default is False.
+
+    Returns
+    -------
+    str
+        Message
+    int
+        HTTP-like status code
+
+    """
+    if user.properties["displaytypeex"] != 1:
+        return downsyncUser(user, externID)
+    from orm.mlists import MLists
+    mlist = MLists.query.filter(MLists.listname == user.username).first()
+    if not mlist:
+        return "No such group", 400
+    message, code = downsyncGroup(mlist, externID)
+    if syncGroupMembers:
+        from services import Service
+        with Service("ldap", mlist.user.orgID) as ldap:
+            syncGroupMembers(mlist.user.orgID, ldap.getUserInfo(mlist.user.externID))
+    return message, code
+
+
+def importContact(candidate, ldap, orgID, syncExisting=False, domains=None, **kwargs):
     """Import contact from LDAP.
 
     Parameters
@@ -105,13 +142,15 @@ def importContact(candidate, ldap, orgID, syncExisting=False):
         Organization ID to limit import to
     syncExisting : bool, optional
         Whether to implicitely update existing objects. The default is False.
+    domains : Iterable[int], optional
+        Set of domain IDs to import contacts to or None for no restriction. The default is None
 
     Returns
     -------
-    synced : list[str]
-        List of synchronized usernames
-    imported : list[str]
-        List of imported usernames
+    synced : list[orm.users.Users]
+        List of synchronized users
+    imported : list[orm.users.Users]
+        List of imported users
     errors : list[tuple[str, int]]
         List of (message, code) tuple containing error information.
     """
@@ -121,7 +160,8 @@ def importContact(candidate, ldap, orgID, syncExisting=False):
     synced = []
     imported = []
     errors = []
-    domains = Domains.query.filter(Domains.orgID == orgID).with_entities(Domains.ID, Domains.domainname).all()
+    domains = Domains.query.filter(Domains.orgID == orgID, Domains.ID.in_(domains) if domains else True)\
+                           .with_entities(Domains.ID, Domains.domainname).all()
     existing = Users.query.filter(Users.orgID == orgID, Users.externID == candidate.ID).all()
     if syncExisting:
         for user in existing:
@@ -129,7 +169,7 @@ def importContact(candidate, ldap, orgID, syncExisting=False):
             if code != 200:
                 errors.append((f"Failed to synchronize {user.username}: {error}", code))
             else:
-                synced.append(user.username)
+                synced.append(user)
     existingDomains = {user.domainID for user in existing}
     domains = [domain for domain in domains if domain.ID not in existingDomains]
     for domain in domains:
@@ -139,11 +179,11 @@ def importContact(candidate, ldap, orgID, syncExisting=False):
         if code != 201:
             errors.append((f"Failed to import contact {candidate.email} into {domain.domainname}: {result}", code))
         else:
-            imported.append(result.username)
+            imported.append(result)
     return synced, imported, errors
 
 
-def importUser(candidate, ldap, force=False, lang=""):
+def importUser(candidate, ldap, force=False, lang="", **kwargs):
     """Import user from LDAP
 
     Parameters
@@ -188,7 +228,7 @@ def importUser(candidate, ldap, force=False, lang=""):
     return Users.create(defaults, externID=candidate.ID)
 
 
-def importGroup(candidate, ldap, force=False):
+def importGroup(candidate, ldap, force=False, syncMembers=False, **kwargs):
     """Import group from LDAP.
 
     Parameters
@@ -199,6 +239,8 @@ def importGroup(candidate, ldap, force=False):
         LDAP connection to use
     force : bool, optional
         Force import if user exists and is linked to a different object. The default is False.
+    syncMembers : bool, optional
+        Whether to sync group members after importing. The default is False.
 
     Returns
     -------
@@ -227,12 +269,52 @@ def importGroup(candidate, ldap, force=False):
         mlist.user.externID = candidate.ID
         DB.session.add(mlist)
         DB.session.commit()
+        if syncMembers:
+            syncGroupMembers(mlist.user.orgID, candidate, ldap)
         return mlist, 201
     except Exception as err:
         return type(err).__name__+": "+" - ".join(str(arg) for arg in err.args), 500
 
 
-def syncGroupMembers(orgID, ldapgroup, ldap, users):
+def importObject(candidate, ldap, **kwargs):
+    """Import LDAP object
+
+    Automatically calls the appropriate function according to the candidates type
+
+    Parameters
+    ----------
+    candidate : services.ldap.SearchResult
+        LDAP object to import
+    ldap : services.ldap.LdapService
+        LDAP connection to use
+    **kwargs : Any
+        Keyword arguments forwarded to the importer
+
+    Raises
+    ------
+    TypeError
+        LDAP object has an invalid type
+
+    Returns
+    -------
+    dict
+        Result object
+    int
+        HTTP-like status code
+    """
+    if candidate.type == "contact":
+        synced, imported, failed = importContact(candidate, ldap, **kwargs)
+        return {"message": f"{len(synced)} synced, {len(imported)} imported, {len(failed)} failed"}, 200
+    if candidate.type == "group":
+        result, code = importGroup(candidate, ldap, **kwargs)
+        return {"message": result} if isinstance(result, str) else result.user.fulldesc(), code
+    if candidate.type == "user":
+        result, code = importUser(candidate, ldap, **kwargs)
+        return {"message": result} if isinstance(result, str) else result.fulldesc(), code
+    raise TypeError(f"Unknown object type '{candidate.type}'")
+
+
+def syncGroupMembers(orgID, ldapgroup, ldap, users=None):
     """Synchronize group members.
 
     Parameters
@@ -243,8 +325,8 @@ def syncGroupMembers(orgID, ldapgroup, ldap, users):
         LDAP group object to synchronize.
     ldap : services.ldap.LdapService
         LDAP connection to use
-    users : set[bytes]
-        Set containing LDAP object IDs of imported users
+    users : set[bytes], optional
+        Set containing LDAP object IDs of imported users or None to determine automatically. The default is None.
 
     Returns
     -------
@@ -257,6 +339,9 @@ def syncGroupMembers(orgID, ldapgroup, ldap, users):
     group = MLists.query.filter(MLists.listname == ldapgroup.email).first()
     if group is None or group.user.orgID != orgID:
         return None, None
+    if users is None:
+        from orm.users import Users
+        users = {user.externID for user in Users.query.filter(Users.orgID == orgID, Users.externID != None)}
     assocs = {assoc.username: assoc for assoc in Associations.query.filter(Associations.listID == group.ID).all()}
     add = 0
     for member in ldap.searchUsers(attributes="idonly", customFilter=f"(memberOf={ldapgroup.DN})"):
