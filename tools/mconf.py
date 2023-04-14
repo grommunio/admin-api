@@ -94,6 +94,7 @@ def _transformLdap(conf):
     _addIfDef(LDAP["groups"], "groupaddr", conf, "ldap_group_addr")
     _addIfDef(LDAP["groups"], "groupfilter", conf, "ldap_group_filter")
     _addIfDef(LDAP["groups"], "groupname", conf, "ldap_group_name")
+    _addIfDef(LDAP["groups"], "groupMemberAttr", conf, "ldap_group_memberof")
     if "ldap_user_attributes" in conf:
         LDAP["users"]["attributes"] = {entry.split(" ", 1)[0]: entry.split(" ", 1)[1]
                                        for entry in conf.getall("ldap_user_attributes") if " " in entry}
@@ -126,6 +127,7 @@ def _flattenLdap(conf):
         _addIfDef(LDAP, "ldap_group_addr", conf["groups"], "groupaddr")
         _addIfDef(LDAP, "ldap_group_filter", conf["groups"], "groupfilter")
         _addIfDef(LDAP, "ldap_group_name", conf["groups"], "groupname")
+        _addIfDef(LDAP, "ldap_group_memberof", conf["groups"], "groupMemberAttr")
     return LDAP
 
 

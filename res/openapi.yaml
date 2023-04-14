@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.11.0
+  version: 1.11.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -5249,6 +5249,23 @@ components:
             aliases:
               type: string
               description: LDAP attribute containing alternative e-mail addresses
+        groups:
+          type: object
+          description: Configuration for group import
+          properties:
+            groupMemberAttr:
+              type: string
+              description: LDAP attribute containing the groups a user is member of
+            groupaddr:
+              type: string
+              description: E-Mail address attribute of the group
+            groupfilter:
+              type: string
+              description: Filter expression for groups
+            groupname:
+              type: string
+              description: Attribute containing the group's display name
+
     mlistRead:
       type: object
       properties:

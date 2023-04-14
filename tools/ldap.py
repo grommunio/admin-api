@@ -344,7 +344,7 @@ def syncGroupMembers(orgID, ldapgroup, ldap, users=None):
         users = {user.externID for user in Users.query.filter(Users.orgID == orgID, Users.externID != None)}
     assocs = {assoc.username: assoc for assoc in Associations.query.filter(Associations.listID == group.ID).all()}
     add = 0
-    for member in ldap.searchUsers(attributes="idonly", customFilter=f"(memberOf={ldapgroup.DN})"):
+    for member in ldap.searchUsers(attributes="idonly", customFilter=ldap.groupMemberFilter(ldapgroup.DN)):
         assoc = assocs.pop(member.email, None)
         if assoc or member.ID not in users:  # Do nothing if already associated or not known
             continue

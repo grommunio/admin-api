@@ -515,6 +515,21 @@ class LdapService:
             return None
         return response[0]
 
+    def groupMemberFilter(self, groupDN):
+        """Generate filter expression for group members.
+
+        Parameters
+        ----------
+        groupDN : str
+            DN of the group
+
+        Returns
+        -------
+        str
+            Filter expression
+        """
+        return "({}={})".format(self._config["groups"].get("groupMemberAttr", "memberOf"), groupDN)
+
     def searchUsers(self, query=None, domains=None, limit=None, pageSize=1000, filterIncomplete=True, types=None,
                     customFilter="", attributes=None):
         """Search for ldap users matching the query.

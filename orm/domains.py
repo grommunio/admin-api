@@ -98,6 +98,7 @@ class OrgParam(DB.Base):
         _addIfDef(config["groups"], "groupaddr", plain, "ldap_group_addr")
         _addIfDef(config["groups"], "groupfilter", plain, "ldap_group_filter")
         _addIfDef(config["groups"], "groupname", plain, "ldap_group_name")
+        _addIfDef(config["groups"], "groupMemberAttr", plain, "ldap_group_memberof")
         if "ldap_user_attributes" in plain:
             config["users"]["attributes"] = {entry.split(" ", 1)[0]: entry.split(" ", 1)[1]
                                              for entry in plain.getall("ldap_user_attributes") if " " in entry}
@@ -134,6 +135,7 @@ class OrgParam(DB.Base):
             _addIfDef(flat, "ldap_group_addr", config["groups"], "groupaddr")
             _addIfDef(flat, "ldap_group_filter", config["groups"], "groupfilter")
             _addIfDef(flat, "ldap_group_name", config["groups"], "groupname")
+            _addIfDef(flat, "ldap_group_memberof", config["groups"], "groupMemberAttr")
         cls.query.filter(cls.orgID == orgID).delete(synchronize_session=False)
         for key, value in flat.items():
             DB.session.add(OrgParam(orgID, key, value))
