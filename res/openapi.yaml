@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.10.4
+  version: 1.10.5
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1665,8 +1665,9 @@ paths:
                           type: integer
                           description: UNIX timestamp of last update
                         asversion:
-                          type: number
-                          description: ActiveSync version used by the device
+                          oneOf:
+                            - type: string
+                            - type: number
 
         '400':
           $ref: '#/components/responses/InvalidRequest'
