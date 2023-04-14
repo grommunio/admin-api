@@ -5,7 +5,7 @@
 from . import Cli, InvalidUseError
 from argparse import ArgumentParser
 
-_typemap = {"normal": 0, "domain": 2, "class": 3}
+_typemap = {"normal": 0, "domain": 2}
 _typenames = {value: key for key, value in _typemap.items()}
 _privmap = {"all": 0, "internal": 1, "domain": 2, "specific": 3, "outgoing": 4}
 _privnames = {value: ky for ky, value in _privmap.items()}
@@ -34,23 +34,6 @@ def cliMlistCreate(args):
                 listPrivilege=_privmap.get(args.privilege or "all", 0),
                 associations=args.recipient or [],
                 specifieds=args.sender or [])
-    if args.class_:
-        from orm.classes import Classes
-        from sqlalchemy import or_
-        try:
-            ID = int(args.class_, 0)
-        except Exception:
-            ID = None
-        classes = Classes.query.filter(or_(Classes.ID == ID, Classes.classname.ilike("%"+args.class_+"%"))).all()
-        if len(classes) == 0:
-            cli.print(cli.col("No class matching '{}' found".format(args.class_), "yellow"))
-            return 1
-        if len(classes) > 1:
-            cli.print(cli.col("Class specification '{}' is ambiguous:", "yellow"))
-            for c in classes:
-                cli.print(cli.col("  {}:\t{}".format(c.ID, c.classname), "yellow"))
-            return 2
-        data["class"] = classes[0].ID
     error = MLists.checkCreateParams(data)
     if error is not None:
         cli.print(cli.col("Cannot create mlist: "+error, "red"))
@@ -188,8 +171,6 @@ def cliMlistModify(args):
         return 2
     mlist = mlists[0]
     attrs = dict()
-    if args.class_ is not None:
-        attrs["class"] = args.class_
     if args.privilege is not None:
         attrs["listPrivilege"] = _privmap[args.privilege]
     if args.type is not None:
@@ -224,7 +205,6 @@ def _setupCliMlist(subp: ArgumentParser):
     create = sub.add_parser("create", help="Create new list")
     create.set_defaults(_handle=cliMlistCreate)
     create.add_argument("name", help="Name of the mailing list")
-    create.add_argument("-c", "--class", help="ID or name of the class to use for class lists", dest="class_", metavar="class")
     create.add_argument("-p", "--privilege", choices=_privmap, default="all", help="List privilege type")
     create.add_argument("-r", "--recipient", action="append", help="Users to associate with normal lists")
     create.add_argument("-s", "--sender", action="append",
@@ -242,7 +222,6 @@ def _setupCliMlist(subp: ArgumentParser):
     modify = sub.add_parser("modify", help="Modify list")
     modify.set_defaults(_handle=cliMlistModify)
     modify.add_argument("mlistspec", help="List ID or name prefix").completer = _cliListspecCompleter
-    modify.add_argument("-c", "--class", help="ID or name of the class to use for class lists", dest="class_", metavar="class")
     modify.add_argument("-p", "--privilege", choices=_privmap, help="List privilege type")
     modify.add_argument("-t", "--type", choices=_typemap, help="Mailing list type")
     remove = sub.add_parser("remove", help="Remove recipient or sender")

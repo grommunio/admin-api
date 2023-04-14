@@ -303,7 +303,6 @@ class Domains(DataModel, DB.Base, NotifyTable):
                            synchronize_session=False)
 
     def purge(self, deleteFiles=False, printStatus=False):
-        from .classes import Classes, Hierarchy
         from .misc import DBConf
         from .mlists import MLists, Associations, Specifieds
         from .roles import AdminRoles as AR, AdminRolePermissionRelation as ARPR
@@ -323,9 +322,6 @@ class Domains(DataModel, DB.Base, NotifyTable):
             if printStatus:
                 print("Done.")
         nosync = {"synchronize_session": False}
-        classes = Classes.query.filter(Classes.domainID == self.ID).with_entities(Classes.ID)
-        Hierarchy.query.filter(Hierarchy.childID.in_(classes) | Hierarchy.classID.in_(classes)).delete(**nosync)
-        Classes.query.filter(Classes.domainID == self.ID).delete(**nosync)
         mlists = MLists.query.filter(MLists.domainID == self.ID)
         Specifieds.query.filter(Specifieds.listID.in_(mlists.with_entities(MLists.ID))).delete(**nosync)
         Associations.query.filter(Associations.listID.in_(mlists.with_entities(MLists.ID))).delete(**nosync)

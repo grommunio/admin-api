@@ -33,22 +33,9 @@ def createMlist(domainID):
     return defaultListHandler(MLists)
 
 
-@API.route(api.BaseRoute+"/domains/<int:domainID>/mlists/<int:ID>", methods=["GET", "PATCH"])
+@API.route(api.BaseRoute+"/domains/<int:domainID>/mlists/<int:ID>", methods=["GET", "PATCH", "DELETE"])
 @secure(requireDB=True)
 def mlistObjectEndpoint(domainID, ID):
     checkPermissions(DomainAdminROPermission(domainID) if request.method == "GET" else DomainAdminPermission(domainID))
     from orm.mlists import MLists
     return defaultObjectHandler(MLists, ID, "Mailing list", filters=(MLists.domainID == domainID,))
-
-
-@API.route(api.BaseRoute+"/domains/<int:domainID>/mlists/<int:ID>", methods=["DELETE"])
-@secure(requireDB=True)
-def mlistDeleteEndpoint(domainID, ID):
-    checkPermissions(DomainAdminPermission(domainID))
-    from orm.mlists import MLists
-    mlist = MLists.query.filter(MLists.ID == ID, MLists.domainID == domainID).first()
-    if mlist is None:
-        return jsonify(message="Mailing list not found"), 404
-    mlist.delete()
-    DB.session.commit()
-    return jsonify(message="Mailing list deleted")

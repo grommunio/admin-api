@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.10.5
+  version: 1.11.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2801,235 +2801,6 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
-  /domains/{domainID}/classes:
-    get:
-      summary: Get list of classes
-      operationId: getClasses
-      tags:
-        -  Domain Admin/Classes
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-        - $ref: '#/components/parameters/verbosity'
-        - $ref: '#/components/parameters/queryLimit'
-        - $ref: '#/components/parameters/queryOffset'
-        - $ref: '#/components/parameters/match'
-        - $ref: '#/components/parameters/matchFields'
-        - name: sort
-          description: Sort by attribute. Can be given multiple times.
-          in: query
-          schema:
-            type: string
-            pattern: '^(ID|classname|listname)(,(a|de)sc)?$'
-        - $ref: '#/components/parameters/filterID'
-        - name: classname
-          description: Filter by classname
-          in: query
-          schema:
-            type: string
-        - name: listname
-          description: Filter by listname
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of classes returned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/classRead'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-    post:
-      summary: Create new class
-      operationId: postClass
-      tags:
-        - Domain Admin/Classes
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/CSRFToken'
-        - $ref: '#/components/parameters/domainID'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/classWrite'
-      responses:
-        '201':
-          description: Class created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/classRead'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
-  /domains/{domainID}/classes/testFilter:
-    post:
-      summary: Test class filter specification
-      operationId: testFilter
-      tags:
-        - Domain Admin/Classes
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/CSRFToken'
-        - $ref: '#/components/parameters/domainID'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/classFilters'
-      responses:
-        '200':
-          description: List of users matching the filter returned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        ID:
-                          $ref: '#/components/schemas/ID'
-                        username:
-                          type: string
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
-  /domains/{domainID}/classes/tree:
-    get:
-      summary: Generate class hierarchy tree
-      operationId: getClassesTree
-      tags:
-        - Domain Admin/Classes
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-      responses:
-        '200':
-          description: Class tree returned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/classTreeElement'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
-  /domains/{domainID}/classes/{ID}:
-    get:
-      summary: Get information about class
-      operationId: getClass
-      tags:
-        - Domain Admin/Classes
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/domainID'
-        - $ref: '#/components/parameters/ID'
-        - $ref: '#/components/parameters/verbosity'
-      responses:
-        '200':
-          description: Class returned
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/classRead'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-    patch:
-      summary: Modify class
-      operationId: patchClass
-      tags:
-        - Domain Admin/Classes
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/CSRFToken'
-        - $ref: '#/components/parameters/domainID'
-        - $ref: '#/components/parameters/ID'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/classWrite'
-      responses:
-        '200':
-          description: Class updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/classRead'
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-    delete:
-      summary: Delete class
-      operationId: deleteClass
-      tags:
-        - Domain Admin/Classes
-      security:
-        - JWTCookie: []
-      parameters:
-        - $ref: '#/components/parameters/CSRFToken'
-        - $ref: '#/components/parameters/domainID'
-        - $ref: '#/components/parameters/ID'
-      responses:
-        '200':
-          description: Class deleted
-        '400':
-          $ref: '#/components/responses/InvalidRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/DatabaseError'
-
   /domains/{domainID}/folders:
     get:
       summary: Get list of public folders
@@ -5489,7 +5260,7 @@ components:
         listType:
           type: integer
           enum: [0, 1, 2, 3]
-          description: Type of mailing list (0=Normal, 2=Domain, 3=Class)
+          description: Type of mailing list (0=Normal, 2=Domain)
         listPrivilege:
           type: integer
           enum: [0, 1, 2, 3, 4]
@@ -5506,15 +5277,6 @@ components:
           items:
             type: string
             description: E-Mail address of sender
-        class:
-          type: object
-          nullable: true
-          description: Associated class, only available if listType=3
-          properties:
-            ID:
-              $ref: '#/components/schemas/ID'
-            classname:
-              type: string
     mlistWrite:
       type: object
       properties:
@@ -5523,8 +5285,8 @@ components:
           description: Name or e-mail address of the list
         listType:
           type: integer
-          enum: [0, 2, 3]
-          description: Type of mailing list (0=Normal, 2=Domain, 3=Class)
+          enum: [0, 2]
+          description: Type of mailing list (0=Normal, 2=Domain)
         listPrivilege:
           type: integer
           enum: [0, 1, 2, 3, 4]
@@ -5541,65 +5303,6 @@ components:
           items:
             type: string
             description: E-Mail address of sender
-        class:
-          type: integer
-          description: ID of the associated class, only available if listType=3
-    classRead:
-      type: object
-      properties:
-        ID:
-          $ref: '#/components/schemas/ID'
-        classname:
-          type: string
-        listname:
-          type: string
-          nullable: true
-          description: Name of the associated mlist
-        parentClasses:
-          type: array
-          description: List of parent classes
-          items:
-            type: object
-            properties:
-              ID:
-                $ref: '#/components/schemas/ID'
-              classname:
-                type: string
-        children:
-          type: array
-          description: List of child classes
-          items:
-            type: object
-            properties:
-              ID:
-                $ref: '#/components/schemas/ID'
-              classname:
-                type: string
-        filters:
-          $ref: '#/components/schemas/classFilters'
-    classWrite:
-      type: object
-      properties:
-        classname:
-          type: string
-        parentClasses:
-          type: array
-          description: List of parent class IDs
-          items:
-            type: integer
-        filters:
-          $ref: '#/components/schemas/classFilters'
-    classTreeElement:
-      type: object
-      properties:
-        ID:
-          $ref: '#/components/schemas/ID'
-        name:
-          type: string
-        children:
-          type: array
-          items:
-            type: object
     classFilters:
       type: array
       nullable: true
@@ -6118,8 +5821,6 @@ tags:
     description: Endpoints for user role and permission management
   - name: System Admin/Servers
     description: Endpoints for multi-server configuration
-  - name: Domain Admin/Classes
-    description: Endpoints for class and hierarchy management
   - name: Domain Admin/Folders
     description: Endpoints for public folder management
   - name: Domain Admin/MLists

@@ -23,9 +23,9 @@ grommunio-admin mlist \[em] Mailing/distribution list management
 .PP
 \f[B]grommunio-admin mlist\f[R] \f[B]add\f[R] \f[I]MLISTSPEC\f[R]
 (\f[I]sender\f[R]|\f[I]recipient\f[R]) \f[I]ENTRY\f[R]
-\f[B]grommunio-admin mlist\f[R] \f[B]create\f[R] [\f[I]-c CLASS\f[R]]
-[\f[I]-p PRIVILEGE\f[R]] [\f[I]-r RECIPIENT\f[R]] [\f[I]-s SENDER\f[R]]
-[\f[I]-t TYPE\f[R]] NAME
+\f[B]grommunio-admin mlist\f[R] \f[B]create\f[R] [\f[I]-p
+PRIVILEGE\f[R]] [\f[I]-r RECIPIENT\f[R]] [\f[I]-s SENDER\f[R]] [\f[I]-t
+TYPE\f[R]] NAME
 .PD 0
 .P
 .PD
@@ -39,8 +39,8 @@ FIELD=<value>\f[R]] [\f[I]-s FIELD\f[R]] [\f[I]MLISTSPEC\f[R]]
 .PD 0
 .P
 .PD
-\f[B]grommunio-admin mlist\f[R] \f[B]modify\f[R] [\f[I]-c CLASS\f[R]]
-[\f[I]-p PRIVILEGE\f[R]] [\f[I]-r RECIPIENT\f[R]] \f[I]MLISTSPEC\f[R]
+\f[B]grommunio-admin mlist\f[R] \f[B]modify\f[R] [\f[I]-p
+PRIVILEGE\f[R]] [\f[I]-r RECIPIENT\f[R]] \f[I]MLISTSPEC\f[R]
 \f[B]grommunio-admin mlist\f[R] \f[B]remove\f[R] \f[I]MLISTSPEC\f[R]
 (\f[I]sender\f[R]|\f[I]recipient\f[R]) \f[I]ENTRY\f[R]
 \f[B]grommunio-admin mlist\f[R] \f[B]show\f[R]
@@ -71,9 +71,6 @@ Remove sender or recipient from list
 Show detailed information about mailing list
 .SH Options
 .TP
-\f[V]-c CLASS\f[R], \f[V]--class CLASS\f[R]
-ID of the associated class (class type only)
-.TP
 \f[V]-p PRIVILEGE\f[R], \f[V]--privilege PRIVILEGE\f[R]
 Set who is allowed to send mails to the list, one of \f[I]all\f[R],
 \f[I]domain\f[R], \f[I]internal\f[R], \f[I]outgoing\f[R] or
@@ -88,8 +85,8 @@ Sort by field.
 Can be given multiple times
 .TP
 \f[V]-t TYPE\f[R], \f[V]--type TYPE\f[R]
-List type (recipient selection), one of \f[I]normal\f[R],
-\f[I]domain\f[R] or \f[I]class\f[R]
+List type (recipient selection), one of \f[I]normal\f[R] or
+\f[I]domain\f[R]
 .SH See Also
 .PP
 \f[B]grommunio-admin\f[R](1), \f[B]grommunio-admin-domain\f[R](1),

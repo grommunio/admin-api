@@ -54,20 +54,16 @@ class MLists(DataModel, DB.Base):
                      (Id("domainID", flags="init"),
                       Int("listPrivilege", flags="patch", filter="set")),
                      (RefProp("associations", flags="patch, managed", link="username", flat="username", qopt=selectinload),
-                      RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload),
-                      RefProp("class_", alias="class", flags="patch")))
+                      RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload)))
 
     user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname, cascade="all, delete-orphan", single_parent=True)
     associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID,
                                 cascade="all, delete-orphan", single_parent=True)
     specifieds = relationship(Specifieds, primaryjoin=ID == Specifieds.listID, foreign_keys=Specifieds.listID,
                               cascade="all, delete-orphan", single_parent=True)
-    class_ = relationship("Classes", primaryjoin="MLists.listname == Classes.listname", foreign_keys="Classes.listname",
-                          uselist=False, back_populates="mlist")
 
     TYPE_NORMAL = 0
     TYPE_DOMAIN = 2
-    TYPE_CLASS = 3
 
     PRIV_ALL = 0
     PRIV_INTERNAL = 1
@@ -99,7 +95,7 @@ class MLists(DataModel, DB.Base):
             return "Missing list type"
         if Users.query.filter(Users.username == data["listname"]).count() > 0:
             return "User exists"
-        elif data["listType"] not in (cls.TYPE_NORMAL, cls.TYPE_DOMAIN,  cls.TYPE_CLASS):
+        elif data["listType"] not in (cls.TYPE_NORMAL, cls.TYPE_DOMAIN):
             return "Unsupported list type"
         if data.get("listPrivilege", 0) not in (cls.PRIV_ALL,
                                                 cls.PRIV_INTERNAL,
@@ -122,29 +118,6 @@ class MLists(DataModel, DB.Base):
                            "properties": {"displaytypeex": 1, "displayname": "Distribution list "+self.listname}})
         self.user.maildir = ""
 
-    def fromdict(self, data, *args, **kwargs):
-        classID = data.pop("class", None)
-        DataModel.fromdict(self, data, *args, **kwargs)
-        if classID is not None:
-            if self.listType != self.TYPE_CLASS:
-                raise ValueError("Cannot associate non-class mailing list with class")
-            from orm.classes import Classes
-            class_ = Classes.query.filter(Classes.ID == classID).first()
-            if class_ is None:
-                raise ValueError("Invalid class")
-            if class_.listname is not None and (self.class_ is None or self.class_.listname != class_.listname):
-                raise ValueError("{} is associated with another list ({})".format(class_.classname, class_.listname))
-            self.class_ = class_
-        elif self.listType == self.TYPE_CLASS and self.class_ is None:
-            raise ValueError("Missing class ID")
-        return self
-
-    def delete(self):
-        if self.listType == self.TYPE_CLASS:
-            from .classes import Classes
-            Classes.query.filter(Classes.listname == self.listname).update({Classes.listname: None}, synchronize_session=False)
-        DB.session.delete(self)
-
     @validates("associations")
     def validateAssociations(self, key, assoc, *args):
         if self.listType != self.TYPE_NORMAL:
@@ -159,7 +132,7 @@ class MLists(DataModel, DB.Base):
 
     @validates("listType")
     def validateListType(self, key, type):
-        if type not in range(4):
+        if type not in range(3):
             raise ValueError("Invalid list type")
         return type
 
@@ -168,6 +141,3 @@ class MLists(DataModel, DB.Base):
         if priv not in range(5):
             raise ValueError("Invalid list privilege")
         return priv
-
-
-from . import classes

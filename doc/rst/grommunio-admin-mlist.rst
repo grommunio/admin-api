@@ -16,12 +16,12 @@ Synopsis
 
 | **grommunio-admin mlist** **add** *MLISTSPEC*
   (*sender*\ \|\ *recipient*) *ENTRY* **grommunio-admin mlist**
-  **create** [*-c CLASS*] [*-p PRIVILEGE*] [*-r RECIPIENT*] [*-s
+  **create** [*-p PRIVILEGE*] [*-r RECIPIENT*] [*-s
   SENDER*] [*-t TYPE*] NAME
 | **grommunio-admin mlist** **delete** [*-y*] *MLISTSPEC*
 | **grommunio-admin mlist** **list** [*-f FIELD=<value>*] [*-s FIELD*]
   [*MLISTSPEC*]
-| **grommunio-admin mlist** **modify** [*-c CLASS*] [*-p PRIVILEGE*]
+| **grommunio-admin mlist** **modify** [*-p PRIVILEGE*]
   [*-r RECIPIENT*] *MLISTSPEC* **grommunio-admin mlist** **remove**
   *MLISTSPEC* (*sender*\ \|\ *recipient*) *ENTRY* **grommunio-admin
   mlist** **show**
@@ -52,8 +52,6 @@ Commands
 Options
 =======
 
-``-c CLASS``, ``--class CLASS``
-   ID of the associated class (class type only)
 ``-p PRIVILEGE``, ``--privilege PRIVILEGE``
    Set who is allowed to send mails to the list, one of *all*, *domain*,
    *internal*, *outgoing* or *specific*
@@ -63,7 +61,7 @@ Options
 ``-s FIELD``, ``--sort FIELD``
    Sort by field. Can be given multiple times
 ``-t TYPE``, ``--type TYPE``
-   List type (recipient selection), one of *normal*, *domain* or *class*
+   List type (recipient selection), one of *normal* or *domain*
 
 See Also
 ========
