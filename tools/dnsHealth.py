@@ -174,11 +174,11 @@ def checkDMARC(domain: str):
 
 
 def checkCaldavTxt(domain: str):
-    return defaultDNSQuery("_caldavs._tcp.", domain, recordType="TXT", path="/dav")
+    return defaultDNSQuery("_caldavs._tcp.", domain, recordType="TXT")
 
 
 def checkCarddavTxt(domain: str):
-    return defaultDNSQuery("_carddavs._tcp.", domain, recordType="TXT", path="/dav")
+    return defaultDNSQuery("_carddavs._tcp.", domain, recordType="TXT")
 
 
 def defaultDNSQuery(subdomain: str, domain: str, recordType="A", path=""):
