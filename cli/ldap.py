@@ -267,14 +267,14 @@ def _downsyncOrg(args, orgID, ldap):
     for user in Users.query.filter(Users.orgID == orgID, Users.externID != None):
         result = _downsync(args, user)
         if user.status != Users.CONTACT:
-            synced.add(user.username)
+            synced.add(user.externID)
         success += result
         failed += not result
 
     if args.complete:
         from services import Service
         with Service("ldap", orgID) as ldap:
-            candidates = [candidate for candidate in ldap.searchUsers() if candidate.email not in synced]
+            candidates = [candidate for candidate in ldap.searchUsers() if candidate.ID not in synced]
             for candidate in candidates:
                 os, of = _import(args, candidate, ldap, orgID, syncExisting=False)
                 success += os

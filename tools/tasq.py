@@ -155,7 +155,7 @@ class Worker:
 
     def _ldapSyncImport(self, ldap, orgID, domains, synced, lang, bump):
         syncStatus = []
-        candidates = [candidate for candidate in ldap.searchUsers() if candidate.email not in synced]
+        candidates = [candidate for candidate in ldap.searchUsers() if candidate.ID not in synced]
         domainnames = {domain.domainname for domain in domains}
         for candidate in candidates:
             bump()
@@ -244,7 +244,7 @@ class Worker:
                 syncStatus.append(status)
                 counts[statusCat(status["code"])] += 1
                 if status["code"] == 200:
-                    synced.add(user.username)
+                    synced.add(user.externID)
             except ServiceUnavailableError as err:
                 syncStatus.append(dict(ID=user.ID, username=user.username, code=503, message=err.args[0]))
                 counts["error"] += 1
