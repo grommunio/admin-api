@@ -5,6 +5,7 @@
 from . import DB
 from .users import Users
 from tools.DataModel import DataModel, Id, Int, RefProp, Text
+from tools import formats
 
 from sqlalchemy import Column
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT, VARCHAR
@@ -107,7 +108,6 @@ class MLists(DataModel, DB.Base):
                                                 cls.PRIV_OUTGOING):
             return "Invalid privilege"
 
-
     def __init__(self, props, *args, **kwargs):
         from .users import Users
         self.domain = props.pop("domain")
@@ -128,6 +128,12 @@ class MLists(DataModel, DB.Base):
     @displayname.setter
     def displayname(self, value):
         self.user.properties["displayname"] = value
+
+    @validates("listname")
+    def validateListname(self, key, value, *args):
+        if not formats.email.match(value):
+            raise ValueError(f"{value} is not a valid e-ail address")
+        return value
 
     @validates("associations")
     def validateAssociations(self, key, assoc, *args):
