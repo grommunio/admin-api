@@ -58,7 +58,8 @@ class MLists(DataModel, DB.Base):
                       Int("listPrivilege", flags="patch", filter="set")),
                      (RefProp("associations", flags="patch, managed", link="username", flat="username", qopt=selectinload),
                       RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload),
-                      Text("displayname", flags="patch")))
+                      Text("displayname", flags="patch"),
+                      Int("hidden", flags="patch")))
 
     user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname, cascade="all, delete-orphan", single_parent=True)
     associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID,
@@ -123,11 +124,19 @@ class MLists(DataModel, DB.Base):
 
     @property
     def displayname(self):
-        return self.user.properties.get("displayname")
+        return self.user.properties.get("displayname", "")
 
     @displayname.setter
     def displayname(self, value):
         self.user.properties["displayname"] = value
+
+    @property
+    def hidden(self):
+        return self.user.properties.get("attributehidden_gromox", 0)
+
+    @hidden.setter
+    def hidden(self, value):
+        self.user.properties["attributehidden_gromox"] = value
 
     @validates("listname")
     def validateListname(self, key, value, *args):

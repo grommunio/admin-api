@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.11.1
+  version: 1.11.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -5294,6 +5294,12 @@ components:
           items:
             type: string
             description: E-Mail address of sender
+        displayName:
+          type: string
+          description: Display name property of the associated user object
+        hidden:
+          type: integer
+          description: attributehidde_gromox property of the associated user object
     mlistWrite:
       type: object
       properties:
@@ -5320,6 +5326,12 @@ components:
           items:
             type: string
             description: E-Mail address of sender
+        displayName:
+          type: string
+          description: Display name property of the associated user object
+        hidden:
+          type: integer
+          description: attributehidde_gromox property of the associated user object
     classFilters:
       type: array
       nullable: true
