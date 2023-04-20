@@ -16,6 +16,10 @@ Synopsis
 
 | **grommunio-admin user** **create** [*--no-defaults*] [*<FIELDS>*] *USERNAME*
 | **grommunio-admin user** **delete** [*-c*] [*-k*] [*-y*] *USERSPEC*
+| **grommunio-admin user** **devices** *USERSPEC* (*list* \| *resync*
+  \| *remove* \| *show*) [*DEVICE* …]
+| **grommunio-admin user** **devices** *USERSPEC* wipe [*--mode MODE*]
+  *DEVICE*
 | **grommunio-admin user** **list** [*-f ATTRIBUTE=<value>*] [*-s FIELD*]
   [*USERSPEC*]
 | **grommunio-admin user** **modify** [*<FIELDS>*] [*--delete-chat-user*]
@@ -41,6 +45,8 @@ Commands
    Create a new user
 ``delete``
    Delete user
+``devices``
+   User mobile device management
 ``list``
    List users
    **Deprecated.** Use query instead.
@@ -62,6 +68,8 @@ Options
    *username*.
 
    If no attributes are specified, *ID*, *username* and *status* are shown.
+``DEVICE``
+   Limit command to given device ID(s)
 ``USERNAME``
    E-Mail address of the user
 ``USERSPEC``
@@ -78,6 +86,9 @@ Options
    *pretty*. Default is *pretty*.
 ``-k``, ``--keep-files``
    Do not delete user files from disk
+``--mode MODE``
+   Specify wipe status to set. Possible values are *account* and *normal*,
+   or *cancel* to stop a pending wipe.
 ``--no-defaults``
    Do not apply configured default values
 ``--no-ldap``

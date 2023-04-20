@@ -31,6 +31,17 @@ grommunio-admin user \[em] User management
 .PD 0
 .P
 .PD
+\f[B]grommunio-admin user\f[R] \f[B]devices\f[R] \f[I]USERSPEC\f[R]
+(\f[I]list\f[R] | \f[I]resync\f[R] | \f[I]remove\f[R] | \f[I]show\f[R])
+[\f[I]DEVICE\f[R] \&...]
+.PD 0
+.P
+.PD
+\f[B]grommunio-admin user\f[R] \f[B]devices\f[R] \f[I]USERSPEC\f[R] wipe
+[\f[I]--mode MODE\f[R]] \f[I]DEVICE\f[R]
+.PD 0
+.P
+.PD
 \f[B]grommunio-admin user\f[R] \f[B]list\f[R] [\f[I]-f
 ATTRIBUTE=<value>\f[R]] [\f[I]-s FIELD\f[R]] [\f[I]USERSPEC\f[R]]
 .PD 0
@@ -65,6 +76,9 @@ Create a new user
 \f[V]delete\f[R]
 Delete user
 .TP
+\f[V]devices\f[R]
+User mobile device management
+.TP
 \f[V]list\f[R]
 List users \f[B]Deprecated.\f[R] Use query instead.
 .TP
@@ -93,6 +107,9 @@ If no attributes are specified, \f[I]ID\f[R], \f[I]username\f[R] and
 \f[I]status\f[R] are shown.
 .RE
 .TP
+\f[V]DEVICE\f[R]
+Limit command to given device ID(s)
+.TP
 \f[V]USERNAME\f[R]
 E-Mail address of the user
 .TP
@@ -117,6 +134,11 @@ Default is \f[I]pretty\f[R].
 .TP
 \f[V]-k\f[R], \f[V]--keep-files\f[R]
 Do not delete user files from disk
+.TP
+\f[V]--mode MODE\f[R]
+Specify wipe status to set.
+Possible values are \f[I]account\f[R] and \f[I]normal\f[R], or
+\f[I]cancel\f[R] to stop a pending wipe.
 .TP
 \f[V]--no-defaults\f[R]
 Do not apply configured default values

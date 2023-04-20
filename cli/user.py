@@ -12,6 +12,16 @@ _statusColor = {0: "green", 1: "yellow", 2: "yellow", 3: "red", 4: "cyan", 5: "b
 _userAttributes = ("ID", "aliases", "changePassword", "chat", "chatAdmin", "domainID", "forward", "homeserverID", "lang",
                    "ldapID", "maildir", "pop3_imap", "privArchive", "privChat", "privFiles", "privVideo", "publicAddress",
                    "smtp", "status", "username")
+_deviceStatus = {0: "unknown", 1: "ok", 2: "pending", 4: "requested", 8: "wiped", 16: "pending (account)",
+                 32: "requested (account)", 64: "wiped (account)"}
+_deviceStatusStyle = {0: {"attrs": ["dark"]},
+                      1: {"color": "green"},
+                      2: {"color": "yellow"},
+                      4: {"color": "red"},
+                      8: {"color": "light_red"},
+                      16: {"color": "yellow"},
+                      32: {"color": "red"},
+                      64: {"color": "light_red"}}
 
 
 def _mkUserQuery(args):
@@ -89,7 +99,7 @@ def _dumpUser(cli, user, indent=0):
         cli.print("{}  {}: {}".format(" "*indent, key, value))
 
 
-def _getUser(args):
+def _getUser(args, requireMailbox=False):
     cli = args._cli
     users = _mkUserQuery(args).all()
     if len(users) == 0:
@@ -100,6 +110,9 @@ def _getUser(args):
         for user in users:
             cli.print("  {}:\t{}".format(user.ID, user.username))
         return 2, None
+    if requireMailbox and not users[0].maildir:
+        cli.print(cli.col(f"User '{users[0].username}' has no mailbox", "red"))
+        return 3, None
     return 0, users[0]
 
 
@@ -273,6 +286,155 @@ def cliUserDelete(args):
     cli.print("Done.")
 
 
+def _cliUserDevicesDecodeSyncState(args, data, username):
+    import base64
+    import json
+    try:
+        data = json.loads(base64.b64decode(data))["data"]
+        if "devices" in data:
+            data = data["devices"][username]["data"]
+        return data
+    except Exception as err:
+        cli = args._cli
+        cli.print(cli.col("Failed to decode sync state ({}: {}"
+                          .format(type(err).__name__, " - ".join(str(arg) for arg in err.args))))
+        return {}
+
+
+def _cliUserDevicesGetDevices(args, user):
+    from services import Service
+    from tools.config import Config
+    from orm.users import UserDevices
+    with Service("exmdb") as exmdb:
+        client = exmdb.user(user)
+        syncStates = client.getSyncData(Config["sync"]["syncStateFolder"])
+    requested = args.device if "device" in args else ()
+    syncStates = {device: _cliUserDevicesDecodeSyncState(args, state, user.username) for device, state in syncStates.items()
+                  if not requested or device in requested}
+    wipeStatus = {device.deviceID: device.status for device in UserDevices.query.filter(UserDevices.userID == user.ID)
+                  if not requested or device.deviceID in requested}
+    for device, state in syncStates.items():
+        state["wipeStatus"] = wipeStatus.pop(device, 0)
+    for device, status in wipeStatus.items():
+        syncStates[device] = {"wipeStatus": status}
+    return syncStates
+
+
+def _mkDate(cli, timestamp):
+    if not timestamp:
+        return ""
+    from datetime import datetime
+    now = datetime.now()
+    date = datetime.fromtimestamp(timestamp)
+    datestr = date.strftime("%H:%M")
+    if date.day-now.day or date.month-now.month or date.year-now.year:
+        datestr += cli.col(date.strftime(" %d.%m.%Y"), attrs=["dark"])
+    return datestr
+
+
+def _mkWipeStatus(cli, status):
+    return cli.col(_deviceStatus.get(status, f"<{status}>"), **_deviceStatusStyle.get(status, {"color": "magenta"}))
+
+
+def cliUserDevicesList(args):
+    from .common import Table
+
+    cli = args._cli
+    ret, user = _getUser(args, requireMailbox=True)
+    if ret:
+        return ret
+
+    data = _cliUserDevicesGetDevices(args, user)
+    devices = [(cli.col(device, attrs=["bold"]), state.get("devicefriendlyname", ""), state.get("useragent", ""),
+                str(state.get("asversion", "")), _mkDate(cli, state.get("lastupdatetime")),
+                _mkWipeStatus(cli, state["wipeStatus"]))
+               for device, state in data.items()]
+    devices = sorted(devices, key=lambda entry: entry[0])
+    Table(devices, ("ID", "Device", "Agent", "Version", "Updated", "Status"), empty=cli.col("(No devices)", attrs=["dark"]))\
+        .print(cli)
+
+
+def cliUserDevicesShow(args):
+    from .common import Table
+    cli = args._cli
+    ret, user = _getUser(args, requireMailbox=True)
+    if ret:
+        return ret
+
+    tf = {"firstsynctime": _mkDate, "lastupdatetime": _mkDate, "wipeStatus": _mkWipeStatus}
+    keys = ("devicetype", "devicemodel", "deviceos", "useragent", "devicemobileoperator", "deviceimei", "deviceoslanguage",
+            "deviceuser", "firstsynctime", "lastupdatetime", "asversion", "announcedasversion", "hierarchyuuid", "wipeStatus")
+    devices = _cliUserDevicesGetDevices(args, user)
+    for device, state in devices.items():
+        cli.print(cli.col(device, attrs=["bold"]))
+        data = [("  "+key+":", str(tf.get(key, lambda _, x: x)(cli, state[key]))) for key in keys if key in state]
+        Table(data).print(cli)
+
+
+def cliUserDevicesRemoveResync(args):
+    from orm.users import DB, UserDevices
+    from services import Service
+    from tools.config import Config
+
+    cli = args._cli
+    ret, user = _getUser(args, requireMailbox=True)
+    if ret:
+        return ret
+
+    with Service("exmdb") as exmdb:
+        client = exmdb.user(user)
+        if args.action == "remove" and not args.device:
+            client.removeSyncStates(Config["sync"]["syncStateFolder"])
+            cli.print(cli.col("Removed all devices", "green"))
+            UserDevices.query.filter(UserDevices.userID == user.ID).delete()
+            DB.session.commit()
+            return
+
+        devices = args.device or [device for device, state in _cliUserDevicesGetDevices(args, user).items()
+                                  if "deviceid" in state]
+        for device in devices:
+            if args.action == "remove":
+                client.removeDevice(Config["sync"]["syncStateFolder"], device)
+                UserDevices.query.filter(UserDevices.userID == user.ID, UserDevices.deviceID == device).delete()
+                cli.print(f"Removed {device}")
+            else:
+                client.resyncDevice(Config["sync"]["syncStateFolder"], device, user.ID)
+                cli.print(f"Removed states of {device}")
+
+
+def cliUserDeviceWipe(args):
+    from datetime import datetime
+    from orm.users import DB, UserDevices, UserDeviceHistory
+
+    cli = args._cli
+    ret, user = _getUser(args, requireMailbox=True)
+    if ret:
+        return ret
+
+    device = UserDevices.query.filter(UserDevices.userID == user.ID, UserDevices.deviceID == args.device).first()
+    currentStatus = device.status if device is not None else 0
+    requestedStatus = 1 if args.mode == "cancel" else 16 if args.mode == "account" else 2
+    if requestedStatus == currentStatus:
+        cli.print("Nothing to do.")
+        return
+    if currentStatus in (4, 8, 32, 64):
+        cli.print("Cannot modify while wipe already in progress")
+        return 10
+    if device is None:
+        device = UserDevices(dict(userID=user.ID, deviceID=args.device, status=requestedStatus))
+        DB.session.add(device)
+        DB.session.flush()
+    else:
+        device.status = requestedStatus
+    DB.session.add(UserDeviceHistory(dict(userDeviceID=device.ID, time=datetime.utcnow(), remoteIP="[CLI]",
+                                          status=device.status)))
+    DB.session.commit()
+    if requestedStatus == 1:
+        cli.print(cli.col(f"Cancelled wipe on {args.device}"))
+    else:
+        cli.print(cli.col(f"Requested {args.mode} wipe for device {args.device}", on_color="on_red", attrs=["bold"]))
+
+
 def cliUserModify(args):
     cli = args._cli
     cli.require("DB")
@@ -423,6 +585,12 @@ def _setupCliUser(subp: ArgumentParser):
         def __len__(self):
             return len(_userAttributes)
 
+    def deviceParser(parent, action, handler, **kwargs):
+        sub = parent.add_parser(action, **kwargs)
+        sub.set_defaults(action=action, _handle=handler)
+        sub.add_argument("device", nargs="*", help="Device ID")
+        return sub
+
     Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     create = sub.add_parser("create",  help="Create user")
@@ -436,6 +604,17 @@ def _setupCliUser(subp: ArgumentParser):
     delete.add_argument("-c", "--keep-chat", action="store_true", help="Do not permanently delete the chat user")
     delete.add_argument("-k", "--keep-files", action="store_true", help="Do not delete files on disk")
     delete.add_argument("-y", "--yes", action="store_true", help="Do not ask for confirmation")
+    device = sub.add_parser("devices", help="User device management")
+    device.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter
+    deviceActions = device.add_subparsers()
+    deviceParser(deviceActions, "list", cliUserDevicesList, help="List devices of a user")
+    deviceParser(deviceActions, "show", cliUserDevicesShow, help="Show detailed information about a device")
+    deviceParser(deviceActions, "remove", cliUserDevicesRemoveResync, help="Show detailed information about a device")
+    deviceParser(deviceActions, "resync", cliUserDevicesRemoveResync, help="Show detailed information about a device")
+    deviceWipe = deviceActions.add_parser("wipe")
+    deviceWipe.set_defaults(_handle=cliUserDeviceWipe)
+    deviceWipe.add_argument("device", help="Device ID")
+    deviceWipe.add_argument("--mode", default="normal", choices=("account", "cancel", "normal"), help="Set device wipe mode")
     list = sub.add_parser("list", help="List users")
     list.set_defaults(_handle=cliUserList)
     list.add_argument("userspec", nargs="?", help="User ID or name prefix")
