@@ -457,7 +457,7 @@ def setDeviceWipe(domainID, userID, deviceID):
         DB.session.flush()
     device.status = data.get("status", 2)
     DB.session.add(UserDeviceHistory(dict(userDeviceID=device.ID, time=datetime.utcnow(), remoteIP=request.remote_addr,
-                                          status=2)))
+                                          status=device.status)))
     DB.session.commit()
     return jsonify(message="Device wipe requested.")
 
