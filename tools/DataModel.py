@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020 grommunio GmbH
 
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, String
 from sqlalchemy.inspection import inspect as inspecc
 from sqlalchemy.orm import joinedload, aliased
 
@@ -576,15 +576,17 @@ class DataModel:
     def automatch(cls, query, expr, fields=None):
         """Add fuzzy matching to query."""
         cls._init()
+        isUnicode = any(ord(c) > 127 for c in expr)
         matchexpr = tuple("%"+substr+"%" for substr in expr.split())
         matchables = cls._meta.matchables if fields is None else (m for m in cls._meta.matchables if m.alias in fields)
         targets = []
         for prop in matchables:
             column, query = prop.resolve(cls, query)
-            targets.append((prop, column))
+            if not (isUnicode and isinstance(column.type, String) and column.type.charset == "ascii"):
+                targets.append((prop, column))
         filters = [column.ilike(match) for match in matchexpr for prop, column in targets if prop.match == "default"] +\
                   [column == prop.tf(expr) for prop, column in targets if prop.match == "exact" and prop.tf(expr) is not None]
-        query = query.filter(or_(filter for filter in filters))
+        query = query.filter(or_(filter for filter in filters) if filters else False)
         return query.reset_joinpoint()
 
     def matchvalues(self, fields=None):
@@ -626,9 +628,9 @@ def Id(name="ID", **kwargs):
     return DataModel.Prop(name, filter="set", **kwargs)
 
 
-def Text(name, **kwargs):
+def Text(name, match=True, **kwargs):
     """Create a name property."""
-    _addFlags(kwargs, "sort,match")
+    _addFlags(kwargs, "sort,match" if match else "sort")
     return DataModel.Prop(name, filter="range", **kwargs)
 
 
@@ -657,6 +659,6 @@ def Proxy(attr, proxy, **kwargs):
 
 def Date(attr, time=False, **kwargs):
     """Create a date attribute."""
-    format = "%Y-%m-%d %H:%M:%S" if time else"%Y-%m-%d"
+    format = "%Y-%m-%d %H:%M:%S" if time else "%Y-%m-%d"
     _addFlags(kwargs, "sort")
     return DataModel.Prop(attr, func=lambda date: date.strftime(format) if date else None, filter="range", **kwargs)

@@ -164,7 +164,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                       {"attr": "ldapID", "flags": "patch"},
                       Int("status", flags="patch"),
                       Text("altname", flags="patch")),
-                     (Text("lang", flags="patch"),
+                     (Text("lang", match=False, flags="patch"),
                       BoolP("pop3_imap", flags="patch"),
                       BoolP("smtp", flags="patch"),
                       BoolP("changePassword", flags="patch"),
@@ -184,7 +184,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                       Int("orgID"),
                       RefProp("homeserver", "homeserverID", flags="patch", filter="set", qopt=selectinload)),
                      ({"attr": "password", "flags": "init, hidden"},
-                      Text("maildir", flags="hidden"),))
+                      Text("maildir", match=False, flags="hidden"),))
 
     USER_PRIVILEGE_POP3_IMAP = 1 << 0
     USER_PRIVILEGE_SMTP = 1 << 1
