@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.11.2
+  version: 1.11.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -957,6 +957,7 @@ paths:
         - $ref: '#/components/parameters/queryOffset'
         - $ref: '#/components/parameters/match'
         - $ref: '#/components/parameters/matchFields'
+        - $ref: '#/components/parameters/matchProps'
         - $ref: '#/components/parameters/propnames'
       responses:
         '200':
@@ -1746,6 +1747,7 @@ paths:
         - $ref: '#/components/parameters/queryOffset'
         - $ref: '#/components/parameters/match'
         - $ref: '#/components/parameters/matchFields'
+        - $ref: '#/components/parameters/matchProps'
         - name: sort
           description: Sort by attribute. Can be given multiple times.
           in: query
@@ -4538,6 +4540,12 @@ components:
     matchFields:
       name: matchFields
       description: Comma separated list of attributes to restrict matching to.
+      in: query
+      schema:
+        type: string
+    matchProps:
+      name: matchProps
+      description: Comma separated list of user properties to match
       in: query
       schema:
         type: string

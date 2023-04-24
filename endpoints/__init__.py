@@ -339,3 +339,70 @@ def defaultObjectHandler(Model, ID, name, filters=()):
         return defaultPatch(Model, ID, name, None, filters)
     elif request.method == "DELETE":
         return defaultDelete(Model, ID, name, filters)
+
+
+def userQuery(domainID=None):
+    """Query users.
+
+    Parameters
+    ----------
+    domainID : int, optional
+        Filter by domain ID. The default is None.
+
+    Returns
+    -------
+    Response
+        JSON response containing user data
+    """
+    from sqlalchemy import or_, String
+    from sqlalchemy.orm import aliased
+    from orm.users import Users, UserProperties
+    from tools.constants import PropTags
+    from tools.DataModel import DataModel
+    from tools.misc import createMapping
+
+    Users._init()
+    verbosity = int(request.args.get("level", 1))
+    query, limit, offset, _ = defaultListHandler(Users, filters=(Users.domainID == domainID,) if domainID is not None else (),
+                                                 result="query", include_count=None, automatch=False)
+    sorts = request.args.getlist("sort")
+    for s in sorts:
+        sprop, sorder = s.split(",", 1) if "," in s else (s, "asc")
+        if hasattr(PropTags, sprop.upper()):
+            up = aliased(UserProperties)
+            query = query.join(up, (up.userID == Users.ID) & (up.tag == getattr(PropTags, sprop.upper())))\
+                         .order_by(up._propvalstr.desc() if sorder == "desc" else up._propvalstr.asc())
+
+    if "match" in request.args:
+        expr = request.args["match"]
+        fields = set(request.args["matchFields"].split(",")) if "matchFields" in request.args else None
+        isUnicode = any(ord(c) > 127 for c in expr)
+        matchexpr = tuple("%"+substr+"%" for substr in expr.split())
+        matchables = Users._meta.matchables if fields is None else (m for m in Users._meta.matchables if m.alias in fields)
+        targets = []
+        for prop in matchables:
+            column, query = prop.resolve(Users, query)
+            if not (isUnicode and isinstance(column.type, String) and column.type.charset == "ascii"):
+                targets.append((prop, column))
+        if "matchProps" in request.args:
+            metaProp = DataModel.Prop(None)
+            for prop in request.args["matchProps"].split(","):
+                if hasattr(PropTags, prop.upper()):
+                    up = aliased(UserProperties)
+                    query = query.outerjoin(up, (up.userID == Users.ID) & (up.tag == getattr(PropTags, prop.upper())))
+                    targets.append((metaProp, up._propvalstr))
+        filters = [column.ilike(match) for match in matchexpr for prop, column in targets if prop.match == "default"] +\
+                  [column == prop.tf(expr) for prop, column in targets if prop.match == "exact" and prop.tf(expr) is not None]
+        query = query.filter(or_(filter for filter in filters) if filters else False).reset_joinpoint()
+
+    count = query.count()
+    data = [user.todict(verbosity) for user in query.limit(limit).offset(offset).all()]
+    if verbosity < 2 and "properties" in request.args:
+        tags = [getattr(PropTags, prop.upper(), None) for prop in request.args["properties"].split(",")]
+        for user in data:
+            user["properties"] = {}
+        usermap = createMapping(data, lambda x: x["ID"])
+        properties = UserProperties.query.filter(UserProperties.userID.in_(usermap.keys()), UserProperties.tag.in_(tags)).all()
+        for prop in properties:
+            usermap[prop.userID]["properties"][prop.name] = prop.val
+    return jsonify(count=count, data=data)
