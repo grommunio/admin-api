@@ -99,7 +99,7 @@ Notes
   is the one sent to the server and might differ from the value actually
   assigned.
 - The `find` and `list` commands operate on the `IPMSUBTREE` folders
-  (`0x2` for users, `0x9` for domains) by default, which can be overridden
+  (`0x9` for users, `0x2` for domains) by default, which can be overridden
   by the `ID` parameter.
 
 See Also
