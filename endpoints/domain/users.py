@@ -89,7 +89,7 @@ def deleteUser(user, deleteChatUser):
     if userdata.maildir:
         with Service("exmdb", errors=Service.SUPPRESS_INOP) as exmdb:
             client = exmdb.user(userdata)
-        client.unloadStore()
+            client.unloadStore()
     if request.args.get("deleteFiles") == "true":
         shutil.rmtree(userdata.maildir, ignore_errors=True)
     return jsonify(message="isded")
