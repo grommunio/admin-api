@@ -363,8 +363,9 @@ def userQuery(domainID=None):
 
     Users._init()
     verbosity = int(request.args.get("level", 1))
-    query, limit, offset, _ = defaultListHandler(Users, filters=(Users.domainID == domainID,) if domainID is not None else (),
-                                                 result="query", include_count=None, automatch=False)
+    filters = (Users.domainID == domainID,) if domainID is not None else ()
+    filters += (Users.ID > 0,)
+    query, limit, offset, _ = defaultListHandler(Users, filters=filters, result="query", include_count=None, automatch=False)
     sorts = request.args.getlist("sort")
     for s in sorts:
         sprop, sorder = s.split(",", 1) if "," in s else (s, "asc")
