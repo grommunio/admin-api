@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.11.3
+  version: 1.11.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -959,6 +959,13 @@ paths:
         - $ref: '#/components/parameters/matchFields'
         - $ref: '#/components/parameters/matchProps'
         - $ref: '#/components/parameters/propnames'
+        - name: mlist
+          description: Hide MList users
+          in: query
+          schema:
+            type: string
+            enum: [""]
+          allowEmptyValue: true
       responses:
         '200':
           description: User list returned
@@ -1760,6 +1767,13 @@ paths:
           in: query
           schema:
             type: string
+        - name: mlist
+          description: Hide MList users
+          in: query
+          schema:
+            type: string
+            enum: [""]
+          allowEmptyValue: true
         - $ref: '#/components/parameters/propnames'
       responses:
         '200':
@@ -4922,6 +4936,10 @@ components:
           $ref: '#/components/schemas/forward'
         homeserver:
           $ref: '#/components/schemas/homeserverRef'
+        mlist:
+          type: integer
+          nullable: true
+          description: ID of the associated MList
         orgID:
           type: integer
           description: ID of the organization the user belongs to

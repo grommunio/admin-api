@@ -158,6 +158,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     forward = relationship("Forwards", uselist=False, cascade="all, delete-orphan", back_populates="user")
     homeserver = OptionalNC(104, None,
                             relationship("Servers", foreign_keys=homeserverID, primaryjoin="Users.homeserverID == Servers.ID"))
+    mlist = relationship("MLists", back_populates="user", uselist=False)
 
     _dictmapping_ = ((Id(), Text("username", flags="patch")),
                      (Id("domainID", flags="init"),
@@ -178,6 +179,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                       {"attr": "properties", "flags": "patch", "func": lambda p: p.namemap()},
                       RefProp("roles", qopt=selectinload),
                       RefProp("forward", flags="managed, patch"),
+                      RefProp("mlist", filter="set", flat="ID"),
                       {"attr": "syncPolicy", "flags": "patch"},
                       {"attr": "chat", "flags": "patch"},
                       {"attr": "chatAdmin", "flags": "patch"},
@@ -989,7 +991,7 @@ class Forwards(DataModel, DB.Base):
 
 
 from .domains import Domains
-from . import misc, roles
+from . import misc, mlists, roles
 
 
 Users.NTregister()

@@ -7,7 +7,7 @@ from .users import Users
 from tools.DataModel import DataModel, Id, Int, RefProp, Text
 from tools import formats
 
-from sqlalchemy import Column
+from sqlalchemy import Column, ForeignKey
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT, VARCHAR
 from sqlalchemy.orm import relationship, selectinload, validates
 
@@ -48,7 +48,7 @@ class MLists(DataModel, DB.Base):
     __tablename__ = "mlists"
 
     ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    listname = Column("listname", VARCHAR(128), nullable=False, unique=True)
+    listname = Column("listname", VARCHAR(128), ForeignKey(Users.username), nullable=False, unique=True)
     domainID = Column("domain_id", INTEGER(10, unsigned=True), index=True)
     listType = Column("list_type", TINYINT, nullable=False)
     listPrivilege = Column("list_privilege", TINYINT, nullable=False, server_default="0")
@@ -61,7 +61,8 @@ class MLists(DataModel, DB.Base):
                       Text("displayname", flags="patch"),
                       Int("hidden", flags="patch")))
 
-    user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname, cascade="all, delete-orphan", single_parent=True)
+    user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname, cascade="all, delete-orphan",
+                        single_parent=True, back_populates="mlist")
     associations = relationship(Associations, primaryjoin=ID == Associations.listID, foreign_keys=Associations.listID,
                                 cascade="all, delete-orphan", single_parent=True)
     specifieds = relationship(Specifieds, primaryjoin=ID == Specifieds.listID, foreign_keys=Specifieds.listID,
