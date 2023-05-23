@@ -59,7 +59,8 @@ class MLists(DataModel, DB.Base):
                      (RefProp("associations", flags="patch, managed", link="username", flat="username", qopt=selectinload),
                       RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload),
                       Text("displayname", flags="patch"),
-                      Int("hidden", flags="patch")))
+                      Int("hidden", flags="patch"),
+                      RefProp("user", flat="ID")))
 
     user = relationship(Users, primaryjoin=listname == Users.username, foreign_keys=listname, cascade="all, delete-orphan",
                         single_parent=True, back_populates="mlist")
