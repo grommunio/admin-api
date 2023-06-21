@@ -84,7 +84,9 @@ def _defaultConfig():
             "dashboard": {
                 "services": []
                 },
-            "serverPolicy": "round-robin"
+            "serverPolicy": "round-robin",
+            "updateLogPath": "/var/log/grommunio-update.log",
+            "updateSkriptPath": "/usr/sbin/grommunio-update",
             },
         "security": {
             "jwtPrivateKeyFile": "/var/lib/grommunio-admin-api/auth-private.pem",

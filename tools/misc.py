@@ -4,6 +4,12 @@
 
 from collections import defaultdict
 from io import BytesIO
+import logging
+import subprocess
+
+from .config import Config
+
+logger = logging.getLogger("misc")
 
 
 class AutoClean:
@@ -388,3 +394,11 @@ def damerau_levenshtein_distance(s1, s2):
         da[s1[i - 1]] = i
 
     return score[len1 + 1][len2 + 1]
+
+
+def callUpdateScript(command):
+    try:
+        pid = subprocess.Popen(["sudo", Config["options"]["updateSkriptPath"], command]).pid
+    except Exception as err:
+        logger.error(type(err).__name__+": "+" - ".join(str(arg) for arg in err.args))
+    return pid or -1

@@ -16,6 +16,7 @@ from tools.config import Config
 from tools.license import getLicense, updateCertificate
 from tools.permissions import SystemAdminPermission, SystemAdminROPermission
 from tools.dnsHealth import getHostByName
+from tools.misc import callUpdateScript
 
 import json
 import os
@@ -280,3 +281,11 @@ def getServersDNSChecks():
     extDNSCheck = {extname: getHostByName(extname) for extname in uniqueExternalNames}
 
     return jsonify({"host": hostsDNSCheck, "ext": extDNSCheck})
+
+
+@API.route(api.BaseRoute+"/system/updates/<string:command>", methods=["POST"])
+@secure()
+def checkForUpdates(command):
+    checkPermissions(SystemAdminPermission())
+    pid = callUpdateScript(command or "check")
+    return jsonify({"pid": pid})
