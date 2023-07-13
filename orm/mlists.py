@@ -58,7 +58,7 @@ class MLists(DataModel, DB.Base):
                       Int("listPrivilege", flags="patch", filter="set")),
                      (RefProp("associations", flags="patch, managed", link="username", flat="username", qopt=selectinload),
                       RefProp("specifieds", flags="patch, managed", link="username", flat="username", qopt=selectinload),
-                      Text("displayname", flags="patch"),
+                      {"attr": "displayname", "flags": "patch"},
                       Int("hidden", flags="patch"),
                       RefProp("user", flat="ID")))
 
