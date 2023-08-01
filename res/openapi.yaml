@@ -390,6 +390,7 @@ paths:
                         type: integer
                       available:
                         description: Memory that is available for applications (bytes)
+                        type: integer
                   swap:
                     description: Swap statistics
                     type: object
