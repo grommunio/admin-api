@@ -13,7 +13,6 @@ _globalConf = "# Global settings\n" \
               "set nobouncemail\n"\
               "set no spambounce\n"\
               "set properties \"\"\n"\
-              "set no fetchall"\
               "\n# Accounts\n"
 
 _auths = ("password", "kerberos_v5", "kerberos", "kerberos_v4", "gssapi", "cram-md5", "otp", "ntlm", "msn", "ssh", "any")
