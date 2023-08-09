@@ -206,7 +206,7 @@ class Worker:
                 task.message += ", {} error{}".format(counts["error"], "" if counts["error"] == 1 else "s")
 
         from orm import DB
-        from orm.domains import Domains, OrgParam
+        from orm.domains import Domains, OrgParam, Orgs
         from orm.users import Aliases, Users
         from services import Service, ServiceUnavailableError
         import time
@@ -220,6 +220,7 @@ class Worker:
         Users.NTactive(False)
 
         domainFilter = ()
+        noLdapOrgs = ()  # IDs of orgs without LDAP config override
         if domainID is not None:
             domainFilter = (Domains.ID == domainID,)
             domain = Domains.query.filter(Domains.ID == domainID).with_entities(Domains.orgID).first()
@@ -229,7 +230,10 @@ class Worker:
             orgIDs = [orgID]
             userfilter = [Users.orgID == orgID]
         else:
-            orgIDs = [0]+OrgParam.ldapOrgs()
+            noLdapOrgs = {org.ID for org in Orgs.query.with_entities(Orgs.ID)}
+            ldapOrgs = set(OrgParam.ldapOrgs())
+            orgIDs = ldapOrgs.union((0,))
+            noLdapOrgs -= ldapOrgs
             userfilter = ()
 
         users = Users.query.filter(Users.externID != None, *userfilter).all()
@@ -253,6 +257,9 @@ class Worker:
             for orgID in orgIDs:
                 domains = Domains.query.filter(Domains.orgID == orgID, *domainFilter)\
                                        .with_entities(Domains.ID, Domains.domainname).all()
+                if orgID == 0 and noLdapOrgs:
+                    domains += Domains.query.filter(Domains.orgID.in_(noLdapOrgs))\
+                                      .with_entities(Domains.ID, Domains.domainname).all()
                 ldap = Service("ldap", orgID).service()
                 try:
                     status = self._ldapSyncImport(ldap, orgID, domains, synced, task.params.get("lang"), bump)
