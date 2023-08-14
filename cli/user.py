@@ -454,7 +454,7 @@ def cliUserModify(args):
         user.fromdict(data["attributes"])
         if data["aliases"]:
             existing = {a.aliasname for a in user.aliases}
-            user.aliases += [Aliases(alias, user) for alias in data["aliases"] if alias not in existing]
+            [Aliases(alias, user) for alias in data["aliases"] if alias not in existing]
         if data["aliases_rm"]:
             user.aliases = [alias for alias in user.aliases if alias.aliasname not in data["aliases_rm"]]
         for pv in data["props"]+data["storeprops"]:
