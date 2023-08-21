@@ -14,6 +14,8 @@ grommunio-admin exmdb — User or domain store management
 Synopsis
 ========
 
+| **grommunio-admin** **exmdb** *TARGET* *folder* *create* [*--comment COMMENT*]
+  [*-t TYPE*] NAME [*PARENTID*]
 | **grommunio-admin** **exmdb** *TARGET* *folder* *delete* [*-a*] [--clear] *FOLDERSPEC*
 | **grommunio-admin** **exmdb** *TARGET* *folder* *find* [*-x*] *NAME* [*ID*]
 | **grommunio-admin** **exmdb** *TARGET* *folder* *grant* [*-f*] [*-r*] *ID*
@@ -37,6 +39,8 @@ Commands
 Folder subcommand
 -----------------
 
+``create``
+   Create a new folder
 ``delete``
    Delete folder by ID or name.
 ``find``
@@ -68,6 +72,8 @@ Options
    ID or name of the folder
 ``NAME``
    Name of the folder
+``PARENTID``
+   ID of the parent folder
 ``PERMISSION``
    Name or numeric value of the permission
 ``PROPSPEC``
@@ -80,6 +86,8 @@ Options
    Do not stop if target is ambiguous but apply to all.
 ``--clear``
    Delete folder contents. Required for non-empty folders.
+``--comment COMMENT``
+   Folder comment
 ``-f``, ``--force``
    Grant permissions to non-existing user
 ``--format FORMAT``
@@ -87,6 +95,8 @@ Options
    and `table`. Default is `pretty`.
 ``-r``, ``--recursive``
    Apply recursively to subfolders
+``-t TYPE``, ``--type TYPE``
+   `CONTAINERCLASS` property, defaults to `"IPF.Note"`
 ``-x``, ``--exact``
    Only match exact folder names instead of case-insensitive substrings
 
@@ -98,7 +108,7 @@ Notes
 - Currently, the permission value echoed by the `grant` and `revoke` commands
   is the one sent to the server and might differ from the value actually
   assigned.
-- The `find` and `list` commands operate on the `IPMSUBTREE` folders
+- The `create`, `find` and `list` commands operate on the `IPMSUBTREE` folders
   (`0x9` for users, `0x2` for domains) by default, which can be overridden
   by the `ID` parameter.
 

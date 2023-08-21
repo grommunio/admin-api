@@ -31,13 +31,17 @@ def _getClient(args, exmdb):
         if user is None:
             cli.print(cli.col("No user matching '{}'.".format(args.target), "red"))
             return 1, None
-        return 0, exmdb.user(user)
+        client = exmdb.user(user)
+        client.accountID = user.ID
+        return 0, client
     from orm.domains import Domains
     domain = Domains.query.filter(Domains.domainname == args.target).first()
     if domain is None:
         cli.print(cli.col("No domain matching '{}'.".format(args.target), "red"))
         return 1, None
-    return 0, exmdb.domain(domain)
+    client = exmdb.domain(domain)
+    client.accountID = domain.ID
+    return 0, client
 
 
 def _isPrivate(args):
@@ -105,6 +109,26 @@ class _FolderNode():
     def tabledata(self):
         sfs = self._collectSubfolders()
         return [(self.ID, self.parentID, self.name)]+[(sf.ID, sf.parentID, sf.name) for sf in sfs]
+
+
+def cliExmdbFolderCreate(args):
+    cli = args._cli
+    cli.require("DB")
+    from services import Service
+    from tools.constants import PublicFIDs, PrivateFIDs
+    from tools.rop import makeEidEx
+    parentID = args.ID or (PrivateFIDs.IPMSUBTREE if _isPrivate(args) else PublicFIDs.IPMSUBTREE)
+    parentID = makeEidEx(1, parentID)
+    with Service("exmdb") as exmdb:
+        ret, client = _getClient(args, exmdb)
+        if ret:
+            return ret
+        folderID = client.createFolder(client.accountID, args.name, args.type, args.comment, parentID)
+        if folderID == 0:
+            cli.print(cli.col("Folder creation failed", "red"))
+            return 2
+        folder = exmdb.Folder(client.getFolderProperties(0, folderID, client.defaultFolderProps))
+        cli.print(_FolderNode(folder).print(cli))
 
 
 def cliExmdbFolderDelete(args):
@@ -330,6 +354,12 @@ def _setupCliExmdb(subp: ArgumentParser):
     folder = sub.add_parser("folder", help="Access folders")
     Cli.parser_stub(folder)
     foldersub = folder.add_subparsers()
+    create = foldersub.add_parser("create", help="Create folder")
+    create.set_defaults(_handle=cliExmdbFolderCreate)
+    create.add_argument("--comment", default="", help="Folder comment")
+    create.add_argument("-t", "--type", default="IPF.Note", help="Folder type (default: IPF.Note)")
+    create.add_argument("name", help="Name of the folder to create")
+    create.add_argument("ID", nargs="?", type=xint, default=0, help="Parent folder ID")
     delete = foldersub.add_parser("delete", help="Delete folder")
     delete.set_defaults(_handle=cliExmdbFolderDelete)
     delete.add_argument("-a", "--all", action="store_true", help="Delete all matching folders")
