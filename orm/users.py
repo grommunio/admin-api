@@ -230,7 +230,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         from tools.license import getLicense
         if "username" not in data:
             return "Missing username"
-        if data.get("status", 0) != Users.SHARED and Users.count() >= getLicense().users:
+        if data.get("status", 0) not in (Users.SHARED, Users.CONTACT) and Users.count() >= getLicense().users:
             return "License user limit exceeded"
         if "domainID" in data:
             domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
