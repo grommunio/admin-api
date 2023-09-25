@@ -193,6 +193,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
                       Int("maxUser", flags="patch"),
                       Int("activeUsers"),
                       Int("inactiveUsers"),
+                      Int("virtualUsers"),
                       Text("title", flags="patch"),
                       Text("address", flags="patch"),
                       Text("adminName", flags="patch"),
@@ -417,20 +418,36 @@ from . import misc
 if sqlalchemy.__version__.split(".") >= ["1", "4"]:
     inspect(Domains).add_property("activeUsers",
                                   column_property(select([func.count(Users.ID)])
-                                                  .where((Users.domainID == Domains.ID) & (Users.addressStatus == 0))
+                                                  .where(Users.domainID == Domains.ID, Users.addressStatus == Users.NORMAL,
+                                                         Users.maildir != "")
                                                   .scalar_subquery()))
     inspect(Domains).add_property("inactiveUsers",
                                   column_property(select([func.count(Users.ID)])
-                                                  .where((Users.domainID == Domains.ID) & (Users.addressStatus != 0))
+                                                  .where(Users.domainID == Domains.ID,
+                                                         Users.addressStatus.not_in((Users.NORMAL, Users.SHARED)),
+                                                         Users.maildir != "")
+                                                  .scalar_subquery()))
+    inspect(Domains).add_property("virtualUsers",
+                                  column_property(select([func.count(Users.ID)])
+                                                  .where(Users.domainID == Domains.ID, (Users.addressStatus == Users.SHARED) |
+                                                         (Users.maildir == ""))
                                                   .scalar_subquery()))
 else:
     inspect(Domains).add_property("activeUsers",
                                   column_property(select([func.count(Users.ID)])
-                                                  .where((Users.domainID == Domains.ID) & (Users.addressStatus == 0))
+                                                  .where((Users.domainID == Domains.ID) &
+                                                         (Users.addressStatus == Users.NORMAL) & (Users.maildir != ""))
                                                   .as_scalar()))
     inspect(Domains).add_property("inactiveUsers",
                                   column_property(select([func.count(Users.ID)])
-                                                  .where((Users.domainID == Domains.ID) & (Users.addressStatus != 0))
+                                                  .where((Users.domainID == Domains.ID) &
+                                                         (Users.addressStatus != Users.NORMAL) &
+                                                         (Users.addressStatus != Users.SHARED) & (Users.maildir != ""))
+                                                  .as_scalar()))
+    inspect(Domains).add_property("virtualUsers",
+                                  column_property(select([func.count(Users.ID)])
+                                                  .where((Users.domainID == Domains.ID) &
+                                                         ((Users.addressStatus == Users.SHARED) | (Users.maildir == "")))
                                                   .as_scalar()))
 
 Domains.NTregister()
