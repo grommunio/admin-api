@@ -490,6 +490,9 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @status.setter
     def status(self, val):
+        from tools.license import getLicense
+        if self.status and not val and Users.count() >= getLicense().users:
+            raise ValueError("License user limit exceeded")
         self.addressStatus = ((self.addressStatus or 0) & ~self.USER_MASK) | (val & self.USER_MASK)
 
     @status.expression
