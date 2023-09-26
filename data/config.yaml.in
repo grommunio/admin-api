@@ -24,7 +24,7 @@ options:
       - unit: gromox-timer.service
       - unit: gromox-zcore.service
       - unit: nginx.service
-      - unit: php-fpm.service
+      - unit: '@PHP_FPM_SERVICE@'
       - unit: postfix.service
       - unit: redis@grommunio.service
 mconf:
@@ -58,7 +58,7 @@ logs:
   Postfix:
     source: 'postfix.service'
   PHP fpm:
-    source: 'php-fpm.service'
+    source: '@PHP_FPM_SERVICE@'
   Nginx:
     source: 'nginx.service'
 confdir: "/etc/grommunio-admin-api/conf.d"
