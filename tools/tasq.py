@@ -145,7 +145,7 @@ class Worker:
         result, code = importObject(candidate, ldap, lang=lang)
         if code == 201:
             return dict(ID=result["ID"], username=result["username"], code=201, message="User created")
-        return dict(username=candidate.email, code=code, message=result)
+        return dict(username=candidate.email, code=code, message=result["message"])
 
     def _ldapSyncImportContact(self, candidate, ldap, orgID, domains):
         from tools.ldap import importContact
