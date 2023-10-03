@@ -7,8 +7,10 @@ from argparse import ArgumentParser
 
 _statusMap = {0: "active", 1: "suspended", 2: "out-of-date", 3: "deleted"}
 _statusColor = {0: "green", 1: "yellow", 2: "yellow", 3: "red"}
-_domainAttributes = ("ID", "activeUsers", "address", "adminName", "chat", "displayname", "domainStatus", "domainname",
-                     "endDay", "inactiveUsers", "maxUser", "orgID", "tel", "title")
+_domainAttributes = ("ID", "activeUsers", "address", "adminName", "chatID",
+                     "displayname", "domainStatus", "domainname", "endDay",
+                     "homedir", "homeserver", "inactiveUsers", "maxUser", 
+                     "orgID", "tel", "title")
 
 
 def _domainStatus(cli, status):
