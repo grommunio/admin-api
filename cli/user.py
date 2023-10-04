@@ -67,6 +67,7 @@ def _dumpUser(cli, user, indent=0):
         return "("+",".join(privs)+")"
 
     from ldap3.utils.conv import escape_filter_chars
+    user.embedStoreProperties()
     homeserver = cli.col("(local)", attrs=["dark"]) if user.homeserver is None else \
         "{} ({})".format(user.homeserver.ID, user.homeserver.hostname)
     cli.print("{}ID: {}".format(" "*indent, user.ID))
@@ -79,7 +80,7 @@ def _dumpUser(cli, user, indent=0):
     cli.print("{}addressStatus: {} ({}|{})".format(" "*indent, user.addressStatus,
                                                    _mkStatus(cli, user.domainStatus), _mkStatus(cli, user.status)))
     cli.print(" "*indent+"ldapID: "+(escape_filter_chars(user.externID) if user.externID is not None else
-                                       cli.col("(none)", attrs=["dark"])))
+                                     cli.col("(none)", attrs=["dark"])))
     cli.print(" "*indent+"chat: "+(user.chatID if user.chatID else cli.col("(none)", attrs=["dark"])) +
               (" ("+cli.col("inactive", "red")+")" if user.chatID and not user.chat else ""))
     if user.chat:
@@ -117,59 +118,20 @@ def _getUser(args, requireMailbox=False):
 
 
 def _splitData(args):
+    cli = args["_cli"]
     cliargs = {"_handle", "_cli", "userspec", "no_defaults"}
     data = {}
     attributes = data["attributes"] = {key: value for key, value in args.items() if value is not None and key not in cliargs}
+    if "storeprop" in attributes or "remove_storeprop" in attributes:
+        cli.print(cli.col("--storeprop and --remove_storeprop arguments are deprecated, use --property and --remove_property "
+                          "instead.", "yellow"))
     data["aliases"] = attributes.pop("alias", None) or ()
     data["aliases_rm"] = attributes.pop("remove_alias", None) or ()
-    data["props"] = attributes.pop("property", None) or []
-    data["props_rm"] = attributes.pop("remove_property", None) or []
-    data["storeprops"] = attributes.pop("storeprop", None) or []
-    data["storeprops_rm"] = attributes.pop("remove_storeprop", None) or []
+    data["props"] = attributes.pop("property", []) + attributes.pop("storeprop", [])
+    data["props_rm"] = attributes.pop("remove_property", []) + attributes.pop("remove_storeprop", [])
     data["noldap"] = attributes.pop("no_ldap", False)
     data["delchat"] = attributes.pop("delete_chat_user", False)
     return data
-
-
-def _updateStoreprops(cli, user, props, props_rm=()):
-    if not (props or props_rm):
-        return
-    from tools.constants import PropTags, ExchangeErrors
-    import pyexmdb
-    add, remove = [], []
-    for pv in props:
-        prop, val = pv.split("=", 1)
-        try:
-            prop, val = PropTags.normalize(prop, val)
-            add.append(pyexmdb.TaggedPropval(prop, val))
-        except ValueError as err:
-            cli.print(cli.col("Failed to set store property '{}': {}".format(prop, err.args[0]), "yellow"))
-        except TypeError:
-            cli.print(cli.col("Failed to set store property '{}': Tag type not supported"), "yellow")
-    for p in props_rm:
-        try:
-            prop = PropTags.deriveTag(p)
-            remove.append(prop)
-        except ValueError as err:
-            cli.print(cli.col("Failed to set store property '{}': {}".format(prop, err.args[0]), "yellow"))
-    if not (add or remove):
-        return
-    from services import Service, ServiceUnavailableError
-    try:
-        with Service("exmdb") as exmdb:
-            client = exmdb.user(user)
-            if len(remove):
-                client.removeStoreProperties(remove)
-            if len(add):
-                problems = client.setStoreProperties(0, add)
-                if problems:
-                    problems = [(PropTags.lookup(entry.proptag, hex(entry.proptag)).lower(),
-                                 ExchangeErrors.lookup(entry.err, hex(entry.err)))
-                                for entry in problems]
-                    cli.print(cli.col("Problems where encountered setting the following tags:\n\t" +
-                                      "\n\t".join("{} ({})".format(tag, err) for tag, err in problems), "yellow"))
-    except (pyexmdb.ExmdbError, ServiceUnavailableError) as err:
-        cli.print(cli.col("Failed to set store properties: "+err.args[0], "yellow"))
 
 
 def cliUserShow(args):
@@ -235,7 +197,7 @@ def cliUserCreate(args):
             return 3
         props["domainID"] = domain[0].ID
 
-    for pv in data["props"]+data["storeprops"]:
+    for pv in data["props"]:
         if "=" in pv:
             prop, val = pv.split("=", 1)
             properties[prop] = val
@@ -245,7 +207,6 @@ def cliUserCreate(args):
         cli.print(cli.col("Could not create user: "+result, "red"))
         return 1
     DB.session.commit()
-    _updateStoreprops(cli, result, data["storeprops"])
     _dumpUser(cli, result)
 
 
@@ -450,29 +411,26 @@ def cliUserModify(args):
         from services import Service
         with Service("chat") as chat:
             chat.deleteUser(user)
+    properties = data["attributes"]["properties"] = {}
+    for pv in data["props"]:
+        try:
+            prop, val = pv.split("=", 1)
+            properties[prop] = val
+        except (KeyError, ValueError) as err:
+            cli.print(cli.col("Failed to set property '{}': {}".format(prop, err.args[0]), "yellow"))
+    for prop in data["props_rm"]:
+        properties[prop] = None
     try:
-        user.fromdict(data["attributes"])
+        user.fromdict(data["attributes"], syncStore="always")
         if data["aliases"]:
             existing = {a.aliasname for a in user.aliases}
             [Aliases(alias, user) for alias in data["aliases"] if alias not in existing]
         if data["aliases_rm"]:
             user.aliases = [alias for alias in user.aliases if alias.aliasname not in data["aliases_rm"]]
-        for pv in data["props"]+data["storeprops"]:
-            try:
-                prop, val = pv.split("=", 1)
-                user.properties[prop] = val
-            except (KeyError, ValueError) as err:
-                cli.print(cli.col("Failed to set property '{}': {}".format(prop, err.args[0]), "yellow"))
-        for prop in data["props_rm"]+data["storeprops_rm"]:
-            try:
-                user.properties[prop] = None
-            except KeyError:
-                cli.print(cli.col("Failed to remove property '{}'".format(prop), "yellow"))
     except ValueError as err:
         cli.print(cli.col("Failed to update user: "+err.args[0], "red"))
         return 1
     DB.session.commit()
-    _updateStoreprops(cli, user, data["storeprops"], data["storeprops_rm"])
     _dumpUser(cli, user)
 
 

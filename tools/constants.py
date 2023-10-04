@@ -1045,12 +1045,13 @@ class PropTags(_ReverseLookup):
             from datetime import datetime
             from .rop import ntTime
             import time
-            if not isinstance(value, datetime):
-                try:
-                    value = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-                except TypeError:
-                    raise ValueError("Invalid date '{}'".format(value))
-            value = ntTime(time.mktime(value.timetuple()))
+            if not isinstance(value, int):
+                if not isinstance(value, datetime):
+                    try:
+                        value = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+                    except TypeError:
+                        raise ValueError("Invalid date '{}'".format(value))
+                value = ntTime(time.mktime(value.timetuple()))
         if type(value) != PropTypes.pyType(baseType):
             try:
                 value = PropTypes.pyType(baseType)(value)

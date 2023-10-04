@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.11.6
+  version: 1.12.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -2042,6 +2042,7 @@ paths:
 
   /domains/{domainID}/users/{userID}/storeProps:
     get:
+      deprecated: true
       summary: Get user store properties
       operationId: getStoreProps
       tags:
@@ -2071,6 +2072,7 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
     patch:
+      deprecated: true
       summary: Update store properties
       operationId: patchStoreProps
       tags:
@@ -2111,6 +2113,7 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
     delete:
+      deprecated: true
       summary: Delete user store props
       operationId: deleteStoreProps
       tags:

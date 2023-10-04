@@ -78,7 +78,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                 else:
                     self.__struct[tag] = UserProperties(tag, v, self.__user)
                     DB.session.add(self.__struct[tag])
-                self.__dict[name] = v
+                self.__dict[name] = self.__struct[tag].val
                 return
             if v is None:
                 v = []
@@ -268,7 +268,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         self.fromdict(props, *args, **kwargs)
         self.addressStatus = (self.addressStatus or 0) | status
 
-    def fromdict(self, patches, syncStore=False, *args, **kwargs):
+    def fromdict(self, patches, syncStore=True, *args, **kwargs):
         isContact = patches.get("status", self.status) != Users.CONTACT
         if "username" in patches and patches["username"] != self.username:
             from orm.domains import Domains
@@ -285,7 +285,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                 self.username = username
             if not isContact and not formats.email.match(self.username):
                 raise ValueError("'{}' is not a valid e-mail address".format(self.username))
-        DataModel.fromdict(self, patches, args, kwargs)
+        DataModel.fromdict(self, patches, *args, **kwargs)
         displaytype = self.properties.get("displaytypeex", 0)
         if displaytype in (0, 1, 7, 8):
             self._deprecated_addressType, self._deprecated_subType = self._decodeDisplayType(displaytype)
@@ -293,7 +293,15 @@ class Users(DataModel, DB.Base, NotifyTable):
             with Service("chat", errors=Service.SUPPRESS_INOP) as chat:
                 self._chatUser = chat.updateUser(self, False)
         if syncStore == "always" or (syncStore and "properties" in patches):
-            self.syncStore()
+            delete = [PropTags.deriveTag(tag) for tag, val in patches["properties"].items() if val is None] \
+                if "properties" in patches else None
+            self.syncStore(delete=delete)
+
+    def todict(self, spec, *args, **kwargs):
+        data = DataModel.todict(self, spec, *args, **kwargs)
+        if isinstance(spec, int) and spec >= 2:
+            self.embedStoreProperties()
+        return data
 
     @staticmethod
     def _decodeDisplayType(displaytype):
@@ -722,10 +730,15 @@ class Users(DataModel, DB.Base, NotifyTable):
             raise ValueError("Alternative name is already in use")
         return value or None
 
-    def syncStore(self):
+    def syncStore(self, delete=None):
         """Write all properties to the exmdb store.
 
         For users without a store, this function has no effect.
+
+        Parameters
+        ----------
+        delete : List[int], optional
+            List of tags to delete. The default is None.
         """
         if not self.maildir:
             return
@@ -738,6 +751,23 @@ class Users(DataModel, DB.Base, NotifyTable):
                     pass
             client = exmdb.user(self)
             client.setStoreProperties(0, props)
+            if delete:
+                client.removeStoreProperties(delete)
+
+    def embedStoreProperties(self):
+        """Retrieve store properties and embed them in MySQL properties.
+
+        If the user has no store, the call has no effect.
+        """
+        if not self.maildir:
+            return
+        with Service("exmdb", errors=Service.SUPPRESS_ALL) as exmdb:
+            client = exmdb.user(self)
+            tags = client.getAllStoreProperties()
+            tags = [t for t in tags if t & 0xFFFF not in (PropTypes.BINARY, PropTypes.BINARY_ARRAY)]
+            props = client.getStoreProperties(0, tags)
+            self.properties.update({prop.tag: prop.val for prop in props})
+            DB.session.commit()
 
 
 class UserProperties(DB.Base):
