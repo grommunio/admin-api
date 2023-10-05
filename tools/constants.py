@@ -1058,6 +1058,8 @@ class PropTags(_ReverseLookup):
             except Exception:
                 raise ValueError("Type of value {} does not match type of tag {} ({})"
                                  .format(value, cls.lookup(tag), PropTypes.lookup(tag)))
+        if tag == cls.DISPLAYTYPEEX:
+            value = value & ~0x40000000  # Remove DTE_FLAG_ACL_CAPABLE flag because it is not recognized properly by gromox
         return value
 
     @classmethod
