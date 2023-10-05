@@ -203,7 +203,9 @@ class Domains(DataModel, DB.Base, NotifyTable):
                      ({"attr": "syncPolicy", "flags": "patch"},
                       {"attr": "chat", "flags": "patch"},
                       RefProp("homeserver", "homeserverID", flags="patch", filter="set", qopt=selectinload)),
-                     (Text("homedir", match=False, flags="hidden"),))
+                     (Text("homedir", match=False, flags="hidden"),
+                      Text("chatID", flags="hidden"),
+                      Int("homeserverID", flags="hidden")))
 
     NORMAL = 0
     SUSPENDED = 1

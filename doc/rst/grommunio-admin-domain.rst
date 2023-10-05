@@ -57,8 +57,9 @@ Options
 
 ``ATTRIBUTE``
    Attributes to query. Available attributes are *ID*, *activeUsers*,
-   *address*, *adminName*, *chat*, *displayname*, *domainStatus*, *domainname*,
-   *endDay*, *inactiveUsers*, *maxUser*, *orgID*, *tel* and *title*
+   *address*, *adminName*, *chat*, *chatID*, *displayname*, *domainStatus*,
+   *domainname*, *endDay*, *homedir*, *homeserverID*, *inactiveUsers*,
+   *maxUser*, *orgID*, *tel* and *title*
 
    If no attributes are specified, *ID*, *domainname* and *domainStatus* are shown.
 ``DOMAINNAME``
