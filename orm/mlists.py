@@ -15,12 +15,10 @@ from sqlalchemy.orm import relationship, selectinload, validates
 class Associations(DataModel, DB.Base):
     __tablename__ = "associations"
 
-    ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True)
-    username = Column("username", VARCHAR(128), nullable=False, unique=True)
-    listID = Column("list_id", INTEGER(10), nullable=False, index=True)
+    listID = Column("list_id", INTEGER(10), nullable=False, primary_key=True)
+    username = Column("username", VARCHAR(128), nullable=False, primary_key=True)
 
-    _dictmapping_ = ((Id(), Text("username", flags="init")),
-                     (Id("listID", flags="init"),))
+    _dictmapping_ = ((Id("listID", flags="init"), Text("username", flags="init")),)
 
     def fromdict(self, username, listID=None, *args, **kwargs):
         self.username = username
