@@ -369,7 +369,9 @@ def removeDevice(domainID, userID, deviceID):
         return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
-        client.removeDevice(Config["sync"]["syncStateFolder"], deviceID)
+        success = client.removeDevice(Config["sync"]["syncStateFolder"], deviceID)
+    if not success:
+        return jsonify(message="Failed to delete device data"), 500
     UserDevices.query.filter(UserDevices.userID == userID, UserDevices.deviceID == deviceID).delete()
     DB.session.commit()
     return jsonify(message="Success")
