@@ -84,7 +84,8 @@ class Worker:
                 duration = time()-start
             except Exception as err:
                 import traceback
-                self.log("ERROR", traceback.format_exc(5))
+                from .config import Config
+                self.log("ERROR", traceback.format_exc(Config["tasq"]["stackTraceDepth"]))
                 task.state = Task.ERROR
                 task.message = type(err).__name__+": "+" - ".join(str(arg) for arg in err.args)[:160]
         task.state = max(task.state, Task.COMPLETED)

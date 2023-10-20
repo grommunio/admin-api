@@ -106,7 +106,9 @@ def _defaultConfig():
         "chat": {
             "connection": {},
             },
-        "tasq": {},
+        "tasq": {
+            "stackTraceDepth": 7,
+            },
         }
 
 
