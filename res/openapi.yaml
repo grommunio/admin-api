@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.13.0
+  version: 1.13.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1218,6 +1218,62 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
+
+  /system/license/creds:
+    get:
+      description: Get subscription credentials
+      operationId: getLicenseCredentials
+      tags:
+        - System Admin/License
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: Credentials returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                    nullable: true
+                  password:
+                    type: string
+                    nullable: true
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServerError'
+    put:
+      description: Set subscription credentials
+      operationId: setLicenseCredentials
+      tags:
+        - System Admin/License
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Credentials updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServerError'
+
 
   /system/logs:
     get:
@@ -4118,6 +4174,7 @@ paths:
         - name: command
           description: Type of update script command
           in: path
+          required: true
           schema:
             type: string
       responses:

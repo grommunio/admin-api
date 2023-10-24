@@ -6,6 +6,7 @@ logging:
 options:
   systemAdminDir: '/usr/share/grommunio-admin-common'
   licenseFile: '/etc/grommunio-admin-common/license/license.crt'
+  subscriptionFile: '/etc/grommunio-admin-common/license/credentials.txt'
   filePermissions: 0o660
   fileUid: 'grommunio'
   fileGid: 'gromox'

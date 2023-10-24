@@ -150,6 +150,43 @@ def updateLicense():
     return dumpLicense()
 
 
+@API.route(api.BaseRoute+"/system/license/creds", methods=["GET"])
+@secure()
+def getLicenseSubscription():
+    checkPermissions(SystemAdminPermission())
+    try:
+        with open(Config["options"]["subscriptionFile"]) as file:
+            creds = file.readline()
+        username, password = creds.split(":")
+        return jsonify(username=username, password=password)
+    except KeyError:
+        return jsonify(message="Subscription detail storage path not configured"), 503
+    except Exception:
+        return jsonify(username=None, password=None)
+
+
+@API.route(api.BaseRoute+"/system/license/creds", methods=["PUT"])
+@secure()
+def setLicenseSubscription():
+    checkPermissions(SystemAdminPermission())
+    data = request.get_json(silent=True)
+    if data is None or "username" not in data or "password" not in data:
+        return jsonify(message="Incomplete data"), 400
+    try:
+        with open(Config["options"]["subscriptionFile"], "w") as file:
+            file.write(":".join((data["username"], data["password"])))
+        return jsonify(message="okidoki")
+    except KeyError:
+        return jsonify(message="Subscription detail storage path not configured"), 503
+    except PermissionError as err:
+        return jsonify(message="Could not save credentials: "+err.args[1]), 500
+    except FileNotFoundError:
+        return jsonify(message="Could not save credentials: no such file or directory"), 500
+    except Exception as err:
+        API.logger.error("Could not save credentials:"+type(err).__name__+": "+" - ".join(str(arg) for arg in err.args))
+        return jsonify(message="Could not save credentials"), 500
+
+
 @API.route(api.BaseRoute+"/system/antispam/<path:path>", methods=["GET"])
 @secure()
 def rspamdProxy(path):

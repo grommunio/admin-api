@@ -89,9 +89,9 @@ def updateCertificate(data):
         global _license
         _license = val
     except KeyError:
-        return "Could not load license: location not configured"
+        return "Could not save license: location not configured"
     except FileNotFoundError as err:
-        return "Could not load license: "
+        return "Could not save license: no such file or directory"
     except PermissionError as err:
         return err.args[1]
 
