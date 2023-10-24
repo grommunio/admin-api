@@ -323,6 +323,7 @@ def getServersDNSChecks():
 @API.route(api.BaseRoute+"/system/updates/<string:command>", methods=["POST"])
 @secure()
 def checkForUpdates(command):
+    repo = request.args["repo"] if "repo" in request.args else "supported"
     checkPermissions(SystemAdminPermission())
-    pid = callUpdateScript(command or "check")
+    pid = callUpdateScript(command or "check", repo)
     return jsonify({"pid": pid})

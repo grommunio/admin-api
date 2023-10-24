@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.13.1
+  version: 1.13.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -4175,6 +4175,11 @@ paths:
           description: Type of update script command
           in: path
           required: true
+          schema:
+            type: string
+        - name: repo
+          description: Repository from which packages should be fetched
+          in: query
           schema:
             type: string
       responses:

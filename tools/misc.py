@@ -396,9 +396,9 @@ def damerau_levenshtein_distance(s1, s2):
     return score[len1 + 1][len2 + 1]
 
 
-def callUpdateScript(command):
+def callUpdateScript(command, repo):
     try:
-        pid = subprocess.Popen(["sudo", Config["options"]["updateSkriptPath"], command]).pid
+        pid = subprocess.Popen(["sudo", Config["options"]["updateSkriptPath"], command, repo]).pid
     except Exception as err:
         logger.error(type(err).__name__+": "+" - ".join(str(arg) for arg in err.args))
     return pid or -1
