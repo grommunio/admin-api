@@ -5,8 +5,8 @@
 from . import Cli, InvalidUseError
 from argparse import ArgumentParser
 
-_statusMap = {0: "active", 1: "suspended", 2: "out-of-date", 3: "deleted"}
-_statusColor = {0: "green", 1: "yellow", 2: "yellow", 3: "red"}
+_statusMap = {0: "active", 1: "suspended", 3: "deleted"}
+_statusColor = {0: "green", 1: "yellow", 3: "red"}
 _domainAttributes = ("ID", "activeUsers", "address", "adminName", "chat", "chatID", "displayname", "domainStatus",
                      "domainname", "endDay", "homedir", "homeserverID", "inactiveUsers", "maxUser", "orgID", "tel", "title",
                      "virtualUsers")

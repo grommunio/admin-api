@@ -209,7 +209,6 @@ class Domains(DataModel, DB.Base, NotifyTable):
 
     NORMAL = 0
     SUSPENDED = 1
-    OUTOFDATE = 2
     DELETED = 3
 
     _team = None

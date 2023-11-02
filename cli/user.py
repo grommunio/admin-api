@@ -7,8 +7,8 @@ from .common import proptagCompleter
 
 from argparse import ArgumentParser
 
-_statusMap = {0: "active", 1: "suspended", 2: "out-of-date", 3: "deleted", 4: "shared", 5: "contact"}
-_statusColor = {0: "green", 1: "yellow", 2: "yellow", 3: "red", 4: "cyan", 5: "blue"}
+_statusMap = {0: "active", 1: "suspended", 3: "deleted", 4: "shared", 5: "contact"}
+_statusColor = {0: "green", 1: "yellow", 3: "red", 4: "cyan", 5: "blue"}
 _userAttributes = ("ID", "aliases", "changePassword", "chat", "chatAdmin", "domainID", "forward", "homeserverID", "lang",
                    "ldapID", "maildir", "pop3_imap", "privArchive", "privChat", "privFiles", "privVideo", "publicAddress",
                    "smtp", "status", "username")
@@ -478,8 +478,6 @@ def _cliParseStatus(value):
         return Users.NORMAL
     if value == "suspended":
         return Users.SUSPENDED
-    if value in ("outofdate", "out-of-date"):
-        return Users.OUTOFDATE
     if value == "deleted":
         return Users.DELETED
     if value == "shared":

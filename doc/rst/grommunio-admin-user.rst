@@ -137,7 +137,7 @@ Fields
    Whether the user has the SMTP privilege
 ``--status STATUS``
    User address status. Either numeric value or one of *normal*, *suspended*,
-   *out-of-date*, *deleted* or *shared*.
+   *deleted* or *shared*.
 ``--alias ALIAS``
    Add alias
 ``--property propspec=value``

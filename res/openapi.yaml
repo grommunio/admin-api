@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.13.2
+  version: 1.13.3
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -4970,7 +4970,7 @@ components:
       additionalProperties: true
     userStatus:
       type: integer
-      description: User status (0=Normal, 1=Suspended, 2=Out-of-date, 3=Deleted, 4=Shared Mailbox, 5=Contact)
+      description: User status (0=Normal, 1=Suspended, 3=Deleted, 4=Shared Mailbox, 5=Contact)
       enum: [0, 1, 2, 3, 4, 5]
     forward:
       type: object
