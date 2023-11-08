@@ -133,6 +133,10 @@ class ExmdbCodes(_ReverseLookup):
 
 
 class PropTags(_ReverseLookup):
+    """
+        These tags are also accessed via getattr() calls and thus effectively
+        exposed to AWEB.
+    """
     ABPROVIDERID = 0x36150102
     ACCESS = 0x0FF40003
     ACCESSCONTROLLISTDATA = 0x3FE00102
