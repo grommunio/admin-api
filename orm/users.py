@@ -130,7 +130,6 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     ID = Column("id", INTEGER(10, unsigned=True), nullable=False, primary_key=True, unique=True)
     username = Column("username", VARCHAR(320, charset="ascii"), nullable=False, unique=True)
-    altname = OptionalC(111, "NULL", Column("altname", VARCHAR(64), unique=True))
     _password = Column("password", VARCHAR(40), nullable=False, server_default="")
     domainID = Column("domain_id", INTEGER(10, unsigned=True), nullable=False, index=True)
     maildir = Column("maildir", VARCHAR(128), nullable=False, server_default="")
@@ -152,6 +151,8 @@ class Users(DataModel, DB.Base, NotifyTable):
                                order_by="UserProperties.orderID", back_populates="user")
     aliases = relationship("Aliases", cascade="all, delete-orphan", single_parent=True, passive_deletes=True,
                            back_populates="main")
+    altnames = relationship("Altnames", cascade="all, delete-orphan", single_parent=True, passive_deletes=True,
+                            back_populates="user")
     fetchmail = OptionalNC(75, [],
                            relationship("Fetchmail", cascade="all, delete-orphan", single_parent=True,
                                         order_by="Fetchmail.active.desc()", back_populates="user"))
@@ -163,8 +164,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     _dictmapping_ = ((Id(), Text("username", flags="patch")),
                      (Id("domainID", flags="init"),
                       {"attr": "ldapID", "flags": "patch"},
-                      Int("status", flags="patch"),
-                      Text("altname", flags="patch")),
+                      Int("status", flags="patch")),
                      (Text("lang", match=False, flags="patch"),
                       BoolP("pop3_imap", flags="patch"),
                       BoolP("smtp", flags="patch"),
@@ -175,6 +175,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                       BoolP("privFiles", flags="patch"),
                       BoolP("privArchive", flags="patch"),
                       RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
+                      RefProp("altnames", flags="patch, managed", link="altname", qopt=selectinload),
                       RefProp("fetchmail", flags="managed, patch", link="ID", qopt=selectinload),
                       {"attr": "properties", "flags": "patch", "func": lambda p: p.namemap()},
                       RefProp("roles", qopt=selectinload),
@@ -719,15 +720,9 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @validates("username")
     def validateUsername(self, key, value, *args):
-        if not self.username == value and Users.query.filter(Users.altname == value).count():
+        if not self.username == value and Altnames.query.filter(Altnames.altname == value).count():
             raise ValueError("Username is already used as alternative name")
         return value
-
-    @validates("altname")
-    def validateAltname(self, key, value, *args):
-        if Users.query.filter(Users.username == value).count():
-            raise ValueError("Alternative name is already in use")
-        return value or None
 
     def syncStore(self, delete=None):
         """Write all properties to the exmdb store.
@@ -862,6 +857,24 @@ class Aliases(DataModel, DB.Base, NotifyTable):
     def _commit(*args, **kwargs):
         with Service("systemd", errors=Service.SUPPRESS_ALL) as sysd:
             sysd.reloadService("gromox-delivery.service", "gromox-http.service", "gromox-zcore.service")
+
+
+class Altnames(DataModel, DB.Base):
+    __tablename__ = "altnames"
+
+    userID = Column("user_id", INTEGER(unsigned=True), ForeignKey(Users.ID, ondelete="cascade", onupdate="cascade"), primary_key=True)
+    altname = Column("altname", VARCHAR(320), primary_key=True)
+    magic = Column("magic", INTEGER(unsigned=True), primary_key=True, server_default="0")
+
+    user = relationship(Users, back_populates="altnames")
+
+    @validates("altname")
+    def validateAltname(self, key, value, *args):
+        if Altnames.query.filter(Altnames.altname == value, Altnames.userID != self.userID).count():
+            raise ValueError("Alternative name is already in use")
+        return value or None
+
+    _dictmapping_ = ((Text("altname", flags="patch"), Int("magic"),),)
 
 
 class Fetchmail(DataModel, DB.Base):

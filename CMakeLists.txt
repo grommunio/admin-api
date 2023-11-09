@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(grommunio-admin VERSION 1.13 LANGUAGES NONE)
+project(grommunio-admin VERSION 1.14 LANGUAGES NONE)
 
 include(GNUInstallDirs)
 

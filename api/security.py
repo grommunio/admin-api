@@ -204,8 +204,9 @@ def loginUser(username, password):
     str
         JWT if successful, error message otherwise.
     """
-    from orm.users import Users
-    user: Users = Users.query.filter((Users.username == username) | (Users.altname == username)).first()
+    from orm.users import Users, Altnames
+    user: Users = Users.query.join(Altnames, isouter=True)\
+                             .filter((Users.username == username) | (Altnames.altname == username)).first()
     if user is None:
         return False, "Invalid username or password"
     if user.externID is not None:
