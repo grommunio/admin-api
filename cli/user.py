@@ -88,6 +88,9 @@ def _dumpUser(cli, user, indent=0):
     cli.print(" "*indent+"aliases:"+(cli.col(" (none)", attrs=["dark"]) if len(user.aliases) == 0 else ""))
     for alias in user.aliases:
         cli.print(" "*indent+"  "+alias.aliasname)
+    cli.print(" "*indent+"altnames:"+(cli.col(" (none)", attrs=["dark"]) if len(user.altnames) == 0 else ""))
+    for altname in user.altnames:
+        cli.print(" "*indent+"  "+altname.altname)
     cli.print(" "*indent+"roles:"+(cli.col(" (none)", attrs=["dark"]) if len(user.roles) == 0 else ""))
     for role in user.roles:
         cli.print(" "*indent+"  "+role.name)
@@ -127,6 +130,8 @@ def _splitData(args):
                           "instead.", "yellow"))
     data["aliases"] = attributes.pop("alias", None) or ()
     data["aliases_rm"] = attributes.pop("remove_alias", None) or ()
+    data["altnames"] = attributes.pop("altname", None) or {}
+    data["altnames_rm"] = attributes.pop("remove_altname", None) or {}
     data["props"] = attributes.pop("property", []) + attributes.pop("storeprop", [])
     data["props_rm"] = attributes.pop("remove_property", []) + attributes.pop("remove_storeprop", [])
     data["noldap"] = attributes.pop("no_ldap", False)
@@ -185,6 +190,7 @@ def cliUserCreate(args):
     props.update(data["attributes"])
     props["username"] = args.username
     props["aliases"] = data["aliases"]
+    props["altnames"] = data["altnames"]
     properties = data["properties"] = {}
     if args.domain:
         from .common import domainCandidates
@@ -400,7 +406,7 @@ def cliUserModify(args):
     cli = args._cli
     cli.require("DB")
     from orm import DB
-    from orm.users import Aliases
+    from orm.users import Aliases, Altnames
     ret, user = _getUser(args)
     if ret:
         return ret
@@ -427,6 +433,11 @@ def cliUserModify(args):
             [Aliases(alias, user) for alias in data["aliases"] if alias not in existing]
         if data["aliases_rm"]:
             user.aliases = [alias for alias in user.aliases if alias.aliasname not in data["aliases_rm"]]
+        if data["altnames"]:
+            existing = {a.altname for a in user.altnames}
+            [Altnames(altname, user) for altname in data["altnames"] if altname not in existing]
+        if data["altnames_rm"]:
+            user.altnames = [altname for altname in user.altnames if altname.altname not in data["altnames_rm"]]
     except ValueError as err:
         cli.print(cli.col("Failed to update user: "+err.args[0], "red"))
         return 1
@@ -524,6 +535,7 @@ def _cliAddUserAttributes(parser: ArgumentParser):
     parser.add_argument("--status", type=_cliParseStatus, help="User address status")
 
     parser.add_argument("--alias", action="append", help="Add alias")
+    parser.add_argument("--altname", action="append", help="Add alternative name")
     parser.add_argument("--property", action="append", type=assignment, metavar="propspec=value",
                         help="Set property defined by propspec to value").completer = proptagAssignCompleter
     parser.add_argument("--storeprop", action="append", type=assignment, metavar="propspec=value",
@@ -583,6 +595,7 @@ def _setupCliUser(subp: ArgumentParser):
     modify.add_argument("--delete-chat-user", action="store_true", help="Permanently delete chat user")
     modify.add_argument("--no-ldap", action="store_true", help="Unlink user from ldap object")
     modify.add_argument("--remove-alias", metavar="ALIAS", action="append", help="Remove alias")
+    modify.add_argument("--remove-altname", metavar="ALTNAME", action="append", help="Remove alternative name")
     modify.add_argument("--remove-property", action="append", metavar="propspec", help="Remove property from user")
     modify.add_argument("--remove-storeprop", action="append", metavar="propspec", help="Remove property from user's store")
     modify.add_argument("--username", help="Rename user")

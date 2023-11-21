@@ -23,8 +23,8 @@ Synopsis
 | **grommunio-admin user** **list** [*-f ATTRIBUTE=<value>*] [*-s FIELD*]
   [*USERSPEC*]
 | **grommunio-admin user** **modify** [*<FIELDS>*] [*--delete-chat-user*]
-  [*--no-ldap*] [*--remove-alias ALIAS*] [*--remove-property PROPSPEC*]
-  [*--remove-storeprop PROPSPEC*] *USERSPEC*
+  [*--no-ldap*] [*--remove-alias ALIAS*] [*--remove-altname ALTNAME*]
+  [*--remove-property PROPSPEC*] [*--remove-storeprop PROPSPEC*] *USERSPEC*
 | **grommunio-admin user** **query** [*-f ATTRIBUTE=<value>*] [*--format FORMAT*]
   [*--separator SEPARATOR*] [*-s FIELD*] [*ATTRIBUTE* …]
 | **grommunio-admin user** **show** [*-f ATTRIBUTE=<value>*] [*-s FIELD*]
@@ -95,6 +95,8 @@ Options
    Detach user from LDAP object
 ``--remove-alias ALIAS``
    Remove ALIAS from user (can be given multiple times)
+``--remove-altname ALTNAME``
+   Remove ALTNAME from user (can be given multiple times)
 ``--remove-property PROPSPEC``
    Remove property from user (can be given multiple times)
 ``--remove-storeprop PROPSPEC``
@@ -140,6 +142,8 @@ Fields
    *deleted* or *shared*.
 ``--alias ALIAS``
    Add alias
+``--altname ALTNAME``
+   Add ALTNAME to user alternative login name list (can be given multiple times)
 ``--property propspec=value``
    Set property defined by propspec to value
 ``--storeprop propspec=value``

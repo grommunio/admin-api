@@ -864,15 +864,13 @@ class Altnames(DataModel, DB.Base):
 
     userID = Column("user_id", INTEGER(unsigned=True), ForeignKey(Users.ID, ondelete="cascade", onupdate="cascade"), primary_key=True)
     altname = Column("altname", VARCHAR(320), primary_key=True)
-    magic = Column("magic", INTEGER(unsigned=True), primary_key=True, server_default="0")
+    magic = Column("magic", INTEGER(unsigned=True), server_default="0")
 
     user = relationship(Users, back_populates="altnames")
 
-    @validates("altname")
-    def validateAltname(self, key, value, *args):
-        if Altnames.query.filter(Altnames.altname == value, Altnames.userID != self.userID).count():
-            raise ValueError("Alternative name is already in use")
-        return value or None
+    def __init__(self, altname, user, *args, **kwargs):
+        self.user = user
+        self.altname = altname
 
     _dictmapping_ = ((Text("altname", flags="patch"), Int("magic"),),)
 
