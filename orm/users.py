@@ -868,9 +868,9 @@ class Altnames(DataModel, DB.Base):
 
     user = relationship(Users, back_populates="altnames")
 
-    def __init__(self, altname, user, *args, **kwargs):
+    def __init__(self, data, user, *args, **kwargs):
         self.user = user
-        self.altname = altname
+        self.fromdict(data)
 
     _dictmapping_ = ((Text("altname", flags="patch"), Int("magic"),),)
 

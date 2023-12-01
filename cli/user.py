@@ -130,7 +130,7 @@ def _splitData(args):
                           "instead.", "yellow"))
     data["aliases"] = attributes.pop("alias", None) or ()
     data["aliases_rm"] = attributes.pop("remove_alias", None) or ()
-    data["altnames"] = attributes.pop("altname", None) or {}
+    data["altnames"] = [{"altname": altname} for altname in attributes.pop("altname", None) or []]
     data["altnames_rm"] = attributes.pop("remove_altname", None) or {}
     data["props"] = attributes.pop("property", []) + attributes.pop("storeprop", [])
     data["props_rm"] = attributes.pop("remove_property", []) + attributes.pop("remove_storeprop", [])
@@ -435,7 +435,7 @@ def cliUserModify(args):
             user.aliases = [alias for alias in user.aliases if alias.aliasname not in data["aliases_rm"]]
         if data["altnames"]:
             existing = {a.altname for a in user.altnames}
-            [Altnames(altname, user) for altname in data["altnames"] if altname not in existing]
+            [Altnames(altname, user) for altname in data["altnames"] if altname["altname"] not in existing]
         if data["altnames_rm"]:
             user.altnames = [altname for altname in user.altnames if altname.altname not in data["altnames_rm"]]
     except ValueError as err:
