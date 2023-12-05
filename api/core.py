@@ -32,10 +32,18 @@ class OpenApiCompat:
             self.validateRequest = lambda request: self.requestValidator.validate(FlaskOpenAPIRequest(request))
             self.validateResponse = lambda request, response: \
                 self.responseValidator.validate(FlaskOpenAPIRequest(request), FlaskOpenAPIResponse(response)).errors
-        else:
+        elif self.version < [0, 17, 0]:
             self.FlaskOpenAPIRequest, self.FlaskOpenAPIResponse = FlaskOpenAPIRequest, FlaskOpenAPIResponse
             self.validateRequest = self._validateRequest_15_0
             self.validateResponse = self._validateResponse_15_0
+        else:
+            from openapi_core.unmarshalling.request import V30RequestUnmarshaller
+            from openapi_core.unmarshalling.response import V30ResponseUnmarshaller
+            self.FlaskOpenAPIRequest, self.FlaskOpenAPIResponse = FlaskOpenAPIRequest, FlaskOpenAPIResponse
+            self.ReqUnmarshaller = V30RequestUnmarshaller(self.spec)
+            self.ResUnmarshaller = V30ResponseUnmarshaller(self.spec)
+            self.validateRequest = self._validateRequest_17_0
+            self.validateResponse = self._validateResponse_17_0
 
     @staticmethod
     def _suppressError(exc):
@@ -56,6 +64,16 @@ class OpenApiCompat:
         from openapi_core.validation.response import openapi_response_validator as resval
         result = resval.validate(self.spec, self.FlaskOpenAPIRequest(request), self.FlaskOpenAPIResponse(response))
         return [error for error in result.errors if not self._suppressError(error)]
+
+    def _validateRequest_17_0(self, request):
+        result = self.ReqUnmarshaller.unmarshal(self.FlaskOpenAPIRequest(request))
+        if result.errors:
+            result.errors = [getattr(error, "__cause__", error) for error in result.errors]
+        return result
+
+    def _validateResponse_17_0(self, request, response):
+        result = self.ResUnmarshaller.unmarshal(self.FlaskOpenAPIRequest(request), self.FlaskOpenAPIResponse(response))
+        return [str(error) for error in result.errors]
 
 
 if "servers" in Config["openapi"]:
@@ -90,7 +108,7 @@ def validateRequest(flask_request):
         Error message if validation failed, None otherwise"""
     result = validator.validateRequest(flask_request)
     if result.errors:
-        return False, jsonify(message="Bad Request", errors=[type(error).__name__ for error in result.errors]), result.errors
+        return False, jsonify(message="Bad Request", errors=[str(error) for error in result.errors]), result.errors
     return True, None, None
 
 
