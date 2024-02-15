@@ -114,16 +114,6 @@ properties:
         minimum: 1
         maximum: 5
         default: 2
-      domainAcceleratedStorage:
-        type: string
-        description: Path for accelerated domain storage
-        nullable: true
-        default: null
-      userAcceleratedStorage:
-        type: string
-        description: Path for accelerated user storage
-        nullable: true
-        default: null
       dashboard:
         description: Configuration of the dashboard
         type: object

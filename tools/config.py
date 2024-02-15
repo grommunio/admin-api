@@ -79,8 +79,6 @@ def _defaultConfig():
             "exmdbPort": "5000",
             "domainStorageLevels": 1,
             "userStorageLevels": 2,
-            "domainAcceleratedStorage": None,
-            "userAcceleratedStorage": None,
             "dashboard": {
                 "services": []
                 },

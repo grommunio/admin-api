@@ -263,12 +263,7 @@ class DomainSetup(SetupContext):
         options = Config["options"]
         self.domain.homedir = createPath(self.domain.homedir, self.domain.ID, options["domainStorageLevels"], fileUid, fileGid)
         self._dirs.append(self.domain.homedir)
-        if options["domainAcceleratedStorage"] is not None:
-            dbPath = createPath(options["domainAcceleratedStorage"], self.domain.ID, options["domainStorageLevels"])
-            self._dirs.append(dbPath)
-            os.symlink(dbPath, self.domain.homedir+"/exmdb")
-        else:
-            os.mkdir(self.domain.homedir+"/exmdb")
+        os.mkdir(self.domain.homedir+"/exmdb")
         os.mkdir(self.domain.homedir+"/cid")
         os.mkdir(self.domain.homedir+"/log")
         os.mkdir(self.domain.homedir+"/tmp")
@@ -360,19 +355,12 @@ class UserSetup(SetupContext):
         Creates the home directory according to its ID in the prefix set in the configuration.
         Intermediate directories are created automatically if necessary.
 
-        If `userAcceleratedStorage` is set, an exmdb path is created and symlinked accordingly.
-
         Additional `cid`, `config`, `eml`, `ext` and `tmp` subdirectories are created in the home directory.
         """
         options = Config["options"]
         self.user.maildir = createPath(self.user.maildir, self.user.ID, options["userStorageLevels"], fileUid, fileGid)
         self._dirs.append(self.user.maildir)
-        if options["userAcceleratedStorage"] is not None:
-            dbPath = createPath(options["userAcceleratedStorage"], self.user.ID, options["userStorageLevels"])
-            self._dirs.append(dbPath)
-            os.symlink(dbPath, self.user.maildir+"/exmdb")
-        else:
-            os.mkdir(self.user.maildir+"/exmdb")
+        os.mkdir(self.user.maildir+"/exmdb")
         os.mkdir(self.user.maildir+"/tmp")
         os.mkdir(self.user.maildir+"/tmp/imap.rfc822")
         os.mkdir(self.user.maildir+"/tmp/faststream")
