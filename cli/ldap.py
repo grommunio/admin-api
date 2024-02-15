@@ -18,6 +18,7 @@ ERR_CONFLICT = 8  # Target DB user is associated with another LDAP object
 ERR_COMMIT = 9  # Error during database commit
 ERR_INVALID_DATA = 10  # User data check failed
 ERR_SETUP = 11  # Error during user setup
+ERR_PARTIAL = 12  # Some users failed to synchronize (batch mode)
 
 _ldapObjectColor = {
     "contact": "blue",
@@ -254,7 +255,7 @@ def _syncGroupMembers(args, orgID, groupID=None):
                 cli.print(cli.col(f"{add} added, {remove} removed" if add+remove else "no changes", "green"))
 
 
-def _downsyncOrg(args, orgID, ldap):
+def _downsyncOrg(args, orgID, ldap, resCount):
     cli = args._cli
     from orm.domains import Domains
     from orm.users import Users
@@ -263,13 +264,12 @@ def _downsyncOrg(args, orgID, ldap):
         cli.print(cli.col("Organization '{}' has no domains - skipping.".format(_getOrgName(orgID)), "yellow"))
         return (0, 0)
     synced = set()
-    success = failed = 0
     for user in Users.query.filter(Users.orgID == orgID, Users.externID != None):
         result = _downsync(args, user)
         if user.status != Users.CONTACT:
             synced.add(user.externID)
-        success += result
-        failed += not result
+        resCount.success += result
+        resCount.failed += not result
 
     if args.complete:
         from services import Service
@@ -277,55 +277,56 @@ def _downsyncOrg(args, orgID, ldap):
             candidates = [candidate for candidate in ldap.searchUsers() if candidate.ID not in synced]
             for candidate in candidates:
                 os, of = _import(args, candidate, ldap, orgID, syncExisting=False)
-                success += os
-                failed += of
+                resCount.success += os
+                resCount.failed += of
     _syncGroupMembers(args, orgID)
-    return (success, failed)
 
 
-def _downsyncSpecific(args, orgIDs):
+def _downsyncSpecific(args, orgIDs, resCount):
     if "user" not in args or not args.user:
         return (0, 0)
     cli = args._cli
     from orm.users import Users
-    success = failed = 0
     for username in args.user:
         user = Users.query.filter(Users.username == username).first()
         if user:
             result = _downsync(args, user, syncMembers=True)
-            success += result
-            failed += not result
+            resCount.success += result
+            resCount.failed += not result
         else:
             from services import Service
             with Service("ldap", orgIDs[0]) as ldap:
                 candidate = _getCandidate(cli, username, ldap)
                 if not candidate:
-                    failed += 1
+                    resCount.failed += 1
                     continue
                 os, of = _import(args, candidate, ldap, orgIDs[0], syncExisting=True, syncMembers=True)
-                success += os
-                failed += of
-    return success, failed
+                resCount.success += os
+                resCount.failed += of
 
 
 def cliLdapDownsync(args):
     cli = args._cli
     cli.require("DB")
     from orm.users import Aliases, Users
-    from services import Service
+    from services import Service, ServiceUnavailableError
+    from tools.misc import GenericObject
     Aliases.NTactive(False)
     Users.NTactive(False)
     orgIDs = _getOrgIDs(args)
-    success, failed = _downsyncSpecific(args, orgIDs)
-    if not success+failed:
+    resCount = GenericObject(success=0, failed=0)
+    _downsyncSpecific(args, orgIDs, resCount)
+    if not resCount.success+resCount.failed:
         for orgID in orgIDs:
-            with Service("ldap", orgID) as ldap:
-                os, of = _downsyncOrg(args, orgID, ldap)
-                success += os
-                failed += of
+            try:
+                with Service("ldap", orgID, errors=Service.SUPPRESS_INOP) as ldap:
+                    _downsyncOrg(args, orgID, ldap, resCount)
+            except ServiceUnavailableError:
+                cli.print(cli.col(f"Failed to synchronize organization #{orgID} - service unavailable"))
     Aliases.NTactive(True)
     Users.NTactive(True)
-    cli.print(cli.col("{} synchronized, {} failed".format(success, failed), attrs=["dark"]))
+    cli.print(cli.col("{} synchronized, {} failed".format(resCount.success, resCount.failed), attrs=["dark"]))
+    return 0 if not resCount.failed else ERR_PARTIAL
 
 
 def cliLdapSearch(args):
