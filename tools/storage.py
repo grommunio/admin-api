@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020 grommunio GmbH
 
-from math import ceil
 import os
 import shutil
 import subprocess
@@ -22,65 +21,15 @@ import logging
 logger = logging.getLogger("storage")
 
 
-def genPath(index: int, depth: int):
-    """Generate minimum width unique path for index.
-
-    Parameters
-    ----------
-    index : int
-        Index of the file
-    depth : int
-        Number of levels.
-
-    Returns
-    -------
-    list of int
-        Indices of each directory
-    """
-    def minSplits(num: int, depth: int):
-        """Calculate minimum number of splits for `num` items in a tree with `depth` levels.
-
-        Parameters
-        ----------
-        num : int
-            Number of items in the tree.
-        depth : int
-            Depth of the tree
-
-        Returns
-        -------
-        int
-            Minimal required splits at any level.
-        """
-        return ceil(num**(1/depth))
-
-    diridx = [0]*depth  # Path
-    ms = minSplits(index+1, depth)  # Minimum required splits
-    splitidx = index - (ms-1)**depth  # Index within current split level
-    subprev = index  # Only required for depth == 1
-    created = False  # Whether in a new branch (otherwise filling an old one)
-    for level in range(depth-1):  # Traverse tree down to leaves
-        subcap = ms**(depth-level-1)  # Capacity of each sub tree
-        subprev = (ms-1)**(depth-level-1)  # Sub tree capacity at previous split level
-        subnew = subcap if created else subcap-subprev  # Number of new elements that can be placed in each sub tree
-        diridx[level] = min(splitidx//subnew, ms-1)  # Choose split number according to capacity
-        splitidx -= diridx[level]*subnew  # Calculate local index for subtree
-        created |= diridx[level] == ms-1  # Set sticky fresh-branch flag
-    diridx[-1] = splitidx if created else splitidx+subprev  # Set leaf index
-    return diridx
-
-
-def createPath(parent: str, index: int, depth: int, fileUid=None, fileGid=None):
+def createPath(parent: str, name: str, fileUid=None, fileGid=None):
     """Create storage path.
 
     Parameters
     ----------
     parent : str
         Parent directory
-    index : int
-        Index of the element to store
-    depth : int
-        Number of levels to create
+    name : str
+        User or domain name
 
     Raises
     ------
@@ -92,17 +41,17 @@ def createPath(parent: str, index: int, depth: int, fileUid=None, fileGid=None):
     path : str
         The full path of the created directory (without trailing slash)
     """
-    subdirs = ["{:X}".format(i) for i in genPath(index, depth)]
-    path = os.path.join(parent, *subdirs)
+    path = basepath = os.path.join(parent, *reversed(name.split('@')))
+    counter = 0
+    while os.path.exists(path):
+        counter += 1
+        path = f"{basepath}~{counter}"
     os.makedirs(path)
     if fileUid is not None or fileGid is not None:
-        temp = parent
-        for subdir in subdirs:
-            temp = os.path.join(temp, subdir)
-            try:
-                shutil.chown(temp, fileUid, fileGid)
-            except Exception:
-                pass
+        try:
+            shutil.chown(path, fileUid, fileGid)
+        except Exception:
+            logger.warn(f"failed to set ownership on '{path}' to {fileUid}/{fileGid}")
     return path
 
 
@@ -260,8 +209,7 @@ class DomainSetup(SetupContext):
 
         Additional `cid`, `log` and `tmp` subdirectories are created in the home directory.
         """
-        options = Config["options"]
-        self.domain.homedir = createPath(self.domain.homedir, self.domain.ID, options["domainStorageLevels"], fileUid, fileGid)
+        self.domain.homedir = createPath(self.domain.homedir, self.domain.domainname, fileUid, fileGid)
         self._dirs.append(self.domain.homedir)
         os.mkdir(self.domain.homedir+"/exmdb")
         os.mkdir(self.domain.homedir+"/cid")
@@ -357,8 +305,7 @@ class UserSetup(SetupContext):
 
         Additional `cid`, `config`, `eml`, `ext` and `tmp` subdirectories are created in the home directory.
         """
-        options = Config["options"]
-        self.user.maildir = createPath(self.user.maildir, self.user.ID, options["userStorageLevels"], fileUid, fileGid)
+        self.user.maildir = createPath(self.user.maildir, self.user.username, fileUid, fileGid)
         self._dirs.append(self.user.maildir)
         os.mkdir(self.user.maildir+"/exmdb")
         os.mkdir(self.user.maildir+"/tmp")
