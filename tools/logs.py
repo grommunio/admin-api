@@ -107,7 +107,7 @@ class JournaldReader:
         entries = []
         while True:
             entry = self.reader.get_previous()
-            if len(entry) == 0 or entry["__REALTIME_TIMESTAMP"] <= after:
+            if len(entry) == 0 or entry["__REALTIME_TIMESTAMP"].timestamp() <= after.timestamp():
                 break
             entries.append(self._entry(entry))
         return list(reversed(entries))
