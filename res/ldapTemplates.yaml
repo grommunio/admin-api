@@ -53,3 +53,7 @@ OpenLDAP:
 Univention:
   mail: smtpaddress
   departmentNumber: departmentname
+389ds:
+  mail: smtpaddress
+  departmentNumber: departmentname
+  c: country
