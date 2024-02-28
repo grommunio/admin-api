@@ -32,7 +32,7 @@ mconf:
   ldapPath: '/etc/gromox/ldap_adaptor.cfg'
   authmgrPath: '/etc/gromox/authmgr.cfg'
   fileUid: 'grommunio'
-  fileGid: 'gromox'
+  fileGid: 'gromoxcf'
 logs:
   Admin API:
     source: 'grommunio-admin-api.service'
