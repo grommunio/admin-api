@@ -265,6 +265,10 @@ class Users(DataModel, DB.Base, NotifyTable):
         if props is None:
             return
         status = props.pop("domainStatus") << 4
+        # Cache domainnames in the same organization to enforce valid aliases
+        # Necessary because retrieving domainnames causes the partially created user to be flushed, resulting in DB errors
+        self.orgDomains = {d._domainname for d in Domains.query.filter(Domains.orgID == props["domain"].orgID)
+                                                               .with_entities(Domains._domainname)}
         self.fromdict(props, *args, **kwargs)
         self.addressStatus = (self.addressStatus or 0) | status
 
@@ -580,6 +584,14 @@ class Users(DataModel, DB.Base, NotifyTable):
             logger.warning("Failed to update chat user")
         self._chatUser["roles"] = tmpRoles
 
+    @validates("aliases")
+    def checkAlias(self, key, value, *args):
+        domains = getattr(self, "orgDomains", None) or\
+                  [d._domainname for d in Domains.query.with_entities(Domains._domainname).filter(Domains.orgID == self.orgID)]
+        if not value.aliasname.split('@')[1] in domains:
+            raise ValueError("Cannot use alias from foreign domain")
+        return value
+
     @validates("_syncPolicy")
     def triggerSyncPolicyUpdate(self, key, value, *args):
         if value != self._syncPolicy:
@@ -844,6 +856,7 @@ class Aliases(DataModel, DB.Base, NotifyTable):
     def __init__(self, aliasname, main, *args, **kwargs):
         if main.ID == 0:
             raise ValueError("Cannot alias superuser")
+        self.aliasname = aliasname
         self.main = main
         self.fromdict(aliasname)
 
