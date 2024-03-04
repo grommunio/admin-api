@@ -68,6 +68,8 @@ class Users(DataModel, DB.Base, NotifyTable):
             tag = PropTags.deriveTag(k)
             name = self._name(k)
             if not PropTypes.ismv(tag):
+                if isinstance(v, (bytes, str)) and len(v) > 4000:
+                    return  # Value is to long to be stored, omit to avoid corrupting store properties
                 if tag in self.__struct:
                     if v is None:
                         DB.session.delete(self.__struct[tag])
