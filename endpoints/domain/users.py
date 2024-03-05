@@ -11,7 +11,7 @@ from datetime import datetime
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError
 
-from .. import defaultObjectHandler, userQuery
+from .. import defaultObjectHandler, userQuery, defaultListQuery
 
 from services import Service
 
@@ -19,7 +19,7 @@ from tools import formats
 from tools.config import Config
 from tools.constants import PropTags, PropTypes, ExchangeErrors, PrivateFIDs, Permissions
 from tools.misc import loadPSO, GenericObject
-from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission
+from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission, ResetPasswdPermission
 from tools.rop import nxTime, makeEidEx
 from tools.storage import setDirectoryOwner, setDirectoryPermission
 
@@ -30,6 +30,31 @@ import shutil
 import time
 
 from orm import DB
+
+
+@API.route(api.BaseRoute+"/passwd/<username>", methods=["PUT"])
+@secure(requireAuth=True, authLevel="user")
+def resetPasswd(username):
+    checkPermissions(ResetPasswdPermission())
+    from orm.users import Users
+    user = Users.query.filter(Users.username == username).first()
+    if not user:
+        return jsonify(message="User not found."), 404
+    if user.externID:
+        return jsonify(message="Cannot modify LDAP imported user"), 400
+    data = request.get_json()
+    user.password = data["new"]
+    DB.session.commit()
+    return jsonify(message="Password reset successfully.")
+
+
+@API.route(api.BaseRoute+"/users", methods=["GET"])
+@secure(requireAuth=True, authLevel="user")
+def usernames():
+    checkPermissions(ResetPasswdPermission())
+    from orm.users import Users
+    users = defaultListQuery(Users, (Users.ID != 0, Users.status == 0), result="list")
+    return jsonify(data=[{"username": user.username} for user in users])
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["GET"])

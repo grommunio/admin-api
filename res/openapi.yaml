@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.14.0
+  version: 1.15.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -160,6 +160,71 @@ paths:
           description: Authentication failed
         '403':
           description: Incorrect old password
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /passwd/{username}:
+    put:
+      summary: Change user password
+      operationId: resetPasswd
+      tags:
+        - Misc
+        - Users
+      parameters:
+        - $ref: '#/components/parameters/username'
+        - $ref: '#/components/parameters/CSRFToken'
+      security:
+        - JWTCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new]
+              properties:
+                new:
+                  type: string
+                  description: The new password
+      responses:
+        '200':
+          description: Password updated
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: "#/components/responses/NotFound"
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /users:
+    get:
+      summary: Get list of usernames
+      operationId: getUsernames
+      tags:
+        - Misc
+        - Users
+      security:
+        - JWTCookie: []
+      responses:
+        '200':
+          description: List of usernames returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        username:
+                          type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
         '503':

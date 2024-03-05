@@ -349,6 +349,24 @@ class SystemAdminPermission:
         return None
 
 
+@Permissions.register("ResetPasswd")
+class ResetPasswdPermission(PermissionBase):
+    """Permission class representing the permission to reset any users's password.
+
+    Currently only acts as system-wide permission. Domain or organization granularity may be added in the future.
+    """
+    @classmethod
+    def capabilities(cls):
+        """Get a set of capabilities provided by this permission.
+
+        Returns
+        -------
+        set
+            Set containing "ResetPasswd" capability.
+        """
+        return {"ResetPasswd"} | super().capabilities()
+
+
 @Permissions.register("DomainAdminRO")
 class DomainAdminROPermission(PermissionBase):
     """Permission class representing read only permissions for a domain.
@@ -419,7 +437,7 @@ class DomainAdminROPermission(PermissionBase):
 
 
 @Permissions.register("DomainAdmin")
-class DomainAdminPermission(DomainAdminROPermission):
+class DomainAdminPermission(DomainAdminROPermission, ResetPasswdPermission):
     """Permission class representing admin permissions for a domain.
 
     Can represent permission for a specific domain, or domains in general (when parameter is '*').
@@ -469,6 +487,7 @@ class SystemAdminROPermission(DomainAdminROPermission):
     The read-only system admin has access to all the data a normal system admin has,
     but cannot modify anything.
     """
+
     def __init__(self, *args, **kwargs):
         """Initialize permission.
 
@@ -503,7 +522,7 @@ class SystemAdminROPermission(DomainAdminROPermission):
 
 
 @Permissions.register("OrgAdmin")
-class OrgAdminPermission(PermissionBase):
+class OrgAdminPermission(ResetPasswdPermission):
     """Permission class representing admin permissions for an organization.
 
     An organization admin automatically has DomainAdminPermission for each domain belonging to an organization.
@@ -515,6 +534,7 @@ class OrgAdminPermission(PermissionBase):
     Requesting a DomainAdminPermission with parameter '*' and
     requesting DomainAdminPermission for a specific domain from a permission with parameter '*' will both return True.
     """
+
     def __init__(self, orgID):
         """Initialize domain admin permission.
 
