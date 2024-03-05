@@ -275,7 +275,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         self.addressStatus = (self.addressStatus or 0) | status
 
     def fromdict(self, patches, syncStore=True, *args, **kwargs):
-        isContact = patches.get("status", self.status) != Users.CONTACT
+        isContact = patches.get("status", self.status) == Users.CONTACT
         if "username" in patches and patches["username"] != self.username:
             from orm.domains import Domains
             username = patches.pop("username")
