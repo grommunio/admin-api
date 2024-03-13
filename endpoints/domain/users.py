@@ -37,7 +37,7 @@ from orm import DB
 def resetPasswd(username):
     checkPermissions(ResetPasswdPermission())
     from orm.users import Users
-    user = Users.query.filter(Users.username == username).first()
+    user = Users.query.filter(Users.username == username, Users.maildir != "").first()
     if not user:
         return jsonify(message="User not found."), 404
     if user.externID:
@@ -53,7 +53,7 @@ def resetPasswd(username):
 def usernames():
     checkPermissions(ResetPasswdPermission())
     from orm.users import Users
-    users = defaultListQuery(Users, (Users.ID != 0, Users.status == 0), result="list")
+    users = defaultListQuery(Users, (Users.ID != 0, Users.status == 0, Users.maildir != ""), result="list")
     return jsonify(data=[{"username": user.username} for user in users])
 
 
