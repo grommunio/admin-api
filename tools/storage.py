@@ -41,17 +41,22 @@ def createPath(parent: str, name: str, fileUid=None, fileGid=None):
     path : str
         The full path of the created directory (without trailing slash)
     """
-    path = basepath = os.path.join(parent, *reversed(name.split('@')))
+    homepath = list(reversed(name.split('@')))
+    leaf = homepath[-1]
+    path = os.path.join(parent, *homepath)
     counter = 0
     while os.path.exists(path):
         counter += 1
-        path = f"{basepath}~{counter}"
+        homepath[-1] = f"{leaf}~{counter}"
+        path = os.path.join(parent, *homepath)
     os.makedirs(path)
     if fileUid is not None or fileGid is not None:
-        try:
-            shutil.chown(path, fileUid, fileGid)
-        except Exception:
-            logger.warn(f"failed to set ownership on '{path}' to {fileUid}/{fileGid}")
+        for h in homepath:
+            try:
+                parent = os.path.join(parent, h)
+                shutil.chown(parent, fileUid, fileGid)
+            except Exception:
+                logger.warn(f"failed to set ownership on '{path}' to {fileUid}/{fileGid}")
     return path
 
 
