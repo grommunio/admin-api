@@ -192,7 +192,7 @@ def setLicenseSubscription():
 def rspamdProxy(path):
     checkPermissions(SystemAdminROPermission())
     conf = Config["options"]
-    if path not in conf.get("antispamEndpoints", ("stat", "graph", "errors")):
+    if path not in conf["antispamEndpoints"]:
         return jsonify(message="Endpoint not allowed"), 403
     try:
         res = requests.get(conf["antispamUrl"]+"/"+path, request.args, stream=True)

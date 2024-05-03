@@ -68,6 +68,7 @@ def _defaultConfig():
             "validateResponse": True
             },
         "options": {
+            "antispamEndpoints": ["stat", "graph", "errors", "history"],
             "antispamUrl": "http://localhost:11334",
             "disableDB": False,
             "dataPath": "/usr/share/grommunio-admin-common",
