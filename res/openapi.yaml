@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.15.0
+  version: 1.15.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -4894,6 +4894,7 @@ components:
           readOnly: true
         syncPolicy:
           $ref: '#/components/schemas/syncPolicy'
+          nullable: true
         chat:
           type: boolean
           description: Whether chat is enabled for this domain
@@ -4904,6 +4905,7 @@ components:
           properties:
             homeserver:
               $ref: '#/components/schemas/homeserverRef'
+              nullable: true
     domainWrite:
       allOf:
         - $ref: '#/components/schemas/domainCommon'
@@ -4911,6 +4913,7 @@ components:
           properties:
             homeserver:
               $ref: '#/components/schemas/homeserverID'
+              nullable: true
     domainDnsCheck:
       type: object
       properties:
@@ -5116,6 +5119,7 @@ components:
             $ref: '#/components/schemas/fetchmailEntry'
         syncPolicy:
           $ref: '#/components/schemas/syncPolicy'
+          nullable: true
         chat:
           type: boolean
           description: Whether chat is enabled for this user
@@ -5127,8 +5131,10 @@ components:
           description: User language
         forward:
           $ref: '#/components/schemas/forward'
+          nullable: true
         homeserver:
           $ref: '#/components/schemas/homeserverRef'
+          nullable: true
         mlist:
           type: integer
           nullable: true
@@ -5190,6 +5196,7 @@ components:
             $ref: '#/components/schemas/fetchmailEntry'
         syncPolicy:
           $ref: '#/components/schemas/syncPolicy'
+          nullable: true
         chat:
           type: boolean
           description: Whether chat is enabled for this user
@@ -5201,8 +5208,10 @@ components:
           description: User language
         forward:
           $ref: '#/components/schemas/forward'
+          nullable: true
         homeserver:
           $ref: '#/components/schemas/homeserverID'
+          nullable: true
     userUpdate:
       type: object
       properties:
@@ -5256,6 +5265,7 @@ components:
             $ref: '#/components/schemas/fetchmailEntry'
         syncPolicy:
           $ref: '#/components/schemas/syncPolicy'
+          nullable: true
         chat:
           type: boolean
           description: Whether chat is enabled for this user
@@ -5267,8 +5277,10 @@ components:
           description: User language
         forward:
           $ref: '#/components/schemas/forward'
+          nullable: true
         homeserver:
           $ref: '#/components/schemas/homeserverID'
+          nullable: true
     publicFolder:
       type: object
       properties:
