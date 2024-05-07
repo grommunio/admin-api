@@ -281,7 +281,7 @@ def getUserSyncData(domainID, userID):
                 continue
             syncstate = {prop: stateobj[prop] for prop in props}
             syncstate["foldersSyncable"] = len(stateobj["contentdata"])
-            syncstate["foldersSynced"] = len([folder for folder in stateobj["contentdata"].values() if 1 in folder])
+            syncstate["foldersSynced"] = len([folder for folder in stateobj["contentdata"].values() if "1" in folder])
             syncstate["wipeStatus"] = 0
             devices[syncstate["deviceid"]] = syncstate
         except Exception as err:
