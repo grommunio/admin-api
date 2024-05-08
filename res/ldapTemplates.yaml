@@ -27,6 +27,7 @@ common:
   wWWHomePage: businesshomepage
   displayname: displayname
   ou: addressbookorganizationalunitname
+  mail: smtpaddress
 ActiveDirectory:
   department: departmentname
   extensionAttribute1: addressbookextensionattribute1
@@ -48,12 +49,9 @@ ActiveDirectory:
   mDBOverQuotaLimit: prohibitsendquota
   msExchRecipientDisplayType: displaytypeex
 OpenLDAP:
-  mail: smtpaddress
   departmentNumber: departmentname
 Univention:
-  mail: smtpaddress
   departmentNumber: departmentname
 389ds:
-  mail: smtpaddress
   departmentNumber: departmentname
   c: country
