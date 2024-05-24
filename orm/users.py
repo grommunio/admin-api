@@ -591,7 +591,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         domains = getattr(self, "orgDomains", None) or\
                   [d._domainname for d in Domains.query.with_entities(Domains._domainname).filter(Domains.orgID == self.orgID)]
         if not value.aliasname.split('@')[1] in domains:
-            raise ValueError("Cannot use alias from foreign domain")
+            raise ValueError(f"Cannot use alias from foreign domain: {value.aliasname}")
         return value
 
     @validates("_syncPolicy")
