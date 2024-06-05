@@ -22,12 +22,16 @@ class OpenApiCompat:
             from openapi_core.contrib.flask import FlaskOpenAPIRequest, FlaskOpenAPIResponse
         if self.version < [0, 15, 0]:
             from openapi_core import create_spec
-        elif self.version < [0, 18, 0]:
+        elif self.version < [0, 19, 0]:
             from openapi_core.spec.shortcuts import create_spec
+        else:
+            from jsonschema_path import SchemaPath
         if self.version < [0, 18, 0]:
             self.spec = create_spec(apiSpec)
-        else:
+        elif self.version < [0, 19, 0]:
             self.spec = openapi_core.Spec.from_dict(apiSpec)
+        else:
+            self.spec = SchemaPath.from_dict(apiSpec)
         if self.version < [0, 15, 0]:
             from openapi_core.shortcuts import RequestValidator, ResponseValidator
             self.requestValidator = RequestValidator(self.spec)

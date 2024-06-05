@@ -4858,7 +4858,6 @@ components:
           type: string
           maxLength: 128
           readOnly: True
-          default: ""
         maxUser:
           type: integer
         title:
