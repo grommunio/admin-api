@@ -164,7 +164,10 @@ class Servers(DataModel, DB.Base):
     @users.expression
     def users(cls):
         from .users import Users
-        return select([func.count(Users.ID)]).where(Users.homeserverID == cls.ID).as_scalar()
+        if sqlalchemy.__version__.split(".") >= ["1", "4"]:
+            return select(func.count(Users.ID)).where(Users.homeserverID == cls.ID).scalar_subquery()
+        else:
+            return select([func.count(Users.ID)]).where(Users.homeserverID == cls.ID).as_scalar()
 
     @hybrid_property
     def domains(self):
@@ -174,7 +177,10 @@ class Servers(DataModel, DB.Base):
     @domains.expression
     def domains(cls):
         from .domains import Domains
-        return select([func.count(Domains.ID)]).where(Domains.homeserverID == cls.ID).as_scalar()
+        if sqlalchemy.__version__.split(".") >= ["1", "4"]:
+            return select(func.count(Domains.ID)).where(Domains.homeserverID == cls.ID).scalar_subquery()
+        else:
+            return select([func.count(Domains.ID)]).where(Domains.homeserverID == cls.ID).as_scalar()
 
     @staticmethod
     def _getServer(objID, serverID=None, domain=False):

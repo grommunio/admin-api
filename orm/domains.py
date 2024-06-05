@@ -418,18 +418,18 @@ from . import misc
 
 if sqlalchemy.__version__.split(".") >= ["1", "4"]:
     inspect(Domains).add_property("activeUsers",
-                                  column_property(select([func.count(Users.ID)])
+                                  column_property(select(func.count(Users.ID))
                                                   .where(Users.domainID == Domains.ID, Users.addressStatus == Users.NORMAL,
                                                          Users.maildir != "")
                                                   .scalar_subquery()))
     inspect(Domains).add_property("inactiveUsers",
-                                  column_property(select([func.count(Users.ID)])
+                                  column_property(select(func.count(Users.ID))
                                                   .where(Users.domainID == Domains.ID,
                                                          Users.addressStatus.not_in((Users.NORMAL, Users.SHARED)),
                                                          Users.maildir != "")
                                                   .scalar_subquery()))
     inspect(Domains).add_property("virtualUsers",
-                                  column_property(select([func.count(Users.ID)])
+                                  column_property(select(func.count(Users.ID))
                                                   .where(Users.domainID == Domains.ID, (Users.addressStatus == Users.SHARED) |
                                                          (Users.maildir == ""))
                                                   .scalar_subquery()))

@@ -4,10 +4,10 @@
 
 __all__ = ["domains", "misc", "users", "ext"]
 
+import sqlalchemy
 from sqlalchemy import create_engine, event, select, text
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import scoped_session, sessionmaker, class_mapper, Query, column_property
+from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker, class_mapper, Query, column_property
 
 from tools.config import Config
 
@@ -44,7 +44,7 @@ class DBConn:
 
     def testConnection(self, verbose=False):
         try:
-            self.session.execute("SELECT 1 FROM DUAL")
+            self.session.execute(text("SELECT 1 FROM DUAL"))
         except OperationalError as err:
             self.session.remove()
             return "Database connection failed with error {}: {}".format(err.orig.args[0], err.orig.args[1])
@@ -64,7 +64,7 @@ class DBConn:
             Version number or None on failure
         """
         try:
-            version = int(self.session.execute("SELECT `value` FROM `options` WHERE `key` = 'schemaversion'").fetchone()[0])
+            version = int(self.session.execute(text("SELECT `value` FROM `options` WHERE `key` = 'schemaversion'")).fetchone()[0])
             if verbose:
                 logger.info("Detected database schema version n"+str(version))
             return version
@@ -216,7 +216,10 @@ def OptionalC(version, default, column):
     column : Any
         Column definition to return if version check passes
     """
-    return column if DB.minVersion(version) else column_property(select([text(default)]).as_scalar())
+    if sqlalchemy.__version__.split(".") >= ["1", "4"]:
+        return column if DB.minVersion(version) else column_property(select(text(default)).scalar_subquery())
+    else:
+        return column if DB.minVersion(version) else column_property(select([text(default)]).as_scalar())
 
 
 class NotifyTable:
