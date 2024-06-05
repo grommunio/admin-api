@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 Flask = "*"
 mysqlclient = "*"
-openapi-core = ">=0.13.8,<0.17.0"
+openapi-core = ">=0.13.8,<=0.19,!0.18"
 psutil = "*"
 pyjwt = "*"
 ldap3 = "*"
@@ -23,4 +23,4 @@ dnspython = "*"
 [dev-packages]
 
 [requires]
-python_version = "2"
+python_version = "3"
