@@ -343,15 +343,15 @@ def syncGroupMembers(orgID, ldapgroup, ldap, users=None):
         from orm.users import Users
         users = {user.externID for user in Users.query.filter(Users.orgID == orgID, Users.externID != None)}
     assocs = {assoc.username: assoc for assoc in Associations.query.filter(Associations.listID == group.ID).all()}
-    add = 0
+    add = []
     for member in ldap.searchUsers(attributes="idonly", customFilter=ldap.groupMemberFilter(ldapgroup.DN)):
         assoc = assocs.pop(member.email, None)
         if assoc or member.ID not in users:  # Do nothing if already associated or not known
             continue
-        add += 1
-        DB.session.add(Associations(member.email, group.ID))
-    remove = len(assocs)
+        add.append((member.email, group.ID))
     for assoc in assocs.values():
         DB.session.delete(assoc)
+    DB.session.flush()  # necessary to fix case-confusions (i.e. User@example.org -> user@example.org)
+    DB.session.add_all([Associations(memberEmail, groupID) for memberEmail, groupID in add])
     DB.session.commit()
-    return add, remove
+    return len(add), len(assocs)

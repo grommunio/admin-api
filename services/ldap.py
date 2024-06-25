@@ -64,22 +64,24 @@ class SearchResult:
             return
         if resultType == "user":
             if userconf["username"] in data["attributes"] and data["attributes"][userconf["username"]]:
-                self.email = self.username = self._reduce(data["attributes"][userconf["username"]])
+                self.email = self.username = self._reduce(data["attributes"][userconf["username"]]).lower()
             else:
                 self.email = self.username = None
                 self.error = "Missing username"
         elif resultType == "contact":
             self.username = None
             if userconf["contactname"] in data["attributes"] and data["attributes"][userconf["contactname"]]:
-                self.email = self._reduce(data["attributes"][userconf["contactname"]])
+                self.email = self._reduce(data["attributes"][userconf["contactname"]]).lower()
             else:
                 self.email = None
                 self.error = "Missing e-mail address"
         elif resultType == "group":
-            self.email = self._reduce(data["attributes"].get(groupconf["groupaddr"], ""))
-            self.name = self._reduce(data["attributes"].get(groupconf["groupname"], ""))
+            self.email = self._reduce(data["attributes"].get(groupconf["groupaddr"]))
             if not self.email:
                 self.error = "Missing e-mail address"
+            else:
+                self.email = self.email.lower()
+            self.name = self._reduce(data["attributes"].get(groupconf["groupname"], ""))
         else:
             self.error = "Unknown type"
 
