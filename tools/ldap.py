@@ -92,7 +92,7 @@ def downsyncGroup(mlist, externID=None):
         return err.orig.args[1], 400
 
 
-def downsyncObject(user, externID=None, syncGroupMembers=False):
+def downsyncObject(user, externID=None):
     """Synchronize user object from LDAP.
 
     Dispatches to appropriate synchronization function (user or group)
@@ -104,8 +104,6 @@ def downsyncObject(user, externID=None, syncGroupMembers=False):
         DESCRIPTION.
     externID : TYPE, optional
         DESCRIPTION. The default is None.
-    syncGroupMembers : TYPE, optional
-        DESCRIPTION. The default is False.
 
     Returns
     -------
@@ -122,10 +120,6 @@ def downsyncObject(user, externID=None, syncGroupMembers=False):
     if not mlist:
         return "No such group", 400
     message, code = downsyncGroup(mlist, externID)
-    if syncGroupMembers:
-        from services import Service
-        with Service("ldap", mlist.user.orgID) as ldap:
-            syncGroupMembers(mlist.user.orgID, ldap.getUserInfo(mlist.user.externID))
     return message, code
 
 
