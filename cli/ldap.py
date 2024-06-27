@@ -236,19 +236,15 @@ def _import(args, candidate, ldap, orgID, **kwargs):
 
 
 def _syncGroupMembers(args, orgID, groupID=None):
-    from orm.users import Users
     from services import Service
     from tools.ldap import syncGroupMembers
     cli = args._cli
-
-    users = {user.externID for user in
-             Users.query.filter(Users.orgID == orgID, Users.externID != None).with_entities(Users.externID)}
 
     with Service("ldap", orgID) as ldap:
         ldapgroups = [ldap.getUserInfo(groupID)] if groupID else ldap.searchUsers(types=("group",))
         for ldapgroup in ldapgroups:
             cli.print(f"Synchronizing members of group {ldapgroup.email}...", end="", flush=True)
-            add, remove = syncGroupMembers(orgID, ldapgroup, ldap, users)
+            add, remove = syncGroupMembers(orgID, ldapgroup, ldap)
             if None in (add, remove):
                 cli.print(cli.col("group not found", attrs=["dark"]))
             else:

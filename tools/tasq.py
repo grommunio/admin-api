@@ -170,15 +170,12 @@ class Worker:
         return syncStatus
 
     def _ldapSyncGroupMembers(self, orgID, ldap):
-        from orm.users import Users
         from tools.ldap import syncGroupMembers
         self.message = "Synchronizing group members"
         self.bump()
-        users = {user.externID for user in
-                 Users.query.filter(Users.orgID == orgID, Users.externID != None).with_entities(Users.externID)}
         status = []
         for ldapgroup in ldap.searchUsers(types=("group",)):
-            add, remove = syncGroupMembers(orgID, ldapgroup, ldap, users)
+            add, remove = syncGroupMembers(orgID, ldapgroup, ldap)
             if None in (add, remove):
                 status.append(dict(username=ldapgroup.email, code=404, message="Group not found"))
             else:

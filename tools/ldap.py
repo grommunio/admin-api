@@ -308,7 +308,7 @@ def importObject(candidate, ldap, **kwargs):
     raise TypeError(f"Unknown object type '{candidate.type}'")
 
 
-def syncGroupMembers(orgID, ldapgroup, ldap, users=None):
+def syncGroupMembers(orgID, ldapgroup, ldap):
     """Synchronize group members.
 
     Parameters
@@ -319,8 +319,6 @@ def syncGroupMembers(orgID, ldapgroup, ldap, users=None):
         LDAP group object to synchronize.
     ldap : services.ldap.LdapService
         LDAP connection to use
-    users : set[bytes], optional
-        Set containing LDAP object IDs of imported users or None to determine automatically. The default is None.
 
     Returns
     -------
@@ -330,19 +328,19 @@ def syncGroupMembers(orgID, ldapgroup, ldap, users=None):
         Number of users that were removed from the group or None if group not found
     """
     from orm.mlists import Associations, MLists
+    from orm.users import Users
     group = MLists.query.filter(MLists.listname == ldapgroup.email).first()
     if group is None or group.user.orgID != orgID:
         return None, None
-    if users is None:
-        from orm.users import Users
-        users = {user.externID for user in Users.query.filter(Users.orgID == orgID, Users.externID != None)}
+    users = {user.externID: user.username
+             for user in Users.query.filter(Users.orgID == orgID, Users.externID != None)
+                                    .with_entities(Users.externID, Users.username)}
     assocs = {assoc.username: assoc for assoc in Associations.query.filter(Associations.listID == group.ID).all()}
     add = []
     for member in ldap.searchUsers(attributes="idonly", customFilter=ldap.groupMemberFilter(ldapgroup.DN)):
         assoc = assocs.pop(member.email, None)
-        if assoc or member.ID not in users:  # Do nothing if already associated or not known
-            continue
-        add.append((member.email, group.ID))
+        if assoc is None and member.ID in users:  # Do nothing if already associated or not known
+            add.append((users[member.ID], group.ID))
     for assoc in assocs.values():
         DB.session.delete(assoc)
     DB.session.flush()  # necessary to fix case-confusions (i.e. User@example.org -> user@example.org)
