@@ -29,7 +29,7 @@ class Orgs(DataModel, DB.Base):
 
     domains = relationship("Domains", back_populates="org")
 
-    _dictmapping_ = ((Id(), Text("name", flags="patch")), (Text("description", flags="patch"),),
+    _dictmapping_ = ((Id(), Text("name", flags="patch")), (Text("description", flags="patch"), Int("domainCount")),
                      (RefProp("domains", flags="patch"),))
 
     def fromdict(self, patches, *args, **kwargs):
@@ -433,6 +433,10 @@ if sqlalchemy.__version__.split(".") >= ["1", "4"]:
                                                   .where(Users.domainID == Domains.ID, (Users.addressStatus == Users.SHARED) |
                                                          (Users.maildir == ""))
                                                   .scalar_subquery()))
+    inspect(Orgs).add_property("domainCount",
+                               column_property(select(func.count(Domains.ID))
+                                               .where(Domains.orgID == Orgs.ID)
+                                               .scalar_subquery()))
 else:
     inspect(Domains).add_property("activeUsers",
                                   column_property(select([func.count(Users.ID)])
@@ -450,5 +454,9 @@ else:
                                                   .where((Users.domainID == Domains.ID) &
                                                          ((Users.addressStatus == Users.SHARED) | (Users.maildir == "")))
                                                   .as_scalar()))
+    inspect(Orgs).add_property("domainCount",
+                               column_property(select([func.count(Domains.ID)])
+                                               .where(Domains.orgID == Orgs.ID)
+                                               .as_scalar()))
 
 Domains.NTregister()
