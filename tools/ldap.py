@@ -338,7 +338,7 @@ def syncGroupMembers(orgID, ldapgroup, ldap):
     assocs = {assoc.username: assoc for assoc in Associations.query.filter(Associations.listID == group.ID).all()}
     add = []
     for member in ldap.searchUsers(attributes="idonly", customFilter=ldap.groupMemberFilter(ldapgroup.DN)):
-        assoc = assocs.pop(member.email, None)
+        assoc = assocs.pop(users.get(member.ID), None)
         if assoc is None and member.ID in users:  # Do nothing if already associated or not known
             add.append((users[member.ID], group.ID))
     for assoc in assocs.values():
