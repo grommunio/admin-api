@@ -107,6 +107,46 @@ class Table:
             import re
             cls.stylemarker = re.compile("\x1b\\[[\\d]{1,2}m")
 
+        def _cut(self, width):
+            """Cut cell content to specified width.
+
+            Has no effect if width is larger than cell content.
+            If content is larger than width, the content is truncated, replacing the last char with an ellipsis,
+            preserving any terminal style codes present.
+
+            Parameters
+            ----------
+            width : int
+                Maximum cell width
+
+            Returns
+            -------
+            str
+                Cell content, truncated if necessary
+            """
+            if self.width <= width:
+                return self.data
+            if width <= 1:
+                return "…"
+            markers = self.stylemarker.findall(self.data)
+            if not markers:
+                return self.data[:width-1]+"…"
+            text = self.stylemarker.split(self.data)
+            cutIdx = -1
+            overshoot = self.width-width+1
+            while overshoot > 0:
+                if len(text[cutIdx]) < overshoot:
+                    overshoot -= len(text[cutIdx])
+                    text[cutIdx] = ""
+                else:
+                    text[cutIdx] = text[cutIdx][:-overshoot]+"…"
+                    overshoot = 0
+                cutIdx -= 1
+            segments = [None]*(len(markers)+len(text))
+            segments[::2] = text
+            segments[1::2] = markers
+            return "".join(segments)
+
         def _width(self):
             """Return effective width of the string (without style markers and expanded tabs)."""
             return len(self.stylemarker.sub("", self.data).expandtabs())
@@ -128,8 +168,9 @@ class Table:
             data : str
                 Cell content
             """
+            data = self._cut(width)
             pad = width-self.width
-            data = cli.col(self.data, self.color, self.on_color, self.attrs)
+            data = cli.col(data, self.color, self.on_color, self.attrs)
             if self.align == "r":
                 data = " "*pad+data
             elif self.align == "c":
@@ -186,7 +227,40 @@ class Table:
         """
         return data if isinstance(data, cls.Styled) else cls.Styled(data, *args, **kwargs)
 
-    def printline(self, cli, line):
+    def _narrow(self):
+        """Recalculate column width to fit table to terminal.
+
+        If the terminal is wider than the table or terminal width cannot be determined, no changes to column width are made.
+        Otherwise, columns are truncated, longest to shortest, until the table fits the terminal.
+
+        Returns
+        -------
+        list[int]
+            List of adjusted column widths
+        """
+        import shutil
+        sepWidth = len(self.colsep)*(self.columns-1)  # total width occupied by separators
+        contentWidth = sum(self.colwidth)
+        termWidth = shutil.get_terminal_size((0, 0)).columns
+        if termWidth == 0 or contentWidth+sepWidth <= termWidth:
+            return self.colwidth
+        if termWidth <= sepWidth+self.columns:  # each column would be reduced to 1 anyway
+            return tuple(1 for _ in range(self.columns))
+        widthIdx = sorted(zip(self.colwidth, range(self.columns)), reverse=True)
+        termWidth -= sepWidth
+        if termWidth <= self.columns*widthIdx[-1][0]:  # smallest column width is still too wide
+            colwidth = [termWidth//self.columns]*self.columns
+        else:  # cut the longest columns until it fits
+            narrowIdx = 1  # index in widthIdx up to which narrowing is performed
+            while termWidth < contentWidth - sum(w[0]-widthIdx[narrowIdx][0] for w in widthIdx[0:narrowIdx]):
+                narrowIdx += 1
+            narrowedWidth = (termWidth-sum(w[0] for w in widthIdx[narrowIdx:])) // narrowIdx
+            colwidth = [min(w, narrowedWidth) for w in self.colwidth]
+        for i in range(termWidth-sum(colwidth)):  # number of columns that can be wider by 1 char
+            colwidth[widthIdx[i][1]] += 1
+        return colwidth
+
+    def printline(self, cli, line, colwidth):
         """Print a single row of data.
 
         Parameters
@@ -196,7 +270,7 @@ class Table:
         line : [Styled]
             List of cells to print
         """
-        cli.print(self.colsep.join(line[i].print(cli, self.colwidth[i], i == self.columns-1) for i in range(len(line))))
+        cli.print(self.colsep.join(line[i].print(cli, colwidth[i], i == self.columns-1) for i in range(len(line))))
 
     def print(self, cli):
         """Print the table.
@@ -209,11 +283,12 @@ class Table:
         if not self.data and self.empty:
             cli.print(self.empty)
             return
+        colwidth = self._narrow()
         if self.header:
-            self.printline(cli, self.header)
+            self.printline(cli, self.header, colwidth)
         if self.data:
             for line in self.data:
-                self.printline(cli, line)
+                self.printline(cli, line, colwidth)
 
     def csv(self, cli):
         """Output table as csv.
