@@ -280,6 +280,8 @@ def cliExmdbStoreGetDelete(args):
         elif pv.type == PropTypes.FILETIME:
             timestring = datetime.fromtimestamp(nxTime(pv.val)).strftime("%Y-%m-%d %H:%M:%S")
             return pv.val, cli.col(timestring, attrs=["dark"])
+        elif pv.type in (PropTypes.STRING, PropTypes.WSTRING):
+            return pv.val, cli.col(printSize(len(pv.val)), attrs=["dark"])
         elif pv.type == PropTypes.BINARY_ARRAY:
             return cli.col("[{} value{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
         elif PropTypes.ismv(pv.type):
