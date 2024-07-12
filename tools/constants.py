@@ -995,6 +995,17 @@ class PropTags(_ReverseLookup):
 
     sizeFactor = {PROHIBITRECEIVEQUOTA: 1024, PROHIBITSENDQUOTA: 1024, STORAGEQUOTALIMIT: 1024}
 
+    unitFactors = {"": 1, "b": 1,
+                   "k": 1000, "kb": 1_000, "kib": 1_024,
+                   "m": 1000**2, "mb": 1000**2, "mib": 1024**2,
+                   "g": 1000**3, "gb": 1000**3, "gib": 1024**3,
+                   "t": 1000**4, "tb": 1000**4, "tib": 1024**4,
+                   "p": 1000**5, "pb": 1000**5, "pib": 1024**5,
+                   "e": 1000**6, "eb": 1000**6, "eib": 1024**6,
+                   "z": 1000**7, "zb": 1000**7, "zib": 1024**7,
+                   "y": 1000**8, "yb": 1000**8, "yib": 1024**8,
+                   }
+
     @classmethod
     def deriveTag(cls, tag):
         """Derive numeric tag value from integer or string.
@@ -1021,6 +1032,38 @@ class PropTags(_ReverseLookup):
         except Exception:
             pass
         raise ValueError("Failed to derive proptag from {}".format(repr(tag)))
+
+    @classmethod
+    def convertInt(cls, tag, value):
+        """Convert string value to integer.
+
+        Convert to int, processing size specifications accordingly.
+
+        Parameters
+        ----------
+        tag : int
+            Tag ID
+        value : str
+            Value specification
+
+        Raises
+        ------
+        ValueError
+            Unknown unit or not an integer
+
+        Returns
+        -------
+        int
+            Integer tag value
+        """
+        import re
+        match = re.match(r"^(?P<value>\d+(\.\d*)?)(?P<unit>[a-zA-Z]*)$", value)
+        if match is None or not match["unit"]:
+            return int(value)
+        factor = cls.unitFactors.get(match["unit"].lower())
+        if factor is None:
+            raise ValueError("unknown unit '{}'".format(match["unit"]))
+        return int(float(match["value"])*factor/cls.sizeFactor.get(tag, 1))
 
     @classmethod
     def convertValue(cls, tag, value):
@@ -1056,12 +1099,15 @@ class PropTags(_ReverseLookup):
                     except TypeError:
                         raise ValueError("Invalid date '{}'".format(value))
                 value = ntTime(time.mktime(value.timetuple()))
-        if type(value) != PropTypes.pyType(baseType):
+        if type(value) is not PropTypes.pyType(baseType):
             try:
-                value = PropTypes.pyType(baseType)(value)
-            except Exception:
+                if PropTypes().pyType(baseType) is int and isinstance(value, str):
+                    value = cls.convertInt(tag, value)
+                else:
+                    value = PropTypes.pyType(baseType)(value)
+            except Exception as err:
                 raise ValueError("Type of value {} does not match type of tag {} ({})"
-                                 .format(value, cls.lookup(tag), PropTypes.lookup(tag)))
+                                 .format(value, cls.lookup(tag), PropTypes.lookup(tag))) from err
         if tag == cls.DISPLAYTYPEEX:
             value = value & ~0x40000000  # Remove DTE_FLAG_ACL_CAPABLE flag because it is not recognized properly by gromox
         return value
