@@ -60,6 +60,7 @@ def _defaultConfig():
             "sessionTimout": 28800,
             },
         "dns": {
+            "disabled": False,
             "dudIP": "172.16.254.254",
             "externalResolvers": ["1.1.1.1", "1.0.0.1"]
             },

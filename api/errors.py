@@ -4,7 +4,7 @@
 
 from api.core import API
 from flask import jsonify, request
-from services import ServiceUnavailableError
+from services import ServiceDisabledError, ServiceUnavailableError
 from sqlalchemy.exc import DatabaseError
 
 import traceback
@@ -27,9 +27,13 @@ def insufficient_permissions(error):
     return jsonify(message="Access denied: "+msg), 403
 
 
-@API.errorhandler(ServiceUnavailableError)
+@API.errorhandler(ServiceDisabledError)
 def service_unavailable(error):
     return jsonify(message=error.args[0]), 503
+
+    @API.errorhandler(ServiceUnavailableError)
+    def service_unavailable(error):
+        return jsonify(message=error.args[0]), 503
 
 
 @API.errorhandler(Exception)

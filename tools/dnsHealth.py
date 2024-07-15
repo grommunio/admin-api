@@ -36,6 +36,9 @@ externalResolver.nameservers = Config["dns"]["externalResolvers"]
 
 
 def fullDNSCheck(domain: str):
+    if Config["dns"]["disabled"]:
+        from services import ServiceDisabledError
+        raise ServiceDisabledError("DNS check disabled by configuration")
     localIp = getLocalIp()
     externalIp = checkMyIP()
     mxRecords = checkMX(domain)
