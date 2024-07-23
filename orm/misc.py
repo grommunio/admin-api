@@ -12,6 +12,7 @@ from sqlalchemy.dialects.mysql import INTEGER, TINYINT, VARCHAR, TEXT, TIMESTAMP
 from sqlalchemy.ext.hybrid import hybrid_property
 
 import json
+import sqlalchemy
 
 
 def _trydec(value, default=None):
