@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
 from argparse import ArgumentParser
-
 from . import Cli
 
 SUCCESS = 0
@@ -165,6 +164,7 @@ def _downsync(args, user, externID=None, syncMembers=False, **kwargs):
     else:
         from orm.mlists import MLists
         mlist = MLists.query.filter(MLists.listname == user.username).first()
+        mlist.listname = mlist.listname.lower()
         if not mlist:
             cli.print(cli.col(f"Failed to synchronize {user.username}: no such group"))
             return False

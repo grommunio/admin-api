@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2023 grommunio GmbH
 
 import logging
-
 from orm import DB
 from services import Service, ServiceUnavailableError
 from sqlalchemy.exc import IntegrityError
