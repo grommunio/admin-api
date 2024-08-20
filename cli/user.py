@@ -253,6 +253,36 @@ def cliUserDelete(args):
     cli.print("Done.")
 
 
+def cliUserLogin(args):
+    cli = args._cli
+    cli.require("DB")
+    from orm.users import Users
+    user = Users.query.filter(Users.username == args.username).first()
+    if user is None:
+        cli.print(cli.col("User does not exist.", "red"))
+        return 1
+    if user.status != Users.NORMAL:
+        cli.print(cli.col("Login deactivated for {} user.".format(_statusMap.get(user.status, "invalid")), "red"))
+        return 2
+    if user.externID is None and not user.password:
+        cli.print(cli.col("User has no password set.", "red"))
+        return 3
+    from api.security import loginUser, mkCSRF, mkJWT
+    if not args.nopass:
+        if not args.password:
+            args.password = cli.input("Password: ", secret=True)
+        success, msg = loginUser(args.username, args.password)
+        if not success:
+            cli.print(cli.col(f"Login failed: {msg}", "red"))
+            return 4
+    if not args.token:
+        cli.print(cli.col("Login ok.", "green"))
+    else:
+        token = mkJWT({"usr": user.username})
+        csrf = mkCSRF(token)
+        cli.print(cli.col("Token: ", attrs=["bold"])+token+"\n"+cli.col("CSRF: ", attrs=["bold"])+csrf)
+
+
 def _cliUserDevicesDecodeSyncState(args, data, username):
     import base64
     import json
@@ -588,6 +618,12 @@ def _setupCliUser(subp: ArgumentParser):
     list.add_argument("userspec", nargs="?", help="User ID or name prefix")
     list.add_argument("-f", "--filter", action="append", help="Filter by attribute, e.g. -f ID=42")
     list.add_argument("-s", "--sort", action="append", help="Sort by attribute, e.g. -s username,desc")
+    login = sub.add_parser("login", help="Test user login")
+    login.set_defaults(_handle=cliUserLogin)
+    login.add_argument("username", help="E-Mail address of the user").completer = _cliUserspecCompleter
+    login.add_argument("--nopass", action="store_true", help="Skip password check")
+    login.add_argument("--password", help="User password to check")
+    login.add_argument("--token", action="store_true", help="Generate access and CSFR token on successful login")
     modify = sub.add_parser("modify",  help="Modify user")
     modify.set_defaults(_handle=cliUserModify)
     modify.add_argument("userspec", help="User ID or name prefix").completer = _cliUserspecCompleter

@@ -22,6 +22,8 @@ Synopsis
   *DEVICE*
 | **grommunio-admin user** **list** [*-f ATTRIBUTE=<value>*] [*-s FIELD*]
   [*USERSPEC*]
+| **grommunio-admin user** **login** [*--nopass*] [*--password PASSWORD*]
+  [*--token*] *USERNAME*
 | **grommunio-admin user** **modify** [*<FIELDS>*] [*--delete-chat-user*]
   [*--no-ldap*] [*--remove-alias ALIAS*] [*--remove-altname ALTNAME*]
   [*--remove-property PROPSPEC*] [*--remove-storeprop PROPSPEC*] *USERSPEC*
@@ -50,6 +52,8 @@ Commands
 ``list``
    List users
    **Deprecated.** Use query instead.
+``login``
+   Test user login
 ``modify``
    Modify a user
 ``query``
@@ -93,6 +97,10 @@ Options
    Do not apply configured default values
 ``--no-ldap``
    Detach user from LDAP object
+``--nopass``
+   Skip password check
+``--password``
+   User password. If omitted, password is retrieved from prompt.
 ``--remove-alias ALIAS``
    Remove ALIAS from user (can be given multiple times)
 ``--remove-altname ALTNAME``
@@ -106,6 +114,8 @@ Options
    length 1 if format is *csv*. Default is "," for *csv* and "  " for pretty.
 ``-s FIELD``, ``--sort FIELD``
    Sort by field. Can be given multiple times
+``--token``
+   Generate access and CSRF token on successful login
 ``-y``, ``--yes``
    Assume yes instead of prompting
 
