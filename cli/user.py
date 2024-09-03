@@ -139,6 +139,62 @@ def _splitData(args):
     return data
 
 
+def _usernamesFromFile(filename, args):
+    import os
+    cli = args._cli
+    ret, user = _getUser(args)
+    if ret:
+        return ret, None, None
+    if not user.maildir:
+        cli.print(cli.col("User has no mailbox", color="yellow"))
+        return 10, None, user
+
+    try:
+        with open(os.path.join(user.maildir, "config", filename), encoding="utf-8") as file:
+            return 0, [line.strip() for line in file if line.strip() != ""], user
+    except (FileNotFoundError, PermissionError, TypeError) as err:
+        cli.print(cli.col(str(err), "red"))
+        return 11, None, user
+
+
+def _usernamesToFile(filename, usernames, args):
+    import os
+    from orm.users import Users
+    from tools import formats
+    from tools.config import Config
+    from tools.misc import setDirectoryOwner, setDirectoryPermission
+
+    cli = args._cli
+    ret, user = _getUser(args)
+    if ret:
+        return ret
+    if not user.maildir:
+        cli.print(cli.col("User has no mailbox", color="yellow"))
+        return 10
+
+    if "force" not in args or not args.force:
+        for entry in usernames:
+            if not formats.email.match(entry):
+                cli.print(cli.col(f"'{entry}' is not a valid e-mail address", color="red"))
+                return 11
+            if Users.query.filter(Users.username == entry).count() != 1:
+                cli.print(cli.col(f"'{entry}' is not a known user", color="red"))
+                return 12
+
+    filepath = os.path.join(user.maildir, "config", filename)
+    try:
+        with open(filepath, "w", encoding="utf-8") as file:
+            file.write("\n".join(usernames)+"\n")
+    except (FileNotFoundError, PermissionError) as err:
+        cli.print(cli.col(str(err), "red"))
+        return 13
+    try:
+        setDirectoryOwner(filepath, Config["options"].get("fileUid"), Config["options"].get("fileGid"))
+        setDirectoryPermission(filepath, Config["options"].get("filePermissions"))
+    except Exception as err:
+        cli.print(cli.col(f"Failed to set file permissions: {err}"))
+
+
 def cliUserShow(args):
     cli = args._cli
     cli.require("DB")
@@ -502,6 +558,49 @@ def cliUserQuery(args):
     table.dump(cli, args.format)
 
 
+def cliUserSendas(args):
+    cli = args._cli
+    cli.require("DB")
+
+    if "userspec" not in args:
+        raise InvalidUseError()
+    if "action" not in args:
+        args.action = "list"
+
+    ret, usernames, user = _usernamesFromFile("sendas.txt", args)
+    if ret:
+        return ret
+
+    if args.action == "add":
+        for username in args.username:
+            if username in usernames:
+                cli.print(cli.col(f"'{username}' already has send-as permission", "yellow"))
+            else:
+                usernames.append(username)
+        ret = _usernamesToFile("sendas.txt", usernames, args)
+    elif args.action == "clear":
+        usernames = ()
+        ret = _usernamesToFile("sendas.txt", usernames, args)
+    elif args.action == "remove":
+        args.force = True
+        for username in args.username:
+            if username not in usernames:
+                cli.print(cli.col(f"'{username}' does not have send-as permission", "yellow"))
+            else:
+                usernames.remove(username)
+        ret = _usernamesToFile("sendas.txt", usernames, args)
+
+    if ret:
+        return ret
+    if not usernames:
+        cli.print(cli.col("No users can send as '{}'".format(user.username), attrs=["dark"]))
+    else:
+        cli.print("User{} that can send as '{}':".format("" if len(usernames) == 1 else "s",
+                                                         cli.col(user.username, attrs=["bold"])))
+        for username in usernames:
+            cli.print("  "+username)
+
+
 def _cliUserspecCompleter(prefix, **kwargs):
     from orm.users import Users
     return (user.username for user in Users.query.filter(Users.username.ilike(prefix+"%"))
@@ -643,6 +742,21 @@ def _setupCliUser(subp: ArgumentParser):
     query.add_argument("--separator", help="Set column separator")
     query.add_argument("-s", "--sort", action="append", help="Sort by attribute, e.g. -s username,desc")
     query.add_argument("attributes", nargs="*", choices=AttrChoice(), help="Attributes to query", metavar="ATTRIBUTE")
+    sendas = sub.add_parser("sendas", help="Manage send-as permission")
+    sendas.set_defaults(_handle=cliUserSendas)
+    sendas.add_argument("userspec", help="User ID or name prefix").completer = _cliUserspecCompleter
+    sendasActions = sendas.add_subparsers()
+    sendasAdd = sendasActions.add_parser("add", help="Grant send-as permissions to user")
+    sendasAdd.set_defaults(_handle=cliUserSendas, action="add")
+    sendasAdd.add_argument("--force", action="store_true", help="Override e-mail user check")
+    sendasAdd.add_argument("username", nargs="+", help="E-Mail address of the user").completer = _cliUserspecCompleter
+    sendasList = sendasActions.add_parser("clear", help="Clear send-as list")
+    sendasList.set_defaults(_handle=cliUserSendas, action="clear")
+    sendasList = sendasActions.add_parser("list", help="List users with send-as permission")
+    sendasList.set_defaults(_handle=cliUserSendas, action="list")
+    sendasRemove = sendasActions.add_parser("remove", help="Revoke send-as permission from user")
+    sendasRemove.set_defaults(_handle=cliUserSendas, action="remove")
+    sendasRemove.add_argument("username", nargs="+", help="E-Mail address of the user").completer = _cliUserspecCompleter
     show = sub.add_parser("show", help="Show detailed information about user")
     show.set_defaults(_handle=cliUserShow)
     show.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter

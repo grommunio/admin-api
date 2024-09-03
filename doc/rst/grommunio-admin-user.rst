@@ -29,6 +29,8 @@ Synopsis
   [*--remove-property PROPSPEC*] [*--remove-storeprop PROPSPEC*] *USERSPEC*
 | **grommunio-admin user** **query** [*-f ATTRIBUTE=<value>*] [*--format FORMAT*]
   [*--separator SEPARATOR*] [*-s FIELD*] [*ATTRIBUTE* …]
+| **grommunio-admin user** **sendas** *USERSPEC* (*clear* \| *list*)
+| **grommunio-admin user** **sendas** *USERSPEC* (*add* \| *remove*) *USERNAME* …
 | **grommunio-admin user** **show** [*-f ATTRIBUTE=<value>*] [*-s FIELD*]
   *USERSPEC*
 
@@ -58,6 +60,8 @@ Commands
    Modify a user
 ``query``
    Query user attributes
+``sendas``
+   Manage send-as permission
 ``show``
    Show detailed information about a user
 

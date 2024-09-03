@@ -66,6 +66,16 @@ SEPARATOR\f[R]] [\f[I]-s FIELD\f[R]] [\f[I]ATTRIBUTE\f[R] \&...]
 .PD 0
 .P
 .PD
+\f[B]grommunio-admin user\f[R] \f[B]sendas\f[R] \f[I]USERSPEC\f[R]
+(\f[I]clear\f[R] | \f[I]list\f[R])
+.PD 0
+.P
+.PD
+\f[B]grommunio-admin user\f[R] \f[B]sendas\f[R] \f[I]USERSPEC\f[R]
+(\f[I]add\f[R] | \f[I]remove\f[R]) \f[I]USERNAME\f[R] \&...
+.PD 0
+.P
+.PD
 \f[B]grommunio-admin user\f[R] \f[B]show\f[R] [\f[I]-f
 ATTRIBUTE=<value>\f[R]] [\f[I]-s FIELD\f[R]] \f[I]USERSPEC\f[R]
 .SH Description
@@ -96,6 +106,9 @@ Modify a user
 .TP
 \f[V]query\f[R]
 Query user attributes
+.TP
+\f[V]sendas\f[R]
+Manage send-as permission
 .TP
 \f[V]show\f[R]
 Show detailed information about a user
