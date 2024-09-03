@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.16.0
+  version: 1.16.1
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1023,6 +1023,7 @@ paths:
         - $ref: '#/components/parameters/queryOffset'
         - $ref: '#/components/parameters/match'
         - $ref: '#/components/parameters/matchFields'
+        - $ref: '#/components/parameters/filterProp'
         - $ref: '#/components/parameters/matchProps'
         - $ref: '#/components/parameters/propnames'
         - name: mlist
@@ -1911,6 +1912,7 @@ paths:
         - $ref: '#/components/parameters/match'
         - $ref: '#/components/parameters/matchFields'
         - $ref: '#/components/parameters/matchProps'
+        - $ref: '#/components/parameters/filterProp'
         - name: sort
           description: Sort by attribute. Can be given multiple times.
           in: query
@@ -4737,6 +4739,14 @@ components:
       description: Device ID
       schema:
         type: string
+    filterProp:
+      name: filterProp
+      in: query
+      required: false
+      description: Filter by user property
+      schema:
+        type: string
+        pattern: "^\\w+:\\w+(,\\w+)*(;\\w+:\\w+(,\\w+)*)*$"
     match:
       name: match
       description: Match by substring

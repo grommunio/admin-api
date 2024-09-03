@@ -396,6 +396,16 @@ def userQuery(domainID=None):
                   [column == prop.tf(expr) for prop, column in targets if prop.match == "exact" and prop.tf(expr) is not None]
         query = query.filter(or_(filter for filter in filters) if filters else False).reset_joinpoint()
 
+    if "filterProp" in request.args:
+        for filter in request.args["filterProp"].split(";"):
+            prop, value = filter.split(":")
+            try:
+                up = aliased(UserProperties)
+                query = query.outerjoin(up, (up.userID == Users.ID) & (up.tag == PropTags.deriveTag(prop)))\
+                             .filter(up._propvalstr == value if "," not in value else up._propvalstr.in_(value.split(",")))
+            except ValueError:
+                return jsonify(message=f"Unknown user property '{prop}'"), 400
+
     count = query.count()
     data = [user.todict(verbosity) for user in query.limit(limit).offset(offset).all()]
     if verbosity < 2 and "properties" in request.args:
