@@ -715,7 +715,7 @@ def _setupCliUser(subp: ArgumentParser):
     create.add_argument("--no-defaults", action="store_true", help="Do not apply configured default values")
     create.set_defaults(_handle=cliUserCreate)
     _cliAddUserAttributes(create)
-    userListFileParser(sub, "delegate", "delegate", cliUserManageFileList)
+    userListFileParser(sub, "delegates", "delegate", cliUserManageFileList)
     delete = sub.add_parser("delete", help="Delete user")
     delete.set_defaults(_handle=cliUserDelete)
     delete.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter
