@@ -152,7 +152,9 @@ def _usernamesFromFile(filename, args):
     try:
         with open(os.path.join(user.maildir, "config", filename), encoding="utf-8") as file:
             return 0, [line.strip() for line in file if line.strip() != ""], user
-    except (FileNotFoundError, PermissionError, TypeError) as err:
+    except FileNotFoundError:
+        return 0, [], user
+    except (PermissionError, TypeError) as err:
         cli.print(cli.col(str(err), "red"))
         return 11, None, user
 
@@ -558,7 +560,7 @@ def cliUserQuery(args):
     table.dump(cli, args.format)
 
 
-def cliUserSendas(args):
+def cliUserManageFileList(args):
     cli = args._cli
     cli.require("DB")
 
@@ -567,36 +569,37 @@ def cliUserSendas(args):
     if "action" not in args:
         args.action = "list"
 
-    ret, usernames, user = _usernamesFromFile("sendas.txt", args)
+    filename = args.filename+".txt"
+    ret, usernames, user = _usernamesFromFile(filename, args)
     if ret:
         return ret
 
     if args.action == "add":
         for username in args.username:
             if username in usernames:
-                cli.print(cli.col(f"'{username}' already has send-as permission", "yellow"))
+                cli.print(cli.col(f"'{username}' already has {args.dispname} permission", "yellow"))
             else:
                 usernames.append(username)
-        ret = _usernamesToFile("sendas.txt", usernames, args)
+        ret = _usernamesToFile(filename, usernames, args)
     elif args.action == "clear":
         usernames = ()
-        ret = _usernamesToFile("sendas.txt", usernames, args)
+        ret = _usernamesToFile(filename, usernames, args)
     elif args.action == "remove":
         args.force = True
         for username in args.username:
             if username not in usernames:
-                cli.print(cli.col(f"'{username}' does not have send-as permission", "yellow"))
+                cli.print(cli.col(f"'{username}' does not have {args.dispname} permission", "yellow"))
             else:
                 usernames.remove(username)
-        ret = _usernamesToFile("sendas.txt", usernames, args)
+        ret = _usernamesToFile(filename, usernames, args)
 
     if ret:
         return ret
     if not usernames:
-        cli.print(cli.col("No users can send as '{}'".format(user.username), attrs=["dark"]))
+        cli.print(cli.col(f"No users have {args.dispname} permission for '{user.username}'", attrs=["dark"]))
     else:
-        cli.print("User{} that can send as '{}':".format("" if len(usernames) == 1 else "s",
-                                                         cli.col(user.username, attrs=["bold"])))
+        cli.print("User{} with {} permission for '{}':".format("" if len(usernames) == 1 else "s", args.dispname,
+                                                               cli.col(user.username, attrs=["bold"])))
         for username in usernames:
             cli.print("  "+username)
 
@@ -688,6 +691,23 @@ def _setupCliUser(subp: ArgumentParser):
         sub.add_argument("device", nargs="*", help="Device ID")
         return sub
 
+    def userListFileParser(parent, name, dispname, handler):
+        ulf = sub.add_parser(name, help=f"Manage {dispname} permission")
+        ulf.set_defaults(_handle=handler, filename=name, dispname=dispname)
+        ulf.add_argument("userspec", help="User ID or name prefix").completer = _cliUserspecCompleter
+        ulfActions = ulf.add_subparsers()
+        ulfAdd = ulfActions.add_parser("add", help=f"Grant {dispname} permissions to user")
+        ulfAdd.set_defaults(action="add")
+        ulfAdd.add_argument("--force", action="store_true", help="Override e-mail user check")
+        ulfAdd.add_argument("username", nargs="+", help="E-Mail address of the user").completer = _cliUserspecCompleter
+        ulfList = ulfActions.add_parser("clear", help=f"Clear {dispname} list")
+        ulfList.set_defaults(action="clear")
+        ulfList = ulfActions.add_parser("list", help=f"List users with {dispname} permission")
+        ulfList.set_defaults(action="list")
+        ulfRemove = ulfActions.add_parser("remove", help=f"Revoke {dispname} permission from user")
+        ulfRemove.set_defaults(action="remove")
+        ulfRemove.add_argument("username", nargs="+", help="E-Mail address of the user").completer = _cliUserspecCompleter
+
     Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     create = sub.add_parser("create",  help="Create user")
@@ -695,6 +715,7 @@ def _setupCliUser(subp: ArgumentParser):
     create.add_argument("--no-defaults", action="store_true", help="Do not apply configured default values")
     create.set_defaults(_handle=cliUserCreate)
     _cliAddUserAttributes(create)
+    userListFileParser(sub, "delegate", "delegate", cliUserManageFileList)
     delete = sub.add_parser("delete", help="Delete user")
     delete.set_defaults(_handle=cliUserDelete)
     delete.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter
@@ -742,21 +763,7 @@ def _setupCliUser(subp: ArgumentParser):
     query.add_argument("--separator", help="Set column separator")
     query.add_argument("-s", "--sort", action="append", help="Sort by attribute, e.g. -s username,desc")
     query.add_argument("attributes", nargs="*", choices=AttrChoice(), help="Attributes to query", metavar="ATTRIBUTE")
-    sendas = sub.add_parser("sendas", help="Manage send-as permission")
-    sendas.set_defaults(_handle=cliUserSendas)
-    sendas.add_argument("userspec", help="User ID or name prefix").completer = _cliUserspecCompleter
-    sendasActions = sendas.add_subparsers()
-    sendasAdd = sendasActions.add_parser("add", help="Grant send-as permissions to user")
-    sendasAdd.set_defaults(_handle=cliUserSendas, action="add")
-    sendasAdd.add_argument("--force", action="store_true", help="Override e-mail user check")
-    sendasAdd.add_argument("username", nargs="+", help="E-Mail address of the user").completer = _cliUserspecCompleter
-    sendasList = sendasActions.add_parser("clear", help="Clear send-as list")
-    sendasList.set_defaults(_handle=cliUserSendas, action="clear")
-    sendasList = sendasActions.add_parser("list", help="List users with send-as permission")
-    sendasList.set_defaults(_handle=cliUserSendas, action="list")
-    sendasRemove = sendasActions.add_parser("remove", help="Revoke send-as permission from user")
-    sendasRemove.set_defaults(_handle=cliUserSendas, action="remove")
-    sendasRemove.add_argument("username", nargs="+", help="E-Mail address of the user").completer = _cliUserspecCompleter
+    userListFileParser(sub, "sendas", "send-as", cliUserManageFileList)
     show = sub.add_parser("show", help="Show detailed information about user")
     show.set_defaults(_handle=cliUserShow)
     show.add_argument("userspec", help="User ID or name").completer = _cliUserspecCompleter

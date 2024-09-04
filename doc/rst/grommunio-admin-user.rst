@@ -15,6 +15,8 @@ Synopsis
 ========
 
 | **grommunio-admin user** **create** [*--no-defaults*] [*<FIELDS>*] *USERNAME*
+| **grommunio-admin user** **delegate** *USERSPEC* (*clear* \| *list*)
+| **grommunio-admin user** **delegate** *USERSPEC* (*add* \| *remove*) *USERNAME* …
 | **grommunio-admin user** **delete** [*-c*] [*-k*] [*-y*] *USERSPEC*
 | **grommunio-admin user** **devices** *USERSPEC* (*list* \| *resync*
   \| *remove* \| *show*) [*DEVICE* …]
@@ -37,16 +39,15 @@ Synopsis
 Description
 ===========
 
-Subcommand to show and delete users.
-
-No functionality for adding or modifying users is implemented at the
-moment.
+Subcommand for user management.
 
 Commands
 ========
 
 ``create``
    Create a new user
+``delegate``
+   Manage delegate permission
 ``delete``
    Delete user
 ``devices``

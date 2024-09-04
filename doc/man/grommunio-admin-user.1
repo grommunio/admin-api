@@ -26,6 +26,16 @@ grommunio-admin user \[em] User management
 .PD 0
 .P
 .PD
+\f[B]grommunio-admin user\f[R] \f[B]delegate\f[R] \f[I]USERSPEC\f[R]
+(\f[I]clear\f[R] | \f[I]list\f[R])
+.PD 0
+.P
+.PD
+\f[B]grommunio-admin user\f[R] \f[B]delegate\f[R] \f[I]USERSPEC\f[R]
+(\f[I]add\f[R] | \f[I]remove\f[R]) \f[I]USERNAME\f[R] \&...
+.PD 0
+.P
+.PD
 \f[B]grommunio-admin user\f[R] \f[B]delete\f[R] [\f[I]-c\f[R]]
 [\f[I]-k\f[R]] [\f[I]-y\f[R]] \f[I]USERSPEC\f[R]
 .PD 0
@@ -80,14 +90,14 @@ SEPARATOR\f[R]] [\f[I]-s FIELD\f[R]] [\f[I]ATTRIBUTE\f[R] \&...]
 ATTRIBUTE=<value>\f[R]] [\f[I]-s FIELD\f[R]] \f[I]USERSPEC\f[R]
 .SH Description
 .PP
-Subcommand to show and delete users.
-.PP
-No functionality for adding or modifying users is implemented at the
-moment.
+Subcommand for user management.
 .SH Commands
 .TP
 \f[V]create\f[R]
 Create a new user
+.TP
+\f[V]delegate\f[R]
+Manage delegate permission
 .TP
 \f[V]delete\f[R]
 Delete user
