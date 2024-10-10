@@ -205,7 +205,7 @@ def importUser(candidate, ldap, force=False, lang="", **kwargs):
     existing = Users.query.filter(Users.username == candidate.email).first()
     if existing:
         if existing.externID == candidate.ID or force:
-            result, code = existing, downsyncUser(existing, candidate.ID)[1]
+            result, code = downsyncUser(existing, candidate.ID)
             return existing if code == 200 else result, code
         msg = "and is linked to another LDAP object" if existing.externID else "locally"
         return candidate.type.capitalize()+" already exists "+msg, 400
