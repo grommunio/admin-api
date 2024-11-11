@@ -57,10 +57,9 @@ def cliOrgQuery(args):
     query = _orgQuery(args)
     query = Orgs.optimize_query(query, args.attributes)
     orgs = [org.todict(args.attributes) for org in query]
-    separator = args.separator or ("," if args.format == "csv" else "  ")
     data = [[org.get(attr) for attr in args.attributes] for org in orgs]
     header = None if len(args.attributes) <= 1 and len(data) <= 1 and args.format == "pretty" else args.attributes
-    table = Table(data, header, separator, cli.col("(no results)", attrs=["dark"]))
+    table = Table(data, header, args.separator, cli.col("(no results)", attrs=["dark"]))
     table.dump(cli, args.format)
 
 

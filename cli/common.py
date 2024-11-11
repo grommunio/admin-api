@@ -181,8 +181,11 @@ class Table:
 
     FORMATS = ("csv", "json-flat", "json-kv", "json-object", "json-structured", "pretty")
 
-    def __init__(self, data, header=None, colsep="  ", empty=None):
+    def __init__(self, data, header=None, colsep=None, empty=None):
         """Create table from data.
+
+        If colsep is not specified, the default column separator is chosen by
+        the output formatter ('  ' for pretty, ',' for csv).
 
         Parameters
         ----------
@@ -191,7 +194,7 @@ class Table:
         header : [any], optional
             Table header. The default is None.
         colsep : str, optional
-            Column separator. The default is "  ".
+            Column separator. The default is None.
         empty : str, optional
             Text to display when table does not contain data. The default is None.
         """
@@ -241,7 +244,8 @@ class Table:
             List of adjusted column widths
         """
         import shutil
-        sepWidth = len(self.colsep)*(self.columns-1)  # total width occupied by separators
+        colsep = self.colsep or "  "
+        sepWidth = len(colsep)*(self.columns-1)  # total width occupied by separators
         contentWidth = sum(self.colwidth)
         termWidth = shutil.get_terminal_size((0, 0)).columns
         if termWidth == 0 or contentWidth+sepWidth <= termWidth:
@@ -272,7 +276,8 @@ class Table:
         line : [Styled]
             List of cells to print
         """
-        cli.print(self.colsep.join(line[i].print(cli, colwidth[i], i == self.columns-1) for i in range(len(line))))
+        colsep = self.colsep or "  "
+        cli.print(colsep.join(line[i].print(cli, colwidth[i], i == self.columns-1) for i in range(len(line))))
 
     def print(self, cli):
         """Print the table.
@@ -304,7 +309,7 @@ class Table:
         if not (self.header or self.data):
             return
         header = [cell.raw for cell in self.header] if self.header else [str(i) for i in range(len(self.data[0]))]
-        writer = csv.DictWriter(cli.stdout, fieldnames=header, delimiter=self.colsep[0] or ",")
+        writer = csv.DictWriter(cli.stdout, fieldnames=header, delimiter=self.colsep or ",")
         if self.header:
             writer.writeheader()
         if not self.data:

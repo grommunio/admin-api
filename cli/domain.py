@@ -177,10 +177,9 @@ def cliDomainQuery(args):
     query = _domainQuery(args)
     query = Domains.optimize_query(query, args.attributes)
     domains = [domain.todict(args.attributes) for domain in query]
-    separator = args.separator or ("," if args.format == "csv" else "  ")
     data = [[attrTf.get(attr, lambda x: x)(domain.get(attr)) for attr in args.attributes] for domain in domains]
     header = None if len(args.attributes) <= 1 and len(data) <= 1 and args.format == "pretty" else args.attributes
-    table = Table(data, header, separator, cli.col("(no results)", attrs=["dark"]))
+    table = Table(data, header, args.separator, cli.col("(no results)", attrs=["dark"]))
     table.dump(cli, args.format)
 
 
