@@ -57,8 +57,8 @@ Options
    Filter expression in the form of ‘field=value’. Can be specified
    multiple times to refine filter
 ``--format FORMAT``
-   Output format. Can be one of *csv*, *json-flat*, *json-structured* and
-   *pretty*. Default is *pretty*.
+   Output format. Can be one of *csv*, *json-flat*, *json-kv*, *json-object*,
+   *json-structured* and *pretty*. Default is *pretty*.
 ``--separator SEPARATOR``
    String to use for column separation (*csv* and *pretty* only). Must have
    length 1 if format is *csv*. Default is "," for *csv* and "  " for pretty.

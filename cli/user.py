@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
 from . import Cli, InvalidUseError
-from .common import proptagCompleter
+from .common import proptagCompleter, Table
 
 from argparse import ArgumentParser
 
@@ -392,8 +392,6 @@ def _mkWipeStatus(cli, status):
 
 
 def cliUserDevicesList(args):
-    from .common import Table
-
     cli = args._cli
     ret, user = _getUser(args, requireMailbox=True)
     if ret:
@@ -410,7 +408,6 @@ def cliUserDevicesList(args):
 
 
 def cliUserDevicesShow(args):
-    from .common import Table
     cli = args._cli
     ret, user = _getUser(args, requireMailbox=True)
     if ret:
@@ -547,7 +544,6 @@ def cliUserQuery(args):
               "status": lambda v: cli.col(str(v)+"/", attrs=["dark"])+_mkStatus(cli, v)}\
         if args.format == "pretty" else {}
 
-    from .common import Table
     from orm.users import Users
     args.attributes = args.attributes or ("ID", "username", "status")
     query = _mkUserQuery(args)
@@ -758,7 +754,7 @@ def _setupCliUser(subp: ArgumentParser):
     query = sub.add_parser("query", help="Query specific user attributes")
     query.set_defaults(_handle=cliUserQuery)
     query.add_argument("-f", "--filter", action="append", help="Filter by attribute, e.g. -f ID=42")
-    query.add_argument("--format", choices=("csv", "json-flat", "json-structured", "pretty"), help="Set output format",
+    query.add_argument("--format", choices=Table.FORMATS, help="Set output format",
                        metavar="FORMAT", default="pretty")
     query.add_argument("--separator", help="Set column separator")
     query.add_argument("-s", "--sort", action="append", help="Sort by attribute, e.g. -s username,desc")

@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2021 grommunio GmbH
 
 from . import Cli, InvalidUseError
+from .common import Table
 from argparse import ArgumentParser
 
 _statusMap = {0: "active", 1: "suspended", 3: "deleted"}
@@ -171,7 +172,6 @@ def cliDomainQuery(args):
     attrTf = {"domainStatus": lambda v: cli.col(str(v)+"/", attrs=["dark"])+_domainStatus(cli, v)}\
         if args.format == "pretty" else {}
 
-    from .common import Table
     from orm.domains import Domains
     args.attributes = args.attributes or ("ID", "domainname", "domainStatus")
     query = _domainQuery(args)
@@ -246,7 +246,7 @@ def _setupCliDomain(subp: ArgumentParser):
     query = sub.add_parser("query", help="Query specific domain attributes")
     query.set_defaults(_handle=cliDomainQuery)
     query.add_argument("-f", "--filter", action="append", help="Filter by attribute, e.g. -f ID=42")
-    query.add_argument("--format", choices=("csv", "json-flat", "json-structured", "pretty"), help="Set output format",
+    query.add_argument("--format", choices=Table.FORMATS, help="Set output format",
                        metavar="FORMAT", default="pretty")
     query.add_argument("--separator", help="Set column separator")
     query.add_argument("-s", "--sort", action="append", help="Sort by attribute, e.g. -s username,desc")

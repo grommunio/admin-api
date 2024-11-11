@@ -91,8 +91,8 @@ Options
    Filter expression in the form of ‘field=value’. Can be specified
    multiple times to refine filter
 ``--format FORMAT``
-   Output format. Can be one of *csv*, *json-flat*, *json-structured* and
-   *pretty*. Default is *pretty*.
+   Output format. Can be one of *csv*, *json-flat*, *json-kv*, *json-object*,
+   *json-structured* and *pretty*. Default is *pretty*.
 ``-k``, ``--keep-files``
    Do not delete user files from disk
 ``--mode MODE``

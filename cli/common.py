@@ -179,6 +179,8 @@ class Table:
                 data += " "*pad
             return data
 
+    FORMATS = ("csv", "json-flat", "json-kv", "json-object", "json-structured", "pretty")
+
     def __init__(self, data, header=None, colsep="  ", empty=None):
         """Create table from data.
 
@@ -329,6 +331,34 @@ class Table:
                [[cell.raw for cell in row] for row in self.data]
         cli.print(json.dumps(data, default=lambda x: str(x), separators=(",", ":")))
 
+    def jsonObject(self, cli, full):
+        """Create single JSON object with the first column as key
+
+        If full is True, the remaining columns are packed into an object, (like json-structured),
+        otherwise only the second column is used as value and any additional columns are ignored.
+
+        Parameters
+        ----------
+        cli : Cli
+            Cli providing printing functionality
+        full : bool
+            Whether to provide value as object
+        """
+        import json
+
+        def getV(row):
+            return None if len(row) < 2 else row[1].raw
+
+        def getO(row):
+            return {name.raw: value.raw for name, value in zip(self.header[1:], row[1:])}
+
+        if not self.data:
+            cli.print("{}")
+            return
+        mkValue = getO if full else getV
+        data = {str(row[0].raw): mkValue(row) for row in self.data}
+        cli.print(json.dumps(data, default=lambda x: str(x), separators=(",", ":")))
+
     def dump(self, cli, format):
         """Dump table contents in specified format
 
@@ -343,5 +373,7 @@ class Table:
             self.csv(cli)
         elif format in ("json-flat", "json-structured"):
             self.json(cli, format == "json-structured")
+        elif format in ("json-kv", "json-object"):
+            self.jsonObject(cli, format == "json-object")
         else:
             self.print(cli)

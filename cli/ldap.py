@@ -4,6 +4,8 @@
 
 from argparse import ArgumentParser
 from . import Cli
+from .common import Table
+
 
 SUCCESS = 0
 ERR_DECLINE = 1  # User declined prompt
@@ -336,7 +338,6 @@ def cliLdapSearch(args):
     cli = args._cli
     pretty = args.format == "pretty"
     from services import Service
-    from .common import Table
     orgIDs = _getOrgIDs(args)
     types = args.types.split(",") if args.types else None
     for orgID in orgIDs:
@@ -624,7 +625,7 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     search.set_defaults(_handle=cliLdapSearch)
     search.add_argument("query", nargs="?", help="Optional search query, omit to return all users")
     search.add_argument("-a", "--all", action="store_true", help="Also show users that cannot be imported")
-    search.add_argument("--format", choices=("csv", "json-flat", "json-structured", "pretty"), help="Set output format",
+    search.add_argument("--format", choices=Table.FORMATS, help="Set output format",
                         metavar="FORMAT", default="pretty")
     search.add_argument("-n", "--max-results", type=int, default=0,
                         help="Maximum number of results or 0 to disable limit (default: 0)")
