@@ -25,7 +25,8 @@ Synopsis
 | **grommunio-admin** **exmdb** *TARGET* *folder* *revoke* [*-r*] *ID*
   *USERNAME* [*PERMISSION* …]
 | **grommunio-admin** **exmdb** *TARGET* *store* *delete* *PROPSPEC* [*PROPSPEC*  ...]
-| **grommunio-admin** **exmdb** *TARGET* *store* *get* [*PROPSPEC* ...]
+| **grommunio-admin** **exmdb** *TARGET* *store* *get* [*--format FORMAT*]
+  [*--separator SEPARATOR*] [*PROPSPEC* ...]
 | **grommunio-admin** **exmdb** *TARGET* *store* *set* [*PROPSPEC=VALUE* ...]
 
 Description
@@ -91,10 +92,13 @@ Options
 ``-f``, ``--force``
    Grant permissions to non-existing user
 ``--format FORMAT``
-   Set output format. Valid values are `csv`, `json-flat`, `json-tree`, `pretty`
-   and `table`. Default is `pretty`.
+   Output format. Can be one of *csv*, *json-flat*, *json-kv*, *json-object*,
+   *json-structured* and *pretty*. Default is *pretty*.
 ``-r``, ``--recursive``
    Apply recursively to subfolders
+``--separator SEPARATOR``
+   String to use for column separation (*csv* and *pretty* only). Must have
+   length 1 if format is *csv*. Default is "," for *csv* and "  " for pretty.
 ``-t TYPE``, ``--type TYPE``
    `CONTAINERCLASS` property, defaults to `"IPF.Note"`
 ``-x``, ``--exact``

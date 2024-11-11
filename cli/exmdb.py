@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2022 grommunio GmbH
 
 from . import Cli, InvalidUseError, ArgumentParser
-from .common import proptagCompleter
+from .common import proptagCompleter, Table
 
 _perms = {
     "readany": 0x1,
@@ -276,25 +276,28 @@ def cliExmdbStoreGetDelete(args):
         from datetime import datetime
         from tools.rop import nxTime
         if pv.type == PropTypes.BINARY:
-            return cli.col("[{} byte{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
+            res = Table.Styled("[{} byte{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
         elif pv.type == PropTypes.FILETIME:
             timestring = datetime.fromtimestamp(nxTime(pv.val)).strftime("%Y-%m-%d %H:%M:%S")
-            return pv.val, cli.col(timestring, attrs=["dark"])
+            res = pv.val, cli.col(timestring, attrs=["dark"])
         elif pv.type in (PropTypes.STRING, PropTypes.WSTRING):
-            return pv.val, cli.col(printSize(len(pv.val)), attrs=["dark"])
+            res = pv.val, cli.col(printSize(len(pv.val)), attrs=["dark"])
         elif pv.type == PropTypes.BINARY_ARRAY:
-            return cli.col("[{} value{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
+            res = Table.Styled("[{} blob{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
         elif PropTypes.ismv(pv.type):
-            return "["+", ".join(repr(val) for val in pv.val)+"]", ""
-        return pv.val, cli.col(printSize(pv.val*PropTags.sizeFactor.get(pv.tag, 1)), attrs=["dark"])\
-            if pv.tag in PropTags.sizeTags else ""
+            res = [str(val) for val in pv.val], ""
+        else:
+            res = pv.val, cli.col(printSize(pv.val*PropTags.sizeFactor.get(pv.tag, 1)), attrs=["dark"])\
+                if pv.tag in PropTags.sizeTags else ""
+        return res if pretty else (res[0],)
 
     cli = args._cli
     cli.require("DB")
-    from .common import Table
     from tools.constants import PropTags, PropTypes
     from services import Service
     tags = [PropTags.deriveTag(tag) for tag in args.propspec]
+    pretty = args.format == "pretty"
+    header = ("tag", "value", "") if pretty else ("tag", "value")
     with Service("exmdb") as exmdb:
         ret, client = _getClient(args, exmdb)
         if ret:
@@ -305,8 +308,8 @@ def cliExmdbStoreGetDelete(args):
             client.removeStoreProperties(tags)
             return
         props = client.getStoreProperties(0, tags)
-        Table([(PropTags.lookup(prop.tag, hex(prop.tag)).lower(), *printVal(prop)) for prop in props],
-              empty=cli.col("(No properties)", attrs=["dark"])).print(cli)
+        data = [(PropTags.lookup(prop.tag, hex(prop.tag)).lower(), *printVal(prop)) for prop in props]
+        Table(data, header, args.separator, cli.col("(No properties)", attrs=["dark"])).dump(cli, args.format)
 
 
 def cliExmdbStoreSet(args):
@@ -405,6 +408,9 @@ def _setupCliExmdb(subp: ArgumentParser):
     storesub = store.add_subparsers()
     get = storesub.add_parser("get", help="Query store properties")
     get.set_defaults(_handle=cliExmdbStoreGetDelete, command="get")
+    get.add_argument("--format", choices=Table.FORMATS, help="Set output format",
+                     metavar="FORMAT", default="pretty")
+    get.add_argument("--separator", help="Set column separator")
     get.add_argument("propspec", nargs="*", help="Properties to query").completer = proptagCompleter
     delete = storesub.add_parser("delete", help="Delete store properties")
     delete.set_defaults(_handle=cliExmdbStoreGetDelete, command="delete")
