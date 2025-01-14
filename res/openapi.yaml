@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.16.1
+  version: 1.16.2
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -1918,7 +1918,7 @@ paths:
           in: query
           schema:
             type: string
-            pattern: '^(ID|username|domainID|pop3_imap|smtp|changePassword|publicAddress|privChat|privVideo|privFiles|privArchive)(,(a|de)sc)?$'
+            pattern: '^(ID|username|domainID|pop3_imap|smtp|changePassword|publicAddress|privChat|privVideo|privFiles|privArchive|privWeb|privEas|privDav)(,(a|de)sc)?$'
         - $ref: '#/components/parameters/filterID'
         - name: username
           description: Filter by username
@@ -5120,6 +5120,15 @@ components:
         privArchive:
           type: boolean
           description: Archive privilege
+        privWeb:
+          type: boolean
+          description: Web privilege
+        privEas:
+          type: boolean
+          description: EAS privilege
+        privDav:
+          type: boolean
+          description: DAV privilege
         ldapID:
           type: string
           nullable: true
@@ -5201,6 +5210,15 @@ components:
         privArchive:
           type: boolean
           description: Archive privilege
+        privWeb:
+          type: boolean
+          description: Web privilege
+        privEas:
+          type: boolean
+          description: EAS privilege
+        privDav:
+          type: boolean
+          description: DAV privilege
         fetchmail:
           type: array
           description: List of fetchmail entries for this user
@@ -5265,6 +5283,15 @@ components:
         privArchive:
           type: boolean
           description: Archive privilege
+        privWeb:
+          type: boolean
+          description: Web privilege
+        privEas:
+          type: boolean
+          description: EAS privilege
+        privDav:
+          type: boolean
+          description: DAV privilege
         ldapID:
           type: string
           description: Detach imported user from LDAP object

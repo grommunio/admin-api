@@ -176,6 +176,9 @@ class Users(DataModel, DB.Base, NotifyTable):
                       BoolP("privVideo", flags="patch"),
                       BoolP("privFiles", flags="patch"),
                       BoolP("privArchive", flags="patch"),
+                      BoolP("privWeb", flags="patch"),
+                      BoolP("privEas", flags="patch"),
+                      BoolP("privDav", flags="patch"),
                       RefProp("aliases", flags="patch, managed", link="aliasname", flat="aliasname", qopt=selectinload),
                       RefProp("altnames", flags="patch, managed", link="altname", qopt=selectinload),
                       RefProp("fetchmail", flags="managed, patch", link="ID", qopt=selectinload),
@@ -199,6 +202,9 @@ class Users(DataModel, DB.Base, NotifyTable):
     USER_PRIVILEGE_VIDEO = 1 << 5
     USER_PRIVILEGE_FILES = 1 << 6
     USER_PRIVILEGE_ARCHIVE = 1 << 7
+    USER_PRIVILEGE_WEB = 1 << 9
+    USER_PRIVILEGE_EAS = 1 << 10
+    USER_PRIVILEGE_DAV = 1 << 11
 
     MAILUSER = 0x0
     DISTLIST = 0x1
@@ -487,6 +493,42 @@ class Users(DataModel, DB.Base, NotifyTable):
     @privArchive.expression
     def privArchive(cls):
         return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_ARCHIVE) != 0
+
+    @hybrid_property
+    def privWeb(self):
+        return self._getPB(self.USER_PRIVILEGE_WEB)
+
+    @smtp.setter
+    def privWeb(self, val):
+        self._setPB(self.USER_PRIVILEGE_WEB, val)
+
+    @smtp.expression
+    def privWeb(cls):
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_WEB) != 0
+
+    @hybrid_property
+    def privEas(self):
+        return self._getPB(self.USER_PRIVILEGE_EAS)
+
+    @smtp.setter
+    def privEas(self, val):
+        self._setPB(self.USER_PRIVILEGE_EAS, val)
+
+    @smtp.expression
+    def privEas(cls):
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_EAS) != 0
+
+    @hybrid_property
+    def privDav(self):
+        return self._getPB(self.USER_PRIVILEGE_DAV)
+
+    @smtp.setter
+    def privDav(self, val):
+        self._setPB(self.USER_PRIVILEGE_DAV, val)
+
+    @smtp.expression
+    def privDav(cls):
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_DAV) != 0
 
     @property
     def ldapID(self):
