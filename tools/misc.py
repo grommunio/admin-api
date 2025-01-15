@@ -398,7 +398,9 @@ def damerau_levenshtein_distance(s1, s2):
 
 def callUpdateScript(command, repo):
     try:
-        pid = subprocess.Popen(["sudo", Config["options"]["updateSkriptPath"], command, repo]).pid
+        process = subprocess.Popen(["sudo", Config["options"]["updateSkriptPath"], command, repo])
+        if process is not None:
+            return process.pid
     except Exception as err:
         logger.error(type(err).__name__+": "+" - ".join(str(arg) for arg in err.args))
-    return pid or -1
+    return -1
