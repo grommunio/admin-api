@@ -73,8 +73,8 @@ Options
    Attributes to query. Available attributes are *ID*, *aliases*,
    *changePassword*, *chat*, *chatAdmin*, *domainID*, *forward*,
    *homeserverID*, *lang*, *ldapID*, *maildir*, *pop3_imap*, *privArchive*,
-   *privChat*, *privFiles*, *privVideo*, *publicAddress*, *smtp*, *status* and
-   *username*.
+   *privChat*, *privFiles*, *privVideo*, *privWeb*, *privDav*, *privEas*,
+   *publicAddress*, *smtp*, *status* and *username*.
 
    If no attributes are specified, *ID*, *username* and *status* are shown.
 ``DEVICE``
@@ -148,6 +148,12 @@ Fields
    Whether the user has the files privilege
 ``--privVideo <bool>``
    Whether the user has the video privilege
+``--privWeb <bool>``
+   Whether the user has the web privilege
+``--privDav <bool>``
+   Whether the user has the DAV privilege
+``--privEas <bool>``
+   Whether the user has the EAS privilege
 ``--public-address <bool>``
    Whether the user has the public address privilege
 ``--smtp <bool>``

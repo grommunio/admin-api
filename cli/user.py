@@ -10,8 +10,8 @@ from argparse import ArgumentParser
 _statusMap = {0: "active", 1: "suspended", 3: "deleted", 4: "shared", 5: "contact"}
 _statusColor = {0: "green", 1: "yellow", 3: "red", 4: "cyan", 5: "blue"}
 _userAttributes = ("ID", "aliases", "changePassword", "chat", "chatAdmin", "domainID", "forward", "homeserverID", "lang",
-                   "ldapID", "maildir", "pop3_imap", "privArchive", "privChat", "privFiles", "privVideo", "publicAddress",
-                   "smtp", "status", "username")
+                   "ldapID", "maildir", "pop3_imap", "privArchive", "privChat", "privFiles", "privVideo", "privWeb", "privDav",
+                   "privEas", "publicAddress", "smtp", "status", "username")
 _deviceStatus = {0: "unknown", 1: "ok", 2: "pending", 4: "requested", 8: "wiped", 16: "pending (account)",
                  32: "requested (account)", 64: "wiped (account)"}
 _deviceStatusStyle = {0: {"attrs": ["dark"]},
@@ -62,6 +62,12 @@ def _dumpUser(cli, user, indent=0):
             privs.append("files")
         if bits & Users.USER_PRIVILEGE_ARCHIVE:
             privs.append("archive")
+        if bits & Users.USER_PRIVILEGE_WEB:
+            privs.append("web")
+        if bits & Users.USER_PRIVILEGE_DAV:
+            privs.append("dav")
+        if bits & Users.USER_PRIVILEGE_EAS:
+            privs.append("eas")
         if len(privs) == 0:
             return ""
         return "("+",".join(privs)+")"
@@ -656,6 +662,9 @@ def _cliAddUserAttributes(parser: ArgumentParser):
     parser.add_argument("--privChat", type=getBool, metavar="<bool>", help="Whether the user has the chat privilege")
     parser.add_argument("--privFiles", type=getBool, metavar="<bool>", help="Whether the user has the files privilege")
     parser.add_argument("--privVideo", type=getBool, metavar="<bool>", help="Whether the user has the video privilege")
+    parser.add_argument("--privWeb", type=getBool, metavar="<bool>", help="Whether the user has the web privilege")
+    parser.add_argument("--privDav", type=getBool, metavar="<bool>", help="Whether the user has the DAV privilege")
+    parser.add_argument("--privEas", type=getBool, metavar="<bool>", help="Whether the user has the EAS privilege")
     parser.add_argument("--public-address", type=getBool, metavar="<bool>",
                         help="Whether the user has the public address privilege")
     parser.add_argument("--smtp", type=getBool, metavar="<bool>", help="Whether the user has the SMTP privilege")
