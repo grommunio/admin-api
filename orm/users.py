@@ -498,11 +498,11 @@ class Users(DataModel, DB.Base, NotifyTable):
     def privWeb(self):
         return self._getPB(self.USER_PRIVILEGE_WEB)
 
-    @smtp.setter
+    @privWeb.setter
     def privWeb(self, val):
         self._setPB(self.USER_PRIVILEGE_WEB, val)
 
-    @smtp.expression
+    @privWeb.expression
     def privWeb(cls):
         return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_WEB) != 0
 
@@ -510,11 +510,11 @@ class Users(DataModel, DB.Base, NotifyTable):
     def privEas(self):
         return self._getPB(self.USER_PRIVILEGE_EAS)
 
-    @smtp.setter
+    @privEas.setter
     def privEas(self, val):
         self._setPB(self.USER_PRIVILEGE_EAS, val)
 
-    @smtp.expression
+    @privEas.expression
     def privEas(cls):
         return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_EAS) != 0
 
@@ -522,11 +522,11 @@ class Users(DataModel, DB.Base, NotifyTable):
     def privDav(self):
         return self._getPB(self.USER_PRIVILEGE_DAV)
 
-    @smtp.setter
+    @privDav.setter
     def privDav(self, val):
         self._setPB(self.USER_PRIVILEGE_DAV, val)
 
-    @smtp.expression
+    @privDav.expression
     def privDav(cls):
         return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_DAV) != 0
 
