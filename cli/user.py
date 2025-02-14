@@ -62,11 +62,11 @@ def _dumpUser(cli, user, indent=0):
             privs.append("files")
         if bits & Users.USER_PRIVILEGE_ARCHIVE:
             privs.append("archive")
-        if bits & Users.USER_PRIVILEGE_WEB:
+        if bits & (Users.USER_PRIVILEGE_WEB | Users.USER_PRIVILEGE_DETAIL1) != Users.USER_PRIVILEGE_DETAIL1:
             privs.append("web")
-        if bits & Users.USER_PRIVILEGE_DAV:
+        if bits & (Users.USER_PRIVILEGE_DAV | Users.USER_PRIVILEGE_DETAIL1) != Users.USER_PRIVILEGE_DETAIL1:
             privs.append("dav")
-        if bits & Users.USER_PRIVILEGE_EAS:
+        if bits & (Users.USER_PRIVILEGE_EAS | Users.USER_PRIVILEGE_DETAIL1) != Users.USER_PRIVILEGE_DETAIL1:
             privs.append("eas")
         if len(privs) == 0:
             return ""

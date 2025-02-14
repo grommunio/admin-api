@@ -202,6 +202,7 @@ class Users(DataModel, DB.Base, NotifyTable):
     USER_PRIVILEGE_VIDEO = 1 << 5
     USER_PRIVILEGE_FILES = 1 << 6
     USER_PRIVILEGE_ARCHIVE = 1 << 7
+    USER_PRIVILEGE_DETAIL1 = 1 << 8
     USER_PRIVILEGE_WEB = 1 << 9
     USER_PRIVILEGE_EAS = 1 << 10
     USER_PRIVILEGE_DAV = 1 << 11
@@ -496,39 +497,42 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @hybrid_property
     def privWeb(self):
-        return self._getPB(self.USER_PRIVILEGE_WEB)
+        return self._getPB(self.USER_PRIVILEGE_WEB) or not self._getPB(self.USER_PRIVILEGE_DETAIL1)
 
     @privWeb.setter
     def privWeb(self, val):
         self._setPB(self.USER_PRIVILEGE_WEB, val)
+        self._setPB(self.USER_PRIVILEGE_DETAIL1, True)
 
     @privWeb.expression
     def privWeb(cls):
-        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_WEB) != 0
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_WEB | cls.USER_PRIVILEGE_DETAIL1) != cls.USER_PRIVILEGE_DETAIL1
 
     @hybrid_property
     def privEas(self):
-        return self._getPB(self.USER_PRIVILEGE_EAS)
+        return self._getPB(self.USER_PRIVILEGE_EAS) or not self._getPB(self.USER_PRIVILEGE_DETAIL1)
 
     @privEas.setter
     def privEas(self, val):
         self._setPB(self.USER_PRIVILEGE_EAS, val)
+        self._setPB(self.USER_PRIVILEGE_DETAIL1, True)
 
     @privEas.expression
     def privEas(cls):
-        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_EAS) != 0
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_EAS | cls.USER_PRIVILEGE_DETAIL1) != cls.USER_PRIVILEGE_DETAIL1
 
     @hybrid_property
     def privDav(self):
-        return self._getPB(self.USER_PRIVILEGE_DAV)
+        return self._getPB(self.USER_PRIVILEGE_DAV) or not self._getPB(self.USER_PRIVILEGE_DETAIL1)
 
     @privDav.setter
     def privDav(self, val):
         self._setPB(self.USER_PRIVILEGE_DAV, val)
+        self._setPB(self.USER_PRIVILEGE_DETAIL1, True)
 
     @privDav.expression
     def privDav(cls):
-        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_DAV) != 0
+        return cls.privilegeBits.op("&")(cls.USER_PRIVILEGE_DAV | cls.USER_PRIVILEGE_DETAIL1) != cls.USER_PRIVILEGE_DETAIL1
 
     @property
     def ldapID(self):
