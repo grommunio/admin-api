@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(grommunio-admin VERSION 1.16 LANGUAGES NONE)
+project(grommunio-admin VERSION 1.17 LANGUAGES NONE)
 execute_process(
 	COMMAND python3 -c "import api; print(api.backendVersion);"
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
