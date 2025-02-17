@@ -1,5 +1,17 @@
 cmake_minimum_required(VERSION 3.14)
 project(grommunio-admin VERSION 1.16 LANGUAGES NONE)
+execute_process(
+	COMMAND python3 -c "import api; print(api.backendVersion);"
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	OUTPUT_VARIABLE apibackendversion
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+string(FIND "${apibackendversion}" "${CMAKE_PROJECT_VERSION}" xpos)
+if (NOT ${apibackendversion} STREQUAL "")
+if (NOT ${xpos} STREQUAL "0")
+	message(SEND_ERROR "mismatch CMakeLists.txt (${CMAKE_PROJECT_VERSION}) and api/__init__.py (${apibackendversion})")
+endif ()
+endif ()
 
 include(GNUInstallDirs)
 
