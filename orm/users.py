@@ -239,7 +239,7 @@ class Users(DataModel, DB.Base, NotifyTable):
         from tools.license import getLicense
         if "username" not in data:
             return "Missing username"
-        if data.get("status", 0) not in (Users.SHARED, Users.CONTACT) and Users.count() >= getLicense().users:
+        if data.get("status", Users.NORMAL) == Users.NORMAL and Users.count() >= getLicense().users:
             return "License user limit exceeded"
         if "domainID" in data:
             domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
@@ -674,7 +674,7 @@ class Users(DataModel, DB.Base, NotifyTable):
             Number of users
         """
         return Users.query.with_entities(Users.ID)\
-                          .filter(Users.ID != 0, Users.maildir != "", Users.status != Users.SHARED, *filters)\
+                          .filter(Users.ID != 0, Users.maildir != "", Users.status == Users.NORMAL, *filters)\
                           .count()
 
     def delete(self, deleteChatUser=True):
