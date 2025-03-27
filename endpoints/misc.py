@@ -57,8 +57,10 @@ def getProfile():
 
 
 def updatePasswordUnauth(data):
-    from orm.users import Users
-    user = Users.query.filter(Users.ID != 0, Users.username == data["user"]).first()
+    from orm.users import Users, Altnames
+    user = Users.query.join(Altnames, isouter=True)\
+                      .filter(Users.ID != 0, (Users.username == data["user"]) | (Altnames.altname == data["user"]))\
+                      .first()
     if user is None:
         return jsonify(message="Invalid username or password"), 401
     if user.externID is not None:
