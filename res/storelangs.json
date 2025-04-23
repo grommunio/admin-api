@@ -18,6 +18,7 @@
  {"code": "de_CH", "name": "Deutsch (Schweiz)"},
  {"code": "de_DE", "name": "Deutsch (Deutschland)"},
  {"code": "el_GR", "name": "Eλληνικά"},
+ {"code": "en_GB", "name": "English (British)"},
  {"code": "en_US", "name": "English"},
  {"code": "es_ES", "name": "Español"},
  {"code": "et_EE", "name": "Eesti"},
