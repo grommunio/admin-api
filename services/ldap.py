@@ -54,7 +54,7 @@ class SearchResult:
         self.DN = data.get("dn")
         self.type = resultType
         self.error = None
-        if "raw_attributes" in data and "attributes" in data:
+        if "raw_attributes" in data and "attributes" in data and data["raw_attributes"][ldap._config["objectID"]]:
             self.ID = data["raw_attributes"][ldap._config["objectID"]][0]
             self.data = data["attributes"]
             self.name = self._reduce(data["attributes"].get(userconf["displayName"], ""))
