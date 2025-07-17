@@ -1012,9 +1012,7 @@ class Fetchmail(DataModel, DB.Base):
                 fetchoptions += " sslCertCheck"
             if self.sslCertPath:
                 fetchoptions += "sslcertpath "+self.sslCertPath
-        if self.fetchall == 0:
-            fetchoptions += " no"
-        fetchoptions += " fetchall"
+        fetchoptions += " nofetchall" if self.fetchall == 0 else " fetchall"
         fetchoptions += " keep" if self.keep == 1 else " nokeep"
         if self.extraOptions:
             fetchoptions += " "+self.extraOptions
