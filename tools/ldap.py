@@ -116,9 +116,9 @@ def downsyncObject(user, externID=None):
         return downsyncUser(user, externID)
     from orm.mlists import MLists
     mlist = MLists.query.filter(MLists.listname == user.username).first()
-    mlist.listname = mlist.listname.lower()
     if not mlist:
         return "No such group", 400
+    mlist.listname = mlist.listname.lower()
     message, code = downsyncGroup(mlist, externID)
     return message, code
 

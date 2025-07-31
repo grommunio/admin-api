@@ -157,7 +157,7 @@ class Worker:
     def _ldapSyncImport(self, ldap, orgID, domains, synced, lang, bump):
         syncStatus = []
         candidates = [candidate for candidate in ldap.searchUsers() if candidate.ID not in synced]
-        domainnames = {domain.domainname for domain in domains}
+        domainnames = {domain.domainname.lower() for domain in domains}
         for candidate in candidates:
             bump()
             if candidate.type == "contact":
