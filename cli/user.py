@@ -521,12 +521,14 @@ def cliUserModify(args):
         user.fromdict(data["attributes"], syncStore="always")
         if data["aliases"]:
             existing = {a.aliasname for a in user.aliases}
-            [Aliases(alias, user) for alias in data["aliases"] if alias not in existing]
+            newAliases = [Aliases(alias, user) for alias in data["aliases"] if alias not in existing]
+            DB.session.add_all(newAliases)
         if data["aliases_rm"]:
             user.aliases = [alias for alias in user.aliases if alias.aliasname not in data["aliases_rm"]]
         if data["altnames"]:
             existing = {a.altname for a in user.altnames}
-            [Altnames(altname, user) for altname in data["altnames"] if altname["altname"] not in existing]
+            newAltnames = [Altnames(altname, user) for altname in data["altnames"] if altname["altname"] not in existing]
+            DB.session.add_all(newAltnames)
         if data["altnames_rm"]:
             user.altnames = [altname for altname in user.altnames if altname.altname not in data["altnames_rm"]]
     except ValueError as err:
