@@ -636,8 +636,8 @@ class Users(DataModel, DB.Base, NotifyTable):
     def checkAlias(self, key, value, *args):
         domains = getattr(self, "orgDomains", None) or\
                   [d._domainname for d in Domains.query.with_entities(Domains._domainname).filter(Domains.orgID == self.orgID)]
-        if not value.aliasname.split('@')[1] in domains:
-            raise ValueError(f"Cannot use alias from foreign domain: {value.aliasname}")
+        if not value.aliasname.split('@')[1].lower() in domains:
+            raise ValueError(f"Cannot use alias from foreign domain: {value.aliasname.lower()}")
         return value
 
     @validates("_syncPolicy")
