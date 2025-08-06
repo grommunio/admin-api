@@ -146,9 +146,7 @@ def checkLdapUsers():
     else:
         checkPermissions(SystemAdminROPermission() if readonly else SystemAdminPermission())
         domainFilter = ()
-    users = Users.query.filter(Users.externID != None, *domainFilter)\
-                       .with_entities(Users.ID, Users.username, Users.externID, Users.maildir, Users.orgID)\
-                       .all()
+    users = Users.query.filter(Users.externID != None, *domainFilter).all()
     if len(users) == 0:
         return jsonify(message="No LDAP users found", **{"orphaned" if request.method == "GET" else "deleted": []})
     orphaned = []
@@ -158,7 +156,13 @@ def checkLdapUsers():
                 orphaned.append(user)
     if len(orphaned) == 0:
         return jsonify(message="All LDAP users are valid", **{"orphaned" if request.method == "GET" else "deleted": []})
-    orphanedData = [{"ID": user.ID, "username": user.username} for user in orphaned]
+    orphanedData = [{
+        "ID": user.ID,
+        "username": user.username,
+        "status": user.status,
+        "displayname": user.properties.get("displayname"),
+        "smtpaddress": user.properties.get("smtpaddress")
+    } for user in orphaned]
     if request.method == "GET":
         return jsonify(orphaned=orphanedData)
     deleteMaildirs = request.args.get("deleteFiles") == "true"
