@@ -94,7 +94,7 @@ class MLists(DataModel, DB.Base):
         data["domain"] = domain
         if "@" not in data["listname"]:
             data["listname"] += "@"+domain.domainname
-        elif data["listname"].split("@")[1] != domain.domainname:
+        elif data["listname"].split("@")[1] != domain.domainname.lower():
             return "Domain specifications mismatch"
         if "listType" not in data:
             return "Missing list type"
