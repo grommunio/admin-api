@@ -170,17 +170,21 @@ def checkLdapUsers():
             with Service("exmdb") as exmdb:
                 if homeserver != users[index].homeserverID:  # Reuse the exmdb client for users on the same server
                     user = users[index]
-                    client = exmdb.ExmdbQueries(exmdb.host if user.homeserverID == 0 else user.homeserver.hostname,
-                                                exmdb.port, user.maildir, True)
+                    if user.maildir != "" and user.status != Users.CONTACT:
+                        client = exmdb.ExmdbQueries(exmdb.host if user.homeserverID == 0 else user.homeserver.hostname,
+                                                    exmdb.port, user.maildir, True)
+                    else:
+                        client = None
                     homeserver = user.homeserverID
                 while index < len(users) and users[index].homeserverID == homeserver:
-                    client.unloadStore(users[index].maildir)
+                    if client is not None:
+                        client.unloadStore(users[index].maildir)
                     if deleteMaildirs:
                         shutil.rmtree(users[index].maildir, ignore_errors=True)
                     users[index].delete()
                     index += 1
-        except ServiceUnavailableError:
-            API.logger.warning("Failed to unload store: exmdb service not available")
+        except Exception as err:
+            API.logger.warning(str(err) + " | Failed to unload store: exmdb service not available")
             index += 1
     DB.session.commit()
     return jsonify(deleted=orphanedData)
