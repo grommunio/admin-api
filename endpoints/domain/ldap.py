@@ -146,7 +146,14 @@ def checkLdapUsers():
     else:
         checkPermissions(SystemAdminROPermission() if readonly else SystemAdminPermission())
         domainFilter = ()
-    users = Users.query.filter(Users.externID != None, *domainFilter).all()
+
+    if "userID" in request.args:
+        userID = int(request.args["userID"])
+        userFilter = (Users.ID == userID,)
+    else:
+        userFilter = ()
+
+    users = Users.query.filter(Users.externID is not None, *domainFilter, *userFilter).all()
     if len(users) == 0:
         return jsonify(message="No LDAP users found", **{"orphaned" if request.method == "GET" else "deleted": []})
     orphaned = []
