@@ -441,16 +441,25 @@ def cliLdapDump(args):
 
 def _applyTemplate(index, conf):
     conf["users"] = conf.get("users", {})
+    conf["groups"] = conf.get("groups", {})
     if index == 1:  # AD
         conf["objectID"] = "objectGUID"
         conf["users"]["aliases"] = "proxyAddresses"
         conf["users"]["displayName"] = "displayName"
         conf["users"]["username"] = "mail"
+        conf["groups"]["groupaddr"] = "mail"
+        conf["groups"]["groupfilter"] = "(objectclass=group)"
+        conf["groups"]["groupname"] = "cn"
+        conf["groups"]["groupMemberAttr"] = "memberOf"
     elif index == 2:  # OpenLDAP
         conf["objectID"] = "entryUUID"
         conf["users"]["aliases"] = "mailAlternativeAddress"
         conf["users"]["displayName"] = "displayname"
         conf["users"]["username"] = "mailPrimaryAddress"
+        conf["groups"]["groupaddr"] = "mailPrimaryAddress"
+        conf["groups"]["groupfilter"] = "(objectclass=posixgroup)"
+        conf["groups"]["groupname"] = "cn"
+        conf["groups"]["groupMemberAttr"] = "memberOf"
 
 
 def _checkConn(cli, connfig):
@@ -469,7 +478,7 @@ def _checkConn(cli, connfig):
 
 
 def _getConf(cli, old):
-    conf = {"connection": {}, "users": {"filters": [], "searchAttributes": []}}
+    conf = {"connection": {}, "users": {"filters": [], "searchAttributes": []}, "groups": {}}
     connected = False
     connfig = old.get("connection", {}).copy()
     while not connected:
@@ -502,6 +511,13 @@ def _getConf(cli, old):
                                               users.get("searchAttributes", []))
     if not conf["users"]["defaultQuota"]:
         conf["users"].pop("defaultQuota")
+
+    groups = old.get("groups", {})
+    conf["groups"]["groupaddr"] = _getv(cli, "E-Mail address attribute of the group", groups.get("groupaddr", ""))
+    conf["groups"]["groupfilter"] = _getv(cli, "Filter expression for groups", groups.get("groupfilter", ""))
+    conf["groups"]["groupname"] = _getv(cli, "Attribute containing the group's display name", groups.get("groupname", ""))
+    conf["groups"]["groupMemberAttr"] = _getv(cli, "Attribute containing the groups a user is member of", groups.get("groupMemberAttr", ""))
+
     return conf
 
 
