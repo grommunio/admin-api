@@ -516,6 +516,20 @@ def _cliLdapGetConf(args):
     return old
 
 
+def cliLdapShowConf(args):
+    cli = args._cli
+    if args.organization:
+        from orm.domains import OrgParam
+        args.organization = _getOrgID(args.organization)
+        old = OrgParam.loadLdap(args.organization)
+    else:
+        from tools import mconf
+        old = mconf.LDAP
+    import json
+    output = json.dumps(old, indent=4)
+    cli.print(output)
+
+
 def _cliLdapSaveConf(args, conf):
     if not args.organization:
         from tools import mconf
@@ -633,6 +647,10 @@ def _cliLdapParserSetup(subp: ArgumentParser):
                         help="Use organization specific LDAP connection").completer = _cliOrgspecCompleter
     search.add_argument("-p", "--page-size", type=int, default=1000, help="Page size when downloading users")
     search.add_argument("-t", "--types", help="Comma separated list of results types to search for")
+    show = sub.add_parser("show", help="Show current LDAP config")
+    show.set_defaults(_handle=cliLdapShowConf)
+    show.add_argument("-o", "--organization", metavar="org-name", help="Show organization specific LDAP config") \
+        .completer = _cliOrgspecCompleter
 
 
 @Cli.command("ldap", _cliLdapParserSetup, help="LDAP configuration, diagnostics and synchronization")
