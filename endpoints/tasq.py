@@ -7,11 +7,11 @@ from api.core import API, secure
 from api.security import checkPermissions
 
 from . import defaultListQuery
-
+from orm import DB
 from flask import jsonify, request
 
-from tools.permissions import DomainAdminROPermission, SystemAdminPermission, SystemAdminROPermission
-from tools.tasq import TasQServer
+from tools.permissions import SystemAdminPermission, SystemAdminROPermission
+from tools.tasq import TasQServer, Task
 
 
 @API.route(api.BaseRoute+"/tasq/status", methods=["GET"])
@@ -50,7 +50,40 @@ def getTasQTasks():
     return jsonify(data=data)
 
 
-@API.route(api.BaseRoute+"/tasq/tasks/<int:ID>", methods=["GET"])
+@API.route(api.BaseRoute+"/tasq/tasks/<int:ID>", methods=["GET", "DELETE"])
+@secure(requireDB=102, authLevel="user")
+def deleteTasQTask(ID):
+    from orm.misc import TasQ
+    task = TasQ.query.filter(TasQ.ID == ID).first()
+    if task is None:
+        return jsonify(message="Task not found"), 404
+    checkPermissions(task.permission)
+    if request.method == "GET":
+        return jsonify(task.todict(int(request.args.get("level", 2))))
+    DB.session.delete(task)
+    DB.session.commit()
+    return jsonify(message=f"Deleted task #{task.ID}")
+
+
+@API.route(api.BaseRoute+"/tasq/tasks/<int:ID>/cancel", methods=["POST"])
+@secure(requireDB=102, authLevel="user")
+def cancelTasQTask(ID):
+    from orm.misc import TasQ
+    task = TasQ.query.filter(TasQ.ID == ID).first()
+    if task is None:
+        return jsonify(message="Task not found"), 404
+    checkPermissions(task.permission)
+    TasQ.query.filter(TasQ.ID == ID).update({TasQ.state: Task.CANCELLED})
+    try:
+        DB.session.commit()
+    except (InvalidAttributeError, MismatchROError, ValueError) as err:
+        DB.session.rollback()
+        return jsonify(message=err.args[0]), 400
+    return jsonify(message=f"Canceled task #{task.ID}")
+
+
+
+@API.route(api.BaseRoute+"/tasq/tasks/<int:ID>/cancel", methods=["GET"])
 @secure(requireDB=102, authLevel="user")
 def getTasQTask(ID):
     from orm.misc import TasQ
@@ -58,6 +91,8 @@ def getTasQTask(ID):
     if task is None:
         return jsonify(message="Task not found"), 404
     checkPermissions(task.permission)
+    task.delete()
+    DB.session.commit()
     return jsonify(task.todict(int(request.args.get("level", 2))))
 
 

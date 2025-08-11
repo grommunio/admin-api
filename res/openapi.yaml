@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.16.3
+  version: 1.16.4
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -4439,6 +4439,48 @@ paths:
             application/json:
              schema:
               $ref: '#/components/schemas/tasqTask'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Delete task
+      operationId: deleteTask
+      tags:
+        - TasQ
+      security:
+        - JWTCookie: [ ]
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Task deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /tasq/tasks/{ID}/cancel:
+    post:
+      summary: Cancel task in tasq
+      operationId: cancelTask
+      tags:
+        - TasQ
+      security:
+        - JWTCookie: [ ]
+      parameters:
+        - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: Task canceled
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
