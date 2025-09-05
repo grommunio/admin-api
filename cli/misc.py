@@ -4,6 +4,8 @@
 
 from . import Cli, CliError, ArgumentParser
 from .common import proptagCompleter
+import locale
+import termios
 
 
 def _runParserSetup(subp: ArgumentParser):
@@ -135,6 +137,16 @@ def _loadHistory(args):
                                   .format(filePath, type(err).__name__ + " - ".join(str(arg) for arg in err.args)),
                                   attrs=["dark"]))
 
+def eof_instructions(fd):
+	try:
+		key = termios.tcgetattr(fd)[6][termios.VEOF]
+		if ord(key) == 0:
+			return ""
+		if ord(key) < 32:
+			return " or press CTRL+" + chr(ord(key) + ord('@'))
+		return " or press '" + key.decode(locale.getpreferredencoding()) + "'"
+	except:
+		return ""
 
 @Cli.command("shell", _setupCliShell, help="Start interactive shell")
 def cliShell(args):
@@ -157,9 +169,9 @@ def cliShell(args):
     if interactive:
         cli.print("\x1b]2;grommunio-admin\x07", end="")
         if cli.host is None:
-            cli.print("grommunio-admin shell. Type exit or press CTRL+D to exit.")
+            cli.print("grommunio-admin shell. Type `exit`" + eof_instructions(cli.stdin) + " to exit.")
         else:
-            cli.print("Starting remote admin shell. Type exit or press CTRL+D to exit.")
+            cli.print("Starting remote admin shell. Type `exit`" + eof_instructions(cli.stdin) + " to exit.")
         try:
             import readline
             readline.set_completer_delims("")
