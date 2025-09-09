@@ -5,12 +5,15 @@
 from . import ServiceHub, ServiceUnavailableError
 
 from mattermostdriver import Driver
-from mattermostdriver.exceptions import InvalidOrMissingParameters, ResourceNotFound, ContentTooLarge
+from mattermostdriver.exceptions import InvalidOrMissingParameters, ResourceNotFound, ContentTooLarge, NoAccessTokenProvided
 from requests.exceptions import ConnectionError, HTTPError
 
 import hashlib
 import random
 import string
+
+import logging
+logger = logging.getLogger("chat")
 
 
 def handleGrochatExceptions(service, error):
@@ -22,10 +25,26 @@ def handleGrochatExceptions(service, error):
 
 @ServiceHub.register("chat", handleGrochatExceptions, maxreloads=3)
 class GrochatService:
+    class _DriverWrap:
+        def __init__(self, driver, obj=None):
+            self.__driver = driver
+            self.__obj = obj or driver
+            
+        def __call__(self, *args, **kwargs):
+            try:
+                return  self.__obj(*args, **kwargs)
+            except NoAccessTokenProvided:
+                    logger.info("grochat: renewing token")
+                    self.__driver.login()
+                    return self.__obj(*args, **kwargs)
+        
+        def __getattr__(self, attr):
+            return self.__class__(self.__driver, getattr(self.__obj, attr))
+    
     def __init__(self):
         from tools.config import Config
         try:
-            self.driver = Driver(Config["chat"]["connection"])
+            self.driver = self._DriverWrap(Driver(Config["chat"]["connection"]))
             self.driver.login()
         except Exception as err:
             raise ServiceUnavailableError("Failed to connect to grommunio-chat", err)

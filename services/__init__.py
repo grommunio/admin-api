@@ -319,7 +319,7 @@ class Service:
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None or isinstance(exc_value, ServiceUnavailableError):
             return self.__suppress != 0
-        self.__service.logger.error(repr(exc_value))
+        self.__service.logger.warning(repr(exc_value))
         excresult = self.__service._service.exchandler(self.__service, exc_value)
         if isinstance(excresult, tuple):
             newstate, msg = excresult
