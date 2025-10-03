@@ -222,7 +222,7 @@ def cliExmdbFolderPermissionsModify(args):
     from services import Service
     from tools.rop import makeEidEx
     if not args.revoke:
-        if Users.query.filter(Users.username == args.username).count() == 0:
+        if Users.query.filter(Users.username == args.username).count() == 0 and args.username not in ('default', 'anonymous'):
             cli.print(cli.col("Target user '{}' does not exist".format(args.username), "yellow" if args.force else "red"))
             if not args.force:
                 return 100
@@ -238,11 +238,13 @@ def cliExmdbFolderPermissionsModify(args):
             folders += exmdb.FolderList(client.listFolders(fid, True)).folders
             fids += tuple(folder.folderId for folder in folders)
         mode = client.REMOVE if args.revoke else client.ADD
+        # Anonymous is '' in exmdb, so we have to rewrite it
+        if args.username == 'anonymous':
+            args.username = ''
         perms = [client.setFolderMember(fid, args.username, perms, mode) for fid in fids]
         cli.print("New permissions for user '{}':".format(cli.col(args.username, attrs=["bold"])))
         Table([(_FolderNode(folder).print(cli), _cliExmdbFolderPermissionPrint(cli, perm))
                for folder, perm in zip(folders, perms)]).print(cli)
-
 
 def cliExmdbFolderPermissionsShow(args):
     cli = args._cli
@@ -256,9 +258,12 @@ def cliExmdbFolderPermissionsShow(args):
         if ret:
             return ret
         members = exmdb.FolderMemberList(client.getFolderMemberList(fid)).members
-        Table([(member.mail, _cliExmdbFolderPermissionPrint(cli, member.rights))
-               for member in members if not member.special and (not args.username or member.mail in args.username)],
-              empty=cli.col("(no entries)", attrs=["dark"])).print(cli)
+        try:
+            Table([(member.name, _cliExmdbFolderPermissionPrint(cli, member.rights))
+                   for member in members if (not args.username or member.mail in args.username)],
+                  empty=cli.col("(no entries)", attrs=["dark"])).print(cli)
+        except exmdb.ExmdbError:
+            cli.print(cli.col("Cannot show permissions for folder 0x{:x}".format(gcToValue(fid)), "yellow"))
 
 
 def cliExmdbStoreGetDelete(args):
