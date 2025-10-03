@@ -238,13 +238,6 @@ def cliExmdbFolderPermissionsModify(args):
             folders += exmdb.FolderList(client.listFolders(fid, True)).folders
             fids += tuple(folder.folderId for folder in folders)
         mode = client.REMOVE if args.revoke else client.ADD
-        # We need to remove prior permissions for those users
-        if args.username in ('default', 'anonymous'):
-            for fid in fids:
-                # Anonymous is '' in exmdb, so we have to rewrite it
-                if args.username == 'anonymous':
-                    args.username = ''
-                client.setFolderMember(fid, args.username, _permsAll, client.REMOVE)
         # Anonymous is '' in exmdb, so we have to rewrite it
         if args.username == 'anonymous':
             args.username = ''
