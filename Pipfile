@@ -19,6 +19,7 @@ systemd-python = "*"
 multidict = "*"
 cryptography = "*"
 dnspython = "*"
+crypt-r = "*"
 
 [dev-packages]
 
