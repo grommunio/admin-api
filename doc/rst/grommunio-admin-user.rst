@@ -14,7 +14,7 @@ grommunio-admin user — User management
 Synopsis
 ========
 
-| **grommunio-admin user** **create** [*--no-defaults*] [*<FIELDS>*] *USERNAME*
+| **grommunio-admin user** **create** [*--no-defaults*] [*--no-maildir*] [*<FIELDS>*] *USERNAME*
 | **grommunio-admin user** **delegate** *USERSPEC* (*clear* \| *list*)
 | **grommunio-admin user** **delegate** *USERSPEC* (*add* \| *remove*) *USERNAME* …
 | **grommunio-admin user** **delete** [*-c*] [*-k*] [*-y*] *USERSPEC*
@@ -102,6 +102,8 @@ Options
    Do not apply configured default values
 ``--no-ldap``
    Detach user from LDAP object
+``--no-maildir``
+   Do not create a mailbox for that user
 ``--nopass``
    Skip password check
 ``--password``

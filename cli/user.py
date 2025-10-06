@@ -129,7 +129,7 @@ def _getUser(args, requireMailbox=False):
 
 def _splitData(args):
     cli = args["_cli"]
-    cliargs = {"_handle", "_cli", "userspec", "no_defaults"}
+    cliargs = {"_handle", "_cli", "userspec", "no_defaults", "no_maildir"}
     data = {}
     attributes = data["attributes"] = {key: value for key, value in args.items() if value is not None and key not in cliargs}
     if "storeprop" in attributes or "remove_storeprop" in attributes:
@@ -273,7 +273,8 @@ def cliUserCreate(args):
             prop, val = pv.split("=", 1)
             properties[prop] = val
     props["properties"] = properties
-    result, code = Users.mkContact(props) if props.get("status", 0) == Users.CONTACT else Users.create(props)
+    result, code = Users.mkContact(props) if props.get("status", 0) == Users.CONTACT else\
+        Users.create(props, maildir=not args.no_maildir)
     if code != 201:
         cli.print(cli.col("Could not create user: "+result, "red"))
         return 1
@@ -724,6 +725,7 @@ def _setupCliUser(subp: ArgumentParser):
     create = sub.add_parser("create",  help="Create user")
     create.add_argument("username", help="E-Mail address of the user")
     create.add_argument("--no-defaults", action="store_true", help="Do not apply configured default values")
+    create.add_argument("--no-maildir", action="store_true", help="Do not create a mailbox for that user")
     create.set_defaults(_handle=cliUserCreate)
     _cliAddUserAttributes(create)
     userListFileParser(sub, "delegates", "delegate", cliUserManageFileList)

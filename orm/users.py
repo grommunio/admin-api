@@ -234,12 +234,12 @@ class Users(DataModel, DB.Base, NotifyTable):
     _propcache = None
 
     @staticmethod
-    def checkCreateParams(data):
+    def checkCreateParams(data, maildir=True):
         from orm.domains import Domains
         from tools.license import getLicense
         if "username" not in data:
             return "Missing username"
-        if data.get("status", Users.NORMAL) == Users.NORMAL and Users.count() >= getLicense().users:
+        if maildir and data.get("status", Users.NORMAL) == Users.NORMAL and Users.count() >= getLicense().users:
             return "License user limit exceeded"
         if "domainID" in data:
             domain = Domains.query.filter(Domains.ID == data.get("domainID")).first()
@@ -706,11 +706,11 @@ class Users(DataModel, DB.Base, NotifyTable):
         DB.session.delete(self)
 
     @staticmethod
-    def create(props, externID=None, sync=True, *args, **kwargs):
+    def create(props, externID=None, sync=True, maildir=True, *args, **kwargs):
         from .misc import Servers
         from tools.misc import AutoClean
         from tools.storage import UserSetup
-        error = Users.checkCreateParams(props)
+        error = Users.checkCreateParams(props, maildir)
         chat = props.pop("chat", None)
         if error is not None:
             return error, 400
@@ -723,16 +723,17 @@ class Users(DataModel, DB.Base, NotifyTable):
             with AutoClean(lambda: DB.session.rollback()):
                 DB.session.add(user)
                 DB.session.flush()
-                user.homeserverID, user.maildir = Servers.allocUser(user.ID, props.get("homeserver"))
-                with UserSetup(user, DB.session) as us:
-                    us.run()
+                if maildir:
+                    user.homeserverID, user.maildir = Servers.allocUser(user.ID, props.get("homeserver"))
+                    with UserSetup(user, DB.session) as us:
+                        us.run()
                 if chat:
                     try:
                         user.chat = chat
                     except ValueError as err:
                         logger.error("Failed to activate chat: "+err.args[0])
                 DB.session.commit()
-                if not us.success:
+                if maildir and not us.success:
                     return "Error during user setup: "+us.error, us.errorCode
                 if sync:
                     try:

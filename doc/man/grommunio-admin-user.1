@@ -6,7 +6,8 @@ grommunio\-admin user \[em] User management
 .SH Synopsis
 .PP
 \f[B]grommunio\-admin user\f[R] \f[B]create\f[R]
-[\f[I]\-\-no\-defaults\f[R]] [\f[I]<FIELDS>\f[R]] \f[I]USERNAME\f[R]
+[\f[I]\-\-no\-defaults\f[R]] [\f[I]\-\-no\-maildir\f[R]]
+[\f[I]<FIELDS>\f[R]] \f[I]USERNAME\f[R]
 .PD 0
 .P
 .PD
@@ -164,6 +165,9 @@ Do not apply configured default values
 \f[CR]\-\-no\-ldap\f[R]
 Detach user from LDAP object
 .TP
+\f[CR]\-\-no\-maildir\f[R]
+Do not create a mailbox for that user
+.TP
 \f[CR]\-\-nopass\f[R]
 Skip password check
 .TP
@@ -232,6 +236,15 @@ Whether the user has the files privilege
 .TP
 \f[CR]\-\-privVideo <bool>\f[R]
 Whether the user has the video privilege
+.TP
+\f[CR]\-\-privWeb <bool>\f[R]
+Whether the user has the web privilege
+.TP
+\f[CR]\-\-privDav <bool>\f[R]
+Whether the user has the DAV privilege
+.TP
+\f[CR]\-\-privEas <bool>\f[R]
+Whether the user has the EAS privilege
 .TP
 \f[CR]\-\-public\-address <bool>\f[R]
 Whether the user has the public address privilege
