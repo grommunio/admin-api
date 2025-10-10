@@ -15,6 +15,7 @@ from api.security import checkPermissions
 from services import Service
 
 from tools.config import Config
+from tools.deviceutils import retrieve_lastconnecttime
 from tools.permissions import DomainAdminROPermission, SystemAdminPermission
 
 
@@ -110,6 +111,26 @@ def setWipeStatus(username):
         with Service("redis") as redis:
             redis.hdel("grommunio-sync:provisioningcache", *refresh)
     return jsonify(message="Success."), 201
+
+@API.route(api.BaseRoute+"/service/lastconnect/<username>", methods=["GET"])
+@secure(requireDB=True, requireAuth="optional")
+def getLastConnect(username):
+    from orm.users import Users, UserDevices
+    user = Users.query.filter(Users.username == username).first()
+    if user is None:
+        return jsonify(message="User not found"), 404
+    checkAccess(DomainAdminROPermission(user.domainID))
+    requested = request.args["devices"].split(",") if "devices" in request.args else None
+    try:
+        known_devices = [device.deviceID for device in UserDevices.query.filter(UserDevices.userID == user.ID)]
+    except Exception:
+        known_devices = []
+    targets = requested if requested is not None else known_devices
+    data = {}
+    with Service("redis", errors=Service.SUPPRESS_INOP) as redis:
+        for deviceID in targets:
+            data[deviceID] = {"lastconnecttime": retrieve_lastconnecttime(redis, user.username, deviceID)}
+    return jsonify(data=data)
 
 
 @API.route(api.BaseRoute+"/service/userinfo/<username>", methods=["GET"])

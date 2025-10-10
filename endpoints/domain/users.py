@@ -22,6 +22,7 @@ from tools.misc import loadPSO, GenericObject
 from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission, ResetPasswdPermission
 from tools.rop import nxTime, makeEidEx
 from tools.storage import setDirectoryOwner, setDirectoryPermission
+from tools.deviceutils import retrieve_lastconnecttime
 
 import configparser
 import json
@@ -293,6 +294,9 @@ def getUserSyncData(domainID, userID):
                 devices[device.deviceID]["wipeStatus"] = device.status
             else:
                 devices[device.deviceID] = {"deviceid": device.deviceID, "wipeStatus": device.status}
+    with Service("redis", errors=Service.SUPPRESS_INOP) as redis:
+        for device_id, state in devices.items():
+            state["lastconnecttime"] = retrieve_lastconnecttime(redis, user.username, device_id, state.get("lastupdatetime"))
     return jsonify(data=tuple(devices.values()))
 
 

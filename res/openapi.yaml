@@ -340,6 +340,44 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /service/lastconnect/{username}:
+    get:
+      summary: Get device last connect time for user
+      operationId: getUserDeviceLastConnect
+      tags:
+        - Service
+      security:
+        - JWTCookie: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/username'
+        - $ref: '#/components/parameters/devices'
+      responses:
+        '200':
+          description: List of devices returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    description: Associative array of devices
+                    additionalProperties:
+                      type: object
+                      properties:
+                        status:
+                          type: integer
+                          description: Device status
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
   /service/userinfo/{username}:
     get:
       summary: Get basic user information

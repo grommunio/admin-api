@@ -6,6 +6,7 @@ from . import Cli, InvalidUseError
 from .common import proptagCompleter, Table
 
 from argparse import ArgumentParser
+from tools.deviceutils import retrieve_lastconnecttime
 
 _statusMap = {0: "active", 1: "suspended", 3: "deleted", 4: "shared", 5: "contact"}
 _statusColor = {0: "green", 1: "yellow", 3: "red", 4: "cyan", 5: "blue"}
@@ -378,6 +379,9 @@ def _cliUserDevicesGetDevices(args, user):
         state["wipeStatus"] = wipeStatus.pop(device, 0)
     for device, status in wipeStatus.items():
         syncStates[device] = {"wipeStatus": status}
+    with Service("redis", errors=Service.SUPPRESS_INOP) as redis:
+        for device, state in syncStates.items():
+            state["lastconnecttime"] = retrieve_lastconnecttime(redis, user.username, device, state.get("lastupdatetime"))
     return syncStates
 
 
@@ -405,11 +409,11 @@ def cliUserDevicesList(args):
 
     data = _cliUserDevicesGetDevices(args, user)
     devices = [(cli.col(device, attrs=["bold"]), state.get("devicefriendlyname", ""), state.get("useragent", ""),
-                str(state.get("asversion", "")), _mkDate(cli, state.get("lastupdatetime")),
+                str(state.get("asversion", "")), _mkDate(cli, state.get("lastconnecttime")),
                 _mkWipeStatus(cli, state["wipeStatus"]))
                for device, state in data.items()]
     devices = sorted(devices, key=lambda entry: entry[0])
-    Table(devices, ("ID", "Device", "Agent", "Version", "Updated", "Status"), empty=cli.col("(No devices)", attrs=["dark"]))\
+    Table(devices, ("ID", "Device", "Agent", "Version", "Last connect", "Status"), empty=cli.col("(No devices)", attrs=["dark"]))\
         .print(cli)
 
 
@@ -419,9 +423,10 @@ def cliUserDevicesShow(args):
     if ret:
         return ret
 
-    tf = {"firstsynctime": _mkDate, "lastupdatetime": _mkDate, "wipeStatus": _mkWipeStatus}
+    tf = {"firstsynctime": _mkDate, "lastupdatetime": _mkDate, "lastconnecttime": _mkDate, "wipeStatus": _mkWipeStatus}
     keys = ("devicetype", "devicemodel", "deviceos", "useragent", "devicemobileoperator", "deviceimei", "deviceoslanguage",
-            "deviceuser", "firstsynctime", "lastupdatetime", "asversion", "announcedasversion", "hierarchyuuid", "wipeStatus")
+            "deviceuser", "firstsynctime", "lastupdatetime", "lastconnecttime", "asversion", "announcedasversion",
+            "hierarchyuuid", "wipeStatus")
     devices = _cliUserDevicesGetDevices(args, user)
     for device, state in devices.items():
         cli.print(cli.col(device, attrs=["bold"]))
