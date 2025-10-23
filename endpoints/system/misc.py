@@ -65,16 +65,13 @@ def getDashboard():
 @secure()
 def getDashboardServices():
     checkPermissions(SystemAdminROPermission())
-    known = Config["options"]["dashboard"]["services"]
+    known = {service["unit"]: service for service in Config["options"]["dashboard"]["services"]}
     if len(known) == 0:
         return jsonify(services=[])
     with Service("systemd") as sysd:
-        units = sysd.getServices(*(service["unit"] for service in known))
-        for service in known:
-            if service["unit"] not in units:
-                continue
-            units[service["unit"]]["name"] = service.get("name", service["unit"].replace(".service", ""))
-        return jsonify(services=list(units.values()))
+        units = [{"name": known.get("unit", {}).get("name") or unit["unit"].replace(".service", ""), **unit}
+                 for unit in sysd.getServices(*known).values()]
+        return jsonify(services=units)
 
 
 @API.route(api.BaseRoute+"/system/dashboard/services/<unit>", methods=["GET"])
