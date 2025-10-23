@@ -66,6 +66,38 @@ def proptagCompleter(prefix, addSuffix="", **kwargs):
     return c
 
 
+def printSize(value):
+    suffix = ("B", "kiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB")
+    index = 0
+    prec = 0
+    while value > 1000 and index < len(suffix)-1:
+        value /= 1024
+        index += 1
+        prec = 0 if value >= 100 else 1 if value >= 10 else 2 if value >= 1 else 3
+    return "{:.{}f} {}".format(value, prec, suffix[index])
+
+
+def printVal(cli, pv, pretty):
+    from datetime import datetime
+    from tools.constants import PropTags, PropTypes
+    from tools.rop import nxTime
+    if pv.type == PropTypes.BINARY:
+        res = Table.Styled("[{} byte{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
+    elif pv.type == PropTypes.FILETIME:
+        timestring = datetime.fromtimestamp(nxTime(pv.val)).strftime("%Y-%m-%d %H:%M:%S")
+        res = pv.val, cli.col(timestring, attrs=["dark"])
+    elif pv.type in (PropTypes.STRING, PropTypes.WSTRING):
+        res = pv.val, cli.col(printSize(len(pv.val)), attrs=["dark"])
+    elif pv.type == PropTypes.BINARY_ARRAY:
+        res = Table.Styled("[{} blob{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
+    elif PropTypes.ismv(pv.type):
+        res = [str(val) for val in pv.val], ""
+    else:
+        res = pv.val, cli.col(printSize(pv.val*PropTags.sizeFactor.get(pv.tag, 1)), attrs=["dark"])\
+            if pv.tag in PropTags.sizeTags else ""
+    return res if pretty else (res[0],)
+
+
 class Table:
     """Helper class for pretty printing of tables."""
     class Styled:

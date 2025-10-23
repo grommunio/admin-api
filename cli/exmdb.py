@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2022 grommunio GmbH
 
 from . import Cli, InvalidUseError, ArgumentParser
-from .common import proptagCompleter, Table
+from .common import printVal, proptagCompleter, Table
 
 _perms = {
     "readany": 0x1,
@@ -251,7 +251,7 @@ def cliExmdbFolderPermissionsShow(args):
     cli.require("DB")
     from .common import Table
     from services import Service
-    from tools.rop import makeEidEx
+    from tools.rop import makeEidEx, gcToValue
     fid = makeEidEx(1, args.ID)
     with Service("exmdb") as exmdb:
         ret, client = _getClient(args, exmdb)
@@ -266,39 +266,31 @@ def cliExmdbFolderPermissionsShow(args):
             cli.print(cli.col("Cannot show permissions for folder 0x{:x}".format(gcToValue(fid)), "yellow"))
 
 
-def cliExmdbStoreGetDelete(args):
-    def printSize(value):
-        suffix = ("B", "kiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB")
-        index = 0
-        prec = 0
-        while value > 1000 and index < len(suffix)-1:
-            value /= 1024
-            index += 1
-            prec = 0 if value >= 100 else 1 if value >= 10 else 2 if value >= 1 else 3
-        return "{:.{}f} {}".format(value, prec, suffix[index])
-
-    def printVal(pv):
-        from datetime import datetime
-        from tools.rop import nxTime
-        if pv.type == PropTypes.BINARY:
-            res = Table.Styled("[{} byte{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
-        elif pv.type == PropTypes.FILETIME:
-            timestring = datetime.fromtimestamp(nxTime(pv.val)).strftime("%Y-%m-%d %H:%M:%S")
-            res = pv.val, cli.col(timestring, attrs=["dark"])
-        elif pv.type in (PropTypes.STRING, PropTypes.WSTRING):
-            res = pv.val, cli.col(printSize(len(pv.val)), attrs=["dark"])
-        elif pv.type == PropTypes.BINARY_ARRAY:
-            res = Table.Styled("[{} blob{}]".format(len(pv.val), "" if len(pv.val) == 1 else "s"), attrs=["dark"]), ""
-        elif PropTypes.ismv(pv.type):
-            res = [str(val) for val in pv.val], ""
-        else:
-            res = pv.val, cli.col(printSize(pv.val*PropTags.sizeFactor.get(pv.tag, 1)), attrs=["dark"])\
-                if pv.tag in PropTags.sizeTags else ""
-        return res if pretty else (res[0],)
-
+def cliExmdbFolderPropertiesGet(args):
     cli = args._cli
     cli.require("DB")
-    from tools.constants import PropTags, PropTypes
+    from services import Service
+    from tools.constants import PropTags
+    from tools.rop import makeEidEx
+    tags = [PropTags.deriveTag(tag) for tag in args.propspec]
+    pretty = args.format == "pretty"
+    header = ("tag", "value", "") if pretty else ("tag", "value")
+    fid = makeEidEx(1, args.ID)
+    with Service("exmdb") as exmdb:
+        ret, client = _getClient(args, exmdb)
+        if ret:
+            return ret
+        if not tags:
+            tags = client.getAllFolderProperties(fid)
+        props = client.getFolderProperties(0, fid, tags)
+        data = [(PropTags.lookup(prop.tag, hex(prop.tag)).lower(), *printVal(cli, prop, pretty)) for prop in props]
+        Table(data, header, args.separator, cli.col("(No properties)", attrs=["dark"])).dump(cli, args.format)
+
+
+def cliExmdbStoreGetDelete(args):
+    cli = args._cli
+    cli.require("DB")
+    from tools.constants import PropTags
     from services import Service
     tags = [PropTags.deriveTag(tag) for tag in args.propspec]
     pretty = args.format == "pretty"
@@ -313,7 +305,7 @@ def cliExmdbStoreGetDelete(args):
             client.removeStoreProperties(tags)
             return
         props = client.getStoreProperties(0, tags)
-        data = [(PropTags.lookup(prop.tag, hex(prop.tag)).lower(), *printVal(prop)) for prop in props]
+        data = [(PropTags.lookup(prop.tag, hex(prop.tag)).lower(), *printVal(cli, prop, pretty)) for prop in props]
         Table(data, header, args.separator, cli.col("(No properties)", attrs=["dark"])).dump(cli, args.format)
 
 
@@ -407,6 +399,17 @@ def _setupCliExmdb(subp: ArgumentParser):
     revoke.add_argument("permission", nargs="*", type=perm, choices=PermChoices(), help="Permission name or value",
                         metavar="permission")
     revoke.add_argument("-r", "--recursive", action="store_true", help="Apply to subfolders recursively")
+    properties = foldersub.add_parser("properties")
+    Cli.parser_stub(properties)
+    propertiesSub = properties.add_subparsers()
+    propertiesGet = propertiesSub.add_parser("get", help="Get properties")
+    propertiesGet.set_defaults(_handle=cliExmdbFolderPropertiesGet)
+    propertiesGet.add_argument("ID", type=xint, help="Folder ID")
+    propertiesGet.add_argument("--format", choices=Table.FORMATS, help="Set output format",
+                               metavar="FORMAT", default="pretty")
+    propertiesGet.add_argument("--separator", help="Set column separator")
+    propertiesGet.add_argument("propspec", nargs="*", help="Properties to query")\
+        .completer = proptagCompleter
 
     store = sub.add_parser("store", help="Access store properties")
     Cli.parser_stub(store)
