@@ -4,6 +4,7 @@
 
 from datetime import datetime, timezone, MAXYEAR
 
+import cryptography
 import logging
 
 from cryptography import x509
@@ -14,15 +15,25 @@ from .misc import GenericObject, createMapping
 
 logger = logging.getLogger("license")
 
+cryptographyVersion = [int(part) for part in cryptography.__version__.split(".")]
+TZ = None if cryptographyVersion[0] < 42 else timezone.utc
+
+
+def cert_not_before(cert):
+    return cert.not_valid_before if cryptographyVersion[0] < 42 else cert.not_valid_before_utc
+
+
+def cert_not_after(cert):
+    return cert.not_valid_after if cryptographyVersion[0] < 42 else cert.not_valid_after_utc
+
 
 class CertificateError(Exception):
     pass
 
-
 class GrommunioLicense(GenericObject):
     @staticmethod
     def validate(cert):
-        if cert is not None and not cert.not_valid_before_utc <= datetime.now(tz=timezone.utc) <= cert.not_valid_after_utc:
+        if cert is not None and not cert_not_before(cert) <= datetime.now(tz=TZ) <= cert_not_after(cert):
             raise CertificateError("Certificate expired")
 
     @property
@@ -38,8 +49,8 @@ def _defaultLicense():
                             file=None,
                             users=5,
                             product="Community",
-                            notBefore=datetime(1000, 1, 1),
-                            notAfter=datetime(MAXYEAR, 12, 31, 23, 59, 59))
+                            notBefore=datetime(1000, 1, 1, tzinfo=TZ),
+                            notAfter=datetime(MAXYEAR, 12, 31, 23, 59, 59, tzinfo=TZ))
 
 
 def _processCertificate(data):
@@ -50,8 +61,8 @@ def _processCertificate(data):
         lic = GrommunioLicense(cert=cert, file=data)
         lic.users = int(exts.get("1.3.6.1.4.1.56504.1.1"))
         lic.product = exts.get("1.3.6.1.4.1.56504.1.2").decode("utf-8") if "1.3.6.1.4.1.56504.1.2" in exts else None
-        lic.notBefore = cert.not_valid_before_utc
-        lic.notAfter = cert.not_valid_after_utc
+        lic.notBefore = cert_not_before(cert)
+        lic.notAfter = cert_not_after(cert)
         return True, lic
     except ValueError:
         return False, "Bad certificate"
