@@ -1,10 +1,9 @@
 [Unit]
 Description=grommunio admin api
-After=grommunio-admin-api.socket
-Requires=grommunio-admin-api.socket
+After=mysql.service
 
 [Service]
-WorkingDirectory=/usr/share/grommunio-admin-api/
+WorkingDirectory=/usr/share/grommunio-admin-api
 ExecStart=/usr/sbin/uwsgi --ini /usr/share/grommunio-admin-api/api-config.ini
 User=grommunio
 Group=nginx
