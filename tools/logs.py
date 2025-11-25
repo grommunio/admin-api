@@ -76,8 +76,11 @@ class JournaldReader:
 
     @staticmethod
     def _entry(data):
+        msg = data.get("MESSAGE", "")
+        if isinstance(msg, (bytes, bytearray)):
+             msg = msg.decode("utf-8", "ignore")
         return dict(level=data["PRIORITY"],
-                    message=data["MESSAGE"],
+                    message=msg,
                     time=data["__REALTIME_TIMESTAMP"].strftime("%Y-%m-%d %H:%M:%S.%f"),
                     runtime=data["__MONOTONIC_TIMESTAMP"].timestamp.total_seconds())
 
