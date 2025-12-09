@@ -82,10 +82,9 @@ def cliOrgCreate(args):
         org = Orgs({"name": args.name, "description": args.description})
         DB.session.add(org)
         for domainspec in args.domain:
-            if domainspec is not None:
-                domain = _domainCandidate(cli, domainspec)
-                if domain:
-                    org.domains.append(domain)
+            domain = _domainCandidate(cli, domainspec)
+            if domain:
+                org.domains.append(domain)
         _dumpOrg(cli, org)
         DB.session.commit()
     except ValueError as err:
