@@ -93,7 +93,8 @@ class DBConn:
         bool
             Whether an update is available and the schema should be reloaded
         """
-        return (self.__version is None or self.__version < self.__maxversion) and self._fetchVersion(False) != self.__version
+        return (Config["DB"].get("schemaCompat") and  (self.__version is None or self.__version < self.__maxversion) \
+               and self._fetchVersion(False) != self.__version)
 
     @property
     def version(self):

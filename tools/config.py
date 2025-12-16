@@ -58,6 +58,7 @@ def _defaultConfig():
     return {
         "DB": {
             "sessionTimout": 28800,
+            "schemaCompat": False,
             },
         "dns": {
             "disabled": False,
