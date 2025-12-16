@@ -20,7 +20,7 @@ _perms = {
     "freebusysimple": 0x800,
     "freebusydetailed": 0x1000,
     "storeowner": 0x2000}
-_permsAll = 0x27ff
+_permsAll = 0x3fff
 
 
 def _getClient(args, exmdb):
@@ -227,7 +227,7 @@ def cliExmdbFolderPermissionsModify(args):
             if not args.force:
                 return 100
     fid = makeEidEx(1, args.ID)
-    perms = reduce(lambda x, y: x | y, args.permission, 0) or _permsAll
+    perms = reduce(lambda x, y: x | y, args.permission, 0) if args.permission else _permsAll
     with Service("exmdb") as exmdb:
         ret, client = _getClient(args, exmdb)
         if ret:
