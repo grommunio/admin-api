@@ -469,9 +469,10 @@ class TasQServer:
             return 0
         from orm import DB
         from datetime import datetime
-        if DB is None or not DB.minVersion(102):
+        available = DB and DB.available()
+        if not available or not DB.minVersion(102):
             cls._online = None
-            msg = "Database unavailable" if DB is None else "Schema version too old (n102 required)"
+            msg = "Database unavailable" if not available else "Schema version too old (n102 required)"
             logger.warning(msg + " - falling back to offline mode.")
             return None
         from orm.misc import TasQ

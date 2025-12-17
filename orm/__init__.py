@@ -43,6 +43,9 @@ class DBConn:
 
         self.Base = declarative_base(cls=Model)
 
+    def available(self):
+        return self.__version is not None
+
     def enableFlask(self, API):
         @API.teardown_appcontext
         def removeSession(*args, **kwargs):
@@ -126,7 +129,8 @@ class DBConn:
         def sign(x):
             return -1 if x < 0 else 1 if x > 0 else 0
         self.__maxversion = max(abs(v), self.__maxversion)
-        return self.__version is not None and sign(v)*self.__version >= v
+        version = self.__version or self.__maxversion
+        return sign(v)*version >= v if self.__version or v >= 0 else False
 
 
 def _loadDBConfig():
