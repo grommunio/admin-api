@@ -260,6 +260,36 @@ class LdapService:
                                    .format(cls._configMap.get(required, "groups."+required)))
         return userAttributes
 
+    @staticmethod
+    def _getConnection(server, user, password, starttls=False):
+        """Setup connection
+
+        Parameters
+        ----------
+        server : str
+            LDAP server address. Supports space delimited list of URLs.
+        user : str
+            Bind user.
+        password : str
+            Bind password.
+        starttls : bool, optional
+            Initiate STARTTLS connection.
+
+        Returns
+        -------
+        ldap3.Connection
+            Connection object.
+        """
+        servers = [s[:-1] if s.endswith("/") else s for s in server.split()]
+        pool = servers[0] if len(servers) == 1 else ldap3.ServerPool(servers, "FIRST", active=1)
+        conn = ldap3.Connection(pool, user=user, password=password, client_strategy=ldap3.RESTARTABLE)
+        if starttls and not conn.start_tls():
+            logger.warning(f"Failed to initiate StartTLS connection with {server}")
+        if not conn.bind():
+            raise ldapexc.LDAPBindError(
+                "LDAP bind failed ({}): {}".format(conn.result["description"], conn.result["message"]))
+        return conn
+
     def _matchFilters(self, ID):
         """Generate match filters string.
 
@@ -421,7 +451,8 @@ class LdapService:
             return "Multiple entries found - please contact your administrator"
         userDN = response[0].DN
         try:
-            ldap3.Connection(self._config["connection"].get("server"), user=userDN, password=password, auto_bind=True)
+            self._getConnection(self._config["connection"]["server"], userDN, password,
+                                self._config["connection"].get("starttls"))
         except ldapexc.LDAPBindError:
             return "Invalid username or Password"
 
@@ -587,16 +618,8 @@ class LdapService:
 
     @classmethod
     def testConnection(cls, config, active=True):
-        servers = [s[:-1] if s.endswith("/") else s for s in config["connection"]["server"].split()]
-        pool = servers[0] if len(servers) == 1 else ldap3.ServerPool(servers, "FIRST", active=1)
-        user = config["connection"].get("bindUser")
-        password = config["connection"].get("bindPass")
-        starttls = config["connection"].get("starttls")
-        conn = ldap3.Connection(pool, user=user, password=password, client_strategy=ldap3.RESTARTABLE)
-        if starttls and not conn.start_tls():
-            logger.warning("Failed to initiate StartTLS connection")
-        if not conn.bind():
-            raise ldapexc.LDAPBindError("LDAP bind failed ({}): {}".format(conn.result["description"], conn.result["message"]))
+        conn = cls._getConnection(config["connection"]["server"], config["connection"].get("bindUser"),
+                                  config["connection"].get("bindPass"), config["connection"].get("starttls"))
         if active:
             userconf = config["users"]
             filterexpr = "".join("("+f+")" for f in userconf.get("filters", ()))
