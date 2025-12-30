@@ -477,7 +477,7 @@ def _checkConn(cli, connfig):
     return True
 
 
-def _getConf(cli, old):
+def _getConf(cli, old, organization):
     conf = {"connection": {}, "users": {"filters": [], "searchAttributes": []}, "groups": {}}
     connected = False
     connfig = old.get("connection", {}).copy()
@@ -517,6 +517,9 @@ def _getConf(cli, old):
     conf["groups"]["groupfilter"] = _getv(cli, "Filter expression for groups", groups.get("groupfilter", ""))
     conf["groups"]["groupname"] = _getv(cli, "Attribute containing the group's display name", groups.get("groupname", ""))
     conf["groups"]["groupMemberAttr"] = _getv(cli, "Attribute containing the groups a user is member of", groups.get("groupMemberAttr", ""))
+    scope = "system settings" if not organization else "for organization '{}'".format(organization)
+    conf["disabled"] = _getc(cli, "Disable LDAP {}".format(scope),
+                                    "y" if old.get("disabled") else "n", ("y", "n")) == "y"
 
     return conf
 
@@ -562,7 +565,7 @@ def _cliLdapConfigure(args):
             if not args.organization:
                 cli.print(cli.col("Cannot delete default configuration"))
                 return 2
-            orgID = _getOrgID(args)
+            orgID = _getOrgID(args.organization)
             from orm.domains import OrgParam
             OrgParam.wipeLdap(orgID)
             cli.print("Configuration deleted.")
@@ -572,8 +575,9 @@ def _cliLdapConfigure(args):
         from services.ldap import LdapService
         LdapService.init()
         old = _cliLdapGetConf(args)
+        organization = args.organization if args.organization else None
         while True:
-            new = _getConf(cli, old)
+            new = _getConf(cli, old, organization)
             cli.print("Checking new configuration...")
             error = LdapService.testConfig(new)
             if error is None:
