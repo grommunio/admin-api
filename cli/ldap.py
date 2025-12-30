@@ -608,8 +608,14 @@ def cliLdapReload(args):
     cli = args._cli
     ldapArgs = (args.organization,) if args.organization else ()
     res = ServiceHub.load("ldap", *ldapArgs, force_reload=True)
-    cli.print("Reload successful" if res.state == ServiceHub.LOADED else cli.col("Reload failed", "red"))
-    return int(res.state != ServiceHub.LOADED)
+    if (res.state == ServiceHub.LOADED):
+        cli.print("Reload successful")
+    elif (res.state == ServiceHub.DISABLED):
+        cli.print(cli.col("Reload failed - LDAP disabled", "yellow"))
+    else:
+        cli.print(cli.col("Reload failed", "red"))
+
+    return int(res.state not in (ServiceHub.LOADED, ServiceHub.DISABLED))
 
 
 def _cliOrgspecCompleter(prefix, **kwargs):
