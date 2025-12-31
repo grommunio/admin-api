@@ -607,7 +607,7 @@ def cliLdapReload(args):
     from services import ServiceHub
     cli = args._cli
     old = _cliLdapGetConf(args)
-    conf = old
+    conf = old.copy()
     if args.disable_ldap:
         conf["disabled"] = args.disable_ldap
     if conf.get("disabled") != old.get("disabled"):
