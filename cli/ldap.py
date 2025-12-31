@@ -606,6 +606,12 @@ def _cliLdapConfigure(args):
 def cliLdapReload(args):
     from services import ServiceHub
     cli = args._cli
+    old = _cliLdapGetConf(args)
+    conf = old
+    if args.disable_ldap:
+        conf["disabled"] = args.disabled_ldap
+    if conf.get("disabled") != old.get("disabled"):
+        _cliLdapSaveConf(args, conf)
     ldapArgs = (args.organization,) if args.organization else ()
     res = ServiceHub.load("ldap", *ldapArgs, force_reload=True)
     if (res.state == ServiceHub.LOADED):
@@ -624,6 +630,11 @@ def _cliOrgspecCompleter(prefix, **kwargs):
 
 
 def _cliLdapParserSetup(subp: ArgumentParser):
+    def getBool(val):
+        if not val.isdigit() and val.lower() not in ("yes", "no", "true", "false", "y", "n"):
+            raise ValueError("'{}' cannot be interpreted as boolean.".format(val))
+        return bool(int(val)) if val.isdigit() else val in ("yes", "true", "y")
+
     sub = subp.add_subparsers()
     check = sub.add_parser("check", help="Check LDAP objects of imported users still exist")
     check.set_defaults(_handle=cliLdapCheck)
@@ -659,6 +670,7 @@ def _cliLdapParserSetup(subp: ArgumentParser):
                       help="Use organization specific LDAP connection").completer = _cliOrgspecCompleter
     reload = sub.add_parser("reload", help="Reload LDAP configuration")
     reload.set_defaults(_handle=cliLdapReload)
+    reload.add_argument("-x", "--disable-ldap", type=getBool, metavar="<bool>", help="Disable LDAP")
     reload.add_argument("-o", "--organization", metavar="ORGSPEC", help="Use organization specific LDAP connection")\
         .completer = _cliOrgspecCompleter
     search = sub.add_parser("search", help="Search LDAP tree")
