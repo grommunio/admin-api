@@ -608,15 +608,15 @@ def cliLdapReload(args):
     cli = args._cli
     old = _cliLdapGetConf(args)
     conf = old.copy()
-    if args.disable_ldap:
+    if 'disable_ldap' in args:
         conf["disabled"] = args.disable_ldap
     if conf.get("disabled") != old.get("disabled"):
         _cliLdapSaveConf(args, conf)
     ldapArgs = (args.organization,) if args.organization else ()
     res = ServiceHub.load("ldap", *ldapArgs, force_reload=True)
-    if (res.state == ServiceHub.LOADED):
+    if res.state == ServiceHub.LOADED:
         cli.print("Reload successful")
-    elif (res.state == ServiceHub.DISABLED):
+    elif res.state == ServiceHub.DISABLED:
         cli.print(cli.col("No reload - LDAP disabled", "yellow"))
     else:
         cli.print(cli.col("Reload failed", "red"))
