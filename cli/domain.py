@@ -204,10 +204,16 @@ def _setupCliDomain(subp: ArgumentParser):
         def __len__(self):
             return len(_domainAttributes)
 
+    def optBool(val):
+        if not val.isdigit() and val.lower() not in ("yes", "no", "true", "false", "y", "n"):
+            return val
+        return bool(int(val)) if val.isdigit() else val in ("yes", "true", "y")
+
     def addProperties(parser, init):
         parser.add_argument("-u", "--maxUser", required=init, type=int, help="Maximum number of users")
         parser.add_argument("--address", help="Domain contact address")
         parser.add_argument("--adminName", help="Name of the domain admin")
+        parser.add_argument("--chat", type=optBool, metavar="<bool>", help="Whether to setup a chat team")
         parser.add_argument("--endDay", help="Domain expiry date in YYYY-MM-DD format")
         parser.add_argument("--orgID", type=int, help="ID of the organization")
         parser.add_argument("--tel", help="Domain contact telephone number")
