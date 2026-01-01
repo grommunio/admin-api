@@ -477,9 +477,9 @@ def _checkConn(cli, connfig):
     return True
 
 
-def _getConf(cli, old, oldAuthMgr, organization):
+def _getConf(cli, old, oldAuthmgr, organization):
     conf = {"connection": {}, "users": {"filters": [], "searchAttributes": []}, "groups": {}}
-    confAuthMgr = None
+    confAuthmgr = None
     connected = False
     connfig = old.get("connection", {}).copy()
     while not connected:
@@ -528,25 +528,25 @@ def _getConf(cli, old, oldAuthMgr, organization):
     else:
         config_auth_backend = True
     if config_auth_backend:
-        oldauthbackend = oldAuthMgr['authBackendSelection']
-        confAuthMgr = {"authBackendSelection": "externid"}
+        oldauthbackend = oldAuthmgr['authBackendSelection']
+        confAuthmgr = {"authBackendSelection": "externid"}
         res = _getc(cli, "Choose an authmgr global system authentication backend:\n 0: externid (automatic)\n 1: always_mysql\n 2: always_ldap\n",
                     1 if "always_mysql" in oldauthbackend else 2 if "always_ldap" in oldauthbackend else 0, range(2), _geti)
-        confAuthMgr["authBackendSelection"] = "always_mysql" if res == 1 else ("always_ldap" if res == 2 else "externid")
+        confAuthmgr["authBackendSelection"] = "always_mysql" if res == 1 else ("always_ldap" if res == 2 else "externid")
 
-    return conf, confAuthMgr
+    return conf, confAuthmgr
 
 
 def _cliLdapGetConf(args):
     from tools import mconf
     if args.organization:
         from orm.domains import OrgParam
-        args.organization = _getOrgID(args.organization)
-        old = OrgParam.loadLdap(args.organization)
+        orgID = _getOrgID(args.organization)
+        old = OrgParam.loadLdap(orgID)
     if not args.organization or not old:
         old = mconf.LDAP
-    oldAuthMgr = mconf.AUTHMGR
-    return old, oldAuthMgr
+    oldAuthmgr = mconf.AUTHMGR
+    return old, oldAuthmgr
 
 
 def cliLdapShowConf(args):
@@ -567,15 +567,15 @@ def cliLdapShowConf(args):
     cli.print(output)
 
 
-def _cliLdapSaveConf(args, conf, confAuthMgr=None):
+def _cliLdapSaveConf(args, conf, confAuthmgr=None):
     from tools import mconf
     if not args.organization:
         mconf.dumpLdap(conf)
     else:
         from orm.domains import OrgParam
         OrgParam.saveLdap(args.organization, conf)
-    if confAuthMgr:
-        mconf.dumpAuthMgr(confAuthMgr)
+    if confAuthmgr:
+        mconf.dumpAuthmgr(confAuthmgr)
     return
 
 
@@ -596,22 +596,22 @@ def _cliLdapConfigure(args):
 
         from services.ldap import LdapService
         LdapService.init()
-        old, oldAuthMgr = _cliLdapGetConf(args)
+        old, oldAuthmgr = _cliLdapGetConf(args)
         organization = args.organization if args.organization else None
         while True:
-            new, newAuthMgr = _getConf(cli, old, oldAuthMgr, organization)
+            new, newAuthmgr = _getConf(cli, old, oldAuthmgr, organization)
             cli.print("Checking new configuration...")
             error = LdapService.testConfig(new)
             if error is None:
                 cli.print("Configuration successful.")
-                _cliLdapSaveConf(args, new, newAuthMgr)
+                _cliLdapSaveConf(args, new, newAuthmgr)
                 cli.print("Configuration saved" if error is None else ("Failed to save configuration: "+error))
                 break
             cli.print(cli.col(error, "yellow"))
             action = _getc(cli, "Restart configuration? (r=Restart, a=Amend, s=Save anyway, q=quit)",
                            "a", ("y", "a", "s", "q"))
             if action == "s":
-                _cliLdapSaveConf(args, new, newAuthMgr)
+                _cliLdapSaveConf(args, new, newAuthmgr)
             if action in "sq":
                 break
             if action == "a":
@@ -628,22 +628,22 @@ def _cliLdapConfigure(args):
 def cliLdapReload(args):
     from services import ServiceHub
     cli = args._cli
-    old, oldAuthMgr = _cliLdapGetConf(args)
+    old, oldAuthmgr = _cliLdapGetConf(args)
     conf = old.copy()
-    confAuthMgr = None
+    confAuthmgr = None
     changed = False
     if args.auth_backend:
-        confAuthMgr = oldAuthMgr.copy()
+        confAuthmgr = oldAuthmgr.copy()
         value = "externid" if args.auth_backend == "automatic" else args.auth_backend
-        old_value = oldAuthMgr.get("authBackendSelection")
-        confAuthMgr["authBackendSelection"] = value
+        old_value = oldAuthmgr.get("authBackendSelection")
+        confAuthmgr["authBackendSelection"] = value
         changed = (value != old_value) if not changed else changed
     # args.disabled_ldap can be False....
     if 'disable_ldap' in args and args.disable_ldap is not None:
         conf["disabled"] = args.disable_ldap
         changed = (conf.get("disabled") != old.get("disabled")) if not changed else changed
     if changed:
-        _cliLdapSaveConf(args, conf, confAuthMgr)
+        _cliLdapSaveConf(args, conf, confAuthmgr)
     ldapArgs = (args.organization,) if args.organization else ()
     res = ServiceHub.load("ldap", *ldapArgs, force_reload=True)
     if res.state == ServiceHub.LOADED:
