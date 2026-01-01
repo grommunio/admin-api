@@ -554,8 +554,8 @@ def cliLdapShowConf(args):
     from tools import mconf
     if args.organization:
         from orm.domains import OrgParam
-        args.organization = _getOrgID(args.organization)
-        old = OrgParam.loadLdap(args.organization)
+        orgID = _getOrgID(args.organization)
+        old = OrgParam.loadLdap(orgID)
     else:
         old = mconf.LDAP
     # Doing the following to display _comment at the top of authmgr section
@@ -573,7 +573,8 @@ def _cliLdapSaveConf(args, conf, confAuthmgr=None):
         mconf.dumpLdap(conf)
     else:
         from orm.domains import OrgParam
-        OrgParam.saveLdap(args.organization, conf)
+        orgID = _getOrgID(args.organization)
+        OrgParam.saveLdap(orgID, conf)
     if confAuthmgr:
         mconf.dumpAuthmgr(confAuthmgr)
     return
@@ -621,7 +622,11 @@ def _cliLdapConfigure(args):
         return 1
     except ValueError as err:
         cli.print(cli.col(err.args[0], "red"))
-    ldapArgs = (args.organization,) if args.organization else ()
+    if args.organization:
+        orgID = _getOrgID(args.organization)
+        ldapArgs = (orgID,)
+    else:
+        ldapArgs = ()
     ServiceHub.load("ldap", *ldapArgs, force_reload=True)
 
 
@@ -644,7 +649,11 @@ def cliLdapReload(args):
         changed = (conf.get("disabled") != old.get("disabled")) if not changed else changed
     if changed:
         _cliLdapSaveConf(args, conf, confAuthmgr)
-    ldapArgs = (args.organization,) if args.organization else ()
+    if args.organization:
+        orgID = _getOrgID(args.organization)
+        ldapArgs = (orgID,)
+    else:
+        ldapArgs = ()
     res = ServiceHub.load("ldap", *ldapArgs, force_reload=True)
     if res.state == ServiceHub.LOADED:
         cli.print("Reload successful")
