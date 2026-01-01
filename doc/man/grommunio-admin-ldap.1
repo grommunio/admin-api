@@ -71,6 +71,13 @@ LDAP object ID or search string
 \f[CR]\-a\f[R], \f[CR]\-\-all\f[R]
 Show all results, not only importable objects
 .TP
+\f[CR]\-\-auth\-backend <automatic|externid|always_ldap|always_mysql>\f[R]
+For \f[I]reload\f[R] only.
+Set the authmgr global system authentication backend.
+Can be one of \f[I]automatic\f[R] (same as \f[I]externid\f[R]),
+\f[I]externid\f[R], \f[I]always_ldap\f[R], \f[I]always_mysql\f[R].
+Default is \f[I]externid\f[R] if unset.
+.TP
 \f[CR]\-c\f[R], \f[CR]\-\-complete\f[R]
 Import or update all users from the LDAP tree
 .TP
@@ -111,6 +118,11 @@ Remove imported users of which the linked LDAP object could not be found
 \f[CR]\-t TYPES\f[R], \f[CR]\-\-types TYPES\f[R]
 Comma separated list of object types to search for.
 Supported are \f[I]user\f[R], \f[I]contact\f[R] and \f[I]group\f[R].
+.TP
+\f[CR]\-x <bool>\f[R], \f[CR]\-\-disable\-ldap <bool>\f[R]
+For reload only.
+Set the disable LDAP switch for the organization or globally system
+wide.
 .TP
 \f[CR]\-y\f[R], \f[CR]\-\-yes\f[R]
 Do not prompt for confirmation, assume yes

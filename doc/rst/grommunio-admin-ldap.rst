@@ -56,6 +56,10 @@ Options
    LDAP object ID or search string
 ``-a``, ``--all``
    Show all results, not only importable objects
+``--auth-backend <automatic|externid|always_ldap|always_mysql>``
+   For *reload* only.  Set the authmgr global system authentication backend.
+   Can be one of *automatic* (same as *externid*), *externid*, *always_ldap*,
+   *always_mysql*. Default is *externid* if unset.
 ``-c``, ``--complete``
    Import or update all users from the LDAP tree
 ``-f``, ``--force``
@@ -82,6 +86,9 @@ Options
 ``-t TYPES``, ``--types TYPES``
    Comma separated list of object types to search for. Supported are *user*,
    *contact* and *group*.
+``-x <bool>``, ``--disable-ldap <bool>``
+   For reload only. Set the disable LDAP switch for the organization or
+   globally system wide.
 ``-y``, ``--yes``
    Do not prompt for confirmation, assume yes
 
