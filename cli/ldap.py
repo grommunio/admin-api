@@ -702,7 +702,7 @@ def _cliLdapParserSetup(subp: ArgumentParser):
                       help="Use organization specific LDAP connection").completer = _cliOrgspecCompleter
     reload = sub.add_parser("reload", help="Reload LDAP configuration")
     reload.set_defaults(_handle=cliLdapReload)
-    reload.add_argument("-a", "--auth-backend",
+    reload.add_argument("--auth-backend",
                         metavar="<externid (automatic)|always_mysql|always_ldap>",
                         choices=("automatic", "externid", "always_mysql", "always_ldap"),
                         help="Change authmgr global system authentication backend (automatic == externid)")
