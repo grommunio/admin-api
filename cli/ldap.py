@@ -477,8 +477,9 @@ def _checkConn(cli, connfig):
     return True
 
 
-def _getConf(cli, old, organization):
+def _getConf(cli, old, oldAuthMgr, organization):
     conf = {"connection": {}, "users": {"filters": [], "searchAttributes": []}, "groups": {}}
+    confAuthMgr = None
     connected = False
     connfig = old.get("connection", {}).copy()
     while not connected:
@@ -520,41 +521,62 @@ def _getConf(cli, old, organization):
     scope = "system settings" if not organization else "for organization '{}'".format(organization)
     conf["disabled"] = _getc(cli, "Disable LDAP {}".format(scope),
                                     "y" if old.get("disabled") else "n", ("y", "n")) == "y"
+    config_auth_backend = False
+    if organization:
+        if cli.confirm("Review or change the authmgr global system authentication backend? [y/N]: ") == Cli.SUCCESS:
+            config_auth_backend = True
+    else:
+        config_auth_backend = True
+    if config_auth_backend:
+        oldauthbackend = oldAuthMgr['authBackendSelection']
+        confAuthMgr = {"authBackendSelection": "externid"}
+        res = _getc(cli, "Choose an authmgr global system authentication backend:\n 0: externid (automatic)\n 1: always_mysql\n 2: always_ldap\n",
+                    1 if "always_mysql" in oldauthbackend else 2 if "always_ldap" in oldauthbackend else 0, range(2), _geti)
+        confAuthMgr["authBackendSelection"] = "always_mysql" if res == 1 else ("always_ldap" if res == 2 else "externid")
 
-    return conf
+    return conf, confAuthMgr
 
 
 def _cliLdapGetConf(args):
+    from tools import mconf
     if args.organization:
         from orm.domains import OrgParam
         args.organization = _getOrgID(args.organization)
         old = OrgParam.loadLdap(args.organization)
     if not args.organization or not old:
-        from tools import mconf
         old = mconf.LDAP
-    return old
+    oldAuthMgr = mconf.AUTHMGR
+    return old, oldAuthMgr
 
 
 def cliLdapShowConf(args):
     cli = args._cli
+    from tools import mconf
     if args.organization:
         from orm.domains import OrgParam
         args.organization = _getOrgID(args.organization)
         old = OrgParam.loadLdap(args.organization)
     else:
-        from tools import mconf
         old = mconf.LDAP
+    # Doing the following to display _comment at the top of authmgr section
+    old["authmgr"] = {}
+    old["authmgr"]["_comment"] = "All the authmgr settings here are ALWAYS global system settings."
+    old["authmgr"].update(mconf.AUTHMGR)
     import json
     output = json.dumps(old, indent=4)
     cli.print(output)
 
 
-def _cliLdapSaveConf(args, conf):
+def _cliLdapSaveConf(args, conf, confAuthMgr=None):
+    from tools import mconf
     if not args.organization:
-        from tools import mconf
-        return mconf.dumpLdap(conf)
-    from orm.domains import OrgParam
-    OrgParam.saveLdap(args.organization, conf)
+        mconf.dumpLdap(conf)
+    else:
+        from orm.domains import OrgParam
+        OrgParam.saveLdap(args.organization, conf)
+    if confAuthMgr:
+        mconf.dumpAuthMgr(confAuthMgr)
+    return
 
 
 def _cliLdapConfigure(args):
@@ -574,22 +596,22 @@ def _cliLdapConfigure(args):
 
         from services.ldap import LdapService
         LdapService.init()
-        old = _cliLdapGetConf(args)
+        old, oldAuthMgr = _cliLdapGetConf(args)
         organization = args.organization if args.organization else None
         while True:
-            new = _getConf(cli, old, organization)
+            new, newAuthMgr = _getConf(cli, old, oldAuthMgr, organization)
             cli.print("Checking new configuration...")
             error = LdapService.testConfig(new)
             if error is None:
                 cli.print("Configuration successful.")
-                _cliLdapSaveConf(args, new)
+                _cliLdapSaveConf(args, new, newAuthMgr)
                 cli.print("Configuration saved" if error is None else ("Failed to save configuration: "+error))
                 break
             cli.print(cli.col(error, "yellow"))
             action = _getc(cli, "Restart configuration? (r=Restart, a=Amend, s=Save anyway, q=quit)",
                            "a", ("y", "a", "s", "q"))
             if action == "s":
-                _cliLdapSaveConf(args, new)
+                _cliLdapSaveConf(args, new, newAuthMgr)
             if action in "sq":
                 break
             if action == "a":
@@ -606,12 +628,22 @@ def _cliLdapConfigure(args):
 def cliLdapReload(args):
     from services import ServiceHub
     cli = args._cli
-    old = _cliLdapGetConf(args)
+    old, oldAuthMgr = _cliLdapGetConf(args)
     conf = old.copy()
-    if 'disable_ldap' in args:
+    confAuthMgr = None
+    changed = False
+    if args.auth_backend:
+        confAuthMgr = oldAuthMgr.copy()
+        value = "externid" if args.auth_backend == "automatic" else args.auth_backend
+        old_value = oldAuthMgr.get("authBackendSelection")
+        confAuthMgr["authBackendSelection"] = value
+        changed = (value != old_value) if not changed else changed
+    # args.disabled_ldap can be False....
+    if 'disable_ldap' in args and args.disable_ldap is not None:
         conf["disabled"] = args.disable_ldap
-    if conf.get("disabled") != old.get("disabled"):
-        _cliLdapSaveConf(args, conf)
+        changed = (conf.get("disabled") != old.get("disabled")) if not changed else changed
+    if changed:
+        _cliLdapSaveConf(args, conf, confAuthMgr)
     ldapArgs = (args.organization,) if args.organization else ()
     res = ServiceHub.load("ldap", *ldapArgs, force_reload=True)
     if res.state == ServiceHub.LOADED:
@@ -670,6 +702,10 @@ def _cliLdapParserSetup(subp: ArgumentParser):
                       help="Use organization specific LDAP connection").completer = _cliOrgspecCompleter
     reload = sub.add_parser("reload", help="Reload LDAP configuration")
     reload.set_defaults(_handle=cliLdapReload)
+    reload.add_argument("-a", "--auth-backend",
+                        metavar="<externid (automatic)|always_mysql|always_ldap>",
+                        choices=("automatic", "externid", "always_mysql", "always_ldap"),
+                        help="Change authmgr global system authentication backend (automatic == externid)")
     reload.add_argument("-x", "--disable-ldap", type=getBool, metavar="<bool>", help="Disable LDAP")
     reload.add_argument("-o", "--organization", metavar="ORGSPEC", help="Use organization specific LDAP connection")\
         .completer = _cliOrgspecCompleter
