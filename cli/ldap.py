@@ -537,13 +537,12 @@ def _getConf(cli, old, oldAuthmgr, organization):
     return conf, confAuthmgr
 
 
-def _cliLdapGetConf(args):
+def _cliLdapGetConf(orgID):
     from tools import mconf
-    if args.organization:
+    if orgID is not None:
         from orm.domains import OrgParam
-        orgID = _getOrgID(args.organization)
         old = OrgParam.loadLdap(orgID)
-    if not args.organization or not old:
+    if orgID is None or not old:
         old = mconf.LDAP
     oldAuthmgr = mconf.AUTHMGR
     return old, oldAuthmgr
@@ -567,13 +566,12 @@ def cliLdapShowConf(args):
     cli.print(output)
 
 
-def _cliLdapSaveConf(args, conf, confAuthmgr=None):
+def _cliLdapSaveConf(orgID, conf, confAuthmgr=None):
     from tools import mconf
-    if not args.organization:
+    if orgID is None:
         mconf.dumpLdap(conf)
     else:
         from orm.domains import OrgParam
-        orgID = _getOrgID(args.organization)
         OrgParam.saveLdap(orgID, conf)
     if confAuthmgr:
         mconf.dumpAuthmgr(confAuthmgr)
@@ -584,11 +582,11 @@ def _cliLdapConfigure(args):
     from services import ServiceHub
     try:
         cli = args._cli
+        orgID = _getOrgID(args.organization) if args.organization else None
         if args.delete:
             if not args.organization:
                 cli.print(cli.col("Cannot delete default configuration"))
                 return 2
-            orgID = _getOrgID(args.organization)
             from orm.domains import OrgParam
             OrgParam.wipeLdap(orgID)
             cli.print("Configuration deleted.")
@@ -597,7 +595,7 @@ def _cliLdapConfigure(args):
 
         from services.ldap import LdapService
         LdapService.init()
-        old, oldAuthmgr = _cliLdapGetConf(args)
+        old, oldAuthmgr = _cliLdapGetConf(orgID)
         organization = args.organization if args.organization else None
         while True:
             new, newAuthmgr = _getConf(cli, old, oldAuthmgr, organization)
@@ -605,14 +603,14 @@ def _cliLdapConfigure(args):
             error = LdapService.testConfig(new)
             if error is None:
                 cli.print("Configuration successful.")
-                _cliLdapSaveConf(args, new, newAuthmgr)
+                _cliLdapSaveConf(orgID, new, newAuthmgr)
                 cli.print("Configuration saved" if error is None else ("Failed to save configuration: "+error))
                 break
             cli.print(cli.col(error, "yellow"))
             action = _getc(cli, "Restart configuration? (r=Restart, a=Amend, s=Save anyway, q=quit)",
                            "a", ("y", "a", "s", "q"))
             if action == "s":
-                _cliLdapSaveConf(args, new, newAuthmgr)
+                _cliLdapSaveConf(orgID, new, newAuthmgr)
             if action in "sq":
                 break
             if action == "a":
@@ -622,18 +620,15 @@ def _cliLdapConfigure(args):
         return 1
     except ValueError as err:
         cli.print(cli.col(err.args[0], "red"))
-    if args.organization:
-        orgID = _getOrgID(args.organization)
-        ldapArgs = (orgID,)
-    else:
-        ldapArgs = ()
+    ldapArgs = (orgID,) if orgID is not None else ()
     ServiceHub.load("ldap", *ldapArgs, force_reload=True)
 
 
 def cliLdapReload(args):
     from services import ServiceHub
     cli = args._cli
-    old, oldAuthmgr = _cliLdapGetConf(args)
+    orgID = _getOrgID(args.organization) if args.organization else None
+    old, oldAuthmgr = _cliLdapGetConf(orgID)
     conf = old.copy()
     confAuthmgr = None
     changed = False
@@ -648,12 +643,8 @@ def cliLdapReload(args):
         conf["disabled"] = args.disable_ldap
         changed = (conf.get("disabled") != old.get("disabled")) if not changed else changed
     if changed:
-        _cliLdapSaveConf(args, conf, confAuthmgr)
-    if args.organization:
-        orgID = _getOrgID(args.organization)
-        ldapArgs = (orgID,)
-    else:
-        ldapArgs = ()
+        _cliLdapSaveConf(orgID, conf, confAuthmgr)
+    ldapArgs = (orgID,) if orgID is not None else ()
     res = ServiceHub.load("ldap", *ldapArgs, force_reload=True)
     if res.state == ServiceHub.LOADED:
         cli.print("Reload successful")
