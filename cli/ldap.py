@@ -566,13 +566,15 @@ def cliLdapShowConf(args):
     cli.print(output)
 
 
-def _cliLdapSaveConf(orgID, conf, confAuthmgr=None):
-    from tools import mconf
-    if orgID is None:
-        mconf.dumpLdap(conf)
-    else:
-        from orm.domains import OrgParam
-        OrgParam.saveLdap(orgID, conf)
+def _cliLdapSaveConf(orgID, conf=None, confAuthmgr=None):
+    if conf or confAuthmgr:
+        from tools import mconf
+    if conf:
+        if orgID is None:
+            mconf.dumpLdap(conf)
+        else:
+            from orm.domains import OrgParam
+            OrgParam.saveLdap(orgID, conf)
     if confAuthmgr:
         mconf.dumpAuthmgr(confAuthmgr)
     return
@@ -629,7 +631,7 @@ def cliLdapReload(args):
     cli = args._cli
     orgID = _getOrgID(args.organization) if args.organization else None
     old, oldAuthmgr = _cliLdapGetConf(orgID)
-    conf = old.copy()
+    conf = None
     confAuthmgr = None
     changed = False
     if args.auth_backend:
@@ -640,6 +642,7 @@ def cliLdapReload(args):
         changed = (value != old_value) if not changed else changed
     # args.disabled_ldap can be False....
     if 'disable_ldap' in args and args.disable_ldap is not None:
+        conf = old.copy()
         conf["disabled"] = args.disable_ldap
         changed = (conf.get("disabled") != old.get("disabled")) if not changed else changed
     if changed:
