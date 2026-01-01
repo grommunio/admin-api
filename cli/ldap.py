@@ -557,10 +557,11 @@ def cliLdapShowConf(args):
         old = OrgParam.loadLdap(orgID)
     else:
         old = mconf.LDAP
-    # Doing the following to display _comment at the top of authmgr section
-    old["authmgr"] = {}
-    old["authmgr"]["_comment"] = "All the authmgr settings here are ALWAYS global system settings."
-    old["authmgr"].update(mconf.AUTHMGR)
+    if old:
+        # Doing the following to display _comment at the top of authmgr section
+        old["authmgr"] = {}
+        old["authmgr"]["_comment"] = "All the authmgr settings here are ALWAYS global system settings."
+        old["authmgr"].update(mconf.AUTHMGR)
     import json
     output = json.dumps(old, indent=4)
     cli.print(output)
