@@ -68,6 +68,32 @@ def _getl(cli, prompt="", defaults=[]):
     return values
 
 
+def _getd(cli, prompt="", defaults={}):
+    cli.print(prompt+":")
+    values = {}
+    defiter = {i:defaults[i] for i in defaults}
+    d_iter = iter(defiter.keys())
+    try:
+        while True:
+            k = next(d_iter, None)
+            d_val = "{} {}".format(k, defiter[k]) if k else ""
+            f_error = False
+            while True:
+                prompt = "format error, re-enter:" if f_error else ""
+                val = _getv(cli, prompt, d_val)
+                if val == "":
+                    raise EOFError
+                v_split = val.strip().split(' ')
+                if len(v_split) == 2:
+                    f_error = False
+                    break
+                f_error = True
+            values.update({v_split[0]: v_split[1]})
+    except EOFError:
+        cli.print("[Done]")
+    return values
+
+
 def _getUsernameOrg(username):
     if "@" not in username:
         return None
@@ -444,22 +470,53 @@ def _applyTemplate(index, conf):
     conf["groups"] = conf.get("groups", {})
     if index == 1:  # AD
         conf["objectID"] = "objectGUID"
-        conf["users"]["aliases"] = "proxyAddresses"
-        conf["users"]["displayName"] = "displayName"
         conf["users"]["username"] = "mail"
-        conf["groups"]["groupaddr"] = "mail"
-        conf["groups"]["groupfilter"] = "(objectclass=group)"
-        conf["groups"]["groupname"] = "cn"
+        conf["users"]["displayName"] = "displayName"
+        conf["users"]["searchAttributes"] = ["mail", "givenName", "cn", "sn", "name", "displayName"]
+        conf["users"]["filter"] = '(objectClass=user)'
+        conf["users"]["contactFilter"] = '(objectClass=contact)'
+        conf["users"]["aliases"] = "proxyAddresses"
         conf["groups"]["groupMemberAttr"] = "memberOf"
+        conf["groups"]["groupaddr"] = "mail"
+        conf["groups"]["groupfilter"] = "(objectClass=group)"
+        conf["groups"]["groupname"] = "cn"
     elif index == 2:  # OpenLDAP
         conf["objectID"] = "entryUUID"
-        conf["users"]["aliases"] = "mailAlternativeAddress"
+        conf["users"]["username"] = "mail"
         conf["users"]["displayName"] = "displayname"
-        conf["users"]["username"] = "mailPrimaryAddress"
-        conf["groups"]["groupaddr"] = "mailPrimaryAddress"
-        conf["groups"]["groupfilter"] = "(objectclass=posixgroup)"
-        conf["groups"]["groupname"] = "cn"
+        conf["users"]["searchAttributes"] = ["mail", "givenName", "cn", "sn", "displayName", "gecos"]
+        conf["users"]["filter"] = '(objectClass=posixAccount)'
+        conf["users"]["contactFilter"] = '(&(|(objectclass=person)(objectclass=inetOrgPerson))(!(objectclass=posixAccount))(!(objectclass=shadowAccount)))'
+        conf["users"]["aliases"] = "mailAlternativeAddress"
         conf["groups"]["groupMemberAttr"] = "memberOf"
+        conf["groups"]["groupaddr"] = "mailPrimaryAddress"
+        conf["groups"]["groupfilter"] = "(objectClass=posixgroup)"
+        conf["groups"]["groupname"] = "cn"
+    elif index == 3: # Univention
+        conf["objectID"] = "entryUUID"
+        conf["users"]["username"] = "mailPrimaryAddress"
+        conf["users"]["displayName"] = "displayname"
+        conf["users"]["searchAttributes"] = ["mail", "givenName", "cn", "sn", "displayName", "gecos"]
+        conf["users"]["filter"] = '(objectClass=posixAccount)'
+        conf["users"]["contactFilter"] = '(&(|(objectclass=person)(objectclass=inetOrgPerson))(!(objectclass=posixAccount))(!(objectclass=shadowAccount)))'
+        conf["users"]["aliases"] = "mailAlternativeAddress"
+        conf["groups"]["groupMemberAttr"] = "memberOf"
+        conf["groups"]["groupaddr"] = "mailPrimaryAddress"
+        conf["groups"]["groupfilter"] = "(objectClass=posixgroup)"
+        conf["groups"]["groupname"] = "cn"
+    elif index == 4: # 389ds
+        conf["objectID"] = "entryUUID"
+        conf["users"]["username"] = "mail"
+        conf["users"]["displayName"] = "displayname"
+        conf["users"]["searchAttributes"] = ["mail", "givenName", "cn", "sn", "displayName"]
+        conf["users"]["filter"] = '(objectClass=posixAccount)'
+        conf["users"]["contactFilter"] = '(&(|(objectclass=person)(objectclass=inetOrgPerson))(!(objectclass=posixAccount)))'
+        conf["users"]["aliases"] = "mailAlternativeAddress"
+        conf["groups"]["groupMemberAttr"] = "memberOf"
+        conf["groups"]["groupaddr"] = "mail"
+        conf["groups"]["groupfilter"] = "(objectClass=posixgroup)"
+        conf["groups"]["groupname"] = "cn"
+    return
 
 
 def _checkConn(cli, connfig):
@@ -478,6 +535,18 @@ def _checkConn(cli, connfig):
 
 
 def _getConf(cli, old, oldAuthmgr, organization):
+    """
+    TTY line by line menu to configure LDAP
+    """
+    res2tmpl = { 0: [],
+                 1: ['common', 'ActiveDirectory'],
+                 2: ['common', 'OpenLDAP'],
+                 3: ['common', 'Univention'],
+                 4: ['common', '389ds']
+               }
+    tmpl2res = {i:'' if res2tmpl[i] == [] else res2tmpl[i][1] for i in res2tmpl}
+    tmpl2res = dict(zip(tmpl2res.values(), tmpl2res.keys()))
+
     conf = {"connection": {}, "users": {"filters": [], "searchAttributes": []}, "groups": {}}
     confAuthmgr = None
     connected = False
@@ -494,9 +563,17 @@ def _getConf(cli, old, oldAuthmgr, organization):
     conf["baseDn"] = _getv(cli, "Search base for user lookup/searches", old.get("baseDn", ""))
     users = old.get("users", {})
     oldtempl = users.get("templates", ())
-    res = _getc(cli, "Choose a template:\n 0: No template\n 1: ActiveDirectory\n 2: OpenLDAP\n",
-                1 if "ActiveDirectory" in oldtempl else 2 if "OpenLDAP" in oldtempl else 0, range(2), _geti)
-    conf["users"]["templates"] = [] if res == 0 else ["common", "ActiveDirectory" if res == 1 else "OpenLDAP"]
+    if not oldtempl:
+        oldchoice = 0
+    else:
+        try:
+            oldtempl.remove('common')
+            oldchoice = tmpl2res[oldtempl.pop()]
+        except (ValueError, IndexError):
+            oldchoice = 0
+    res = _getc(cli, "Choose a template:\n 0: No template\n 1: ActiveDirectory\n 2: OpenLDAP\n 3: Univention\n 4: 389ds\n",
+                oldchoice, range(4), _geti)
+    conf["users"]["templates"] = res2tmpl[res]
     if res != 0 and cli.confirm("Apply default template parameters? [y/N]: ") == Cli.SUCCESS:
         _applyTemplate(res, old)
         users = old.get("users", {})
@@ -508,8 +585,10 @@ def _getConf(cli, old, oldAuthmgr, organization):
                                           users.get("defaultQuota", 0))
     conf["users"]["filter"] = _getv(cli, "Enter filter expression for user search", users.get("filter", ""))
     conf["users"]["contactFilter"] = _getv(cli, "Enter filter expression for contact search", users.get("contactFilter", ""))
-    conf["users"]["searchAttributes"] = _getl(cli, "Enter attributes used for searching (one per line)",
+    conf["users"]["searchAttributes"] = _getl(cli, "Enter attributes used for searching (one per line, Ctrl-D to finish)",
                                               users.get("searchAttributes", []))
+    conf["users"]["attributes"] = _getd(cli, "Enter custom mapping ('<ldap-attr> <user-prop>', space separated, one per line, Ctrl-D to finish)",
+                                              users.get("attributes", {}))
     if not conf["users"]["defaultQuota"]:
         conf["users"].pop("defaultQuota")
 

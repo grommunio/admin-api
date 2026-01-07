@@ -100,8 +100,9 @@ class OrgParam(DB.Base):
         _addIfDef(config["groups"], "groupname", plain, "ldap_group_name")
         _addIfDef(config["groups"], "groupMemberAttr", plain, "ldap_group_memberof")
         if "ldap_user_attributes" in plain:
+            attr_map_list = [m.strip() for m in plain["ldap_user_attributes"].split(",")]
             config["users"]["attributes"] = {entry.split(" ", 1)[0]: entry.split(" ", 1)[1]
-                                             for entry in plain.getall("ldap_user_attributes") if " " in entry}
+                                             for entry in attr_map_list if " " in entry}
         return config
 
     @classmethod
@@ -129,8 +130,9 @@ class OrgParam(DB.Base):
             _addIfDef(flat, "ldap_user_templates", config["users"], "templates")
             _addIfDef(flat, "ldap_user_aliases", config["users"], "aliases")
             if "attributes" in config["users"] and config["users"]["attributes"]:
-                flat["ldap_user_attributes"] = ["{} {}".format(key, value)
+                attr_map_list = ["{} {}".format(key.strip(), value.strip())
                                                 for key, value in config["users"]["attributes"].items()]
+                flat["ldap_user_attributes"] = ",".join(attr_map_list)
         if "groups" in config:
             _addIfDef(flat, "ldap_group_addr", config["groups"], "groupaddr")
             _addIfDef(flat, "ldap_group_filter", config["groups"], "groupfilter")
