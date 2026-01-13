@@ -172,6 +172,13 @@ def setLicenseSubscription():
     try:
         with open(Config["options"]["subscriptionFile"], "w") as file:
             file.write(":".join((data["username"], data["password"])))
+
+        # Fetch license from partner portal
+        url = "https://portal.grommunio.com/api/v1/licenses/user/"
+        body = { "password": data["password"] }
+        response = requests.post(url + data["username"], json=body)
+        updateCertificate(response.content)
+
         return jsonify(message="okidoki")
     except KeyError:
         return jsonify(message="Subscription detail storage path not configured"), 503
