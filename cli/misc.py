@@ -4,8 +4,6 @@
 
 from . import Cli, CliError, ArgumentParser
 from .common import proptagCompleter
-import locale
-import termios
 
 
 def _runParserSetup(subp: ArgumentParser):
@@ -138,15 +136,17 @@ def _loadHistory(args):
                                   attrs=["dark"]))
 
 def eof_instructions(fd):
-	try:
-		key = termios.tcgetattr(fd)[6][termios.VEOF]
-		if ord(key) == 0:
-			return ""
-		if ord(key) < 32:
-			return " or press CTRL+" + chr(ord(key) + ord('@'))
-		return " or press '" + key.decode(locale.getpreferredencoding()) + "'"
-	except:
-		return ""
+    import locale
+    import termios
+    try:
+        key = termios.tcgetattr(fd)[6][termios.VEOF]
+        if ord(key) == 0:
+            return ""
+        if ord(key) < 32:
+            return " or press CTRL+" + chr(ord(key) + ord('@'))
+        return " or press '" + key.decode(locale.getpreferredencoding()) + "'"
+    except:
+        return ""
 
 @Cli.command("shell", _setupCliShell, help="Start interactive shell")
 def cliShell(args):

@@ -9,8 +9,6 @@ from argparse import ArgumentParser
 import random
 import string
 from datetime import datetime
-from getpass import getpass
-from sqlalchemy import text
 
 passwordChars = string.ascii_letters+string.digits+'!"#$%&()*+-/;<=>?[]_{|}~'
 defaultPassLength = 16
@@ -87,6 +85,7 @@ def setUserPassword(args):
     else:
         user = Users.query.filter(Users.ID == 0).first()
         if user is None:
+            from sqlalchemy import text
             cli.print("System admin user not found, creating...")
             DB.session.execute(text("SET sql_mode='NO_AUTO_VALUE_ON_ZERO';"))
             user, _ = createAdmin()
