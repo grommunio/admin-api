@@ -1112,6 +1112,11 @@ class PropTags(_ReverseLookup):
             value = value & ~0x40000000  # Remove DTE_FLAG_ACL_CAPABLE flag because it is not recognized properly by gromox
         return value
 
+    @staticmethod
+    def isNamed(tag):
+        """Whether the tag represents a named value"""
+        return 0x80000000 <= tag <= 0xFFFFFFFF
+
     @classmethod
     def normalize(cls, tag, value):
         """Normalize tag ID and value.

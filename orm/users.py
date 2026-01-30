@@ -801,6 +801,8 @@ class Users(DataModel, DB.Base, NotifyTable):
         with Service("exmdb") as exmdb:
             props = []
             for tag, value in self.properties.rawmap().items():
+                if PropTags.isNamed(tag):
+                    continue
                 try:
                     props.append(exmdb.TaggedPropval(tag, value))
                 except Exception:
@@ -820,7 +822,8 @@ class Users(DataModel, DB.Base, NotifyTable):
         with Service("exmdb", errors=Service.SUPPRESS_ALL) as exmdb:
             client = exmdb.user(self)
             tags = client.getAllStoreProperties()
-            tags = [t for t in tags if t & 0xFFFF not in (PropTypes.BINARY, PropTypes.BINARY_ARRAY)]
+            tags = [t for t in tags
+                    if t & 0xFFFF not in (PropTypes.BINARY, PropTypes.BINARY_ARRAY) and not PropTags.isNamed(t)]
             props = client.getStoreProperties(0, tags)
             self.properties.update({prop.tag: prop.val for prop in props})
             DB.session.commit()
