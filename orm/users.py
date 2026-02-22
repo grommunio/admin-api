@@ -914,7 +914,7 @@ class Aliases(DataModel, DB.Base, NotifyTable):
         self.fromdict(aliasname)
 
     def fromdict(self, aliasname, *args, **kwargs):
-        if not formats.email.match(aliasname):
+        if not formats.email.match(aliasname) and not formats.email_domain.match(aliasname):
             raise ValueError("'{}' is not a valid email address".format(aliasname))
         self.aliasname = aliasname
         return self
