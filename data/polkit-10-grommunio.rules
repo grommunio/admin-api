@@ -26,7 +26,7 @@ polkit.addRule(function(action, subject) {
 				(
 					action.id == "org.freedesktop.systemd1.manage-units"
 					&&
-					services.includes(action.lookup("unit")) == true
+					action.lookup("unit").toLowerCase().includes(".service")
 				)
 				||
 				action.id == "org.freedesktop.systemd1.manage-unit-files"
