@@ -291,6 +291,7 @@ class LdapService:
         servers = [ldap3.Server(s[:-1] if s.endswith("/") else s, get_info=ldap3.NONE) for s in server.split()]
         pool = servers[0] if len(servers) == 1 else ldap3.ServerPool(servers, "FIRST", active=1)
         conn = ldap3.Connection(pool, user=user, password=password, client_strategy=ldap3.RESTARTABLE)
+        conn.open()
         if starttls and not conn.start_tls():
             logger.warning(f"Failed to initiate StartTLS connection with {server}")
         if not conn.bind():
