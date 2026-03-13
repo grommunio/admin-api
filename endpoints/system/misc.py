@@ -199,7 +199,7 @@ def rspamdProxy(path):
     if path not in conf["antispamEndpoints"]:
         return jsonify(message="Endpoint not allowed"), 403
     try:
-        res = requests.get(conf["antispamUrl"]+"/"+path, request.args, stream=True)
+        res = requests.get(conf["antispamUrl"]+"/"+path, params=request.args, stream=True)
     except BaseException as err:
         API.logger.error(type(err).__name__+": "+" - ".join(str(arg) for arg in err.args))
         return jsonify(message="Failed to connect to antispam"), 503
