@@ -81,6 +81,11 @@ class JournaldReader:
                     time=data["__REALTIME_TIMESTAMP"].strftime("%Y-%m-%d %H:%M:%S.%f"),
                     runtime=data["__MONOTONIC_TIMESTAMP"].timestamp.total_seconds())
 
+    @staticmethod
+    def _valid(data):
+        """Check if log entry is valid."""
+        return len(data) != 0 and isinstance(data["MESSAGE"], str)
+
     def tail(self, n=10, skip=0, after=None):
         """Get log tail.
 
@@ -103,7 +108,7 @@ class JournaldReader:
             if skip > 0:
                 self.reader.get_previous(skip)
             entries = reversed([self.reader.get_previous() for _ in range(n)])
-            return [self._entry(entry) for entry in entries if len(entry) != 0]
+            return [self._entry(entry) for entry in entries if self._valid(entry)]
         entries = []
         while True:
             entry = self.reader.get_previous()
