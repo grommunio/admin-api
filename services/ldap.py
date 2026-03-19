@@ -205,11 +205,12 @@ class LdapService:
         except Exception as err:
             msg = str(err.args[0]) if len(err.args) else type(err).__name__
             raise ServiceUnavailableError("Failed to connect to server: "+msg, *err.args[1:])
+
+        # Delete all properties that were not downloaded from LDAP
+        self._defaultProps = {prop: None for prop in self._userAttributes.values()}
         if "defaultQuota" in self._config["users"]:
-            self._defaultProps = {prop: self._config["users"]["defaultQuota"] for prop in
-                                  ("storagequotalimit", "prohibitsendquota", "prohibitreceivequota")}
-        else:
-            self._defaultProps = {}
+            self._defaultProps.update({prop: self._config["users"]["defaultQuota"] for prop in
+                                       ("storagequotalimit", "prohibitsendquota", "prohibitreceivequota")})
 
     def _attrSet(self, name, mode="user"):
         if isinstance(name, (list, tuple)):
