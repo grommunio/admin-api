@@ -154,8 +154,6 @@ def importContact(candidate, ldap, orgID, syncExisting=False, domains=None, **kw
     synced = []
     imported = []
     errors = []
-    domains = Domains.query.filter(Domains.orgID == orgID, Domains.ID.in_(domains) if domains else True)\
-                           .with_entities(Domains.ID, Domains.domainname).all()
     existing = Users.query.filter(Users.orgID == orgID, Users.externID == candidate.ID).all()
     if syncExisting:
         for user in existing:
@@ -164,16 +162,18 @@ def importContact(candidate, ldap, orgID, syncExisting=False, domains=None, **kw
                 errors.append((f"Failed to synchronize {user.username}: {error}", code))
             else:
                 synced.append(user)
-    existingDomains = {user.domainID for user in existing}
-    domains = [domain for domain in domains if domain.ID not in existingDomains]
-    for domain in domains:
-        contactData = ldap.downsyncUser(candidate.ID)
-        contactData["domainID"] = domain.ID
-        result, code = Users.mkContact(contactData, candidate.ID)
-        if code != 201:
-            errors.append((f"Failed to import contact {candidate.email} into {domain.domainname}: {result}", code))
-        else:
-            imported.append(result)
+    if not existing:
+        domain = Domains.query.filter(Domains.orgID == orgID, Domains.ID.in_(domains) if domains else True)\
+                              .with_entities(Domains.ID, Domains.domainname)\
+                              .order_by(Domains.ID).first()
+        if domain is not None:
+            contactData = ldap.downsyncUser(candidate.ID)
+            contactData["domainID"] = domain.ID
+            result, code = Users.mkContact(contactData, candidate.ID)
+            if code != 201:
+                errors.append((f"Failed to import contact {candidate.email} into {domain.domainname}: {result}", code))
+            else:
+                imported.append(result)
     return synced, imported, errors
 
 
