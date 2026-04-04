@@ -280,7 +280,7 @@ class LdapService:
         ldap3.Connection
             Connection object.
         """
-        servers = [s[:-1] if s.endswith("/") else s for s in server.split()]
+        servers = [ldap3.Server(s[:-1] if s.endswith("/") else s, get_info=ldap3.NONE) for s in server.split()]
         pool = servers[0] if len(servers) == 1 else ldap3.ServerPool(servers, "FIRST", active=1)
         conn = ldap3.Connection(pool, user=user, password=password, client_strategy=ldap3.RESTARTABLE)
         if starttls and not conn.start_tls():
