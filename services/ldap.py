@@ -137,6 +137,10 @@ class SearchResult:
                 aliases = aliases if isinstance(aliases, list) else [aliases]
                 aliases = [alias[5:] if alias.lower().startswith("smtp:") else alias for alias in aliases]
                 userdata["aliases"] += [alias for alias in aliases if formats.email.match(alias)]
+        altnameattr = ldap._config["users"].get("altname")
+        if altnameattr and ldapuser.get(altnameattr):
+            altname = self._reduce(ldapuser[altnameattr])
+            userdata["altnames"] = [{"altname": altname}]
         return userdata
 
     def contactdata(self, props=None):
@@ -248,6 +252,10 @@ class LdapService:
             userAttributes.update(cls._templates.get(_template, {}))
         userAttributes.update(config["users"].get("attributes", {}))
         userAttributes[config["users"]["displayName"]] = "displayname"
+        if "altname" not in config["users"] or not config["users"]["altname"]:
+            config["users"]["altname"] = userAttributes.pop("_altname", None)
+        else:
+            userAttributes.pop("_altname", None)
         for key, value in userAttributes.items():
             if value == "smtpaddress":
                 config["users"]["contactname"] = key

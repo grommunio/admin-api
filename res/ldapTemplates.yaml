@@ -29,6 +29,7 @@ common:
   ou: addressbookorganizationalunitname
   mail: smtpaddress
 ActiveDirectory:
+  _altname: sAMAccountName
   department: departmentname
   extensionAttribute1: addressbookextensionattribute1
   extensionAttribute2: addressbookextensionattribute2
@@ -49,9 +50,12 @@ ActiveDirectory:
   mDBOverQuotaLimit: prohibitsendquota
   msExchRecipientDisplayType: displaytypeex
 OpenLDAP:
+  _altname: uid
   departmentNumber: departmentname
 Univention:
+  _altname: uid
   departmentNumber: departmentname
 389ds:
+  _altname: uid
   departmentNumber: departmentname
   c: country

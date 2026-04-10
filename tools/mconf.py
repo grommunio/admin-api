@@ -91,6 +91,7 @@ def _transformLdap(conf):
     _addIfDef(LDAP["users"], "defaultQuota", conf, "ldap_user_default_quota", type=int)
     _addIfDef(LDAP["users"], "templates", conf, "ldap_user_templates", all=True)
     _addIfDef(LDAP["users"], "aliases", conf, "ldap_user_aliases")
+    _addIfDef(LDAP["users"], "altname", conf, "ldap_user_altname")
     _addIfDef(LDAP["groups"], "groupaddr", conf, "ldap_group_addr")
     _addIfDef(LDAP["groups"], "groupfilter", conf, "ldap_group_filter")
     _addIfDef(LDAP["groups"], "groupname", conf, "ldap_group_name")
@@ -121,6 +122,7 @@ def _flattenLdap(conf):
         _addIfDef(LDAP, "ldap_user_default_quota", conf["users"], "defaultQuota")
         _addIfDef(LDAP, "ldap_user_templates", conf["users"], "templates")
         _addIfDef(LDAP, "ldap_user_aliases", conf["users"], "aliases")
+        _addIfDef(LDAP, "ldap_user_altname", conf["users"], "altname")
         if "attributes" in conf["users"]:
             LDAP["ldap_user_attributes"] = ["{} {}".format(key, value) for key, value in conf["users"]["attributes"].items()]
     if "groups" in conf:
