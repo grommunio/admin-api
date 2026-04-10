@@ -258,9 +258,10 @@ class Users(DataModel, DB.Base, NotifyTable):
                 data["username"] += "@"+domain.domainname
         data["domain"] = domain
         data["domainID"] = domain.ID
-        domainUsers = Users.count(Users.domainID == domain.ID)
-        if domain.maxUser <= domainUsers:
-            return "Maximum number of domain users reached"
+        if data.get("status") != Users.CONTACT:
+            domainUsers = Users.count(Users.domainID == domain.ID)
+            if domain.maxUser <= domainUsers:
+                return "Maximum number of domain users reached"
         data["domainStatus"] = domain.domainStatus
         if "properties" not in data:
             data["properties"] = {}
