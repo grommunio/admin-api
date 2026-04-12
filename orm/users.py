@@ -16,7 +16,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import column_property, relationship, selectinload, validates
 
-import crypt
+try:
+    # python 3.13
+    import legacycrypt as crypt
+except ImportError:
+    import crypt as crypt
+
+import legacycrypt as crypt
 import json
 import sys
 
