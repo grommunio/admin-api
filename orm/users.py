@@ -22,7 +22,6 @@ try:
 except ImportError:
     import crypt as crypt
 
-import legacycrypt as crypt
 import json
 import sys
 
