@@ -179,10 +179,10 @@ def checkLdapUsers():
     while index < len(users):
         try:
             with Service("exmdb") as exmdb:
-                if homeserver != users[index].homeserverID:  # Reuse the exmdb client for users on the same server
+                if homeserver != users[index].homeserverID:  # Reuse the exmdb client instance for users on the same server
                     user = users[index]
                     if user.maildir != "" and user.status != Users.CONTACT:
-                        client = exmdb.ExmdbQueries(exmdb.host if user.homeserverID == 0 else user.homeserver.hostname,
+                        client = exmdb.ExmdbQueries("localhost" if user.homeserverID == 0 else user.homeserver.hostname,
                                                     exmdb.port, user.maildir, True)
                     else:
                         client = None
