@@ -378,7 +378,7 @@ def userQuery(domainID=None):
         expr = request.args["match"]
         fields = set(request.args["matchFields"].split(",")) if "matchFields" in request.args else None
         isUnicode = any(ord(c) > 127 for c in expr)
-        matchexpr = tuple("%"+substr+"%" for substr in expr.split())
+        matchexpr = tuple("%"+substr.replace("_", "[_]")+"%" for substr in expr.split())
         matchables = Users._meta.matchables if fields is None else (m for m in Users._meta.matchables if m.alias in fields)
         targets = []
         for prop in matchables:

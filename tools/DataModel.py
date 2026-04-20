@@ -577,7 +577,7 @@ class DataModel:
         """Add fuzzy matching to query."""
         cls._init()
         isUnicode = any(ord(c) > 127 for c in expr)
-        matchexpr = tuple("%"+substr+"%" for substr in expr.split())
+        matchexpr = tuple("%"+substr.replace("_", "[_]")+"%" for substr in expr.split())
         matchables = cls._meta.matchables if fields is None else (m for m in cls._meta.matchables if m.alias in fields)
         targets = []
         for prop in matchables:
