@@ -9,6 +9,14 @@ Can be used to run the API in stand-alone mode by directly executing the file or
 in combination with a WSGI server using the API object as callable
 """
 
+# If it is available, load requests_unixsocket and register it globally.
+# This allows e.g. antispamUrl: http+unix://%2Frun%2Frspamd%2Fcontroller.sock
+try:
+    import requests_unixsocket
+    requests_unixsocket.monkeypatch()
+except Exception:
+    pass
+
 if __name__ == '__main__':
     import os
     import sys
