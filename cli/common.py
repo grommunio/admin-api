@@ -21,7 +21,7 @@ def userFilter(userSpec, *filters):
     from sqlalchemy import and_
     return and_(True if userSpec is None else
                 Users.ID == userSpec if userSpec.isdigit() else
-                Users.username.ilike(userSpec+"%"), *filters)
+                Users.username.ilike(userSpec.replace("_", "[_]")+"%"), *filters)
 
 
 def userCandidates(userSpec, *filters):
