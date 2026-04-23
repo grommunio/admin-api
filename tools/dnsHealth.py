@@ -8,6 +8,14 @@ import socket
 from .config import Config
 
 
+externalResolver = None
+try:
+    externalResolver = resolver.Resolver()
+    externalResolver.nameservers = Config["dns"]["externalResolvers"]
+except Exception:
+    pass
+
+
 def getHostByName(domain):
     try:
         # If host can be resolved
@@ -29,10 +37,6 @@ def getLocalIp():
         IP = '127.0.0.1'
     s.close()
     return IP
-
-
-externalResolver = resolver.Resolver()
-externalResolver.nameservers = Config["dns"]["externalResolvers"]
 
 
 def fullDNSCheck(domain: str):
@@ -68,10 +72,10 @@ def fullDNSCheck(domain: str):
 
 
 def checkMyIP():
-    customResolver = resolver.Resolver()
-    customResolver.nameservers = ["208.67.222.222", "208.67.220.220", "208.67.222.220"]
     res = None
     try:
+        customResolver = resolver.Resolver()
+        customResolver.nameservers = ["208.67.222.222", "208.67.220.220", "208.67.222.220"]
         dnsAnswer = customResolver.query("myip.opendns.com")
         res = ", ".join([str(a) for a in dnsAnswer])
     except Exception:
@@ -96,6 +100,8 @@ def checkMX(domain: str):
         "reverseLookup": None,
         "mxDomain": None,
     }
+    if externalResolver is None:
+        return res
     try:
         mxRecords = resolver.query(domain, "MX")
         mxDomain = mxRecords[0].exchange # Mail-domain of domain
@@ -142,12 +148,13 @@ def checkAutodiscoverSRV(domain: str):
         res = ", ".join([str(r) for r in records])
     except Exception:
         pass
-    try:
-        records = externalResolver.query("_autodiscover._tcp." + domain, "SRV")
-        resExternal = ", ".join([str(r) for r in records])
-        adIp = ip(str(records[0]).split(" ")[3])
-    except Exception:
-        pass
+    if externalResolver is not None:
+        try:
+            records = externalResolver.query("_autodiscover._tcp." + domain, "SRV")
+            resExternal = ", ".join([str(r) for r in records])
+            adIp = ip(str(records[0]).split(" ")[3])
+        except Exception:
+            pass
     return {"internalDNS": res, "externalDNS": resExternal, "ip": adIp }
 
 
@@ -160,11 +167,12 @@ def checkTXT(domain: str):
     except Exception:
         pass
 
-    try:
-        txtRecordsExternal = externalResolver.query(domain, "TXT")
-        resExternal = ", ".join([str(r) for r in txtRecordsExternal if str(r).startswith('"v=spf1')])
-    except Exception:
-        pass
+    if externalResolver is not None:
+        try:
+            txtRecordsExternal = externalResolver.query(domain, "TXT")
+            resExternal = ", ".join([str(r) for r in txtRecordsExternal if str(r).startswith('"v=spf1')])
+        except Exception:
+            pass
     return {"internalDNS": res, "externalDNS": resExternal}
 
 
@@ -193,9 +201,10 @@ def defaultDNSQuery(subdomain: str, domain: str, recordType="A", path=""):
     except Exception:
         pass
 
-    try:
-        records = externalResolver.query(subdomain + domain + path, recordType)
-        resExternal = ", ".join([str(r) for r in records])
-    except Exception:
-        pass
+    if externalResolver is not None:
+        try:
+            records = externalResolver.query(subdomain + domain + path, recordType)
+            resExternal = ", ".join([str(r) for r in records])
+        except Exception:
+            pass
     return {"internalDNS": res, "externalDNS": resExternal}
