@@ -251,23 +251,27 @@ class Worker:
                 syncStatus.append(dict(ID=user.ID, username=user.username, code=503, message=err.args[0]))
                 counts["error"] += 1
 
-        if task.params.get("import"):
-            for orgID in orgIDs:
+        for orgID in orgIDs:
+            ldap = Service("ldap", orgID).service()
+            if task.params.get("import"):
                 domains = Domains.query.filter(Domains.orgID == orgID, *domainFilter)\
                                        .with_entities(Domains.ID, Domains.domainname).all()
                 if orgID == 0 and noLdapOrgs:
                     domains += Domains.query.filter(Domains.orgID.in_(noLdapOrgs))\
                                       .with_entities(Domains.ID, Domains.domainname).all()
-                ldap = Service("ldap", orgID).service()
                 try:
                     status = self._ldapSyncImport(ldap, orgID, domains, synced, task.params.get("lang"), bump)
                     counts["synced"] += sum(1 for s in status if s["code"] == 200)
                     counts["created"] += sum(1 for s in status if s["code"] == 201)
                     counts["error"] += sum(1 for s in status if s["code"] not in (200, 201))
                     syncStatus += status
-                    self._ldapSyncGroupMembers(orgID, ldap)
                 except ServiceUnavailableError:
                     pass
+            try:
+                self._ldapSyncGroupMembers(orgID, ldap)
+            except ServiceUnavailableError:
+                pass
+            
 
         Aliases.NTactive(True)
         Users.NTactive(True)
