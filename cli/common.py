@@ -16,17 +16,17 @@ def domainCandidates(domainSpec, *filters):
     return Domains.query.filter(domainFilter(domainSpec, *filters))
 
 
-def userFilter(userSpec, *filters):
+def userFilter(userSpec, autocompleting, *filters):
     from orm.users import Users
     from sqlalchemy import and_
     return and_(True if userSpec is None else
                 Users.ID == userSpec if userSpec.isdigit() else
-                Users.username.ilike(userSpec.replace("_", "[_]")+"%"), *filters)
+                Users.username.ilike(userSpec.replace("_", "[_]")+("%" if autocompleting else "")), *filters)
 
 
 def userCandidates(userSpec, *filters):
     from orm.users import Users
-    return Users.query.filter(userFilter(userSpec, *filters))
+    return Users.query.filter(userFilter(userSpec, True, *filters))
 
 
 def userspecAutocomp(prefix, **kwargs):

@@ -30,7 +30,7 @@ def _mkUserQuery(args):
     from orm.users import Users
     query = Users.query
     if "userspec" in args:
-        query = query.filter(userFilter(args.userspec))
+        query = query.filter(userFilter(args.userspec, False))
     if "filter" in args and args.filter is not None:
         query = Users.autofilter(query, {f.split("=", 1)[0]: f.split("=", 1)[1] for f in args.filter if "=" in f})
     if "sort" in args and args.sort is not None:
