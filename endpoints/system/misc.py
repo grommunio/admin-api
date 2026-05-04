@@ -177,7 +177,9 @@ def setLicenseSubscription():
         url = "https://portal.grommunio.com/api/v1/licenses/user/"
         body = { "password": data["password"] }
         response = requests.post(url + data["username"], json=body)
-        updateCertificate(response.content)
+        res = updateCertificate(response.content)
+        if res is not None:
+            return jsonify(message=res), 400
 
         return jsonify(message="okidoki")
     except KeyError:
