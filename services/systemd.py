@@ -37,7 +37,10 @@ class Systemd:
     def getServices(self, *services):
         args = ("systemctl", "-q", self.__mode, "show",
                 "--property="+",".join(self.valmap), *services)
-        result = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True)
+        result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        if result.returncode != 0:
+            # systemd not reachable (e.g. running inside a container without systemd as PID 1)
+            return {}
         split = [[line.split("=", 1) for line in block.split("\n") if "=" in line] for block in result.stdout.split("\n\n")]
         units = [{self.valmap[key]: value for key, value in block if key in self.valmap} for block in split]
         for unit in units:
