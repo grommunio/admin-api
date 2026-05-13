@@ -44,8 +44,10 @@ class Systemd:
         split = [[line.split("=", 1) for line in block.split("\n") if "=" in line] for block in result.stdout.split("\n\n")]
         units = [{self.valmap[key]: value for key, value in block if key in self.valmap} for block in split]
         for unit in units:
+            if "unit" not in unit:
+                continue
             unit["unit"] = unit["unit"].split(" ")[0]
-            since = unit["sa"] if unit["state"] == "active" else unit["si"]
+            since = unit.get("sa") if unit.get("state") == "active" else unit.get("si")
             try:
                 since = time.clock_gettime(time.CLOCK_REALTIME)-time.clock_gettime(time.CLOCK_MONOTONIC)+int(since)/1000000
                 since = datetime.fromtimestamp(int(since)).strftime("%Y-%m-%d %H:%M:%S") if since != 0 else None
