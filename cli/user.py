@@ -106,8 +106,10 @@ def _dumpUser(cli, user, indent=0):
         cli.print("{}  {}@{}/{} ({})".format(" "*indent, fml.srcUser, fml.srcServer, fml.srcFolder,
                                              cli.col("active", "green") if fml.active == 1 else cli.col("inactive", "red")))
     cli.print(" "*indent+"properties:"+(cli.col(" (none)", attrs=["dark"]) if len(user.properties) == 0 else ""))
+
+    kByteKeys = ["messagesizeextended", "normalmessagesizeextended", "assocmessagesizeextended"]
     for key, value in user.properties.items():
-        cli.print("{}  {}: {}".format(" "*indent, key, value))
+        cli.print("{}  {}: {}".format(" "*indent, key, str(value)+(" kByte" if key in kByteKeys else "")))
 
 
 def _getUser(args, requireMailbox=False):
