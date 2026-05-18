@@ -1721,6 +1721,166 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
+  /system/exmdb/{username}/folders:
+    get:
+      summary: User folder tree
+      operationId: userFolders
+      tags:
+        - exmdb
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - name: username
+          in: path
+          description: User email
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User folder tree returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/userFolderRef'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /system/exmdb/{username}/folders/{fid}:
+    get:
+      summary: Get user folder details
+      operationId: userFolder
+      tags:
+        - exmdb
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - name: username
+          in: path
+          description: User email
+          required: true
+          schema:
+            type: string
+        - name: fid
+          in: path
+          description: Folder ID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User folder details returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          description: Member name
+                        rights:
+                          type: integer
+                          description: Rights value
+                        rightsName:
+                          type: string
+                          description: Rights name
+
+  /system/exmdb/{username}/folders/{fid}/permissions:
+    post:
+      summary: Add new member
+      operationId: postUserFolderPermissionsGrant
+      tags:
+        - exmdb
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - name: username
+          in: path
+          description: User email
+          required: true
+          schema:
+            type: string
+        - name: fid
+          in: path
+          description: Folder ID
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                permissions:
+                  type: array
+                  items:
+                    type: number
+                recursive:
+                  type: boolean
+                username:
+                  type: string
+      responses:
+        '201':
+          description: Permission granted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+    delete:
+      summary: Add new member
+      operationId: postUserFolderPermissionsGrant
+      tags:
+        - exmdb
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CSRFToken'
+        - name: username
+          in: path
+          description: User email
+          required: true
+          schema:
+            type: string
+        - name: fid
+          in: path
+          description: Folder ID
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+      responses:
+        '200':
+          description: User deleted
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
   /system/cli:
     post:
       summary: Remote CLI invocation
@@ -5431,6 +5591,20 @@ components:
         container:
           type: string
         children:
+          type: array
+          description: List of child folders (in the same format as the parent)
+          items:
+            type: object
+    userFolderRef:
+      type: object
+      properties:
+        ID:
+          type: integer
+        parentID:
+          type: integer
+        name:
+          type: string
+        subfolders:
           type: array
           description: List of child folders (in the same format as the parent)
           items:

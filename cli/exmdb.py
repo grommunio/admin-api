@@ -4,23 +4,8 @@
 
 from . import Cli, InvalidUseError, ArgumentParser
 from .common import printVal, proptagCompleter, Table
-
-_perms = {
-    "readany": 0x1,
-    "create": 0x2,
-    "sendas": 0x4,
-    "editowned": 0x8,
-    "deleteowned": 0x10,
-    "editany": 0x20,
-    "deleteany": 0x40,
-    "createsubfolder": 0x80,
-    "folderowner": 0x100,
-    "foldercontact": 0x200,
-    "foldervisible": 0x400,
-    "freebusysimple": 0x800,
-    "freebusydetailed": 0x1000,
-    "storeowner": 0x2000}
-_permsAll = 0x3fff
+from tools.exmdb import _FolderNode
+from tools.constants import _perms, _permsAll
 
 
 def _getClient(args, exmdb):
@@ -46,69 +31,6 @@ def _getClient(args, exmdb):
 
 def _isPrivate(args):
     return "@" in args.target
-
-
-class _FolderNode():
-    I = chr(0x2502)+" "
-    L = chr(0x2514)+chr(0x2500)
-    T = chr(0x251c)+chr(0x2500)
-
-    def __init__(self, folder, subfolders=[]):
-        from tools.rop import gcToValue
-        self.ID = gcToValue(folder.folderId)
-        self.parentID = gcToValue(folder.parentId)
-        self.name = folder.displayName
-        self.subfolders = []
-        if subfolders:
-            self._buildTree(subfolders)
-
-    def _buildTree(self, subfolders):
-        subfolders = [f if isinstance(f, _FolderNode) else _FolderNode(f) for f in subfolders]
-        idmap = {sub.ID: sub for sub in subfolders}
-        idmap[self.ID] = self
-        for sub in subfolders:
-            if sub.parentID in idmap:
-                idmap[sub.parentID].subfolders.append(sub)
-
-    @property
-    def idstr(self):
-        return hex(self.ID)
-
-    def _toDict(self, recursive=True):
-        me = dict(ID=self.ID, parentID=self.parentID, name=self.name)
-        if recursive:
-            me["subfolders"] = [sf._toDict(True) for sf in self.subfolders]
-        return me
-
-    def _collectSubfolders(self):
-        sfs = list(self.subfolders)
-        for sf in self.subfolders:
-            sfs += sf._collectSubfolders()
-        return sfs
-
-    def _print_json(self, flat=False):
-        import json
-        me = self._toDict(not flat)
-        if flat:
-            me["subfolders"] = [sf._toDict(False) for sf in self._collectSubfolders()]
-        return json.dumps(me, separators=(",", ":"))
-
-    def _print_pretty(self, cli, level=-1, pref=""):
-        content = "{} ({})\n".format(cli.col(self.name, attrs=["bold"]), self.idstr)
-        if self.subfolders:
-            for sub in self.subfolders[:-1]:
-                content += pref+self.T+sub._print_pretty(cli, level+1, pref+self.I)
-            content += pref+self.L+self.subfolders[-1]._print_pretty(cli, level+1, pref+"  ")
-        return content if level >= 0 else content[:-1]
-
-    def print(self, cli, format="pretty"):
-        if format in ("json-flat", "json-tree"):
-            return self._print_json(format == "json-flat")
-        return self._print_pretty(cli)
-
-    def tabledata(self):
-        sfs = self._collectSubfolders()
-        return [(self.ID, self.parentID, self.name)]+[(sf.ID, sf.parentID, sf.name) for sf in sfs]
 
 
 def cliExmdbFolderCreate(args):
@@ -246,6 +168,8 @@ def cliExmdbFolderPermissionsModify(args):
         Table([(_FolderNode(folder).print(cli), _cliExmdbFolderPermissionPrint(cli, perm))
                for folder, perm in zip(folders, perms)]).print(cli)
 
+
+# Where is the documentation for this.
 def cliExmdbFolderPermissionsShow(args):
     cli = args._cli
     cli.require("DB")
@@ -266,6 +190,7 @@ def cliExmdbFolderPermissionsShow(args):
             cli.print(cli.col("Cannot show permissions for folder 0x{:x}".format(gcToValue(fid)), "yellow"))
 
 
+# Where is the documentation for this.
 def cliExmdbFolderPropertiesGet(args):
     cli = args._cli
     cli.require("DB")

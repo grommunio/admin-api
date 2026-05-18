@@ -5,6 +5,24 @@
 SERIAL_ENDIAN = "little"  # Endianness used for binary serialization
 
 
+_perms = {
+    "readany": 0x1,
+    "create": 0x2,
+    "sendas": 0x4,
+    "editowned": 0x8,
+    "deleteowned": 0x10,
+    "editany": 0x20,
+    "deleteany": 0x40,
+    "createsubfolder": 0x80,
+    "folderowner": 0x100,
+    "foldercontact": 0x200,
+    "foldervisible": 0x400,
+    "freebusysimple": 0x800,
+    "freebusydetailed": 0x1000,
+    "storeowner": 0x2000}
+_permsAll = 0x3fff
+
+
 class _ReverseLookup:
     @classmethod
     def lookup(cls, value, default=None):
