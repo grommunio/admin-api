@@ -8,7 +8,7 @@ import api
 from api.core import API, secure
 
 from services import Service, ServiceUnavailableError
-from tools.constants import PrivateFIDs
+from tools.constants import PrivateFIDs, _permsAll
 from tools.rop import makeEidEx, gcToValue
 from tools.exmdb import getClient, _FolderNode, exmdbFolderPermissionString
 
@@ -72,7 +72,11 @@ def userFolderPermissionsGrant(username, fid):
         # Anonymous is '' in exmdb, so we have to rewrite it
         if permittedUser == 'anonymous':
             permittedUser = ''
-        perms = [client.setFolderMember(fid, permittedUser, perms, client.ADD if request.method == "POST" else client.REMOVE)
+        perms = [client.setFolderMember(fid,
+                                        permittedUser,
+                                        perms if request.method == "POST" else _permsAll,
+                                        client.ADD if request.method == "POST" else client.REMOVE
+                                        )
                     for fid in fids]
         return jsonify(message="Success"), 201 if request.method == "POST" else 200
     
