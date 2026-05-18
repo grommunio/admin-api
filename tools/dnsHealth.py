@@ -8,12 +8,18 @@ import socket
 from .config import Config
 
 
-externalResolver = None
-try:
-    externalResolver = resolver.Resolver()
-    externalResolver.nameservers = Config["dns"]["externalResolvers"]
-except Exception:
-    pass
+class ExternalResolver:
+    resolver = None
+
+    @classmethod
+    def get(cls):
+        if cls.resolver is None:
+            try:
+                cls.resolver = resolver.Resolver()
+                cls.resolver.nameservers = Config["dns"]["externalResolvers"]
+            except Exception:
+                pass
+        return cls.resolver
 
 
 def getHostByName(domain):
@@ -41,8 +47,12 @@ def getLocalIp():
 
 def fullDNSCheck(domain: str):
     if Config["dns"]["disabled"]:
-        from services import ServiceDisabledError
-        raise ServiceDisabledError("DNS check disabled by configuration")
+        return None, "DNS check disabled by configuration"
+        
+    externalResolver = ExternalResolver.get()
+    if externalResolver is None:
+        return None, "DNS resolver initialization failed"
+
     localIp = getLocalIp()
     externalIp = checkMyIP()
     mxRecords = checkMX(domain)
@@ -68,7 +78,7 @@ def fullDNSCheck(domain: str):
         "caldavTXT": caldavTXT,
         "carddavTXT": carddavTXT,
         **srv
-    }
+    }, None
 
 
 def checkMyIP():
@@ -100,8 +110,11 @@ def checkMX(domain: str):
         "reverseLookup": None,
         "mxDomain": None,
     }
+
+    externalResolver = ExternalResolver.get()
     if externalResolver is None:
         return res
+    
     try:
         mxRecords = resolver.query(domain, "MX")
         mxDomain = mxRecords[0].exchange # Mail-domain of domain
@@ -148,6 +161,8 @@ def checkAutodiscoverSRV(domain: str):
         res = ", ".join([str(r) for r in records])
     except Exception:
         pass
+
+    externalResolver = ExternalResolver.get()
     if externalResolver is not None:
         try:
             records = externalResolver.query("_autodiscover._tcp." + domain, "SRV")
@@ -167,6 +182,7 @@ def checkTXT(domain: str):
     except Exception:
         pass
 
+    externalResolver = ExternalResolver.get()
     if externalResolver is not None:
         try:
             txtRecordsExternal = externalResolver.query(domain, "TXT")
@@ -200,7 +216,8 @@ def defaultDNSQuery(subdomain: str, domain: str, recordType="A", path=""):
         res = ", ".join([str(r) for r in records])
     except Exception:
         pass
-
+    
+    externalResolver = ExternalResolver.get()
     if externalResolver is not None:
         try:
             records = externalResolver.query(subdomain + domain + path, recordType)

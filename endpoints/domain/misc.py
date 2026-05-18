@@ -38,5 +38,7 @@ def checkDomainDNS(domainID):
     domain = Domains.query.filter(Domains.ID == domainID).with_entities(Domains.domainname).first()
     if domain is None:
         return jsonify(message="Domain not found"), 404
-    dnsCheck = fullDNSCheck(domain.domainname)
+    dnsCheck, error = fullDNSCheck(domain.domainname)
+    if error is not None:
+        return jsonify(message=error), 500
     return jsonify(dnsCheck)
