@@ -35,6 +35,10 @@ class Systemd:
         return "--system" if self.system else "--user"
 
     def getServices(self, *services):
+        # Manually add grommunio-keycloak if it's installed
+        if self.gKeycloakExists(): # keycloak found
+            services = ["grommunio-keycloak.service", *services]
+
         args = ("systemctl", "-q", self.__mode, "show",
                 "--property="+",".join(self.valmap), *services)
         result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
@@ -43,6 +47,7 @@ class Systemd:
             return {}
         split = [[line.split("=", 1) for line in block.split("\n") if "=" in line] for block in result.stdout.split("\n\n")]
         units = [{self.valmap[key]: value for key, value in block if key in self.valmap} for block in split]
+
         for unit in units:
             if "unit" not in unit:
                 continue
@@ -56,6 +61,11 @@ class Systemd:
             unit["since"] = since
             unit.pop("sa", None), unit.pop("si", None)
         return {unit["unit"]: unit for unit in units if "unit" in unit}
+    
+    def gKeycloakExists(self):
+        args = ("systemctl", "list-unit-files", "grommunio-keycloak.service")
+        result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        return result.returncode == 0
 
     def run(self, command, *targets):
         result = subprocess.run(("systemctl", "-q", self.__mode, command, *targets),

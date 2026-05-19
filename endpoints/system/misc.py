@@ -78,11 +78,12 @@ def getDashboardServices():
 @secure()
 def getDashboardService(unit):
     checkPermissions(SystemAdminROPermission())
-    for service in Config["options"]["dashboard"]["services"]:
-        if service["unit"] == unit:
-            break
-    else:
-        return jsonify(message="Unknown unit '{}'".format(unit)), 400
+    if unit != "grommunio-keycloak.service":
+        for service in Config["options"]["dashboard"]["services"]:
+            if service["unit"] == unit:
+                break
+        else:
+            return jsonify(message="Unknown unit '{}'".format(unit)), 400
     with Service("systemd") as sysd:
         unit = sysd.getServices(service["unit"])[service["unit"]]
         unit["name"] = service.get("name", service["unit"].replace(".service", ""))
@@ -96,7 +97,8 @@ def signalDashboardService(unit, action):
     checkPermissions(SystemAdminPermission())
     if action not in ("start", "stop", "restart", "reload", "enable", "disable"):
         return jsonify(message="Invalid action"), 400
-    if unit not in (service["unit"] for service in Config["options"]["dashboard"]["services"]):
+    if (unit not in (service["unit"] for service in Config["options"]["dashboard"]["services"])
+        and unit != "grommunio-keycloak.service"):
         return jsonify(message="Unknown unit '{}'".format(unit)), 400
     with Service("systemd") as sysd:
         _, msg = sysd.run(action, unit)

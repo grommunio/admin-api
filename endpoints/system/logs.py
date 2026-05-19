@@ -6,6 +6,8 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
+from services import Service
+
 from datetime import datetime
 from flask import jsonify, request
 import psutil
@@ -19,14 +21,18 @@ from tools.permissions import SystemAdminROPermission
 @secure()
 def getLogs():
     checkPermissions(SystemAdminROPermission())
-    return jsonify(data=sorted(Config["logs"]))
+    logs = Config["logs"]
+    with Service("systemd") as sysd:
+        if sysd.gKeycloakExists():
+            logs["Keycloak"] = { "source": "grommunio-keycloak.service" }
+    return jsonify(data=sorted(logs))
 
 
 @API.route(api.BaseRoute+"/system/logs/<file>", methods=["GET"])
 @secure()
 def getLog(file):
     checkPermissions(SystemAdminROPermission())
-    log = Config["logs"].get(file)
+    log = Config["logs"].get(file) if file != "Keycloak" else { "source": "grommunio-keycloak.service" }
     if log is None:
         return jsonify(message="Log file not found"), 404
     n = int(request.args.get("n", 10))
