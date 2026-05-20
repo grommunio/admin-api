@@ -6,6 +6,7 @@ __all__ = ["domain", "system", "defaults", "misc", "service", "tasq"]
 
 from flask import request, jsonify
 from orm import DB
+from services import ServiceUnavailableError
 from tools.DataModel import MissingRequiredAttributeError, InvalidAttributeError, MismatchROError
 from tools.misc import damerau_levenshtein_distance as dldist
 import re
@@ -158,6 +159,9 @@ def defaultPatch(Model, ID, errName, obj=None, filters=(), result="response"):
     except (InvalidAttributeError, MismatchROError, ValueError) as err:
         DB.session.rollback()
         return jsonify(message=err.args[0]), 400
+    except ServiceUnavailableError as err:
+        DB.session.rollback()
+        return jsonify(message=str(err)), 503
     if result == "precommit":
         return obj
     try:
@@ -165,6 +169,9 @@ def defaultPatch(Model, ID, errName, obj=None, filters=(), result="response"):
     except IntegrityError as err:
         DB.session.rollback()
         return jsonify(message="Could not update: invalid data", error=err.orig.args[1]), 400
+    except ServiceUnavailableError as err:
+        DB.session.rollback()
+        return jsonify(message=str(err)), 503
     return jsonify(Model.optimized_query(2).filter(Model.ID == ID).first().fulldesc())
 
 

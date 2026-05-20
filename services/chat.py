@@ -21,6 +21,8 @@ def handleGrochatExceptions(service, error):
         return ServiceHub.SUSPENDED
     elif isinstance(error, (InvalidOrMissingParameters, ResourceNotFound, ContentTooLarge)):
         raise ValueError("grochat: invalid data")
+    elif isinstance(error, HTTPError):
+        return ServiceHub.UNAVAILABLE, "grommunio-chat returned an error: {}".format(error)
 
 
 @ServiceHub.register("chat", handleGrochatExceptions, maxreloads=3)

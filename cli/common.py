@@ -19,7 +19,6 @@ def domainCandidates(domainSpec, *filters):
 def userFilter(userSpec, autocompleting, *filters):
     from orm.users import Users
     from sqlalchemy import and_
-    print(userSpec)
     return and_(True if userSpec is None else
                 Users.ID == userSpec if userSpec.isdigit() else
                 Users.username.ilike(userSpec.replace("_", "\_")+("%" if autocompleting else "")), *filters)
