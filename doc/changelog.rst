@@ -1,3 +1,34 @@
+admin-api 1.19 (2026-05-27)
+===========================
+
+* Add endpoint to expose mailbox permissions
+* Import altname from a configurable LDAP attribute
+* Disable ldap3 schema fetching to fix objectGUID filter corruption
+* Import LDAP org contacts only into the lowest domain to avoid GAB duplicates
+* Skip the domain maxUser check when importing LDAP contacts
+* Update group user membership on LDAP sync
+* Delete user properties that are no longer present in LDAP
+* Prevent deletion of vital user properties on LDAP sync
+* Explicitly open LDAP connection to work around StartTLS failures with multiple servers
+* CLI: add units to store size values
+* CLI: fix user deletion prefix matching
+* CLI: fix orphaned mailbox deletion
+* CLI: fix `user show` output
+* CLI: fix `user devices` helper texts
+* CLI: drop underscore from matching wildcards
+* Dashboard: handle missing or misbehaving systemd in containerized deployments
+* Dashboard: skip malformed systemd unit blocks instead of crashing
+* Dashboard: drop non-text entries from journal log output
+* Dashboard: list g-keycloak in services and logs
+* Convert the global DNS resolver to a singleton
+* Fix startup crash when no internet connection is available
+* Fix user folder permission delete
+* Properly catch license credential errors
+* Treat homeserver 0 as meaning "localhost"
+* Return 503 instead of 500 when the chat service is unavailable
+* Require the ``legacycrypt`` Python module (replaces stdlib ``crypt`` on Python 3.13+)
+
+
 admin-api 1.18 (2026-02-17)
 ===========================
 
