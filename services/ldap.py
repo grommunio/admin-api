@@ -163,6 +163,11 @@ class LdapService:
     __initialized = False
     _templates = {}
     _unescapeRe = re.compile(rb"\\(?P<value>[a-fA-F0-9]{2})")
+    # Removing these properties breaks gromox, so protect them
+    _protectedProps = ("displaytypeex",
+                       "storagequotalimit",
+                       "prohibitsendquota",
+                       "prohibitreceivequota")
 
     _configMap = {"baseDn": "ldap_search_base",
                   "objectID": "ldap_object_id",
@@ -206,8 +211,8 @@ class LdapService:
             msg = str(err.args[0]) if len(err.args) else type(err).__name__
             raise ServiceUnavailableError("Failed to connect to server: "+msg, *err.args[1:])
 
-        # Delete all properties that were not downloaded from LDAP
-        self._defaultProps = {prop: None for prop in self._userAttributes.values()}
+        # Delete all (update: most) properties that were not downloaded from LDAP
+        self._defaultProps = {prop: None for prop in self._userAttributes.values() if prop not in self._protectedProps}
         if "defaultQuota" in self._config["users"]:
             self._defaultProps.update({prop: self._config["users"]["defaultQuota"] for prop in
                                        ("storagequotalimit", "prohibitsendquota", "prohibitreceivequota")})
