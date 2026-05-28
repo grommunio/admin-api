@@ -1842,7 +1842,7 @@ paths:
           $ref: '#/components/responses/DatabaseError'
     delete:
       summary: Add new member
-      operationId: postUserFolderPermissionsGrant
+      operationId: deleteUserFolderPermissionsGrant
       tags:
         - exmdb
       security:
