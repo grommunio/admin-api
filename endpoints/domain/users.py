@@ -107,17 +107,21 @@ def deleteUser(user, deleteChatUser):
     if user.ID == 0:
         return jsonify(message="Cannot delete superuser"), 400
     userdata = GenericObject(maildir=user.maildir, homeserver=user.homeserver)
+    # Unload the store (and optionally remove the maildir) *before* deleting the
+    # SQL record. exmdb resolves the responsible homeserver for a mailbox by
+    # looking up its directory in the `users` table; once the row is gone that
+    # lookup fails and the unload connect is rejected with "Prefix not served".
+    if userdata.maildir:
+        with Service("exmdb", errors=Service.SUPPRESS_INOP) as exmdb:
+            client = exmdb.user(userdata)
+            client.unloadStore()
+        if request.args.get("deleteFiles") == "true":
+            shutil.rmtree(userdata.maildir, ignore_errors=True)
     user.delete(deleteChatUser)
     try:
         DB.session.commit()
     except Exception:
         return jsonify(message="Cannot delete user: Database commit failed."), 500
-    if userdata.maildir:
-        with Service("exmdb", errors=Service.SUPPRESS_INOP) as exmdb:
-            client = exmdb.user(userdata)
-            client.unloadStore()
-    if request.args.get("deleteFiles") == "true":
-        shutil.rmtree(userdata.maildir, ignore_errors=True)
     return jsonify(message="isded")
 
 
