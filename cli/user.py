@@ -298,27 +298,32 @@ def cliUserDelete(args):
             return 3
     else:
         cli.print("Deleting user '{}' ({})".format(user.username, user.ID))
+    # Unload the store and remove the maildir *before* deleting the SQL record.
+    # exmdb resolves the responsible homeserver for a mailbox by looking up its
+    # directory in the `users` table; once the row is gone that lookup fails and
+    # the unload connect is rejected with "Prefix not served" (misconfig_prefix).
+    deleteFiles = False
+    if userdata.maildir == "":
+        cli.print("No user files to delete.")
+    else:
+        cli.print("Unloading store...", end="", flush=True)
+        from services import Service
+        with Service("exmdb", errors=Service.SUPPRESS_INOP) as exmdb:
+            client = exmdb.user(user)
+            client.unloadStore()
+        cli.print("Done.")
+        if args.keep_files or (not args.yes and cli.confirm("Delete user directory from disk? [y/N]: ") != Cli.SUCCESS):
+            cli.print(cli.col("Files remain in "+userdata.maildir, attrs=["bold"]))
+        else:
+            deleteFiles = True
+    if deleteFiles:
+        cli.print("Deleting user files...", end="")
+        import shutil
+        shutil.rmtree(userdata.maildir, ignore_errors=True)
+        cli.print("Done.")
     user.delete(not args.keep_chat)
     DB.session.commit()
     cli.print("User deleted.")
-    if userdata.maildir == "":
-        cli.print("No user files to delete.")
-        return 0
-    cli.print("Unloading store...", end="", flush=True)
-
-    from services import Service
-    with Service("exmdb", errors=Service.SUPPRESS_INOP) as exmdb:
-        client = exmdb.user(user)
-        client.unloadStore()
-        cli.print("Done.", end="")
-    cli.print("")
-    if args.keep_files or (not args.yes and cli.confirm("Delete user directory from disk? [y/N]: ") != Cli.SUCCESS):
-        cli.print(cli.col("Files remain in "+userdata.maildir, attrs=["bold"]))
-        return 0
-    cli.print("Deleting user files...", end="")
-    import shutil
-    shutil.rmtree(userdata.maildir, ignore_errors=True)
-    cli.print("Done.")
 
 
 def cliUserLogin(args):
