@@ -23,6 +23,14 @@ _deviceStatusStyle = {0: {"attrs": ["dark"]},
                       16: {"color": "yellow"},
                       32: {"color": "red"},
                       64: {"color": "light_red"}}
+_kByteKeys = (
+    "messagesizeextended",
+    "normalmessagesizeextended",
+    "assocmessagesizeextended",
+    "prohibitreceivequota",
+    "prohibitsendquota",
+    "storagequotalimit"
+)
 
 
 def _mkUserQuery(args):
@@ -107,9 +115,8 @@ def _dumpUser(cli, user, indent=0):
                                              cli.col("active", "green") if fml.active == 1 else cli.col("inactive", "red")))
     cli.print(" "*indent+"properties:"+(cli.col(" (none)", attrs=["dark"]) if len(user.properties) == 0 else ""))
 
-    kByteKeys = ["messagesizeextended", "normalmessagesizeextended", "assocmessagesizeextended"]
     for key, value in user.properties.items():
-        cli.print("{}  {}: {}".format(" "*indent, key, str(value)+(" kByte" if key in kByteKeys else "")))
+        cli.print("{}  {}: {}".format(" "*indent, key, str(value)+(" kByte" if key in _kByteKeys else "")))
 
 
 def _getUser(args, requireMailbox=False):
