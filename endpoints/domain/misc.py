@@ -8,8 +8,8 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
-from tools.permissions import SystemAdminPermission, DomainAdminROPermission, OrgAdminPermission
-from tools.dnsHealth import fullDNSCheck
+from tools.permissions import SystemAdminPermission, DomainAdminROPermission, OrgAdminPermission, DomainAdminPermission
+from tools.dnsHealth import fullDNSCheck, generateDkimKeys
 
 from flask import request, jsonify
 from sqlalchemy import or_
@@ -39,6 +39,21 @@ def checkDomainDNS(domainID):
     if domain is None:
         return jsonify(message="Domain not found"), 404
     dnsCheck, error = fullDNSCheck(domain.domainname)
+    if error is not None:
+        return jsonify(message=error), 500
+    return jsonify(dnsCheck)
+
+
+@API.route(api.BaseRoute+"/domains/<int:domainID>/generateDkimKeys", methods=["POST"])
+@secure(requireDB=True)
+def generateDomainDkimKeys(domainID):
+    checkPermissions(DomainAdminPermission(domainID))
+    from orm.domains import Domains
+    domain = Domains.query.filter(Domains.ID == domainID).with_entities(Domains.domainname).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+    data = request.get_json(silent=True)
+    dnsCheck, error = generateDkimKeys(domain.domainname, **data)
     if error is not None:
         return jsonify(message=error), 500
     return jsonify(dnsCheck)

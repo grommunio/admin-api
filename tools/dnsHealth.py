@@ -4,7 +4,7 @@
 
 from dns import resolver, reversename
 import socket
-
+import subprocess
 from .config import Config
 
 
@@ -225,3 +225,28 @@ def defaultDNSQuery(subdomain: str, domain: str, recordType="A", path=""):
         except Exception:
             pass
     return {"internalDNS": res, "externalDNS": resExternal}
+
+
+def generateDkimKeys(domain, type="rsa", selector="dkim"):
+    import os
+    privateKeyFilepath = "/var/lib/grommunio-admin-api/" + domain + "-dkim.key"
+
+    # Move old key, if exists
+    try:
+        if os.path.exists(privateKeyFilepath):
+            subprocess.run(("mv", privateKeyFilepath, privateKeyFilepath + ".old"))
+    except Exception:
+        pass
+
+    # Generate new keypair
+    pubKey = subprocess.run(("rspamadm", "dkim_keygen",
+                             "-s", selector,
+                             "-b", "2048",
+                             "-d", domain,
+                             "-t", type,
+                             "-k", privateKeyFilepath),
+                                      stdout=subprocess.PIPE,
+                                      universal_newlines=True).stdout
+    subprocess.run(("chown", "grommunio:grommunio", privateKeyFilepath))
+    subprocess.run(("chmod", "440", privateKeyFilepath))
+    return pubKey, None
