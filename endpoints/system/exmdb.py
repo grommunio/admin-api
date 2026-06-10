@@ -9,7 +9,7 @@ from api.core import API, secure
 
 from services import Service, ServiceUnavailableError
 from tools.constants import PrivateFIDs, _permsAll
-from tools.rop import makeEidEx, gcToValue
+from tools.rop import makeEidEx
 from tools.exmdb import getClient, _FolderNode, exmdbFolderPermissionString
 
 
@@ -69,9 +69,7 @@ def userFolderPermissionsGrant(username, fid):
         if recursive:
             folders += exmdb.FolderList(client.listFolders(fid, True)).folders
             fids += tuple(folder.folderId for folder in folders)
-        # Anonymous is '' in exmdb, so we have to rewrite it
-        if permittedUser == 'anonymous':
-            permittedUser = ''
+
         perms = [client.setFolderMember(fid,
                                         permittedUser,
                                         perms if request.method == "POST" else _permsAll,

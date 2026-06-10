@@ -160,9 +160,7 @@ def cliExmdbFolderPermissionsModify(args):
             folders += exmdb.FolderList(client.listFolders(fid, True)).folders
             fids += tuple(folder.folderId for folder in folders)
         mode = client.REMOVE if args.revoke else client.ADD
-        # Anonymous is '' in exmdb, so we have to rewrite it
-        if args.username == 'anonymous':
-            args.username = ''
+        
         perms = [client.setFolderMember(fid, args.username, perms, mode) for fid in fids]
         cli.print("New permissions for user '{}':".format(cli.col(args.username, attrs=["bold"])))
         Table([(_FolderNode(folder).print(cli), _cliExmdbFolderPermissionPrint(cli, perm))
