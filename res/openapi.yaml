@@ -5982,7 +5982,7 @@ components:
         type: object
         properties:
           memberID:
-            type: integer
+            type: string
             description: Member ID of the owner list
           displayName:
             type: string

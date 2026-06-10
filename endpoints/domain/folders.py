@@ -191,8 +191,8 @@ def getPublicFolderOwnerList(domainID, folderID):
     with Service("exmdb") as exmdb:
         client = exmdb.domain(domain)
         response = exmdb.FolderMemberList(client.getFolderMemberList(folderID))
-    owners = [{"memberID": member.id, "displayName": member.name, "username": member.mail, "permissions": member.rights}
-              for member in response.members if not member.special]
+    owners = [{"memberID": str(member.id), "displayName": member.name, "username": member.mail, "permissions": member.rights}
+              for member in response.members]
     return jsonify(data=owners)
 
 
