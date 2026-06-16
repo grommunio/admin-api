@@ -9,6 +9,7 @@ admin-api 1.20 (development)
 * Fix 'bad escape sequence' warnings
 * CLI: add units to more user properties
 * Fix malformed LDAP filter when group DN contains filter metacharacters
+* Escape domain names in LDAP user search filter as defense in depth
 
 
 admin-api 1.19 (2026-05-27)
