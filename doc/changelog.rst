@@ -1,5 +1,5 @@
-admin-api 1.20 (development)
-============================
+admin-api 1.20 (2026-06-16)
+===========================
 
 * Add endpoint to generate DKIM keypairs
 * Enable and fix default/anonymous public folder permissions
