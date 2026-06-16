@@ -379,7 +379,8 @@ class LdapService:
         types = types or ("user", "contact", "group")
         userconf = userconf or self._config["users"]
         username = userconf["username"]
-        domainexpr = "(|{})".format("".join("({}=*@{})".format(username, d) for d in domains)) if domains is not None else ""
+        domainexpr = "(|{})".format("".join("({}=*@{})".format(username, self.escape_filter_chars(d))
+                                            for d in domains)) if domains is not None else ""
         filterexpr = "".join("("+f+")" for f in userconf.get("filters", ()))
         userFilter = "(&{}{}{})".format(filterexpr, userconf.get("filter", ""), domainexpr)
         with self.lock:
