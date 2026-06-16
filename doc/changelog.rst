@@ -1,3 +1,15 @@
+admin-api 1.20 (development)
+============================
+
+* Add endpoint to generate DKIM keypairs
+* Enable and fix default/anonymous public folder permissions
+* Fix 'anonymous' user folder permission deletion
+* Unload mailbox store before deleting the user record to avoid orphaned files
+* Deduplicate OpenAPI operation IDs to fix startup spec validation
+* Fix 'bad escape sequence' warnings
+* CLI: add units to more user properties
+
+
 admin-api 1.19 (2026-05-27)
 ===========================
 
