@@ -8,6 +8,7 @@ admin-api 1.20 (development)
 * Deduplicate OpenAPI operation IDs to fix startup spec validation
 * Fix 'bad escape sequence' warnings
 * CLI: add units to more user properties
+* Fix malformed LDAP filter when group DN contains filter metacharacters
 
 
 admin-api 1.19 (2026-05-27)
