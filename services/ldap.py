@@ -576,7 +576,8 @@ class LdapService:
         str
             Filter expression
         """
-        return "({}={})".format(self._config["groups"].get("groupMemberAttr", "memberOf"), groupDN)
+        return "({}={})".format(self._config["groups"].get("groupMemberAttr", "memberOf"),
+                                self.escape_filter_chars(groupDN))
 
     def searchUsers(self, query=None, domains=None, limit=None, pageSize=1000, filterIncomplete=True, types=None,
                     customFilter="", attributes=None):
