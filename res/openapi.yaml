@@ -2016,6 +2016,9 @@ paths:
                           type: string
                         command:
                           type: integer
+                          oneOf:
+                            - type: integer
+                            - type: boolean
                         ended:
                           type: integer
                           description: UNIX timestamp of process end or 0 if still running
