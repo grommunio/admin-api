@@ -181,7 +181,7 @@ def cliExmdbFolderPermissionsShow(args):
             return ret
         members = exmdb.FolderMemberList(client.getFolderMemberList(fid)).members
         try:
-            Table([(member.name, _cliExmdbFolderPermissionPrint(cli, member.rights))
+            Table([(member.name, member.mail, _cliExmdbFolderPermissionPrint(cli, member.rights))
                    for member in members if (not args.username or member.mail in args.username)],
                   empty=cli.col("(no entries)", attrs=["dark"])).print(cli)
         except exmdb.ExmdbError:
