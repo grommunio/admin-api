@@ -304,6 +304,12 @@ class Users(DataModel, DB.Base, NotifyTable):
                 self.username = username
             if not isContact and not formats.email.match(self.username):
                 raise ValueError("'{}' is not a valid e-mail address".format(self.username))
+            
+        # Deduplicate aliases
+        aliases = patches.get("aliases", self.aliases)
+        if len(set(aliases)) < len(aliases):
+            raise ValueError("Duplicated alias addresses not allowed")
+
         DataModel.fromdict(self, patches, *args, **kwargs)
         displaytype = self.properties.get("displaytypeex", 0)
         if displaytype in (0, 1, 7, 8):
