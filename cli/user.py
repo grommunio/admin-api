@@ -474,6 +474,7 @@ def cliUserDevicesRemoveResync(args):
             if args.action == "remove":
                 client.removeDevice(Config["sync"]["syncStateFolder"], device)
                 UserDevices.query.filter(UserDevices.userID == user.ID, UserDevices.deviceID == device).delete()
+                DB.session.commit()
                 cli.print(f"Removed {device}")
             else:
                 client.resyncDevice(Config["sync"]["syncStateFolder"], device, user.ID)
