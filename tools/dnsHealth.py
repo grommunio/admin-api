@@ -229,12 +229,16 @@ def defaultDNSQuery(subdomain: str, domain: str, recordType="A", path=""):
 
 def generateDkimKeys(domain, type="rsa", selector="dkim"):
     import os
+    import shutil
     privateKeyFilepath = "/var/lib/grommunio-admin-api/" + domain + "-dkim.key"
 
-    # Move old key, if exists
+    # Create safety copy of previous key, if exists
     try:
         if os.path.exists(privateKeyFilepath):
-            subprocess.run(("mv", privateKeyFilepath, privateKeyFilepath + ".old"))
+            oldPrivateKeyFilepath = privateKeyFilepath + ".old"
+            if os.path.exists(oldPrivateKeyFilepath):
+                os.remove(oldPrivateKeyFilepath)
+            os.rename(privateKeyFilepath, oldPrivateKeyFilepath)
     except Exception:
         pass
 
@@ -247,6 +251,6 @@ def generateDkimKeys(domain, type="rsa", selector="dkim"):
                              "-k", privateKeyFilepath),
                                       stdout=subprocess.PIPE,
                                       universal_newlines=True).stdout
-    subprocess.run(("chown", "grommunio:grommunio", privateKeyFilepath))
-    subprocess.run(("chmod", "440", privateKeyFilepath))
+    shutil.chown(privateKeyFilepath, "grommunio", "grommunio")
+    os.chmod(privateKeyFilepath, 0o440)
     return pubKey, None
