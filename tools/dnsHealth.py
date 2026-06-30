@@ -230,7 +230,7 @@ def defaultDNSQuery(subdomain: str, domain: str, recordType="A", path=""):
 def generateDkimKeys(domain, type="rsa", selector="dkim"):
     import os
     import shutil
-    privateKeyFilepath = "/var/lib/grommunio-admin-api/" + domain + "-dkim.key"
+    privateKeyFilepath = "/var/lib/grommunio-admin-api/" + domain + ".dkim.key"
 
     # Create safety copy of previous key, if exists
     try:
