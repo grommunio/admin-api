@@ -2099,7 +2099,7 @@ paths:
 
   /domains/{domainID}/generateDkimKeys:
     post:
-      summary: TODO
+      summary: Generate DKIM keypair
       operationId: generateDkimKeys
       tags:
         - Misc
