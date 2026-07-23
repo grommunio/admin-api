@@ -16,11 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import column_property, relationship, selectinload, validates
 
-try:
-    # python 3.13
-    import legacycrypt as crypt
-except ImportError:
-    import crypt as crypt
+from passlib.hash import sha512_crypt, bcrypt
 
 import json
 import sys
@@ -368,13 +364,17 @@ class Users(DataModel, DB.Base, NotifyTable):
     def password(self, pw):
         # On OpenBSD only blowfish is supported
         if sys.platform.startswith("openbsd"):
-            _method = crypt.METHOD_BLOWFISH
+            self._password = bcrypt.hash(pw)
         else:
-            _method = crypt.METHOD_SHA512
-        self._password = crypt.crypt(pw, crypt.mksalt(_method))
+            self._password = sha512_crypt.hash(pw)
 
     def chkPw(self, pw):
-        return crypt.crypt(pw, self.password) == self.password
+        try:
+            if self.password.startswith(("$2a$", "$2b$", "$2y$")):
+                return bcrypt.verify(pw, self.password)
+            return sha512_crypt.verify(pw, self.password)
+        except ValueError:
+            return False
 
     @property
     def propmap_id(self):
