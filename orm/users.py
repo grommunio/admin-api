@@ -653,8 +653,11 @@ class Users(DataModel, DB.Base, NotifyTable):
         if not alias.split("@")[1] in domains:
             raise ValueError(f"Cannot use alias from foreign domain: {alias}")
 
-        if Users.query.filter(func.lower(Users.username) == alias, Users.ID != self.ID).first() is not None:
-            raise ValueError("'{}' already exists as a user".format(alias))
+        # Disable autoflush: during user creation the partially initialized user
+        # may already be pending and would be flushed without domainID set
+        with DB.session.no_autoflush:
+            if Users.query.filter(func.lower(Users.username) == alias, Users.ID != self.ID).first() is not None:
+                raise ValueError("'{}' already exists as a user".format(alias))
 
         return value
 
