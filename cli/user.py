@@ -172,7 +172,7 @@ def _splitData(args):
     if "storeprop" in attributes or "remove_storeprop" in attributes:
         cli.print(cli.col("--storeprop and --remove_storeprop arguments are deprecated, use --property and --remove_property "
                           "instead.", "yellow"))
-    data["aliases"] = [alias for alias in attributes.pop("alias", None) if alias.strip()] or ()
+    data["aliases"] = [alias for alias in attributes.pop("alias", None) or [] if alias.strip()] or ()
     data["aliases_rm"] = attributes.pop("remove_alias", None) or ()
     data["altnames"] = [{"altname": altname} for altname in attributes.pop("altname", None) or [] if altname.strip()]
     data["altnames_rm"] = attributes.pop("remove_altname", None) or {}
