@@ -227,18 +227,24 @@ def defaultDNSQuery(subdomain: str, domain: str, recordType="A", path=""):
     return {"internalDNS": res, "externalDNS": resExternal}
 
 
-def generateDkimKeys(domain, type="rsa", selector="dkim"):
+def generateDkimKeys(domain, type="rsa", mode="dns", selector="dkim"):
     import os
     import shutil
     privateKeyFilepath = "/var/lib/grommunio-admin-api/" + domain + ".dkim.key"
+    publicKeyFilepath = privateKeyFilepath + ".pub"
 
-    # Create safety copy of previous key, if exists
+    # Create safety copy of previous keys, if exists
     try:
         if os.path.exists(privateKeyFilepath):
             oldPrivateKeyFilepath = privateKeyFilepath + ".old"
             if os.path.exists(oldPrivateKeyFilepath):
                 os.remove(oldPrivateKeyFilepath)
             os.rename(privateKeyFilepath, oldPrivateKeyFilepath)
+        if os.path.exists(publicKeyFilepath):
+            oldPublicKeyFilepath = publicKeyFilepath + ".old"
+            if os.path.exists(oldPublicKeyFilepath):
+                os.remove(oldPublicKeyFilepath)
+            os.rename(publicKeyFilepath, oldPublicKeyFilepath)
     except Exception:
         pass
 
@@ -248,9 +254,16 @@ def generateDkimKeys(domain, type="rsa", selector="dkim"):
                              "-b", "2048",
                              "-d", domain,
                              "-t", type,
+                             "-o", mode,
                              "-k", privateKeyFilepath),
                                       stdout=subprocess.PIPE,
                                       universal_newlines=True).stdout
     shutil.chown(privateKeyFilepath, "grommunio", "grommunio")
     os.chmod(privateKeyFilepath, 0o440)
+
+    with open(publicKeyFilepath, "w") as f:
+        f.write(pubKey)
+    shutil.chown(publicKeyFilepath, "grommunio", "grommunio")
+    os.chmod(publicKeyFilepath, 0o440)
+
     return pubKey, None

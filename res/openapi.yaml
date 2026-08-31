@@ -2172,6 +2172,12 @@ paths:
           description: Name of the key selector
           schema:
             type: string
+        - name: mode
+          in: query
+          required: false
+          description: Output mode of the public key
+          schema:
+            type: string
       responses:
         '200':
           description: Dkim keys returned
