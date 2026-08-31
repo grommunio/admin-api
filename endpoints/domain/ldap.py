@@ -153,7 +153,7 @@ def checkLdapUsers():
     else:
         userFilter = ()
 
-    users = Users.query.filter(Users.externID is not None, *domainFilter, *userFilter).all()
+    users = Users.query.filter(Users.externID != None, *domainFilter, *userFilter).all()
     if len(users) == 0:
         return jsonify(message="No LDAP users found", **{"orphaned" if request.method == "GET" else "deleted": []})
     orphaned = []
