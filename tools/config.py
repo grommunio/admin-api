@@ -96,7 +96,8 @@ def _defaultConfig():
             },
         "mconf": {
           "ldapPath": "/etc/gromox/ldap_adaptor.cfg",
-          "authmgrPath": "/etc/gromox/authmgr.cfg"
+          "authmgrPath": "/etc/gromox/authmgr.cfg",
+          "gromoxPath": "/etc/gromox/gromox.cfg"
           },
         "logs": {},
         "sync": {

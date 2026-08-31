@@ -2293,6 +2293,41 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /oofSubjectPrefix:
+    get:
+      summary: Get the configured out-of-office reply subject prefix
+      description: >
+        Reports the gromox.cfg autoreply_subject_prefix directive, which gromox
+        prepends to the subject of the incoming message when a mailbox has no
+        out-of-office subject of its own. Clients offering an out-of-office form
+        use it to show what an empty subject will send.
+      operationId: oofSubjectPrefix
+      tags:
+        - Misc
+      responses:
+        '200':
+          description: Prefix state returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      prefix:
+                        type: string
+                        nullable: true
+                        description: The configured prefix, or null when the directive is not set
+                      configured:
+                        type: boolean
+                        description: >
+                          Whether the directive is set. When false, gromox applies the
+                          default compiled into the running build, which cannot be read
+                          from the configuration file.
+        '500':
+          $ref: '#/components/responses/ServerError'
+
   /domains/{domainID}/users:
     get:
       summary: Get lists of users
