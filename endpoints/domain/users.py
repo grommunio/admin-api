@@ -511,6 +511,9 @@ def setUserStoreAccess(domainID, userID):
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
         client.setFolderMember(eid, data["username"], Permissions.STOREACCESS)
+        # Normalize a grant written up to 1.20, otherwise the legacy bit stays
+        # behind and keeps granting store ownership after the next revoke.
+        client.setFolderMember(eid, data["username"], Permissions.GROMOXSTOREOWNER, client.REMOVE)
     if DB.minVersion(91):
         DB.session.execute(insert(UserSecondaryStores).values(primary=primary, secondary=user.ID).prefix_with("IGNORE"))
         DB.session.commit()
@@ -537,6 +540,10 @@ def setUserStoreAccessMulti(domainID, userID):
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
         res = client.setFolderMembers(eid, [user.username for user in primary], Permissions.STOREACCESS)
+        # An empty list makes setFolderMembers clear the mask from every member,
+        # which drops the encoding written up to 1.20 for grantees and revokees
+        # alike. A row left with no rights is deleted by setFolderMembers itself.
+        client.setFolderMembers(eid, [], Permissions.GROMOXSTOREOWNER)
     if DB.minVersion(91):
         UserSecondaryStores.query.filter(UserSecondaryStores.secondaryID == user.ID).delete(synchronize_session=False)
         if len(primary):
@@ -560,7 +567,7 @@ def getUserStoreAccess(domainID, userID):
         client = exmdb.user(user)
         memberList = exmdb.FolderMemberList(client.getFolderMemberList(makeEidEx(0, PrivateFIDs.IPMSUBTREE)))
         members = [{"ID": member.id, "displayName": member.name, "username": member.mail} for member in memberList.members
-                   if member.rights & Permissions.STOREACCESS]
+                   if member.rights & Permissions.STOREACCESS_ANY]
     return jsonify(data=members)
 
 
@@ -576,7 +583,8 @@ def deleteUserStoreAccess(domainID, userID, username):
         return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
-        client.setFolderMember(makeEidEx(0, PrivateFIDs.IPMSUBTREE), username, Permissions.STOREACCESS, client.REMOVE)
+        client.setFolderMember(makeEidEx(0, PrivateFIDs.IPMSUBTREE), username, Permissions.STOREACCESS_ANY,
+                               client.REMOVE)
     if DB.minVersion(91):
         primary = Users.query.with_entities(Users.ID).filter(Users.username == username).first()
         if primary is not None:

@@ -1230,6 +1230,12 @@ class Permissions:
     # gromox treats FOLDEROWNER on IPM_SUBTREE as store owner. GROMOXSTOREOWNER
     # is an internal permission that shouldn't be used by external APIs.
     STOREACCESS = FOLDEROWNER | FOLDERCONTACT | FOLDERVISIBLE
+    # Up to 1.20 the storeAccess endpoints wrote GROMOXSTOREOWNER itself, and
+    # gromox grants store ownership from such an ACE on its own (get_mbox_perm
+    # ORs the stored rights in verbatim). Those grants are therefore still in
+    # force, so they have to be recognized when listing and cleared when
+    # revoking - STOREACCESS alone matches neither.
+    STOREACCESS_ANY = STOREACCESS | GROMOXSTOREOWNER
 
 
     @classmethod

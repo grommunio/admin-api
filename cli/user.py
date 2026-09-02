@@ -129,7 +129,7 @@ def _dumpUser(cli, user, indent=0):
         from tools.constants import PrivateFIDs, Permissions
         memberList = exmdb.FolderMemberList(client.getFolderMemberList(makeEidEx(0, PrivateFIDs.IPMSUBTREE)))
         content = [member.mail for member in memberList.members
-                    if member.rights & Permissions.STOREACCESS]
+                    if member.rights & Permissions.STOREACCESS_ANY]
         cli.print(" "*indent+"storeowner:"+(cli.col(" (none)", attrs=["dark"]) if len(content) == 0 else ""))
         for mail in content:
             cli.print(" "*indent+"  "+mail)
@@ -203,7 +203,8 @@ def _usernamesFromFile(args):
             from tools.rop import makeEidEx
             from tools.constants import PrivateFIDs, Permissions
             content = exmdb.FolderMemberList(client.getFolderMemberList(makeEidEx(0, PrivateFIDs.IPMSUBTREE)))
-            content = [member.mail for member in content.members if member.rights & Permissions.STOREACCESS]
+            content = [member.mail for member in content.members
+                       if member.rights & Permissions.STOREACCESS_ANY]
     return 0, content
 
 
@@ -241,6 +242,9 @@ def _usernamesToFile(usernames, args):
             from sqlalchemy import insert
             eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
             res = client.setFolderMembers(eid, usernames, Permissions.STOREACCESS)
+            # Drop the encoding written up to 1.20 from every member, so a
+            # legacy grant is really revoked rather than just delisted.
+            client.setFolderMembers(eid, [], Permissions.GROMOXSTOREOWNER)
             if DB.minVersion(91):
                 UserSecondaryStores.query.filter(UserSecondaryStores.secondaryID == user.ID).delete(synchronize_session=False)
                 if len(usernames):
