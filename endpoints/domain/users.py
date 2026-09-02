@@ -567,7 +567,7 @@ def getUserStoreAccess(domainID, userID):
         client = exmdb.user(user)
         memberList = exmdb.FolderMemberList(client.getFolderMemberList(makeEidEx(0, PrivateFIDs.IPMSUBTREE)))
         members = [{"ID": member.id, "displayName": member.name, "username": member.mail} for member in memberList.members
-                   if member.rights & Permissions.STOREACCESS_ANY]
+                   if member.rights & Permissions.STOREOWNER_EFFECTIVE]
     return jsonify(data=members)
 
 

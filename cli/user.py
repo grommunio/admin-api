@@ -129,7 +129,7 @@ def _dumpUser(cli, user, indent=0):
         from tools.constants import PrivateFIDs, Permissions
         memberList = exmdb.FolderMemberList(client.getFolderMemberList(makeEidEx(0, PrivateFIDs.IPMSUBTREE)))
         content = [member.mail for member in memberList.members
-                    if member.rights & Permissions.STOREACCESS_ANY]
+                    if member.rights & Permissions.STOREOWNER_EFFECTIVE]
         cli.print(" "*indent+"storeowner:"+(cli.col(" (none)", attrs=["dark"]) if len(content) == 0 else ""))
         for mail in content:
             cli.print(" "*indent+"  "+mail)
@@ -204,7 +204,7 @@ def _usernamesFromFile(args):
             from tools.constants import PrivateFIDs, Permissions
             content = exmdb.FolderMemberList(client.getFolderMemberList(makeEidEx(0, PrivateFIDs.IPMSUBTREE)))
             content = [member.mail for member in content.members
-                       if member.rights & Permissions.STOREACCESS_ANY]
+                       if member.rights & Permissions.STOREOWNER_EFFECTIVE]
     return 0, content
 
 

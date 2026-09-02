@@ -1236,6 +1236,10 @@ class Permissions:
     # force, so they have to be recognized when listing and cleared when
     # revoking - STOREACCESS alone matches neither.
     STOREACCESS_ANY = STOREACCESS | GROMOXSTOREOWNER
+    # What actually makes a user a store owner in gromox: FOLDEROWNER on
+    # IPM_SUBTREE, or the legacy bit above. FOLDERCONTACT and FOLDERVISIBLE
+    # do not, so they must not be enough to appear in the store-owner list.
+    STOREOWNER_EFFECTIVE = FOLDEROWNER | GROMOXSTOREOWNER
 
 
     @classmethod
