@@ -514,7 +514,7 @@ def setUserStoreAccess(domainID, userID):
         # Remove GROMOXSTOREOWNER legacy bit used by AAPI up to version 1.20.
         client.setFolderMember(eid, data["username"], Permissions.GROMOXSTOREOWNER, client.REMOVE)
     if DB.minVersion(91):
-        DB.session.execute(insert(UserSecondaryStores).values(primary=primary, secondary=user.ID).prefix_with("IGNORE"))
+        DB.session.execute(insert(UserSecondaryStores).values(primary=primary.ID, secondary=user.ID).prefix_with("IGNORE"))
         DB.session.commit()
     return jsonify(message="Success."), 201 if request.method == "POST" else 200
 
