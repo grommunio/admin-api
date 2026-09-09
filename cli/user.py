@@ -25,10 +25,12 @@ _deviceStatusStyle = {0: {"attrs": ["dark"]},
                       16: {"color": "yellow"},
                       32: {"color": "red"},
                       64: {"color": "light_red"}}
-_kByteKeys = (
+_byteKeys = {
     "messagesizeextended",
     "normalmessagesizeextended",
-    "assocmessagesizeextended",
+    "assocmessagesizeextended"
+}
+_kByteKeys = (
     "prohibitreceivequota",
     "prohibitsendquota",
     "storagequotalimit"
@@ -144,7 +146,7 @@ def _dumpUser(cli, user, indent=0):
     cli.print(" "*indent+"properties:"+(cli.col(" (none)", attrs=["dark"]) if len(user.properties) == 0 else ""))
 
     for key, value in user.properties.items():
-        cli.print("{}  {}: {}".format(" "*indent, key, str(value)+(" kByte" if key in _kByteKeys else "")))
+        cli.print("{}  {}: {}".format(" "*indent, key, str(value)+(" kByte" if key in _kByteKeys else "")+(" byte" if key in _byteKeys else "")))
 
 
 def _getUser(args, requireMailbox=False):
