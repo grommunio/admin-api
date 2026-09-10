@@ -9,9 +9,9 @@
 # gromox reads from the same MySQL table at SMTP delivery time and
 # routes outgoing messages per sender's local domain.
 #
-# Mirror of the table created by patches/sql/001-domain-smtp-gateway.sql.
-# Any change to the schema here must be reflected in the SQL file and
-# vice versa.
+# Mirror of the `domain_smtp_gateway` table that gromox's dbop module
+# creates (schema version 134, see lib/dbop_mysql.cpp in gromox).
+# Any change to the schema here must be reflected there and vice versa.
 
 from . import DB
 from tools.DataModel import DataModel, Id, Text, Int, BoolP, Bool
