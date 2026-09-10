@@ -49,7 +49,6 @@ class DomainSmtpGateway(DataModel, DB.Base):
     )
     username = Column("username", VARCHAR(255), nullable=True)
     password = Column("password", VARCHAR(255), nullable=True)
-    fromAddress = Column("from_address", VARCHAR(255), nullable=True)
     enabled = Column("enabled", TINYINT(1), nullable=False, server_default="1")
     description = Column("description", VARCHAR(255), nullable=True)
 
@@ -61,7 +60,6 @@ class DomainSmtpGateway(DataModel, DB.Base):
             Text("encryption", flags="patch"),
             Text("username", flags="patch"),
             Text("password", flags="patch"),
-            Text("fromAddress", flags="patch"),
             Bool("enabled", flags="patch"),
             Text("description", flags="patch"),
         ),

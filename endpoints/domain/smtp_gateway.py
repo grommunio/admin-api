@@ -12,7 +12,7 @@
 # GET    – Return the current gateway config (password is censored).
 # PUT    – Create or update the gateway config for the given domain.
 #          Body: JSON with fields host, port, encryption, username,
-#                password, fromAddress, enabled, description.
+#                password, enabled, description.
 # DELETE – Remove the gateway config for the given domain (falls back
 #          to the global /etc/gromox/gromox.cfg outgoing_smtp_url).
 #

@@ -5,7 +5,7 @@
 # grommunio-admin domain smtp-gateway …
 #
 #   set <DOMAIN> --host HOST [--port 587] [--encryption starttls]
-#                  [--username USER] [--password PASS] [--from ADDR]
+#                  [--username USER] [--password PASS]
 #                  [--disable] [--description "…"]
 #       Create or update the per-domain SMTP gateway config.
 #
@@ -41,8 +41,6 @@ def _register(sub):
                        help="Encryption mode (default none)")
     p_set.add_argument("--username", help="SMTP authentication username")
     p_set.add_argument("--password", help="SMTP authentication password")
-    p_set.add_argument("--from", dest="from_address",
-                       help="Override envelope From address")
     p_set.add_argument("--disable", action="store_true",
                        help="Store the config but mark it as disabled")
     p_set.add_argument("--description", help="Free-form description")
@@ -102,8 +100,6 @@ def _do_set(cli, args):
         gw.username = args.username
     if args.password is not None:
         gw.password = args.password
-    if args.from_address is not None:
-        gw.fromAddress = args.from_address
     gw.enabled = 0 if args.disable else 1
     if args.description is not None:
         gw.description = args.description
@@ -138,7 +134,6 @@ def _do_show(cli, args):
     cli.print("  encryption:  {}".format(gw.encryption))
     cli.print("  username:    {}".format(gw.username or ""))
     cli.print("  password:    {}".format("***" if gw.password else "(not set)"))
-    cli.print("  fromAddress: {}".format(gw.fromAddress or ""))
     cli.print("  enabled:     {}".format(bool(gw.enabled)))
     cli.print("  description: {}".format(gw.description or ""))
     return 0

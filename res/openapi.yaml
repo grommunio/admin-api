@@ -6629,10 +6629,6 @@ components:
         passwordSet:
           type: boolean
           description: True if a password is set in the database (read-only).
-        fromAddress:
-          type: string
-          nullable: true
-          description: Optional envelope-From override for outgoing mail.
         enabled:
           type: boolean
           description: Whether this gateway is active.
@@ -6666,10 +6662,6 @@ components:
           type: string
           nullable: true
           description: Optional SMTP authentication password.
-        fromAddress:
-          type: string
-          nullable: true
-          description: Optional envelope-From override.
         enabled:
           type: boolean
           description: Whether this gateway is active.
