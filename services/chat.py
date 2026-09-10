@@ -71,9 +71,20 @@ class GrochatService:
         """Create grochat user from grommunio user."""
         if user.chatID:
             return self.driver.users.get_user(user.chatID)
+        from orm.misc import DBConf
+        from tools.misc import RecursiveDict
+
+        data = RecursiveDict({"user": {}, "domain": {}})
+        data.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+str(user.domainID), True))
+        keycloak = data.get("user", {}).get("keycloak", False)
+
         userdata = self.userToData(user)
-        userdata["auth_service"] = "pam"
-        userdata["password"] = "".join(random.choices(string.ascii_letters+string.digits, k=16))
+        if keycloak:
+            userdata["auth_service"] = "keycloak"
+            userdata["auth_data"] = str(user.ID)
+        else:
+            userdata["auth_service"] = "pam"
+            userdata["password"] = "".join(random.choices(string.ascii_letters+string.digits, k=16))
         gcUser = self.driver.users.create_user(userdata)
         user.chatID = gcUser["id"]
         self.linkUser(user)
