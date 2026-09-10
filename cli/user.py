@@ -243,6 +243,9 @@ def _usernamesToFile(usernames, args):
             from sqlalchemy import insert
             eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
             res = client.setFolderMembers(eid, usernames, Permissions.STOREACCESS_SET)
+            # Remove GROMOXSTOREOWNER legacy bit used by AAPI up to version 1.20
+            # from every member, for the same reason as in setUserStoreAccessMulti.
+            client.setFolderMembers(eid, [], Permissions.GROMOXSTOREOWNER)
             if DB.minVersion(91):
                 UserSecondaryStores.query.filter(UserSecondaryStores.secondaryID == user.ID).delete(synchronize_session=False)
                 if len(usernames):

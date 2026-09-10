@@ -540,8 +540,10 @@ def setUserStoreAccessMulti(domainID, userID):
         client = exmdb.user(user)
         res = client.setFolderMembers(eid, [user.username for user in primary], Permissions.STOREACCESS_SET)
         # Remove GROMOXSTOREOWNER legacy bit used by AAPI up to version 1.20.
-        for prim in primary:
-            client.setFolderMember(eid, prim.username, Permissions.GROMOXSTOREOWNER, client.REMOVE)
+        # An empty list clears the bit from every member, so a grant that is
+        # revoked by omission loses it as well - iterating over the requested
+        # users would leave the revoked ones a store owner.
+        client.setFolderMembers(eid, [], Permissions.GROMOXSTOREOWNER)
     if DB.minVersion(91):
         UserSecondaryStores.query.filter(UserSecondaryStores.secondaryID == user.ID).delete(synchronize_session=False)
         if len(primary):
