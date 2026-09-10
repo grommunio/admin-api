@@ -192,7 +192,6 @@ def _downsync(args, user, externID=None, syncMembers=False, **kwargs):
     else:
         from orm.mlists import MLists
         mlist = MLists.query.filter(MLists.listname == user.username).first()
-        mlist.listname = mlist.listname.lower()
         if not mlist:
             cli.print(cli.col(f"Failed to synchronize {user.username}: no such group"))
             return False
@@ -311,6 +310,7 @@ def _downsyncSpecific(args, orgIDs, resCount):
         return (0, 0)
     cli = args._cli
     from orm.users import Users
+
     for username in args.user:
         user = Users.query.filter(Users.username == username).first()
         if user:

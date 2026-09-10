@@ -1229,7 +1229,17 @@ class Permissions:
     GROMOXSTOREOWNER = 0x00002000
     # gromox treats FOLDEROWNER on IPM_SUBTREE as store owner. GROMOXSTOREOWNER
     # is an internal permission that shouldn't be used by external APIs.
-    STOREACCESS = FOLDEROWNER | FOLDERCONTACT | FOLDERVISIBLE
+    # However, since AAPI used GROMOXSTOREOWNER (0x2000) up to version 1.20,
+    # the GROMOXSTOREOWNER bits (0x2000) must also be checked to support older
+    # versions.
+    STOREACCESS_GET = FOLDEROWNER | GROMOXSTOREOWNER
+    # Setting FOLDEROWNER (0x100) on IPM_SUBTREE is sufficient to become a
+    # store owner. However, since libexmdb sets the additional permissions
+    # FOLDERCONTACT and FOLDERVISIBLE (0x600),
+    # FOLDEROWNER | FOLDERCONTACT | FOLDERVISIBLE (0x700) must be used instead
+    # of just FOLDEROWNER (0x100) to remove store owners and avoid the remnant
+    # FOLDERCONTACT | FOLDERVISIBLE (0x600).
+    STOREACCESS_SET = FOLDEROWNER | FOLDERCONTACT | FOLDERVISIBLE
 
 
     @classmethod

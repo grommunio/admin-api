@@ -163,7 +163,7 @@ class Worker:
             if candidate.type == "contact":
                 syncStatus += self._ldapSyncImportContact(candidate, ldap, orgID, [domain.ID for domain in domains])
                 continue
-            if "@" not in candidate.email or (domainnames is not None and candidate.email.split("@", 1)[1] not in domainnames):
+            if "@" not in candidate.email or (domainnames is not None and candidate.email.lower().split("@", 1)[1] not in domainnames):
                 syncStatus.append(dict(username=candidate.email, code=400, message="Invalid domain."))
                 continue
             syncStatus.append(self._ldapSyncImportUser(candidate, ldap, lang))

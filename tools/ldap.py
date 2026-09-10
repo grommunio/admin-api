@@ -37,6 +37,7 @@ def downsyncUser(user, externID=None):
 
     if userdata is None:
         return "Failed to get user data", 500
+
     try:
         try:
             user.fromdict(userdata)
@@ -118,7 +119,6 @@ def downsyncObject(user, externID=None):
     mlist = MLists.query.filter(MLists.listname == user.username).first()
     if not mlist:
         return "No such group", 400
-    mlist.listname = mlist.listname.lower()
     message, code = downsyncGroup(mlist, externID)
     return message, code
 
@@ -201,6 +201,7 @@ def importUser(candidate, ldap, force=False, lang="", **kwargs):
     from orm.misc import DBConf
     from orm.domains import Domains
     from orm.users import Users
+
 
     existing = Users.query.filter(Users.username == candidate.email).first()
     if existing:

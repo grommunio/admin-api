@@ -510,9 +510,11 @@ def setUserStoreAccess(domainID, userID):
     eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
-        client.setFolderMember(eid, data["username"], Permissions.STOREACCESS)
+        client.setFolderMember(eid, data["username"], Permissions.STOREACCESS_SET)
+        # Remove GROMOXSTOREOWNER legacy bit used by AAPI up to version 1.20.
+        client.setFolderMember(eid, data["username"], Permissions.GROMOXSTOREOWNER, client.REMOVE)
     if DB.minVersion(91):
-        DB.session.execute(insert(UserSecondaryStores).values(primary=primary, secondary=user.ID).prefix_with("IGNORE"))
+        DB.session.execute(insert(UserSecondaryStores).values(primary=primary.ID, secondary=user.ID).prefix_with("IGNORE"))
         DB.session.commit()
     return jsonify(message="Success."), 201 if request.method == "POST" else 200
 
@@ -536,7 +538,10 @@ def setUserStoreAccessMulti(domainID, userID):
     eid = makeEidEx(0, PrivateFIDs.IPMSUBTREE)
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
-        res = client.setFolderMembers(eid, [user.username for user in primary], Permissions.STOREACCESS)
+        res = client.setFolderMembers(eid, [user.username for user in primary], Permissions.STOREACCESS_SET)
+        # Remove GROMOXSTOREOWNER legacy bit used by AAPI up to version 1.20.
+        for prim in primary:
+            client.setFolderMember(eid, prim.username, Permissions.GROMOXSTOREOWNER, client.REMOVE)
     if DB.minVersion(91):
         UserSecondaryStores.query.filter(UserSecondaryStores.secondaryID == user.ID).delete(synchronize_session=False)
         if len(primary):
@@ -560,7 +565,7 @@ def getUserStoreAccess(domainID, userID):
         client = exmdb.user(user)
         memberList = exmdb.FolderMemberList(client.getFolderMemberList(makeEidEx(0, PrivateFIDs.IPMSUBTREE)))
         members = [{"ID": member.id, "displayName": member.name, "username": member.mail} for member in memberList.members
-                   if member.rights & Permissions.STOREACCESS]
+                   if member.rights & Permissions.STOREACCESS_GET]
     return jsonify(data=members)
 
 
@@ -576,7 +581,9 @@ def deleteUserStoreAccess(domainID, userID, username):
         return jsonify(message="User has no store"), 400
     with Service("exmdb") as exmdb:
         client = exmdb.user(user)
-        client.setFolderMember(makeEidEx(0, PrivateFIDs.IPMSUBTREE), username, Permissions.STOREACCESS, client.REMOVE)
+        client.setFolderMember(makeEidEx(0, PrivateFIDs.IPMSUBTREE), username, Permissions.STOREACCESS_SET, client.REMOVE)
+        # Remove GROMOXSTOREOWNER legacy bit used by AAPI up to version 1.20.
+        client.setFolderMember(makeEidEx(0, PrivateFIDs.IPMSUBTREE), username, Permissions.GROMOXSTOREOWNER, client.REMOVE)
     if DB.minVersion(91):
         primary = Users.query.with_entities(Users.ID).filter(Users.username == username).first()
         if primary is not None:

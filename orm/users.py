@@ -306,9 +306,9 @@ class Users(DataModel, DB.Base, NotifyTable):
                 raise ValueError("'{}' is not a valid e-mail address".format(self.username))
             
         # Deduplicate aliases
-        aliases = patches.get("aliases", self.aliases)
-        if len(set(aliases)) < len(aliases):
-            raise ValueError("Duplicated alias addresses not allowed")
+        aliases = set([alias.lower() for alias in patches.get("aliases", self.aliases)])
+
+        patches["aliases"] = aliases
 
         DataModel.fromdict(self, patches, *args, **kwargs)
         displaytype = self.properties.get("displaytypeex", 0)
@@ -933,14 +933,14 @@ class Aliases(DataModel, DB.Base, NotifyTable):
     def __init__(self, aliasname, main, *args, **kwargs):
         if main.ID == 0:
             raise ValueError("Cannot alias superuser")
-        self.aliasname = aliasname
+        self.aliasname = aliasname.lower()
         self.main = main
         self.fromdict(aliasname)
 
     def fromdict(self, aliasname, *args, **kwargs):
         if not formats.email.match(aliasname):
             raise ValueError("'{}' is not a valid email address".format(aliasname))
-        self.aliasname = aliasname
+        self.aliasname = aliasname.lower()
         return self
 
     @classmethod

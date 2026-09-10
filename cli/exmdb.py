@@ -140,9 +140,11 @@ def cliExmdbFolderPermissionsModify(args):
     cli.require("DB")
     from .common import Table
     from functools import reduce
-    from orm.users import Users
+    from orm.users import Users, DB, UserSecondaryStores
     from services import Service
     from tools.rop import makeEidEx
+    from tools.constants import Permissions
+
     if not args.revoke:
         if Users.query.filter(Users.username == args.username).count() == 0 and args.username not in ('default', 'anonymous'):
             cli.print(cli.col("Target user '{}' does not exist".format(args.username), "yellow" if args.force else "red"))
@@ -150,6 +152,7 @@ def cliExmdbFolderPermissionsModify(args):
                 return 100
     fid = makeEidEx(1, args.ID)
     perms = reduce(lambda x, y: x | y, args.permission, 0) if args.permission else _permsAll
+    storeownerPerms = perms & Permissions.STOREACCESS_GET
     with Service("exmdb") as exmdb:
         ret, client = _getClient(args, exmdb)
         if ret:
@@ -167,6 +170,18 @@ def cliExmdbFolderPermissionsModify(args):
         cli.print("New permissions for user '{}':".format(cli.col(args.username, attrs=["bold"])))
         Table([(_FolderNode(folder).print(cli), _cliExmdbFolderPermissionPrint(cli, perm))
                for folder, perm in zip(folders, perms)]).print(cli)
+    if DB.minVersion(91) and storeownerPerms:
+        from sqlalchemy import insert
+
+        primary = Users.query.with_entities(Users.ID).filter(Users.username == args.username).first()
+        secondary = Users.query.with_entities(Users.ID).filter(Users.username == args.target).first()
+        if primary is not None and secondary is not None:
+            if args.revoke:
+                UserSecondaryStores.query.filter(UserSecondaryStores.primaryID == primary.ID,
+                                                        UserSecondaryStores.secondaryID == secondary.ID).delete()
+            else:
+                DB.session.execute(insert(UserSecondaryStores).values(primaryID=primary.ID, secondary=secondary.ID).prefix_with("IGNORE"))
+            DB.session.commit()
 
 
 # Where is the documentation for this.
