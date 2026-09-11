@@ -6,31 +6,25 @@
 #
 # Allows each grommunio domain to specify its own smart-host / SMTP
 # gateway (with optional authentication) for outbound mail delivery.
-# gromox reads from the same MySQL table at SMTP delivery time and
-# routes outgoing messages per sender's local domain.
+# The MTA (Postfix) evaluates the table with sender-dependent lookups;
+# see doc/mta-smart-hosts.rst in gromox for the wiring.
 #
 # Mirror of the `domain_smtp_gateway` table that gromox's dbop module
 # creates (schema version 134, see lib/dbop_mysql.cpp in gromox).
 # Any change to the schema here must be reflected there and vice versa.
 
 from . import DB
-from tools.DataModel import DataModel, Id, Text, Int, BoolP, Bool
-from tools.DataModel import InvalidAttributeError, MissingRequiredAttributeError
-from services import Service
+from tools.DataModel import DataModel, Id, Text, Int, Bool
 
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.dialects.mysql import INTEGER, TINYINT, VARCHAR
-from sqlalchemy.exc import IntegrityError
 
 
 class DomainSmtpGateway(DataModel, DB.Base):
     """Per-domain outbound SMTP gateway / smart-host configuration.
 
-    gromox reads from the `domain_smtp_gateway` MySQL table at SMTP
-    delivery time via the `resolve_smtp_url_for_sender` service
-    (registered by libgxs_mysql_adaptor). The admin-api only has to
-    keep the table in sync and signal gromox to reload after a
-    change. There is no on-disk file in the new design.
+    The MTA evaluates this table live (sender-dependent lookups), so
+    changes take effect immediately -- no service restarts needed.
     """
 
     __tablename__ = "domain_smtp_gateway"
@@ -84,27 +78,4 @@ class DomainSmtpGateway(DataModel, DB.Base):
                 raise ValueError
         except (TypeError, ValueError):
             return "Port must be an integer between 1 and 65535"
-        return None
-
-    @classmethod
-    def reload_gromox(cls):
-        """Signal gromox to reload its in-memory cache.
-
-        gromox's `libgxs_mysql_adaptor` re-queries the
-        `domain_smtp_gateway` table on every SMTP message (the
-        table is small, one row per hosted domain), so a hard
-        reload is not strictly required. We still poke
-        gromox-delivery so administrators see immediate effect
-        after editing the config.
-
-        Returns an error string or None on success.
-        """
-        try:
-            with Service("systemd", errors=Service.SUPPRESS_ALL) as sysd:
-                sysd.tryReloadRestartService(
-                    "gromox-delivery.service",
-                    "gromox-delivery-queue.service",
-                )
-        except Exception as err:
-            return "Could not reload gromox services: {}".format(err)
         return None

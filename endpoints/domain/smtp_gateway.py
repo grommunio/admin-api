@@ -13,8 +13,8 @@
 # PUT    – Create or update the gateway config for the given domain.
 #          Body: JSON with fields host, port, encryption, username,
 #                password, enabled, description.
-# DELETE – Remove the gateway config for the given domain (falls back
-#          to the global /etc/gromox/gromox.cfg outgoing_smtp_url).
+# DELETE – Remove the gateway config for the given domain (the MTA
+#          falls back to its default routing: relayhost/direct delivery).
 #
 # All routes require the DomainAdmin permission on the domain (write) or
 # DomainAdminRO (read-only).
@@ -102,14 +102,6 @@ def setDomainSmtpGateway(domainID):
         DB.session.rollback()
         return jsonify(message="Database error: {}".format(err)), 500
 
-    err = DomainSmtpGateway.reload_gromox()
-    if err is not None:
-        # The DB write succeeded, but the daemon reload failed.
-        # The configuration is durable in the database, so we
-        # still return success but with a warning.
-        return jsonify(message="Saved, but: {}".format(err),
-                       data=_mask_password(gw),
-                       warning=True)
     return jsonify(message="Success!", data=_mask_password(gw))
 
 
@@ -129,7 +121,4 @@ def deleteDomainSmtpGateway(domainID):
     from orm import DB
     DB.session.delete(gw)
     DB.session.commit()
-    err = DomainSmtpGateway.reload_gromox()
-    if err is not None:
-        return jsonify(message="Deleted, but: {}".format(err), warning=True)
     return jsonify(message="Success!")

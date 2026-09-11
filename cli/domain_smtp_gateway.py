@@ -13,8 +13,8 @@
 #       Print the current configuration (password is masked).
 #
 #   delete <DOMAIN>
-#       Remove the per-domain gateway config and fall back to the
-#       global /etc/gromox/gromox.cfg outgoing_smtp_url.
+#       Remove the per-domain gateway config; the MTA then falls back
+#       to its default routing (relayhost/direct delivery).
 #
 #   list
 #       List all configured gateways.
@@ -108,11 +108,7 @@ def _do_set(cli, args):
         DB.session.add(gw)
     DB.session.commit()
 
-    err = DomainSmtpGateway.reload_gromox()
-    if err is not None:
-        cli.print(cli.col("Saved, but: {}".format(err), "yellow"))
-        return 0
-    cli.print(cli.col("SMTP gateway for {} saved and gromox reloaded.".format(domain.domainname), "green"))
+    cli.print(cli.col("SMTP gateway for {} saved.".format(domain.domainname), "green"))
     return 0
 
 
@@ -154,10 +150,6 @@ def _do_delete(cli, args):
         return 0
     DB.session.delete(gw)
     DB.session.commit()
-    err = DomainSmtpGateway.reload_gromox()
-    if err is not None:
-        cli.print(cli.col("Deleted, but: {}".format(err), "yellow"))
-        return 0
     cli.print(cli.col("SMTP gateway for {} removed.".format(domain.domainname), "green"))
     return 0
 
