@@ -116,7 +116,7 @@ def checkMX(domain: str):
         return res
     
     try:
-        mxRecords = resolver.query(domain, "MX")
+        mxRecords = sorted(resolver.query(domain, "MX"), key=lambda r: (r.preference, str(r.exchange)))
         mxDomain = mxRecords[0].exchange # Mail-domain of domain
         res["mxDomain"] = str(mxDomain)
         try:
