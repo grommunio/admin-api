@@ -24,6 +24,7 @@ set(COMMONDIR ${CMAKE_INSTALL_FULL_DATADIR}/grommunio-admin-common)
 set(CONFDIR ${CMAKE_INSTALL_FULL_SYSCONFDIR}/grommunio-admin-api)
 set(INSTALLDIR ${CMAKE_INSTALL_FULL_DATADIR}/grommunio-admin-api)
 set(NGINXDIR ${COMMONDIR}/nginx.d)
+set(ADAPTORDIR ${CMAKE_INSTALL_FULL_DATADIR}/grommunio-auth/adaptor-config-scripts)
 pkg_get_variable(TMPFILESDIR systemd tmpfilesdir)
 pkg_get_variable(UNITDIR systemd systemdsystemunitdir)
 
@@ -36,6 +37,7 @@ add_custom_command(
 add_custom_target(openapi ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/openapi.json)
 
 file(CREATE_LINK ${INSTALLDIR}/main.py ${CMAKE_CURRENT_BINARY_DIR}/grommunio-admin SYMBOLIC)
+file(CREATE_LINK setup-gk-app-g-admin ${CMAKE_CURRENT_BINARY_DIR}/delete-gk-app-g-admin SYMBOLIC)
 configure_file(data/config.yaml.in data/config.yaml)
 
 install(DIRECTORY doc/man/ DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
@@ -57,3 +59,5 @@ install(FILES data/grommunio-admin-api.service data/grommunio-admin-api.socket D
 install(FILES data/portrait.jpg DESTINATION ${COMMONDIR})
 install(FILES data/tmpfiles-grommunio-admin-api.conf DESTINATION ${TMPFILESDIR} RENAME grommunio-admin-api.conf)
 install(FILES data/grommunio-sudo DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/sudoers.d)
+install(PROGRAMS data/setup-gk-app-g-admin DESTINATION ${ADAPTORDIR})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/delete-gk-app-g-admin DESTINATION ${ADAPTORDIR})

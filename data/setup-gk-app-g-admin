@@ -1,0 +1,66 @@
+#!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 grommunio GmbH
+#
+# grommunio-auth adaptor: enable single sign-on for the admin API from the
+# Keycloak client installation JSON handed over by grommunio-auth.
+
+set -e
+
+PROGNAME="`basename $0`"
+ADAPTOR_CONFIG_DIR='/var/cache/grommunio-auth/adaptor-config'
+GADMIN_ADAPTOR_CONFIG='keycloak-grommunio-admin.json'
+GADMIN_ADAPTOR_PUBKEY='keycloak-grommunio-admin.bearer_pubkey'
+GADMIN_ADAPTOR_CFG="${ADAPTOR_CONFIG_DIR}/${GADMIN_ADAPTOR_CONFIG}"
+GADMIN_OIDC_CONF='/etc/grommunio-admin-api/conf.d/oidc.yaml'
+
+
+check_if_root () {
+	local MY_EUID=$(id -u)
+	if [ -n "$MY_EUID" -a $MY_EUID -ne 0 ]; then
+		echo "${PROGNAME}: this program must be run as root" 1>&2
+		exit 2
+	fi
+}
+
+restart_api () {
+	echo -n "Restarting grommunio-admin-api..."
+	systemctl try-restart grommunio-admin-api.service
+	echo " done."
+}
+
+case "$PROGNAME" in
+	setup-gk-app-g-admin)
+		check_if_root
+
+		KC_ID=$(jq -er .resource "$GADMIN_ADAPTOR_CFG")
+		KC_SECRET=$(jq -er .credentials.secret "$GADMIN_ADAPTOR_CFG")
+		KC_URL=$(jq -er '."auth-server-url"' "$GADMIN_ADAPTOR_CFG")
+		KC_REALM=$(jq -er .realm "$GADMIN_ADAPTOR_CFG")
+		# single quoted YAML scalar, escape embedded quotes
+		KC_SECRET="${KC_SECRET//\'/\'\'}"
+		OLD_UMASK=`umask`
+		umask '0027'
+		cat > "$GADMIN_OIDC_CONF" <<-YAML
+			# Written by ${PROGNAME}, changes are overwritten by grommunio-auth
+			oidc:
+			  enabled: true
+			  issuer: ${KC_URL%/}/realms/${KC_REALM}
+			  clientId: ${KC_ID}
+			  clientSecret: '${KC_SECRET}'
+		YAML
+		chown grommunio:grommunio "$GADMIN_OIDC_CONF"
+		chmod 0640 "$GADMIN_OIDC_CONF"
+		umask "$OLD_UMASK"
+		restart_api
+		# Clean up stragglers
+		shred "${ADAPTOR_CONFIG_DIR}/${GADMIN_ADAPTOR_CONFIG}" || true
+		rm -vf "${ADAPTOR_CONFIG_DIR}/${GADMIN_ADAPTOR_CONFIG}" || true
+		rm -vf "${ADAPTOR_CONFIG_DIR}/${GADMIN_ADAPTOR_PUBKEY}" || true
+		;;
+	delete-gk-app-g-admin)
+		check_if_root
+		rm -vf "$GADMIN_OIDC_CONF" || true
+		restart_api
+		;;
+esac
