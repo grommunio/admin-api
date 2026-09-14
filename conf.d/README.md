@@ -55,7 +55,8 @@ Possible parameters:
 
 ### OIDC ###
 Single sign-on with an OpenID Connect provider (authorization code flow) can be enabled in the `oidc` object.
-grommunio-auth writes this section to `conf.d/oidc.yaml` when the `grommunio-admin` client is set up.  
+grommunio-auth writes this section to `conf.d/oidc.yaml` when the `grommunio-admin` client is set up.
+The login is only offered over HTTPS, and only on the host of the `redirectUri` if one is configured.  
 Possible parameters:
 - `enabled` (`boolean`, default: `false`): Offer single sign-on login
 - `issuer` (`string`): Issuer URL of the provider, e.g. `https://mail.example.com/auth/realms/grommunio`. The discovery document is fetched from `<issuer>/.well-known/openid-configuration`
@@ -63,7 +64,7 @@ Possible parameters:
 - `clientSecret` (`string`): Client secret
 - `scope` (`string`, default: `openid email profile`): Scopes to request
 - `usernameClaim` (`string`, default: `preferred_username`): ID token claim containing the grommunio username or alias
-- `redirectUri` (`string`, default: `https://<host>/api/v1/login/oidc/callback`): Callback URL registered with the provider
+- `redirectUri` (`string`, default: `https://<host>/api/v1/login/oidc/callback`): Callback URL registered with the provider. Set by grommunio-auth to the admin portal URL
 
 ### Security ###
 Parameters regarding security and authentication can be configured by the `security` object.  

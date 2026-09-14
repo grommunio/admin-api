@@ -23,6 +23,24 @@ check_if_root () {
 	fi
 }
 
+# Origin of the admin portal the Keycloak client was registered with: the
+# debconf question on Debian, else the admin port on the Keycloak host
+admin_url () {
+	local URL=''
+	if [ -n "$DEBIAN_HAS_FRONTEND" ] && [ -r /usr/share/debconf/confmodule ]; then
+		. /usr/share/debconf/confmodule
+		db_get shared/grommunio-admin/endpoint-url && URL=$(echo "$RET" | xargs echo -n)
+	elif command -v debconf-show > /dev/null 2>&1; then
+		URL=$(debconf-show grommunio-pkg-bits 2> /dev/null | sed -n 's/^\*\{0,1\} *shared\/grommunio-admin\/endpoint-url: *//p')
+	fi
+	case "$URL" in
+		'') URL="https://${FQDN}:8443" ;;
+		*/*) ;;
+		*) URL="https://${URL}:8443" ;;  # bare host name, like setup-grommunio-auth
+	esac
+	echo "${URL%/}"
+}
+
 restart_api () {
 	echo -n "Restarting grommunio-admin-api..."
 	systemctl try-restart grommunio-admin-api.service
@@ -37,6 +55,8 @@ case "$PROGNAME" in
 		KC_SECRET=$(jq -er .credentials.secret "$GADMIN_ADAPTOR_CFG")
 		KC_URL=$(jq -er '."auth-server-url"' "$GADMIN_ADAPTOR_CFG")
 		KC_REALM=$(jq -er .realm "$GADMIN_ADAPTOR_CFG")
+		FQDN=$(echo "$KC_URL" | sed -e 's#^[a-z]*://##' -e 's#[/:].*##')
+		ADMIN_URL=$(admin_url)
 		# single quoted YAML scalar, escape embedded quotes
 		KC_SECRET="${KC_SECRET//\'/\'\'}"
 		OLD_UMASK=`umask`
@@ -48,6 +68,7 @@ case "$PROGNAME" in
 			  issuer: ${KC_URL%/}/realms/${KC_REALM}
 			  clientId: ${KC_ID}
 			  clientSecret: '${KC_SECRET}'
+			  redirectUri: ${ADMIN_URL}/api/v1/login/oidc/callback
 		YAML
 		chown grommunio:grommunio "$GADMIN_OIDC_CONF"
 		chmod 0640 "$GADMIN_OIDC_CONF"

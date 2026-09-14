@@ -25,7 +25,7 @@ def chkState():
     return jsonify(message="API is operational",
                    database=DB is not None and DB.testConnection() is None,
                    tasq=TasQServer.running(),
-                   oidc=oidc.enabled())
+                   oidc=oidc.available())
 
 
 @API.route(api.BaseRoute+"/about", methods=["GET"])

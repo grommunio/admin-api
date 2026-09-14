@@ -13,7 +13,7 @@ import secrets
 import time
 
 from flask import jsonify, redirect, request
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import api
 
@@ -32,6 +32,18 @@ def enabled():
     """Check whether single sign-on is enabled and configured."""
     conf = Config.get("oidc", {})
     return bool(conf.get("enabled") and conf.get("issuer") and conf.get("clientId") and conf.get("clientSecret"))
+
+
+def available():
+    """Check whether single sign-on can be offered to the current request.
+
+    The state and session cookies are marked Secure and only reach the callback if the login starts on the origin
+    of the registered redirect URI.
+    """
+    if not enabled() or not request.is_secure:
+        return False
+    redirectUri = Config["oidc"].get("redirectUri")
+    return not redirectUri or urlparse(redirectUri).netloc.lower() == request.host.lower()
 
 
 def _discover():
@@ -81,8 +93,8 @@ def _fail(code, reason):
 @secure(requireAuth=False)
 def oidcLogin():
     """Start the login by redirecting to the provider's authorization endpoint."""
-    if not enabled():
-        return jsonify(message="Single sign-on is not enabled"), 404
+    if not available():
+        return jsonify(message="Single sign-on is not available"), 404
     conf = Config["oidc"]
     try:
         doc = _discover()["doc"]

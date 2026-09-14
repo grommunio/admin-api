@@ -33,7 +33,7 @@ paths:
                     description: Whether the TasQ server is running
                   oidc:
                     type: boolean
-                    description: Whether single sign-on via OpenID Connect is available
+                    description: Whether single sign-on via OpenID Connect is available on the requested origin
 
   /about:
     get:
@@ -112,7 +112,7 @@ paths:
         '302':
           description: Redirect to the provider
         '404':
-          description: Single sign-on is not enabled
+          description: Single sign-on is not enabled or not available on the requested origin
           content:
             application/json:
               schema:
