@@ -4,6 +4,8 @@ admin-api 1.21 (development)
 * CLI: new ``passwd --password-stdin`` option that reads the password from
   stdin. Unlike ``--password``, it does not expose the password in the
   process list, where any local user can read it from ``/proc``.
+* Single sign-on login via OpenID Connect (``GET /login/oidc``). The ``oidc``
+  configuration section is written by grommunio-auth.
 
 
 admin-api 1.20 (2026-06-16)

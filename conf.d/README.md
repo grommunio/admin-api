@@ -53,6 +53,18 @@ Possible parameters:
 - `ldapPath` (`string`): Path to the LDAP configuration file
 - `authmgrPath` (`string`): Path to the authmgr configuration file
 
+### OIDC ###
+Single sign-on with an OpenID Connect provider (authorization code flow) can be enabled in the `oidc` object.
+grommunio-auth writes this section to `conf.d/oidc.yaml` when the `grommunio-admin` client is set up.  
+Possible parameters:
+- `enabled` (`boolean`, default: `false`): Offer single sign-on login
+- `issuer` (`string`): Issuer URL of the provider, e.g. `https://mail.example.com/auth/realms/grommunio`. The discovery document is fetched from `<issuer>/.well-known/openid-configuration`
+- `clientId` (`string`): Client ID registered with the provider
+- `clientSecret` (`string`): Client secret
+- `scope` (`string`, default: `openid email profile`): Scopes to request
+- `usernameClaim` (`string`, default: `preferred_username`): ID token claim containing the grommunio username or alias
+- `redirectUri` (`string`, default: `https://<host>/api/v1/login/oidc/callback`): Callback URL registered with the provider
+
 ### Security ###
 Parameters regarding security and authentication can be configured by the `security` object.  
 Possible parameters:
