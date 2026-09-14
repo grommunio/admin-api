@@ -10,6 +10,8 @@ import idna
 from api.core import API, secure
 from api.security import loginUser, refreshToken, getSecurityContext, mkCSRF
 
+from . import oidc
+
 from orm import DB
 from services import Service
 from tools import formats
@@ -22,7 +24,8 @@ def chkState():
     """Check status of the API."""
     return jsonify(message="API is operational",
                    database=DB is not None and DB.testConnection() is None,
-                   tasq=TasQServer.running())
+                   tasq=TasQServer.running(),
+                   oidc=oidc.enabled())
 
 
 @API.route(api.BaseRoute+"/about", methods=["GET"])

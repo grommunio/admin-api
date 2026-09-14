@@ -31,6 +31,9 @@ paths:
                   tasq:
                     type: boolean
                     description: Whether the TasQ server is running
+                  oidc:
+                    type: boolean
+                    description: Whether single sign-on via OpenID Connect is available
 
   /about:
     get:
@@ -92,6 +95,80 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '401':
           description: Login failed
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
+  /login/oidc:
+    get:
+      summary: Start single sign-on login
+      description: Redirects the browser to the authorization endpoint of the configured OpenID Connect provider,
+        which sends it back to `/login/oidc/callback` after authentication.
+      operationId: getOidcLogin
+      tags:
+        - Misc
+      responses:
+        '302':
+          description: Redirect to the provider
+        '404':
+          description: Single sign-on is not enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /login/oidc/callback:
+    get:
+      summary: Complete single sign-on login
+      description: Exchanges the authorization code and verifies the ID token. On success the API token is set as
+        `grommunioAuthJwt` cookie and the browser is redirected to `/login?sso=1`, otherwise to
+        `/login?sso_error=<reason>`.
+      operationId: getOidcCallback
+      tags:
+        - Misc
+      parameters:
+        - name: code
+          description: Authorization code issued by the provider
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          description: State value of the login request
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          description: Error code reported by the provider
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error_description
+          description: Error description reported by the provider
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the login page
+        '404':
+          description: Single sign-on is not enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
         '500':
           $ref: '#/components/responses/ServerError'
         '503':

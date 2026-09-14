@@ -107,6 +107,11 @@ def _defaultConfig():
         "chat": {
             "connection": {},
             },
+        "oidc": {
+            "enabled": False,
+            "scope": "openid email profile",
+            "usernameClaim": "preferred_username",
+            },
         "tasq": {
             "stackTraceDepth": 7,
             },
