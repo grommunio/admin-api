@@ -67,6 +67,17 @@ class GrochatService:
             userdata["id"] = user.chatID
         return userdata
 
+    def ssoService(self):
+        """Name of the OAuth service grommunio-chat logs Keycloak users in with.
+
+        The grommunio build has a native keycloak provider, an upstream Mattermost only offers its GitLab one.
+        """
+        try:
+            config = self.driver.system.get_client_configuration(params={"format": "old"})
+        except Exception:
+            return "keycloak"
+        return "keycloak" if config.get("EnableSignUpWithKeycloak") == "true" else "gitlab"
+
     def createUser(self, user):
         """Create grochat user from grommunio user."""
         if user.chatID:
@@ -80,7 +91,7 @@ class GrochatService:
 
         userdata = self.userToData(user)
         if keycloak:
-            userdata["auth_service"] = "keycloak"
+            userdata["auth_service"] = self.ssoService()
             userdata["auth_data"] = str(user.ID)
         else:
             userdata["auth_service"] = "pam"
