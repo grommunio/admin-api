@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020 grommunio GmbH
 
-__all__ = ["domains", "misc", "users", "ext", "domain_smtp_gateway"]
+__all__ = ["domains", "misc", "users", "ext"]
 
 import sqlalchemy
 from sqlalchemy import create_engine, event, select, text

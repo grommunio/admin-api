@@ -498,4 +498,4 @@ class Cli:
         parser.set_defaults(_handle=lambda *args: parser.print_usage())
 
 
-from . import chat, config, dbconf, dbtools, domain, exmdb, fetchmail, fs, ldap, mconf, misc, mlist, org, remote, server, services, user, domain_smtp_gateway
+from . import chat, config, dbconf, dbtools, domain, exmdb, fetchmail, fs, ldap, mconf, misc, mlist, org, remote, server, services, user
