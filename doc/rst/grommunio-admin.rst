@@ -41,6 +41,11 @@ config
 
 Configuration introspection. See *grommunio-admin-config(1)*.
 
+chat
+----
+
+Chat management. See *grommunio-admin-chat(1)*.
+
 connect
 -------
 
