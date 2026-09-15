@@ -288,11 +288,19 @@ class Users(DataModel, DB.Base, NotifyTable):
         self.addressStatus = (self.addressStatus or 0) | status
 
     def fromdict(self, patches, syncStore=True, *args, **kwargs):
+        from orm.domains import Domains
+        from tools.license import getLicense
+        domain = patches.pop("domain", None) or Domains.query.filter(Domains.ID == self.domainID).first()
+
         isContact = patches.get("status", self.status) == Users.CONTACT
+        if self.status != Users.NORMAL and patches.get("status", None) == Users.NORMAL:
+            if Users.count() >= getLicense().users:
+                raise ValueError("License user limit exceeded")
+            if Users.count(Users.domainID == domain.ID) >= domain.maxUser:
+                raise ValueError("Maximum number of domain users reached")
+
         if "username" in patches and patches["username"] != self.username:
-            from orm.domains import Domains
             username = patches.pop("username")
-            domain = patches.pop("domain", None) or Domains.query.filter(Domains.ID == self.domainID).first()
             if "@" in username:
                 uname, dname = username.split("@", 1)
                 if dname != domain.domainname and dname != domain.displayname:

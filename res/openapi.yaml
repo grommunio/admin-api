@@ -5406,6 +5406,8 @@ components:
           readOnly: True
         maxUser:
           type: integer
+          minimum: 1
+          multipleOf: 1
         title:
           type: string
           maxLength: 128
