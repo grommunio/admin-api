@@ -60,7 +60,11 @@ def _passwdParserSetup(subp: ArgumentParser):
     subp.add_argument("--length", "-l", action="store", type=int, default=defaultPassLength,
                       help="Length of auto-generated password (default {})".format(defaultPassLength))
     subp.add_argument("--password", "-p", action="store", type=str,
-                      help="New password. If neither -p nor -a are specified, the new password is set interactively.")
+                      help="New password. Unsafe on multi-user hosts: the value is visible to any local user in the "
+                           "process list for as long as the command runs. Prefer --password-stdin.")
+    subp.add_argument("--password-stdin", action="store_true",
+                      help="Read the new password from the first line of stdin. "
+                           "If none of -p, -a or --password-stdin are given, the password is set interactively.")
 
 
 @Cli.command("passwd", _passwdParserSetup, help="User password management")
@@ -94,6 +98,18 @@ def setUserPassword(args):
     if args.auto:
         password = mkPasswd(args.length)
         cli.print("New password is "+cli.col(password, attrs=["bold"]))
+    elif args.password_stdin:
+        if cli.stdin is None:
+            cli.print(cli.col("Password input required but stdin is not available.", "yellow"))
+            return 5
+        password = cli.stdin.readline()
+        if password.endswith("\n"):
+            password = password[:-1]
+        if password.endswith("\r"):
+            password = password[:-1]
+        if password == "":
+            cli.print(cli.col("No password received on stdin, aborting.", "yellow"))
+            return 5
     elif args.password is not None:
         password = args.password
     else:
