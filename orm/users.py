@@ -313,8 +313,10 @@ class Users(DataModel, DB.Base, NotifyTable):
             if not isContact and not formats.email.match(self.username):
                 raise ValueError("'{}' is not a valid e-mail address".format(self.username))
             
-        # Deduplicate aliases
-        aliases = set([alias.lower() for alias in patches.get("aliases", self.aliases)])
+        # Deduplicate aliases. The default (self.aliases) is the ORM relationship,
+        # i.e. a list of Aliases objects, not strings - normalize both shapes here.
+        aliases = set([(alias if isinstance(alias, str) else alias.aliasname).lower()
+                       for alias in patches.get("aliases", self.aliases)])
 
         patches["aliases"] = aliases
 
