@@ -13,6 +13,7 @@ common:
   sn: surname
   l: locality
   title: title
+  personalTitle: displaynameprefix
   initials: initials
   preferredLanguage: language
   employeeNumber: organizationalidnumber
@@ -52,6 +53,11 @@ ActiveDirectory:
 OpenLDAP:
   _altname: uid
   departmentNumber: departmentname
+  title: displaynameprefix
+  street: streetaddress
+  o: companyname
+  roomNumber: officelocation
+  # Jobtitle doesn't exist, no mapping required
 Univention:
   _altname: uid
   departmentNumber: departmentname
