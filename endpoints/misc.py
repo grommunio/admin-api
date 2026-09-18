@@ -12,7 +12,7 @@ from api.security import loginUser, refreshToken, getSecurityContext, mkCSRF
 
 from orm import DB
 from services import Service
-from tools import formats
+from tools import formats, mconf
 from tools.tasq import TasQServer
 
 
@@ -152,3 +152,19 @@ def getDisabledPluginsOfUser():
     disabledPlugins = [p[0] for p in disabledPlugins]
 
     return jsonify({ "data": disabledPlugins })
+
+
+@API.route(api.BaseRoute+"/oofSubjectPrefix", methods=["GET"])
+@secure(requireAuth=False)
+def getOofSubjectPrefix():
+    """Report the gromox.cfg autoreply_subject_prefix directive.
+
+    A client offering an out-of-office form needs it to tell the user what an
+    empty subject will send. An unset directive is reported as
+    configured=false rather than guessed at, because the default that then
+    applies is compiled into the running gromox build.
+    """
+    prefix, error = mconf.readGromoxDirective("autoreply_subject_prefix")
+    if error is not None:
+        return jsonify(message=error), 500
+    return jsonify({"data": {"prefix": prefix, "configured": prefix is not None}})
