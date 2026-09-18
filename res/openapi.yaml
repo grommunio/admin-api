@@ -2184,7 +2184,21 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                type: object
+                properties:
+                  pubKey:
+                    type: string
+                    description: Public key (DNS TXT record content)
+                  redisStored:
+                    type: boolean
+                    description: >
+                      Whether the private key was pushed into the DKIM Redis
+                      keystore (dkimRedis configuration). If false, the key
+                      must be installed into grommunio-antispam manually.
+                  redisError:
+                    type: string
+                    nullable: true
+                    description: Error that prevented the keystore push
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
