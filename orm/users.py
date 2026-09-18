@@ -315,6 +315,16 @@ class Users(DataModel, DB.Base, NotifyTable):
             
         # Deduplicate aliases. The default (self.aliases) is the ORM relationship,
         # i.e. a list of Aliases objects, not strings - normalize both shapes here.
+        # Also re-lower any already-stored aliasname that predates aliases being
+        # lowercased consistently (e.g. LDAP-synced rows written before this was
+        # enforced): otherwise the managed RefProp diff below compares a freshly
+        # lowercased desired set against a not-yet-lowered "current" set, treats
+        # every unchanged alias as new, and re-INSERTs it - which MySQL then
+        # rejects as a duplicate of the very row it corresponds to, because the
+        # aliases table's PRIMARY KEY collation is case-insensitive.
+        for existing in self.aliases:
+            if existing.aliasname != existing.aliasname.lower():
+                existing.aliasname = existing.aliasname.lower()
         aliases = set([(alias if isinstance(alias, str) else alias.aliasname).lower()
                        for alias in patches.get("aliases", self.aliases)])
 
