@@ -314,9 +314,10 @@ class Users(DataModel, DB.Base, NotifyTable):
                 raise ValueError("'{}' is not a valid e-mail address".format(self.username))
             
         # Deduplicate aliases
-        aliases = set([alias.lower() for alias in patches.get("aliases", self.aliases)])
+        if "aliases" in patches:
+            aliases = set([alias.lower() for alias in patches.get("aliases")])
 
-        patches["aliases"] = aliases
+            patches["aliases"] = aliases
 
         DataModel.fromdict(self, patches, *args, **kwargs)
         displaytype = self.properties.get("displaytypeex", 0)
