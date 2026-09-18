@@ -5,4 +5,5 @@
 import re
 
 email = re.compile(r"^(?P<user>[a-zA-Z0-9_.+-]+)@(?P<domain>[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)$")
+email_domain = re.compile(r"^@(?P<domain>[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)$")
 domain = re.compile(r"^[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
