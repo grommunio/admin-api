@@ -26,6 +26,7 @@ from api.security import checkPermissions
 from flask import request, jsonify
 from tools.permissions import DomainAdminROPermission, DomainAdminPermission
 
+from orm import DB
 from orm.domains import Domains
 from orm.domain_smtp_gateway import DomainSmtpGateway
 
@@ -93,7 +94,6 @@ def setDomainSmtpGateway(domainID):
             data.pop("password", None)
         gw.fromdict(data)
 
-    from orm import DB
     try:
         if gw not in DB.session:
             DB.session.add(gw)
@@ -118,7 +118,6 @@ def deleteDomainSmtpGateway(domainID):
     ).first()
     if gw is None:
         return jsonify(message="No SMTP gateway configured for this domain"), 404
-    from orm import DB
     DB.session.delete(gw)
     DB.session.commit()
     return jsonify(message="Success!")
