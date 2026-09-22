@@ -45,10 +45,11 @@ class GrommunioLicense(GenericObject):
 
 
 def _defaultLicense():
+    options = Config.get("options", {})
     return GrommunioLicense(cert=None,
                             file=None,
-                            users=5,
-                            product="Community",
+                            users=int(options.get("defaultLicenseUsers", 100000)),
+                            product=options.get("defaultLicenseProduct", "HubMail"),
                             notBefore=datetime(1000, 1, 1, tzinfo=TZ),
                             notAfter=datetime(MAXYEAR, 12, 31, 23, 59, 59, tzinfo=TZ))
 
