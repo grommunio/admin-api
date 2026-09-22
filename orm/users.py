@@ -197,6 +197,7 @@ class Users(DataModel, DB.Base, NotifyTable):
                       Int("orgID"),
                       RefProp("homeserver", "homeserverID", flags="patch", filter="set", qopt=selectinload)),
                      ({"attr": "password", "flags": "init, hidden"},
+                      Int("homeserverID", flags="hidden"),
                       Text("maildir", match=False, flags="hidden"),))
 
     USER_PRIVILEGE_POP3_IMAP = 1 << 0
