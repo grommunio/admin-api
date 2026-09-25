@@ -46,7 +46,7 @@ def getTasQTasks():
     userPerms = request.auth["user"].permissions()
     nofilter = SystemAdminROPermission() in userPerms
     verbosity = int(request.args.get("level", 1))
-    data = [task.todict(verbosity) for task in tasks if nofilter or task.permission in userPerms]
+    data = [task.todict(verbosity) for task in tasks if nofilter or (task.permission is not None and task.permission in userPerms)]
     return jsonify(data=data)
 
 

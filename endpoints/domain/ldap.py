@@ -69,7 +69,7 @@ def ldapDownsync(orgID=None, domainID=None):
     params["import"] = request.args.get("import") == "true"
     permission = DomainAdminROPermission(domainID) if domainID else \
         OrgAdminPermission(orgID) if orgID else SystemAdminROPermission()
-    task = TasQServer.create("ldapSync", params, permission)
+    task = TasQServer.create("ldapSync", params, permission=permission)
     timeout = float(request.args.get("timeout", 1))
     if timeout > 0:
         TasQServer.wait(task.ID, timeout)
