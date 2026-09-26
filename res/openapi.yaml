@@ -3160,6 +3160,91 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
+  /domains/{domainID}/smtpGateway:
+    get:
+      summary: Get per-domain SMTP gateway configuration
+      operationId: getDomainSmtpGateway
+      tags:
+        - Domain Admin/SMTP Gateway
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: SMTP gateway configuration for the domain
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/domainSmtpGateway'
+                    nullable: true
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      summary: Set or update per-domain SMTP gateway configuration
+      operationId: setDomainSmtpGateway
+      tags:
+        - Domain Admin/SMTP Gateway
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/domainSmtpGatewayWrite'
+      responses:
+        '200':
+          description: SMTP gateway saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/domainSmtpGateway'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      summary: Remove per-domain SMTP gateway configuration
+      operationId: deleteDomainSmtpGateway
+      tags:
+        - Domain Admin/SMTP Gateway
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+      responses:
+        '200':
+          description: SMTP gateway removed
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
   /domains/{domainID}/users/{userID}/roles:
     patch:
       summary: Update user roles
@@ -6516,6 +6601,77 @@ components:
           type: string
           nullable: true
           description: External out-of-office reply body
+    domainSmtpGateway:
+      type: object
+      description: Per-domain SMTP gateway (smart-host) configuration.
+      properties:
+        domainID:
+          type: integer
+          description: Foreign key to the domains table (primary key).
+        host:
+          type: string
+          description: Hostname or IP of the SMTP server.
+        port:
+          type: integer
+          description: TCP port of the SMTP server.
+        encryption:
+          type: string
+          enum: [none, starttls, starttls_unverified, tls]
+          description: Encryption mode used to talk to the SMTP server.
+        username:
+          type: string
+          nullable: true
+          description: Optional SMTP authentication username.
+        password:
+          type: string
+          nullable: true
+          description: |
+            Optional SMTP authentication password. The GET response
+            masks the value (returns empty string when set).
+        passwordSet:
+          type: boolean
+          description: True if a password is set in the database (read-only).
+        enabled:
+          type: boolean
+          description: Whether this gateway is active.
+        description:
+          type: string
+          nullable: true
+          description: Free-form description / note.
+    domainSmtpGatewayWrite:
+      type: object
+      description: |
+        Per-domain SMTP gateway write payload. Any field left out
+        is left unchanged. `host` is required when creating a new
+        entry.
+      required: [host]
+      properties:
+        host:
+          type: string
+          description: Hostname or IP of the SMTP server.
+        port:
+          type: integer
+          description: TCP port of the SMTP server.
+        encryption:
+          type: string
+          enum: [none, starttls, starttls_unverified, tls]
+          description: Encryption mode used to talk to the SMTP server.
+        username:
+          type: string
+          nullable: true
+          description: Optional SMTP authentication username.
+        password:
+          type: string
+          nullable: true
+          description: Optional SMTP authentication password.
+        enabled:
+          type: boolean
+          description: Whether this gateway is active.
+        description:
+          type: string
+          nullable: true
+          description: Free-form description.
+
   responses:
     ServerError:
       description: An error occurred while processing the request
@@ -6610,6 +6766,8 @@ tags:
     description: Endpoints for mailing list management
   - name: Domain Admin/Users
     description: Endpoints for user management
+  - name: Domain Admin/SMTP Gateway
+    description: Per-domain outbound SMTP gateway (smart-host) configuration
   - name: Defaults
     description: Endpoints providing default data
   - name: LDAP
