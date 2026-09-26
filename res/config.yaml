@@ -503,6 +503,36 @@ properties:
             default: []
             items:
               type: string
+  dkimRedis:
+    type: object
+    description: |
+      Dedicated Redis keystore for DKIM private keys. When enabled,
+      generated DKIM keys are pushed to this Redis instance (hashes
+      DKIM_PRIV_KEYS / DKIM_SELECTORS), from where grommunio-antispam
+      picks them up for signing (configure its dkim_signing module with
+      use_redis=true). The key files under the admin-api data directory
+      remain the source of truth and are re-pushed on API startup.
+    properties:
+      enabled:
+        type: boolean
+        description: Push generated DKIM keys into the Redis keystore
+        default: false
+      host:
+        type: string
+        description: Redis server address
+        default: 127.0.0.1
+      port:
+        type: integer
+        description: Redis server port
+        default: 6380
+      username:
+        type: string
+        description: Redis ACL user name (empty = default user)
+        default: ""
+      password:
+        type: string
+        description: Redis server password (if required)
+        default: ""
   tasq:
     type: object
     description: TasQ server configuration
