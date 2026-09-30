@@ -33,6 +33,14 @@ else:
     error = config.validate()
     if error:
         raise TypeError("Invalid configuration found - aborting ({})".format(error))
+    if config.Config.get("dkimRedis", {}).get("enabled", False):
+        import logging
+        try:
+            from tools.dnsHealth import syncDkimKeysToRedis
+            stored = syncDkimKeysToRedis()
+            logging.getLogger("dnsHealth").info("Re-pushed {} DKIM key(s) into the DKIM keystore".format(stored))
+        except Exception as err:
+            logging.getLogger("dnsHealth").error("Failed to sync DKIM keys to the keystore: {}".format(err))
     if not config.Config["tasq"].get("disabled", False):
         import uwsgi
         import uwsgidecorators
