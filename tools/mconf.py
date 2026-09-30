@@ -9,6 +9,8 @@ from .config import Config
 from .misc import setDirectoryOwner, setDirectoryPermission
 from services import Service
 
+from os.path import exists
+
 import logging
 logger = logging.getLogger("mconf")
 
@@ -230,6 +232,32 @@ def dumpAuthmgr(conf=None, file=None, reloadServices=False):
             _fDumpConf(file, wconf)
     except Exception as err:
         return " - ".join((str(arg) for arg in err.args))
+
+
+###############################################################################
+
+
+def readGromoxDirective(name):
+    """Read a single directive from the main gromox configuration file.
+
+    Not cached, so an admin editing gromox.cfg need not restart the API.
+    gromox trims trailing whitespace off every configuration line and
+    _loadConf does too, so this returns the value gromox itself sees.
+
+    Returns
+    -------
+    tuple
+        (value, error). value is None when the directive is not set.
+    """
+    if "gromoxPath" not in Config["mconf"]:
+        return None, "mconf.gromoxPath not set"
+    path = Config["mconf"]["gromoxPath"]
+    if not exists(path):
+        return None, "'{}' does not exist".format(path)
+    try:
+        return _loadConf(path).get(name), None
+    except Exception as err:
+        return None, " - ".join((str(arg) for arg in err.args))
 
 
 ###############################################################################
