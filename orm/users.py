@@ -253,6 +253,8 @@ class Users(DataModel, DB.Base, NotifyTable):
         from tools.license import getLicense
         if "username" not in data:
             return "Missing username"
+        # Chat login method stored with the user defaults, not a user attribute (read by GrochatService.createUser)
+        data.pop("keycloak", None)
         if maildir and data.get("status", Users.NORMAL) == Users.NORMAL and Users.count() >= getLicense().users:
             return "License user limit exceeded"
         if "domainID" in data:
