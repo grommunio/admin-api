@@ -14,7 +14,7 @@ from sqlalchemy import Column, ForeignKey, event, func, inspect, select
 from sqlalchemy.dialects.mysql import ENUM, INTEGER, TEXT, TIMESTAMP, TINYINT, VARBINARY, VARCHAR
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import column_property, relationship, selectinload, validates
+from sqlalchemy.orm import column_property, object_session, relationship, selectinload, validates
 
 try:
     # python 3.13
@@ -69,6 +69,15 @@ class Users(DataModel, DB.Base, NotifyTable):
         def __repr__(self):
             return repr(self.__dict)
 
+        def _add(self, prop):
+            # Adding the property cascades its user into the session, so only add it when the user already is
+            # there. A user still under construction would otherwise be autoflushed incomplete (no domain_id).
+            # Users.create adds the user later, which then cascades to its properties.
+            session = object_session(self.__user)
+            if session is not None:
+                session.add(prop)
+            return prop
+
         def __setitem__(self, k, v):
             tag = PropTags.deriveTag(k)
             name = self._name(k)
@@ -77,14 +86,14 @@ class Users(DataModel, DB.Base, NotifyTable):
                     return  # Value is to long to be stored, omit to avoid corrupting store properties
                 if tag in self.__struct:
                     if v is None:
-                        DB.session.delete(self.__struct[tag])
-                    else:
-                        self.__struct[tag].val = v
+                        self.__user._properties.remove(self.__struct.pop(tag))
+                        self.__dict.pop(name, None)
+                        return
+                    self.__struct[tag].val = v
                 elif v is None:
                     return
                 else:
-                    self.__struct[tag] = UserProperties(tag, v, self.__user)
-                    DB.session.add(self.__struct[tag])
+                    self.__struct[tag] = self._add(UserProperties(tag, v, self.__user))
                 self.__dict[name] = self.__struct[tag].val
                 return
             if v is None:
@@ -100,10 +109,9 @@ class Users(DataModel, DB.Base, NotifyTable):
                     values.pop(i)
                     next.append(current.pop(i))
                 else:
-                    next.append(UserProperties(tag, value, self.__user))
-                    DB.session.add(next[-1])
+                    next.append(self._add(UserProperties(tag, value, self.__user)))
             for rm in current:
-                DB.session.delete(rm)
+                self.__user._properties.remove(rm)
             order = 1
             for up in next:
                 up.orderID = order
