@@ -544,3 +544,8 @@ properties:
         description: Number of workers
         default: 1
         minimum: 1
+      pollInterval:
+        type: number
+        description: Seconds between checks for tasks queued by other processes or due for retry
+        default: 60
+        minimum: 1
