@@ -102,6 +102,14 @@ properties:
         type: string
         description: Port or service name of the exmdb service provider
         default: '5000'
+      midbHost:
+        type: string
+        description: Name or IP address of the local midb service, asked to release mailboxes before they are deleted
+        default: '::1'
+      midbPort:
+        type: integer
+        description: Port of the local midb service
+        default: 5555
       domainStorageLevels:
         type: integer
         description: Number of sub-directory levels to use for domain storage

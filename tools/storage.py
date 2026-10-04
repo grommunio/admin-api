@@ -6,7 +6,7 @@ import os
 import shutil
 import subprocess
 
-from .misc import setDirectoryOwner, setDirectoryPermission
+from .misc import GenericObject, setDirectoryOwner, setDirectoryPermission
 from .structures import XID, GUID
 from .config import Config
 from .constants import PropTags, ConfigIDs, PublicFIDs, PrivateFIDs, Misc
@@ -403,3 +403,278 @@ class UserSetup(SetupContext):
         DB.execute("INSERT INTO configurations VALUES (1, ?)", (self.user.username,))
         DB.commit()
         DB.close()
+
+
+
+def midbUnload(maildir):
+    """Ask the local midb to drop its cache of a mailbox.
+
+    midb keeps a notification subscription on every mailbox it has loaded
+    (i.e. after IMAP or POP3 access) for up to midb_cache_interval, which keeps
+    exmdb from unloading the store.
+
+    Parameters
+    ----------
+    maildir : str
+        Mailbox directory
+
+    Returns
+    -------
+    bool
+        Whether midb unloaded the mailbox.
+    """
+    import socket
+    host = Config["options"].get("midbHost", "::1")
+    port = int(Config["options"].get("midbPort", 5555))
+    try:
+        with socket.create_connection((host, port), timeout=2) as sock, sock.makefile("rwb") as conn:
+            if not conn.readline().startswith(b"OK"):
+                return False
+            conn.write(b"X-UNLD "+maildir.encode()+b"\r\n")
+            conn.flush()
+            return conn.readline().startswith(b"TRUE")
+    except OSError as err:
+        logger.debug(f"midb unload of '{maildir}' failed: {err}")
+        return False
+
+
+def unloadStore(maildir, hostname=None, attempts=3, delay=1):
+    """Unload a mailbox store from exmdb.
+
+    exmdb refuses to unload a store while clients still hold it (open tables,
+    notification subscriptions), reporting a "Dispatch error". The unload is
+    therefore retried a few times, asking midb to release the store first.
+
+    If the local exmdb cannot be reached, it cannot hold the store either and
+    the store is considered unloaded. An unreachable remote exmdb might still
+    hold it.
+
+    Parameters
+    ----------
+    maildir : str
+        Directory of the store, must belong to an existing user
+    hostname : str, optional
+        exmdb host. The default is None, using the configured exmdbHost.
+    attempts : int, optional
+        Number of unload attempts. The default is 3.
+    delay : float, optional
+        Seconds to wait between attempts. The default is 1.
+
+    Returns
+    -------
+    bool
+        False if the store is (possibly) still in use, True otherwise.
+    """
+    from services import Service
+    for attempt in range(attempts):
+        if attempt:
+            time.sleep(delay)
+        midbUnload(maildir)
+        with Service("exmdb", errors=Service.SUPPRESS_INOP) as exmdb:
+            try:
+                exmdb.ExmdbQueries(hostname or exmdb.host, exmdb.port, maildir, True).unloadStore(maildir)
+                return True
+            except exmdb.ConnectionError as err:
+                logger.warning(f"Could not unload store '{maildir}': {err}")
+                return hostname is None
+            except exmdb.ExmdbError as err:
+                logger.info(f"Failed to unload store '{maildir}' ({attempt+1}/{attempts}): {err}")
+                continue
+        logger.warning(f"Could not unload store '{maildir}': exmdb service not available")
+        return hostname is None
+    return False
+
+
+class StoreInUseError(Exception):
+    """The mailbox store of a user cannot be unloaded and the deletion cannot be deferred."""
+
+
+def _removeSkeleton(path):
+    """Remove `path` if it only contains empty directories.
+
+    exmdb recreates <maildir>/exmdb when trying to open a store whose directory
+    has been moved away.
+    """
+    try:
+        for root, dirs, files in os.walk(path, topdown=False):
+            if files:
+                return False
+            os.rmdir(root)
+    except OSError:
+        return not os.path.exists(path)
+    return True
+
+
+def _restoreTrash(maildir, trash):
+    """Move a mailbox directory back from the trash location."""
+    if os.path.exists(maildir) and not _removeSkeleton(maildir):
+        raise OSError(f"Cannot restore '{trash}': '{maildir}' exists")
+    os.rename(trash, maildir)
+
+
+def _recoverTrash(maildir, trash):
+    """Handle a trash directory left over from an interrupted deletion.
+
+    If the mailbox directory is missing, the deletion of this user was interrupted
+    and the directory is moved back. Otherwise the trash belongs to an earlier
+    user with the same path and is moved aside.
+    """
+    if not os.path.exists(maildir) or _removeSkeleton(maildir):
+        os.rename(trash, maildir)
+        return
+    stale = f"{trash}.{int(time.time())}"
+    counter = 0
+    while os.path.exists(stale):
+        counter += 1
+        stale = f"{trash}.{int(time.time())}~{counter}"
+    logger.warning(f"Moving stale '{trash}' to '{stale}'")
+    os.rename(trash, stale)
+
+
+def tryRemoveUser(userID, deleteFiles=False, deleteChatUser=True, attempts=3, status=None, check=None):
+    """Delete a user if its mailbox store can be unloaded.
+
+    The store must be unloaded while the user still exists: exmdb only accepts
+    connections for directories found in the `users` table, and gromox clients
+    cannot release their hold on a store (notification subscriptions) once the
+    user is gone, pinning it until gromox-http is restarted.
+
+    Before removing the files, the directory is moved away and the store
+    unloaded again, so that a client reopening the store in the meantime does
+    not leave exmdb serving a deleted mailbox at a path that may be reused.
+    Once moved, the store cannot be reopened as its database file is missing.
+
+    The user row is locked for the duration, serializing concurrent deletions.
+
+    Parameters
+    ----------
+    userID : int
+        ID of the user to delete
+    deleteFiles : bool, optional
+        Whether to remove the mailbox directory. The default is False.
+    deleteChatUser : bool, optional
+        Whether to permanently delete the chat user. The default is True.
+    attempts : int, optional
+        Number of unload attempts. The default is 3.
+    status : int, optional
+        Only delete the user if it has this status. The default is None.
+    check : callable, optional
+        Called after locking the user, the user is only deleted if it returns True. The default is None.
+
+    Returns
+    -------
+    bool
+        True if the user was deleted (or does not exist anymore), False if the store is still in use
+        or the user does not have the requested status.
+    """
+    from orm import DB
+    from orm.users import Users
+    DB.session.rollback()  # Fresh snapshot, a locking read of a row changed since the last read fails otherwise
+    user = Users.query.filter(Users.ID == userID).with_for_update().populate_existing().first()
+    if user is None:
+        DB.session.rollback()
+        return True
+    if status is not None and user.status != status or check is not None and not check():
+        DB.session.rollback()
+        return False
+    maildir = user.maildir.rstrip("/") if user.status != Users.CONTACT else ""
+    hostname = user.homeserver.hostname if user.homeserver is not None else None
+    trash = f"{maildir}@deleting"  # Cannot collide with paths from createPath, which splits names at '@'
+    moved = False
+    try:
+        if maildir:
+            if os.path.isdir(trash):
+                _recoverTrash(maildir, trash)
+            if not unloadStore(maildir, hostname, attempts):
+                DB.session.rollback()
+                return False
+            if deleteFiles and os.path.isdir(maildir):
+                try:
+                    os.rename(maildir, trash)
+                    moved = True
+                except OSError as err:
+                    logger.warning(f"Could not move '{maildir}' for removal: {err}")
+                if moved and not unloadStore(maildir, hostname, 1):
+                    _restoreTrash(maildir, trash)
+                    DB.session.rollback()
+                    return False
+        user.delete(deleteChatUser)
+        DB.session.commit()
+    except Exception:
+        DB.session.rollback()
+        if moved:
+            _restoreTrash(maildir, trash)
+        raise
+    if moved:
+        shutil.rmtree(trash, ignore_errors=True)
+        _removeSkeleton(maildir)
+    elif deleteFiles and maildir:
+        shutil.rmtree(maildir, ignore_errors=True)
+    return True
+
+
+def removeUser(userID, deleteFiles=False, deleteChatUser=True, attempts=3, permission=None):
+    """Delete a user, deferring the deletion while its mailbox store is in use.
+
+    If the store cannot be unloaded, the user is marked as deleted, which stops
+    logins and mail delivery, and a background task completes the deletion
+    once the clients have released the store.
+
+    Parameters
+    ----------
+    userID : int
+        ID of the user to delete
+    deleteFiles : bool, optional
+        Whether to remove the mailbox directory. The default is False.
+    deleteChatUser : bool, optional
+        Whether to permanently delete the chat user. The default is True.
+    attempts : int, optional
+        Number of unload attempts. The default is 3.
+    permission : PermissionBase, optional
+        Permission required to access the background task. The default is None.
+
+    Raises
+    ------
+    StoreInUseError
+        The store is in use and no background task can be created.
+
+    Returns
+    -------
+    tools.tasq.Task
+        Background task completing the deletion, or None if the user was deleted.
+    """
+    if tryRemoveUser(userID, deleteFiles, deleteChatUser, attempts):
+        return None
+    from orm import DB
+    from orm.users import Users
+    from services import Service
+    from .tasq import TasQServer, Worker
+    if Config["tasq"].get("disabled", False) or not TasQServer.online():
+        raise StoreInUseError("Mailbox store is in use, try again later")
+    DB.session.rollback()
+    user = Users.query.filter(Users.ID == userID).with_for_update().first()
+    if user is None:
+        DB.session.rollback()
+        return None
+    cancelled = TasQServer.cancelUserDeletion(userID, "Superseded by a new deletion")
+    try:
+        chatActive = any(params.get("chatActive") for params in cancelled) or user.chat
+    except Exception:
+        chatActive = False
+    chatUser = GenericObject(chatID=user.chatID)
+    user.status = Users.DELETED  # Committed together with the task
+    try:
+        task = TasQServer.create("delUser", dict(userID=userID, deleteFiles=deleteFiles, deleteChatUser=deleteChatUser,
+                                                 chatActive=chatActive,
+                                                 notBefore=time.time()+Worker._deleteUserRetryDelays[0]),
+                                 permission=permission, inline=False)
+    except Exception:
+        DB.session.rollback()
+        raise
+    if task.ID <= 0:
+        DB.session.rollback()
+        raise StoreInUseError("Mailbox store is in use, try again later")
+    if chatActive:
+        with Service("chat", errors=Service.SUPPRESS_ALL) as chat:
+            chat.activateUser(chatUser, False)
+    return task

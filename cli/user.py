@@ -334,42 +334,33 @@ def cliUserCreate(args):
 def cliUserDelete(args):
     cli = args._cli
     cli.require("DB")
-    from orm import DB
-    from tools.misc import GenericObject
+    from tools.storage import StoreInUseError, removeUser
     ret, user = _getUser(args)
     if ret:
         return ret
-    userdata = GenericObject(maildir=user.maildir, homeserver=user.homeserver)
     if not args.yes:
         if cli.confirm("Delete user '{}' ({})? [y/N]: ".format(user.username, user.ID)) != Cli.SUCCESS:
             return 3
     else:
         cli.print("Deleting user '{}' ({})".format(user.username, user.ID))
-    # Unload the store and remove the maildir *before* deleting the SQL record.
-    # exmdb resolves the responsible homeserver for a mailbox by looking up its
-    # directory in the `users` table; once the row is gone that lookup fails and
-    # the unload connect is rejected with "Prefix not served" (misconfig_prefix).
     deleteFiles = False
-    if userdata.maildir == "":
+    if user.maildir == "":
         cli.print("No user files to delete.")
+    elif args.keep_files or (not args.yes and cli.confirm("Delete user directory from disk? [y/N]: ") != Cli.SUCCESS):
+        cli.print(cli.col("Files remain in "+user.maildir, attrs=["bold"]))
     else:
-        cli.print("Unloading store...", end="", flush=True)
-        from services import Service
-        with Service("exmdb", errors=Service.SUPPRESS_INOP) as exmdb:
-            client = exmdb.user(user)
-            client.unloadStore()
-        cli.print("Done.")
-        if args.keep_files or (not args.yes and cli.confirm("Delete user directory from disk? [y/N]: ") != Cli.SUCCESS):
-            cli.print(cli.col("Files remain in "+userdata.maildir, attrs=["bold"]))
-        else:
-            deleteFiles = True
-    if deleteFiles:
-        cli.print("Deleting user files...", end="")
-        import shutil
-        shutil.rmtree(userdata.maildir, ignore_errors=True)
-        cli.print("Done.")
-    user.delete(not args.keep_chat)
-    DB.session.commit()
+        deleteFiles = True
+    if user.maildir:
+        cli.print("Unloading store...")
+    try:
+        task = removeUser(user.ID, deleteFiles, not args.keep_chat)
+    except StoreInUseError as err:
+        cli.print(cli.col("Cannot delete user: "+err.args[0], "red"))
+        return 1
+    if task is not None:
+        cli.print(cli.col("Mailbox store still in use, user marked as deleted. Deletion continues in background task #{}."
+                          .format(task.ID), "yellow"))
+        return
     cli.print("User deleted.")
 
 

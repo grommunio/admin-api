@@ -293,7 +293,69 @@ class Worker:
         task.message += " ({:.1f}s)".format(time.time()-start)
         task.params["result"] = syncStatus
 
-    cmap = {"control": control, "debug": debug, "delFolder": deleteFolder, "ldapSync": ldapSync}
+    _deleteUserRetryDelays = (60, 300, 900, 1800) + (3600,)*20
+
+    def deleteUser(self, task):
+        """Complete the deletion of a user whose mailbox store was in use."""
+        if "userID" not in task.params:
+            raise Exception("Missing arguments for delUser")
+        from orm import DB
+        from orm.misc import TasQ
+        from orm.users import Users
+        from .storage import tryRemoveUser
+
+        def active():
+            """Check (and lock) the task row, as the deletion may have been cancelled or superseded."""
+            nonlocal cancelled
+            if task.ID > 0:
+                dbtask = TasQ.query.filter(TasQ.ID == task.ID).with_for_update().first()
+                cancelled = dbtask is None or dbtask.state == Task.CANCELLED
+            return not cancelled
+
+        def attempt():
+            """Try to delete the user, return the final message or None to retry."""
+            DB.session.rollback()
+            user = Users.query.filter(Users.ID == userID).first()
+            if user is None:
+                return "User already deleted"
+            username = user.username
+            if user.status == Users.DELETED and \
+               tryRemoveUser(userID, task.params.get("deleteFiles", False), task.params.get("deleteChatUser", True), 1,
+                             Users.DELETED, active):
+                return "Deleted user '{}'".format(username)
+            if cancelled:
+                return "Cancelled"
+            DB.session.rollback()
+            user = Users.query.filter(Users.ID == userID).first()
+            if user is None:
+                return "User already deleted"
+            if user.status != Users.DELETED:
+                task.state = Task.CANCELLED
+                return "User '{}' was restored".format(username)
+
+        userID = task.params["userID"]
+        reason = "Mailbox store in use"
+        cancelled = False
+        try:
+            task.message = attempt()
+        except Exception as err:
+            self.log("WARNING", "Failed to delete user #{}: {}".format(userID, repr(err)))
+            reason = type(err).__name__
+            task.message = None
+        finally:
+            DB.session.remove()
+        if cancelled:
+            task.state = Task.CANCELLED
+        if task.message is not None:
+            return
+        retry = task.params.get("attempt", 0)
+        if retry >= len(self._deleteUserRetryDelays):
+            raise Exception(reason+", restart gromox-http and delete the user again")
+        task.params["attempt"] = retry+1
+        raise Task.Retry(self._deleteUserRetryDelays[retry], "{}, retry {}/{} scheduled"
+                         .format(reason, retry+1, len(self._deleteUserRetryDelays)))
+
+    cmap = {"control": control, "debug": debug, "delFolder": deleteFolder, "delUser": deleteUser, "ldapSync": ldapSync}
 
 
 class TasQServer:
@@ -311,6 +373,7 @@ class TasQServer:
     _active_lock = threading.Lock()
     _localID = 0
     _workers = []
+    _staleAfter = 3600
 
     @classmethod
     def _schedule(cls, task):
@@ -509,10 +572,16 @@ class TasQServer:
             logger.warning(msg + " - falling back to offline mode.")
             return None
         from orm.misc import TasQ
+        from datetime import timedelta
         from time import time
         now = time()
-        waiting = [w for w in TasQ.query.filter(TasQ.state == Task.QUEUED).with_for_update().all()
-                   if w.params.get("notBefore", 0) <= now]
+        # delUser tasks are idempotent, recover those left LOADED by a process that died
+        stale = (TasQ.state == Task.LOADED) & (TasQ.command == "delUser") & \
+                (TasQ.updated < datetime.now()-timedelta(seconds=cls._staleAfter))
+        with cls._active_lock:
+            active = set(cls._active)
+        waiting = [w for w in TasQ.query.filter((TasQ.state == Task.QUEUED) | stale).with_for_update().all()
+                   if w.params.get("notBefore", 0) <= now and w.ID not in active]
         for w in waiting:
             if w.command == "control":
                 w.state = Task.CANCELLED
@@ -639,6 +708,41 @@ class TasQServer:
                     tracker[1].notify_all()
             logger.debug("Task #{} {} ({})".format(task.ID, "requeued" if task.state == Task.QUEUED else "completed",
                                                    task.statename))
+
+    @staticmethod
+    def cancelUserDeletion(userID, message):
+        """Cancel pending or failed background deletions of a user.
+
+        Changes are committed with the current transaction. The user row should be
+        locked first, as done by the deletion task.
+
+        Parameters
+        ----------
+        userID : int
+            ID of the user
+        message : str
+            Message to set on cancelled tasks
+
+        Returns
+        -------
+        list
+            Parameters of the cancelled tasks
+        """
+        from datetime import datetime
+        from orm.misc import DB, TasQ
+        if not DB.minVersion(102):
+            return []
+        cancelled = []
+        match = '%"userID":{}'.format(int(userID))
+        for dbtask in TasQ.query.filter(TasQ.command == "delUser", TasQ.state.in_((Task.QUEUED, Task.LOADED, Task.ERROR)),
+                                        TasQ._params.like(match+",%") | TasQ._params.like(match+"}%"))\
+                                .with_for_update():
+            if dbtask.params.get("userID") == userID:
+                dbtask.state = Task.CANCELLED
+                dbtask.message = message
+                dbtask.updated = datetime.now()
+                cancelled.append(dbtask.params)
+        return cancelled
 
     @staticmethod
     def _rollback():

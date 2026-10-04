@@ -585,7 +585,15 @@ class Users(DataModel, DB.Base, NotifyTable):
         from tools.license import getLicense
         if self.status and not val and Users.count() >= getLicense().users:
             raise ValueError("License user limit exceeded")
+        restored = []
+        if self.status == self.DELETED and val != self.DELETED and self.ID is not None:
+            from tools.tasq import TasQServer
+            Users.query.filter(Users.ID == self.ID).with_for_update().first()  # Same lock order as deletion tasks
+            restored = TasQServer.cancelUserDeletion(self.ID, "User was restored")
         self.addressStatus = ((self.addressStatus or 0) & ~self.USER_MASK) | (val & self.USER_MASK)
+        if any(params.get("chatActive") for params in restored) and not self.addressStatus:
+            with Service("chat", errors=Service.SUPPRESS_ALL) as chat:
+                chat.activateUser(self, True)
 
     @status.expression
     def status(cls):

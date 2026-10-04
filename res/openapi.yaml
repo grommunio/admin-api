@@ -2546,10 +2546,24 @@ paths:
       responses:
         '200':
           description: User deleted
+        '202':
+          description: Mailbox store still in use, user marked as deleted and deletion continued in a background task
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  taskID:
+                    description: ID of the background task
+                    type: integer
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: Mailbox store in use and the deletion cannot be continued in the background
         '500':
           $ref: '#/components/responses/ServerError'
         '503':

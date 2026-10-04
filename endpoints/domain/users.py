@@ -9,7 +9,7 @@ from api.security import checkPermissions
 from base64 import b64decode
 from datetime import datetime
 from flask import request, jsonify
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from .. import defaultObjectHandler, userQuery, defaultListQuery
 
@@ -18,16 +18,15 @@ from services import Service
 from tools import formats
 from tools.config import Config
 from tools.constants import PropTags, PropTypes, ExchangeErrors, PrivateFIDs, Permissions
-from tools.misc import loadPSO, GenericObject
+from tools.misc import loadPSO
 from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission, ResetPasswdPermission
 from tools.rop import nxTime, makeEidEx
-from tools.storage import setDirectoryOwner, setDirectoryPermission
+from tools.storage import StoreInUseError, removeUser, setDirectoryOwner, setDirectoryPermission
 from tools.deviceutils import retrieve_lastconnecttime
 
 import configparser
 import json
 import os
-import shutil
 import time
 
 from orm import DB
@@ -106,22 +105,16 @@ def deleteUserEndpoint(domainID, userID):
 def deleteUser(user, deleteChatUser):
     if user.ID == 0:
         return jsonify(message="Cannot delete superuser"), 400
-    userdata = GenericObject(maildir=user.maildir, homeserver=user.homeserver)
-    # Unload the store (and optionally remove the maildir) *before* deleting the
-    # SQL record. exmdb resolves the responsible homeserver for a mailbox by
-    # looking up its directory in the `users` table; once the row is gone that
-    # lookup fails and the unload connect is rejected with "Prefix not served".
-    if userdata.maildir:
-        with Service("exmdb", errors=Service.SUPPRESS_INOP) as exmdb:
-            client = exmdb.user(userdata)
-            client.unloadStore()
-        if request.args.get("deleteFiles") == "true":
-            shutil.rmtree(userdata.maildir, ignore_errors=True)
-    user.delete(deleteChatUser)
     try:
-        DB.session.commit()
-    except Exception:
+        task = removeUser(user.ID, request.args.get("deleteFiles") == "true", deleteChatUser,
+                          permission=DomainAdminPermission(user.domainID))
+    except StoreInUseError as err:
+        return jsonify(message="Cannot delete user: "+err.args[0]), 409
+    except SQLAlchemyError:
         return jsonify(message="Cannot delete user: Database commit failed."), 500
+    if task is not None:
+        return jsonify(message="Mailbox still in use, user marked as deleted. Deletion continues in background task #"
+                       + str(task.ID), taskID=task.ID), 202
     return jsonify(message="isded")
 
 
