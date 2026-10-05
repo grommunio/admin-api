@@ -4014,6 +4014,31 @@ paths:
                           $ref: '#/components/schemas/ID'
                         username:
                           type: string
+                  pending:
+                    description: Users whose mailbox store is still in use, marked as deleted and deleted by a background task
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ID:
+                          $ref: '#/components/schemas/ID'
+                        username:
+                          type: string
+                        taskID:
+                          description: ID of the background task
+                          type: integer
+                  failed:
+                    description: Users that could not be deleted
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ID:
+                          $ref: '#/components/schemas/ID'
+                        username:
+                          type: string
+                        message:
+                          type: string
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '500':

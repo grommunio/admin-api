@@ -389,9 +389,7 @@ def cliLdapCheck(args):
     cli.require("DB")
     from services import Service, ServiceUnavailableError
     from time import time
-    from orm import DB
     from orm.users import Users
-    import shutil
     users = Users.query.filter(Users.externID != None, *_userOrgFilter(args))\
                        .with_entities(Users.ID, Users.username, Users.externID, Users.maildir, Users.orgID).all()
     if len(users) == 0:
@@ -420,35 +418,22 @@ def cliLdapCheck(args):
         cli.print("\t"+user.username)
     if args.remove:
         if args.yes or cli.confirm("Delete all orphaned users? [y/N]: ") == Cli.SUCCESS:
-            cli.print("Unloading exmdb stores...")
-            if len(orphaned):
-                homeserver = None
-                users = Users.query.filter(Users.ID.in_(orphan.ID for orphan in orphaned)).order_by(Users.homeserverID).all()
-                index = 0
-                while index < len(users):
-                    try:
-                        with Service("exmdb") as exmdb:
-                            if homeserver != users[index].homeserverID:  # Reuse the exmdb client instance for users on the same server
-                                user = users[index]
-                                if user.maildir != "" and user.status != Users.CONTACT:
-                                    client = exmdb.ExmdbQueries(exmdb.host if user.homeserverID == 0 else user.homeserver.hostname,
-                                                                exmdb.port, user.maildir, True)
-                                else:
-                                    client = None
-                                homeserver = user.homeserverID
-                            while index < len(users) and users[index].homeserverID == homeserver:
-                                if client is not None:
-                                    client.unloadStore(users[index].maildir)
-                                if args.remove_maildirs:
-                                    shutil.rmtree(user.maildir, ignore_errors=True)
-                                users[index].delete()
-                                index += 1
-                    except ServiceUnavailableError:
-                        cli.print(cli.col("Failed to unload store: exmdb service not available", "yellow"))
-                        index += 1
-            DB.session.commit()
-            cli.print("Deleted {} user{}".format(len(users), "" if len(users) == 1 else "s"))
-            return
+            from tools.storage import removeUser
+            users = Users.query.filter(Users.ID.in_(orphan.ID for orphan in orphaned))\
+                               .with_entities(Users.ID, Users.username).all()
+            deleted = 0
+            for ID, username in users:
+                try:
+                    task = removeUser(ID, args.remove_maildirs, attempts=1)
+                except Exception as err:
+                    cli.print(cli.col("Failed to delete user {}: {}".format(username, err), "red"))
+                    continue
+                deleted += 1
+                if task is not None:
+                    cli.print(cli.col("Mailbox store of {} still in use, user marked as deleted. "
+                                      "Deletion continues in background task #{}.".format(username, task.ID), "yellow"))
+            cli.print("Deleted {} user{}".format(deleted, "" if deleted == 1 else "s"))
+            return 0 if deleted == len(users) else 1
     return ERR_NO_USER
 
 

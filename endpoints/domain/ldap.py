@@ -2,21 +2,18 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2022 grommunio GmbH
 
-import shutil
-
 from flask import jsonify, request
 
 import api
 from api.core import API, secure
 from api.security import checkPermissions
 
-from services import Service, ServiceUnavailableError
+from services import Service
 from tools.ldap import downsyncObject, importObject
 from tools.permissions import SystemAdminPermission, SystemAdminROPermission, DomainAdminPermission, DomainAdminROPermission
 from tools.permissions import OrgAdminPermission
+from tools.storage import removeUser
 from tools.tasq import TasQServer
-
-from orm import DB
 
 
 def _getTarget():
@@ -173,32 +170,22 @@ def checkLdapUsers():
     if request.method == "GET":
         return jsonify(orphaned=orphanedData)
     deleteMaildirs = request.args.get("deleteFiles") == "true"
-    homeserver = None
-    users = Users.query.filter(Users.ID.in_(orphan.ID for orphan in orphaned)).order_by(Users.homeserverID).all()
-    index = 0
-    while index < len(users):
+    users = Users.query.filter(Users.ID.in_(orphan.ID for orphan in orphaned))\
+                       .with_entities(Users.ID, Users.username, Users.domainID).all()
+    pending, failed = [], []
+    for ID, username, domainID in users:
         try:
-            with Service("exmdb") as exmdb:
-                if homeserver != users[index].homeserverID:  # Reuse the exmdb client instance for users on the same server
-                    user = users[index]
-                    if user.maildir != "" and user.status != Users.CONTACT:
-                        client = exmdb.ExmdbQueries("localhost" if user.homeserverID == 0 else user.homeserver.hostname,
-                                                    exmdb.port, user.maildir, True)
-                    else:
-                        client = None
-                    homeserver = user.homeserverID
-                while index < len(users) and users[index].homeserverID == homeserver:
-                    if client is not None:
-                        client.unloadStore(users[index].maildir)
-                    if deleteMaildirs:
-                        shutil.rmtree(users[index].maildir, ignore_errors=True)
-                    users[index].delete()
-                    index += 1
+            task = removeUser(ID, deleteMaildirs, attempts=1, permission=DomainAdminPermission(domainID))
+            if task is not None:
+                pending.append(dict(ID=ID, username=username, taskID=task.ID))
         except Exception as err:
-            API.logger.warning(str(err) + " | Failed to unload store: exmdb service not available")
-            index += 1
-    DB.session.commit()
-    return jsonify(deleted=orphanedData)
+            API.logger.warning("Failed to delete user '{}': {}".format(username, repr(err)))
+            failed.append(dict(ID=ID, username=username, message=str(err)))
+    if failed:
+        failedIDs = {user["ID"] for user in failed}
+        orphanedData = [user for user in orphanedData if user["ID"] not in failedIDs]
+    extra = {key: value for key, value in (("pending", pending), ("failed", failed)) if value}
+    return jsonify(deleted=orphanedData, **extra)
 
 
 @API.route(api.BaseRoute+"/domains/ldap/dump", methods=["GET"])
