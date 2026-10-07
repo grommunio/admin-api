@@ -8,6 +8,7 @@ import ldap3
 import ldap3.core.exceptions as ldapexc
 import ldap3.utils.config as ldap3_conf
 import re
+import ssl
 import threading
 import yaml
 
@@ -18,6 +19,30 @@ logger = logging.getLogger("ldap")
 # Reduce block time when LDAP server is not reachable
 ldap3_conf.set_config_parameter("RESTARTABLE_SLEEPTIME", 1)
 ldap3_conf.set_config_parameter("RESTARTABLE_TRIES", 2)
+
+
+LDAP_CONF = "/etc/ldap/ldap.conf"
+
+
+def caCertFile():
+    """Return the CA file used to verify LDAP server certificates.
+
+    `options.ldapCACert` if set, otherwise TLS_CACERT from /etc/ldap/ldap.conf, the file
+    libldap (and thus gromox) verifies against, otherwise None (system trust store).
+    """
+    from tools.config import Config
+    configured = Config["options"].get("ldapCACert")
+    if configured:
+        return configured
+    try:
+        with open(LDAP_CONF, encoding="utf-8") as file:
+            for line in file:
+                parts = line.strip().split(None, 1)
+                if len(parts) == 2 and parts[0].upper() == "TLS_CACERT":
+                    return parts[1].strip()
+    except OSError:
+        pass
+    return None
 
 
 def handleLdapError(service, error):
@@ -290,17 +315,22 @@ class LdapService:
         starttls : bool, optional
             Initiate STARTTLS connection.
 
+        The server certificate and host name are always verified (see `caCertFile()`),
+        and a failed STARTTLS is an error, never a fallback to an unencrypted bind.
+
         Returns
         -------
         ldap3.Connection
             Connection object.
         """
-        servers = [ldap3.Server(s[:-1] if s.endswith("/") else s, get_info=ldap3.NONE) for s in server.split()]
+        tls = ldap3.Tls(validate=ssl.CERT_REQUIRED, ca_certs_file=caCertFile())
+        servers = [ldap3.Server(s[:-1] if s.endswith("/") else s, get_info=ldap3.NONE, tls=tls) for s in server.split()]
         pool = servers[0] if len(servers) == 1 else ldap3.ServerPool(servers, "FIRST", active=1)
         conn = ldap3.Connection(pool, user=user, password=password, client_strategy=ldap3.RESTARTABLE)
         conn.open()
         if starttls and not conn.start_tls():
-            logger.warning(f"Failed to initiate StartTLS connection with {server}")
+            conn.unbind()
+            raise ldapexc.LDAPStartTLSError(f"Failed to initiate StartTLS connection with {server}")
         if not conn.bind():
             raise ldapexc.LDAPBindError(
                 "LDAP bind failed ({}): {}".format(conn.result["description"], conn.result["message"]))
