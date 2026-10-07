@@ -88,6 +88,7 @@ def _defaultConfig():
             "serverPolicy": "round-robin",
             "updateLogPath": "/var/log/grommunio-update.log",
             "updateSkriptPath": "/usr/sbin/grommunio-update",
+            "ldapCACert": None,
             },
         "security": {
             "jwtPrivateKeyFile": "/var/lib/grommunio-admin-api/auth-private.pem",
