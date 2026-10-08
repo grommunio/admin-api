@@ -1,1 +1,1 @@
-from . import folders, ldap, misc, mlists, users
+from . import folders, ldap, misc, mlists, smtp_gateway, users
