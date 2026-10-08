@@ -54,10 +54,10 @@ def generateDomainDkimKeys(domainID):
     if domain is None:
         return jsonify(message="Domain not found"), 404
     data = request.get_json(silent=True)
-    dnsCheck, error = generateDkimKeys(domain.domainname, **data)
+    result, error = generateDkimKeys(domain.domainname, **data)
     if error is not None:
         return jsonify(message=error), 500
-    return jsonify(dnsCheck)
+    return jsonify(result)
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/disabledPlugins", methods=["GET"])

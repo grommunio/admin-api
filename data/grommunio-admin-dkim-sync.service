@@ -1,0 +1,11 @@
+[Unit]
+Description=grommunio admin DKIM keystore synchronization
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/usr/share/grommunio-admin-api/
+ExecStart=/usr/sbin/grommunio-admin dkim sync
+User=grommunio
+Group=grommunio
