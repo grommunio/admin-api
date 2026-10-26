@@ -163,3 +163,36 @@ def deleteDomain(domainID):
         msg = "marked as deleted."
     DB.session.commit()
     return jsonify(message="Domain "+msg)
+
+
+@API.route(api.BaseRoute+"/system/domains/<int:domainID>/storeProps", methods=["GET"])
+@secure(requireDB=True)
+def getDomainStoreProps(domainID):
+    checkPermissions(DomainAdminROPermission(domainID))
+    from orm.domains import Domains
+    domain = Domains.query.filter(Domains.ID == domainID).first()
+    if domain is None:
+        return jsonify(message="Domain not found"), 404
+
+    from tools.constants import PropTags, PropTypes
+    from datetime import datetime
+    from tools.rop import nxTime
+    try:
+        tags = [PropTags.deriveTag(tag.strip()) for tag in request.args.get("properties", "").split(",") if tag != ""]
+    except Exception as err:
+        return jsonify(message=", ".join(str(arg) for arg in err.args)), 400
+    with Service("exmdb") as exmdb:
+        client = exmdb.domain(domain)
+        if len(tags) == 0:
+            tags = client.getAllStoreProperties()
+        propvals = client.getStoreProperties(0, tags)
+    respData = {}
+    for propval in propvals:
+        propname = (PropTags.lookup(propval.tag) or "").lower()
+        if propname is None or propname == "":
+            continue
+        if propval.tag & 0xFFFF == PropTypes.FILETIME:
+            respData[propname] = datetime.fromtimestamp(nxTime(propval.val)).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            respData[propname] = propval.val
+    return jsonify(data=respData)

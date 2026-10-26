@@ -1124,6 +1124,36 @@ paths:
         '503':
           $ref: '#/components/responses/DatabaseError'
 
+  /system/domains/{domainID}/storeProps:
+    get:
+      summary: Get domain store properties
+      operationId: getDomainStoreProps
+      tags:
+        - Domain Admin/Domains
+      security:
+        - JWTCookie: []
+      parameters:
+        - $ref: '#/components/parameters/domainID'
+        - $ref: '#/components/parameters/propnames'
+      responses:
+        '200':
+          description: Property values returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/propvals'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/DatabaseError'
+
   /system/users:
     get:
       summary: Get list of all users
