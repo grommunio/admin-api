@@ -604,8 +604,17 @@ class OrgAdminPermission(ResetPasswdPermission):
 
     @property
     def orgID(self):
-        """Return domain parameter."""
+        """Return orgID parameter."""
         return self.__org
+
+    @property
+    def org(self):
+        """Return org object"""
+        from orm.domains import Orgs
+        org = Orgs.query.filter(Orgs.ID == self.__org).first()
+        if org is None:
+            return None
+        return org.todict(0)
 
     @property
     def params(self):

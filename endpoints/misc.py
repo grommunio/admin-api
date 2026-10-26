@@ -16,6 +16,7 @@ from orm import DB
 from services import Service
 from tools import formats
 from tools.tasq import TasQServer
+from tools.permissions import OrgAdminPermission
 
 
 @API.route(api.BaseRoute+"/status", methods=["GET"])
@@ -55,8 +56,11 @@ def login():
 @secure(authLevel="user")
 def getProfile():
     user = request.auth["user"]
+    perms = user.permissions()
+    permittedOrgs = [perm.org for perm in perms if isinstance(perm, OrgAdminPermission)]
+    permittedOrgs = [o for o in permittedOrgs if o is not None]
     capabilities = tuple(user.permissions().capabilities())
-    return jsonify(user=user.fulldesc(exclude={"fetchmail"}), capabilities=capabilities)
+    return jsonify(user=user.fulldesc(exclude={"fetchmail"}), capabilities=capabilities, permittedOrgs=permittedOrgs)
 
 
 def updatePasswordUnauth(data):
