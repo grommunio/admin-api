@@ -247,6 +247,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
             idn = idna.encode(value).decode("ascii")
         except Exception:
             idn = value
+            raise ValueError("'{}' is not a valid domain name".format(idn))
         if not formats.domain.match(idn):
             raise ValueError("'{}' is not a valid domain name".format(idn))
         self._domainname = idn
