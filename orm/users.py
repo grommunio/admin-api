@@ -1066,7 +1066,7 @@ class Fetchmail(DataModel, DB.Base):
             if self.sslFingerprint:
                 fetchoptions = " sslfingerprint '{}'".format(self.sslFingerprint)
             if self.sslCertCheck == 1:
-                fetchoptions += " sslCertCheck"
+                fetchoptions += " sslcertck"
             if self.sslCertPath:
                 fetchoptions += "sslcertpath "+self.sslCertPath
         fetchoptions += " nofetchall" if self.fetchall == 0 else " fetchall"
