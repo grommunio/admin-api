@@ -22,7 +22,6 @@ options:
       - unit: gromox-midb.service
       - unit: gromox-pop3.service
       - unit: gromox-delivery-queue.service
-      - unit: gromox-timer.service
       - unit: gromox-zcore.service
       - unit: nginx.service
       - unit: '@PHP_FPM_SERVICE@'
@@ -52,8 +51,6 @@ logs:
     source: 'gromox-midb.service'
   Gromox zcore:
     source: 'gromox-zcore.service'
-  Gromox timer:
-    source: 'gromox-timer.service'
   Gromox event:
     source: 'gromox-event.service'
   Postfix:

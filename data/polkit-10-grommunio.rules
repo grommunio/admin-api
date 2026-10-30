@@ -13,7 +13,6 @@ polkit.addRule(function(action, subject) {
 		"gromox-imap.service",
 		"gromox-midb.service",
 		"gromox-pop3.service",
-		"gromox-timer.service",
 		"gromox-zcore.service",
 		"nginx.service",
 		"php-fpm.service",
