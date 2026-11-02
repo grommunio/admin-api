@@ -19,7 +19,7 @@ systemd-python = "*"
 multidict = "*"
 cryptography = "*"
 dnspython = "*"
-legacycrypt = "*"
+passlib = "*"
 
 [dev-packages]
 
