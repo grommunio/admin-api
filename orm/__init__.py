@@ -4,6 +4,7 @@
 
 __all__ = ["domains", "misc", "users", "ext"]
 
+import urllib
 import sqlalchemy
 from sqlalchemy import create_engine, event, select, text
 from sqlalchemy.exc import OperationalError
@@ -158,8 +159,8 @@ def _loadDBConfig():
         logger.info("Database connection not specified. Using default '127.0.0.1:3306'")
     host = DBconf.get("host", "127.0.0.1")
     port = DBconf.get("port", 3306)
-    return "mysql+mysqldb://{user}:{password}@{host}:{port}/{db}?charset=utf8mb4".format(user=DBconf["user"],
-                                                                                         password=DBconf["pass"],
+    return "mysql+mysqldb://{user}:{password}@{host}:{port}/{db}?charset=utf8mb4".format(user=urllib.parse.quote_plus(DBconf["user"]),
+                                                                                         password=urllib.parse.quote_plus(DBconf["pass"]),
                                                                                          host=host,
                                                                                          port=port,
                                                                                          db=DBconf["database"])
