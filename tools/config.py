@@ -117,6 +117,9 @@ def _defaultConfig():
         "tasq": {
             "stackTraceDepth": 7,
             },
+        "audit": {
+            "enabled": False,
+            },
         }
 
 

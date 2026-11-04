@@ -539,6 +539,14 @@ properties:
             default: []
             items:
               type: string
+  audit:
+    type: object
+    description: Audit log of administrative operations
+    properties:
+      enabled:
+        type: boolean
+        description: Log all changes, logins and denied requests to syslog (authpriv)
+        default: false
   tasq:
     type: object
     description: TasQ server configuration

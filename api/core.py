@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020 grommunio GmbH
 
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, g, jsonify, request, make_response
 from functools import wraps
 
 from orm import DB
 from services import Service
+from tools import audit
 from tools.config import Config
 
 from . import apiSpec
@@ -204,6 +205,25 @@ def secure(requireDB=False, requireAuth=True, authLevel="basic", service=None, v
             return call()
         return wrapper
     return inner
+
+
+@API.before_request
+def auditBegin():
+    if request.method in audit.WRITE and audit.enabled():
+        try:
+            g.audit = audit.apiBegin(request)
+        except Exception as err:
+            API.logger.error("Audit: failed to inspect request: "+repr(err))
+
+
+@API.after_request
+def auditEnd(response):
+    if "audit" in g:
+        try:
+            audit.apiEnd(request, g.audit, response)
+        except Exception as err:
+            API.logger.error("Audit: failed to log request: "+repr(err))
+    return response
 
 
 @API.after_request
