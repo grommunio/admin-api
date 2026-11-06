@@ -326,9 +326,10 @@ class Users(DataModel, DB.Base, NotifyTable):
 
         # Cleanup incorrectly saved aliases in DB
         currentAliases = self.aliases
-        DataModel.fromdict(self, { "aliases": [] })
-        DB.session.flush()
-        DataModel.fromdict(self, { "aliases": set([a.aliasname.lower() for a in currentAliases])})
+        if len([a for a in currentAliases if any(char.isupper() for char in a.aliasname)]) > 0:
+            DataModel.fromdict(self, { "aliases": [] })
+            DB.session.flush()
+            DataModel.fromdict(self, { "aliases": set([a.aliasname.lower() for a in currentAliases])})
             
         # Deduplicate aliases
         if "aliases" in patches:
