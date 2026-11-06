@@ -539,6 +539,37 @@ properties:
             default: []
             items:
               type: string
+  dkimRedis:
+    type: object
+    description: |
+      Local Redis keystore for DKIM private keys. When enabled, keys are
+      replicated from the database (table dkim_keys, the source of truth)
+      into this Redis instance (hashes DKIM_PRIV_KEYS / DKIM_SELECTORS),
+      from where grommunio-antispam picks them up for signing (configure
+      its dkim_signing module with use_redis=true). Replication runs on
+      API startup, via `grommunio-admin dkim sync` and is retried by
+      grommunio-admin-dkim-sync.timer every minute until it succeeds.
+    properties:
+      enabled:
+        type: boolean
+        description: Replicate DKIM keys from the database into the Redis keystore
+        default: false
+      host:
+        type: string
+        description: Redis server address
+        default: 127.0.0.1
+      port:
+        type: integer
+        description: Redis server port
+        default: 6380
+      username:
+        type: string
+        description: Redis ACL user name (empty = default user)
+        default: ""
+      password:
+        type: string
+        description: Redis server password (if required)
+        default: ""
   tasq:
     type: object
     description: TasQ server configuration
