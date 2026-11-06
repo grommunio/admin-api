@@ -200,6 +200,8 @@ _routes = {
     ("DELETE", "/tasq/tasks/<int:ID>"): ("delete", "deleted", "task {ID}", ()),
 }
 
+_skip = {"/login", "/logout"}  # audited by the endpoint
+
 
 def _roleNames(IDs):
     try:
@@ -278,6 +280,8 @@ def apiActor(request, body=None):
 
 def apiEnd(request, ctx, response):
     status = response.status_code
+    if ctx["rule"] in _skip:
+        return
     actor = apiActor(request, ctx["body"])
     details = " ({})".format(ctx["details"]) if ctx["details"] else ""
     if status < 400:
@@ -287,3 +291,11 @@ def apiEnd(request, ctx, response):
     reason = "access denied" if status in (401, 403) else "HTTP {}".format(status)
     log("{} tried to {} {}{}: {}{}".format(actor, ctx["inf"], ctx["target"], details, reason,
                                          " ({})".format(q(message)) if message else ""))
+
+
+def login(request, user, method, error=None):
+    who = q(user) if user else "unknown user"
+    if error is None:
+        log("{} logged in from {} via {}".format(who, esc(request.remote_addr), method))
+    else:
+        log("failed {} login for {} from {}: {}".format(method, who, esc(request.remote_addr), q(error)))

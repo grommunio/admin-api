@@ -9,13 +9,13 @@ import idna
 
 from api.core import API, secure
 from api.security import loginUser, refreshToken, getSecurityContext, mkCSRF, setAuthCookie, clearAuthCookie, \
-    revokeToken
+    revokeToken, checkToken
 
 from . import oidc
 
 from orm import DB
 from services import Service
-from tools import formats
+from tools import audit, formats
 from tools.tasq import TasQServer
 from tools.permissions import OrgAdminPermission
 
@@ -49,7 +49,9 @@ def login():
     if not success:
         API.logger.warning("Failed login attempt for user '{}' from '{}': {}"
                            .format(request.form["user"], request.remote_addr, val))
+        audit.login(request, request.form["user"], "password", val)
         return jsonify(message="Login failed", error=val), 401
+    audit.login(request, request.form["user"], "password")
     return setAuthCookie(jsonify(grommunioAuthJwt=val, csrf=mkCSRF(val)), val)
 
 
@@ -58,7 +60,10 @@ def login():
 def logout():
     token = request.cookies.get("grommunioAuthJwt")
     if token:
+        valid, claims = checkToken(token)
         revokeToken(token)
+        if valid:
+            audit.log("{} logged out from {}".format(audit.q(claims.get("usr")), audit.esc(request.remote_addr)))
     return clearAuthCookie(jsonify(message="Logged out"))
 
 
