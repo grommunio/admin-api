@@ -24,13 +24,18 @@ Show space used by user and domain home directories or remove unused
 files.
 
 Unused files may remain when users or domains are deleted without
-removing their files.
+removing their files. An interrupted removal leaves a directory ending
+in ``@deleting``.
+
+The commands work on the local file system and have to be run on the
+mailbox server.
 
 Commands
 ========
 
 ``clean``
    Remove directories and files that are not used by any domain or user.
+   Directories that contain or are part of a directory in use are kept.
 ``du``
    Show data usage statistics
 

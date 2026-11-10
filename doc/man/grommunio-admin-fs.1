@@ -17,10 +17,16 @@ files.
 .PP
 Unused files may remain when users or domains are deleted without
 removing their files.
+An interrupted removal leaves a directory ending in
+\f[CR]\[at]deleting\f[R].
+.PP
+The commands work on the local file system and have to be run on the
+mailbox server.
 .SH Commands
 .TP
 \f[CR]clean\f[R]
 Remove directories and files that are not used by any domain or user.
+Directories that contain or are part of a directory in use are kept.
 .TP
 \f[CR]du\f[R]
 Show data usage statistics

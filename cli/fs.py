@@ -51,16 +51,29 @@ def cliFsDu(args):
         cli.print(_statStr(cli, files, size))
 
 
-def _clean(cli, path, used, maxdepth, du=False, delete=True):
+def _parents(path):
+    import os
+    parents = []
+    while os.path.dirname(path) != path:
+        path = os.path.dirname(path)
+        parents.append(path)
+    return parents
+
+
+def _clean(cli, path, used, servers, maxdepth, du=False, delete=True):
     import os
     import shutil
-    path = path.rstrip(os.path.sep)
+    path = os.path.normpath(path).rstrip(os.path.sep)
+    used = {os.path.normpath(directory) for directory in used}
+    containing = {parent for directory in used for parent in _parents(directory)}
+    kept = {os.path.join(path, hostname) for hostname in servers}
     prefix = len(path)
     maxdepth -= 1
     files = size = 0
     for pathname, dirnames, filenames in os.walk(path):
         depth = pathname[prefix:].count(os.path.sep)
-        if depth > maxdepth:
+        if depth > maxdepth or pathname in used or not used.isdisjoint(_parents(pathname)) or \
+           os.path.basename(pathname) == "lost+found":
             dirnames.clear()
             continue
         if depth < maxdepth:
@@ -68,7 +81,11 @@ def _clean(cli, path, used, maxdepth, du=False, delete=True):
         removed = 0
         for dirname in dirnames:
             dp = os.path.join(pathname, dirname)
-            if dp not in used:
+            if dp not in used and dirname != "lost+found":
+                if dp in containing:
+                    # The layout differs from the configured levels
+                    cli.print(cli.col("Keeping {}, which contains a directory in use".format(dp), "yellow"))
+                    continue
                 removed += 1
                 if du:
                     f, s = _du(dp)
@@ -77,7 +94,7 @@ def _clean(cli, path, used, maxdepth, du=False, delete=True):
                 cli.print("Remov{} {}".format("ing" if delete else "e", cli.col(dp, attrs=["bold"])))
                 if delete:
                     shutil.rmtree(dp, ignore_errors=True)
-        if len(dirnames)-removed <= 0 and depth != 0:
+        if len(dirnames)-removed <= 0 and depth != 0 and pathname not in kept:
             size += os.path.getsize(pathname)
             cli.print("Remov{} empty directory {}".format("ing" if delete else "e", cli.col(pathname, attrs=["bold"])))
             if delete:
@@ -87,22 +104,33 @@ def _clean(cli, path, used, maxdepth, du=False, delete=True):
     return files, size
 
 
+def _levels(options, partition):
+    # serverExplicitMount adds a directory named like the homeserver
+    return options[partition+"StorageLevels"]+(1 if options.get("serverExplicitMount") else 0)
+
+
 def cliFsClean(args):
     cli = args._cli
     cli.require("DB")
     from tools.config import Config
+    from orm import DB
+    from orm.domains import Domains
+    from orm.misc import Servers
+    from orm.users import Users
     opt = Config["options"]
     files = size = 0
+    # The prefixes may be nested
+    used = {d.homedir for d in Domains.query.with_entities(Domains.homedir).filter(Domains.homedir != "").all()}
+    used.update(u.maildir for u in Users.query.with_entities(Users.maildir).filter(Users.maildir != "").all())
+    servers = []
+    if opt.get("serverExplicitMount") and DB.minVersion(105):
+        servers = [server.hostname for server in Servers.query.with_entities(Servers.hostname).all()]
     if args.partition is None or args.partition == "domain":
-        from orm.domains import Domains
-        used = {d.homedir for d in Domains.query.with_entities(Domains.homedir).filter(Domains.homedir != "").all()}
-        f, s = _clean(cli, opt["domainPrefix"], used, opt["domainStorageLevels"], not args.nostat, not args.dryrun)
+        f, s = _clean(cli, opt["domainPrefix"], used, servers, _levels(opt, "domain"), not args.nostat, not args.dryrun)
         files += f
         size += s
     if args.partition is None or args.partition == "user":
-        from orm.users import Users
-        used = {u.maildir for u in Users.query.with_entities(Users.maildir).filter(Users.maildir != "").all()}
-        f, s = _clean(cli, opt["userPrefix"], used, opt["userStorageLevels"], not args.nostat, not args.dryrun)
+        f, s = _clean(cli, opt["userPrefix"], used, servers, _levels(opt, "user"), not args.nostat, not args.dryrun)
         files += f
         size += s
     if not args.nostat:
@@ -113,8 +141,8 @@ def _setupCliFsParser(subp: ArgumentParser):
     Cli.parser_stub(subp)
     sub = subp.add_subparsers()
     clean = sub.add_parser("clean", help="Remove unused user and domain files")
-    clean.description = "Delete orphaned domain and user directories that may be left behind when removing a domain or user "\
-                        "without deleteFiles directive"
+    clean.description = "Delete orphaned domain and user directories on this host that may be left behind when removing a "\
+                        "domain or user without deleteFiles directive"
     clean.set_defaults(_handle=cliFsClean)
     clean.add_argument("partition", nargs="?", choices=("domain", "user"), help="Clean only specified partition")
     clean.add_argument("-d", "--dryrun", action="store_true", help="Do not actually delete anything")
