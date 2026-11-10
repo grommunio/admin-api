@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2020 grommunio GmbH
 
+import ipaddress
 import os
 import shutil
 import subprocess
@@ -406,8 +407,16 @@ class UserSetup(SetupContext):
 
 
 
-def midbUnload(maildir):
-    """Ask the local midb to drop its cache of a mailbox.
+def isLoopback(host):
+    """Check whether a host name or address designates the local machine."""
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return host.lower() == "localhost"
+
+
+def midbUnload(maildir, hostname=None):
+    """Ask midb to drop its cache of a mailbox.
 
     midb keeps a notification subscription on every mailbox it has loaded
     (i.e. after IMAP or POP3 access) for up to midb_cache_interval, which keeps
@@ -417,6 +426,8 @@ def midbUnload(maildir):
     ----------
     maildir : str
         Mailbox directory
+    hostname : str, optional
+        Name of the homeserver of the mailbox. The default is None.
 
     Returns
     -------
@@ -424,18 +435,22 @@ def midbUnload(maildir):
         Whether midb unloaded the mailbox.
     """
     import socket
-    host = Config["options"].get("midbHost", "::1")
-    port = int(Config["options"].get("midbPort", 5555))
-    try:
-        with socket.create_connection((host, port), timeout=2) as sock, sock.makefile("rwb") as conn:
-            if not conn.readline().startswith(b"OK"):
-                return False
-            conn.write(b"X-UNLD "+maildir.encode()+b"\r\n")
-            conn.flush()
-            return conn.readline().startswith(b"TRUE")
-    except OSError as err:
-        logger.debug(f"midb unload of '{maildir}' failed: {err}")
-        return False
+    options = Config["options"]
+    midbHost, midbPort = options.get("midbHost", "::1"), int(options.get("midbPort", 5555))
+    hosts = (hostname, midbHost) if hostname and hostname != midbHost else (midbHost,)
+    for target in [(host, midbPort) for host in hosts]:
+        try:
+            with socket.create_connection(target, timeout=2) as sock, sock.makefile("rwb") as conn:
+                banner = conn.readline()
+                if banner.startswith(b"OK"):
+                    conn.write(b"X-UNLD "+maildir.encode()+b"\r\n")
+                    conn.flush()
+                    return conn.readline().startswith(b"TRUE")
+            reason = banner.decode(errors="replace").strip() or "connection closed"
+        except OSError as err:
+            reason = str(err)
+        logger.debug("midb on {} port {} cannot be asked to unload mailboxes: {}".format(*target, reason))
+    return False
 
 
 def unloadStore(maildir, hostname=None, attempts=3, delay=1):
@@ -445,9 +460,9 @@ def unloadStore(maildir, hostname=None, attempts=3, delay=1):
     notification subscriptions), reporting a "Dispatch error". The unload is
     therefore retried a few times, asking midb to release the store first.
 
-    If the local exmdb cannot be reached, it cannot hold the store either and
-    the store is considered unloaded. An unreachable remote exmdb might still
-    hold it.
+    If exmdb on this host cannot be reached, it cannot hold the store either and
+    the store is considered unloaded. An unreachable exmdb on another host might
+    still hold it.
 
     Parameters
     ----------
@@ -469,19 +484,20 @@ def unloadStore(maildir, hostname=None, attempts=3, delay=1):
     for attempt in range(attempts):
         if attempt:
             time.sleep(delay)
-        midbUnload(maildir)
+        midbUnload(maildir, hostname)
         with Service("exmdb", errors=Service.SUPPRESS_INOP) as exmdb:
+            host = hostname or exmdb.host
             try:
-                exmdb.ExmdbQueries(hostname or exmdb.host, exmdb.port, maildir, True).unloadStore(maildir)
+                exmdb.ExmdbQueries(host, exmdb.port, maildir, True).unloadStore(maildir)
                 return True
             except exmdb.ConnectionError as err:
                 logger.warning(f"Could not unload store '{maildir}': {err}")
-                return hostname is None
+                return isLoopback(host)
             except exmdb.ExmdbError as err:
                 logger.info(f"Failed to unload store '{maildir}' ({attempt+1}/{attempts}): {err}")
                 continue
         logger.warning(f"Could not unload store '{maildir}': exmdb service not available")
-        return hostname is None
+        return isLoopback(hostname or Config["options"].get("exmdbHost", "::1"))
     return False
 
 
