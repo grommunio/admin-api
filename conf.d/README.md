@@ -17,6 +17,10 @@ Possible parameters:
 - `level` (`int` or `string`, default: `WARNING`): Default log level (possible values are `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`)
 - `loggers` (`object`, default: `{}`): Associative array containing options for specific loggers
 
+### Audit ###
+Audit logging is configured by the `audit` object. Possible parameters:
+- `enabled` (`boolean`, default: `false`): Log every change made through the API or CLI, all logins and denied requests. Lines go to syslog (facility `authpriv`, identifier `grommunio-admin`) and start with `admin-audit:`, e.g. `journalctl -t grommunio-admin`. Passwords and other secrets are never logged.
+
 ### Chat ###
 Parameters necessary to make the grommunio-chat management work can be configured in the `chat` object.  
 Possible parameters:

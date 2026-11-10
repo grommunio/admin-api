@@ -10,6 +10,8 @@ identifier grommunio-admin) and start with "admin-audit:".
 
 import logging
 import logging.handlers
+import os
+import pwd
 import re
 import unicodedata
 
@@ -201,6 +203,7 @@ _routes = {
 }
 
 _skip = {"/login", "/logout"}  # audited by the endpoint
+_selfAudited = {"/system/cli"}  # success audited by the CLI
 
 
 def _roleNames(IDs):
@@ -280,7 +283,7 @@ def apiActor(request, body=None):
 
 def apiEnd(request, ctx, response):
     status = response.status_code
-    if ctx["rule"] in _skip:
+    if ctx["rule"] in _skip or status < 400 and ctx["rule"] in _selfAudited:
         return
     actor = apiActor(request, ctx["body"])
     details = " ({})".format(ctx["details"]) if ctx["details"] else ""
@@ -299,3 +302,63 @@ def login(request, user, method, error=None):
         log("{} logged in from {} via {}".format(who, esc(request.remote_addr), method))
     else:
         log("failed {} login for {} from {}: {}".format(method, who, esc(request.remote_addr), q(error)))
+
+
+def _cliActor():
+    try:
+        name = pwd.getpwuid(os.getuid()).pw_name
+    except KeyError:
+        name = "uid {}".format(os.getuid())
+    sudo = os.environ.get("SUDO_USER")
+    return q("{} as {}".format(sudo, name) if sudo and sudo != name else name)
+
+
+_readonly = {"check", "commands", "connect", "du", "dump", "find", "get", "info", "list", "permissions", "print",
+             "query", "run", "search", "shell", "show", "shrek", "status", "taginfo", "trace", "version"}
+
+
+def cliCommand(parser, args):
+    """Return (command path, parsers) or (None, None) for read-only commands."""
+    import argparse
+    path, parsers = [], [parser]
+    for tok in args:
+        subs = [a for a in parser._actions if isinstance(a, argparse._SubParsersAction)]
+        if not subs:
+            break
+        if tok in subs[0].choices:
+            path.append(tok)
+            parser = subs[0].choices[tok]
+            parsers.append(parser)
+    if not path or path[-1] in _readonly:
+        return None, None
+    return " ".join(path), parsers
+
+
+def cliArgs(parsers, ns):
+    """Arguments that differ from their defaults, secrets redacted."""
+    parts = []
+    for action in (action for parser in parsers for action in parser._actions):
+        dest = action.dest
+        if dest in ("help", "==SUPPRESS==") or dest.startswith("_") or not hasattr(ns, dest):
+            continue
+        value = getattr(ns, dest)
+        if value == action.default or value is None:
+            continue
+        secret = _secret.search(dest) or (dest == "value" and _secret.search(str(getattr(ns, "key", ""))))
+        parts.append("{}={}".format(esc(dest), "***" if secret else _value(value)))
+    return ", ".join(parts)
+
+
+def cli(cli, path, parsers, ns, code):
+    if cli.mode == "adhoc":
+        from flask import request
+        actor = apiActor(request)+" via remote CLI"
+    else:
+        actor = _cliActor()+" via CLI"
+    args = cliArgs(parsers, ns)
+    details = " ({})".format(args) if args else ""
+    if code == 0:
+        log("{} ran {}{}".format(actor, q(path), details))
+    else:
+        log("{} ran {}{}: failed ({})".format(actor, q(path), details,
+                                             "exit code {}".format(code) if code is not None else "error"))

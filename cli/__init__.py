@@ -4,6 +4,7 @@
 
 import argcomplete
 import logging
+import sys
 from argparse import ArgumentParser, _SubParsersAction
 
 
@@ -104,6 +105,19 @@ class Cli:
         dispatch = self.parser.parse_args(args)
         self.__completing = True
         dispatch._cli = self
+        from tools import audit
+        command = parsers = None
+        if self.mode in ("standalone", "adhoc") and audit.enabled():
+            command, parsers = audit.cliCommand(self.parser, sys.argv[1:] if args is None else args)
+        code = None
+        try:
+            code = self._dispatch(dispatch, secure)
+            return code
+        finally:
+            if command:
+                audit.cli(self, command, parsers, dispatch, code)
+
+    def _dispatch(self, dispatch, secure):
         if hasattr(dispatch, "_handle"):
             try:
                 return dispatch._handle(dispatch) or 0
