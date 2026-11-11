@@ -117,11 +117,9 @@ def _getOrgID(spec):
 
 
 def _getOrgIDs(args):
-    from orm.domains import OrgParam
+    from orm.domains import Orgs
     if "organization" not in args or not args.organization:
-        return (0,)
-    if "*" in args.organization:
-        return [0]+OrgParam.ldapOrgs()
+        return set([0]+[org.ID for org in Orgs.query.with_entities(Orgs.ID).distinct()])
     return tuple(_getOrgID(spec) for spec in args.organization)
 
 
