@@ -696,6 +696,27 @@ class Users(DataModel, DB.Base, NotifyTable):
 
         return value
 
+    @validates("altnames")
+    def checkAltname(self, key, value, *args):
+        # Disable autoflush: during user creation the partially initialized user
+        # may already be pending and would be flushed without domainID set
+        if value is None or value.altname is None:
+            return value
+        with DB.session.no_autoflush:
+            altname = value.altname.lower()
+
+            # Altname mustn't be existing altname
+            altnames = [alt.altname.lower() for alt in Altnames.query.with_entities(Altnames.altname).filter(Altnames.userID != self.ID)]
+            if altname in altnames:
+                raise ValueError(f"Altname '{altname}' already belongs to another user")
+
+            # Altname mustn't be existing username/email
+            usernames = [user.username.lower() for user in Users.query.with_entities(Users.username)]
+            if altname in usernames:
+                raise ValueError(f"Altname '{altname}' is already defined as an email address")
+
+        return value
+
     @validates("_syncPolicy")
     def triggerSyncPolicyUpdate(self, key, value, *args):
         if value != self._syncPolicy:
@@ -999,6 +1020,9 @@ class Altnames(DataModel, DB.Base):
         self.fromdict(data)
 
     _dictmapping_ = ((Text("altname", flags="patch"), Int("magic"),),)
+
+    def __str__(self):
+        return "{}".format(self.altname)
 
 
 class Fetchmail(DataModel, DB.Base):
