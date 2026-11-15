@@ -56,6 +56,7 @@ install(FILES data/api.conf DESTINATION ${NGINXDIR})
 
 install(FILES data/autocomplete.sh DESTINATION ${CMAKE_INSTALL_FULL_DATADIR}/bash-completion/completions RENAME grommunio-admin)
 install(FILES data/grommunio-admin-api.service data/grommunio-admin-api.socket DESTINATION ${UNITDIR})
+install(FILES data/grommunio-admin-dkim-sync.service data/grommunio-admin-dkim-sync.timer DESTINATION ${UNITDIR})
 install(FILES data/portrait.jpg DESTINATION ${COMMONDIR})
 install(FILES data/tmpfiles-grommunio-admin-api.conf DESTINATION ${TMPFILESDIR} RENAME grommunio-admin-api.conf)
 install(FILES data/grommunio-sudo DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/sudoers.d)

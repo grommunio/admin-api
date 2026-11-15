@@ -3,9 +3,16 @@
 # SPDX-FileCopyrightText: 2023 grommunio GmbH
 
 from dns import resolver, reversename
+import logging
+import re
 import socket
 import subprocess
 from .config import Config
+from services import Service
+
+logger = logging.getLogger("dnsHealth")
+
+_DKIM_PEM_RE = re.compile(r"-----BEGIN [A-Z ]+-----.*?-----END [A-Z ]+-----", re.DOTALL)
 
 
 class ExternalResolver:
@@ -227,43 +234,216 @@ def defaultDNSQuery(subdomain: str, domain: str, recordType="A", path=""):
     return {"internalDNS": res, "externalDNS": resExternal}
 
 
-def generateDkimKeys(domain, type="rsa", mode="dns", selector="dkim"):
-    import os
-    import shutil
-    privateKeyFilepath = "/var/lib/grommunio-admin-api/" + domain + ".dkim.key"
-    publicKeyFilepath = privateKeyFilepath + ".pub"
 
-    # Create safety copy of previous keys, if exists
+LEGACY_KEY_DIR = "/var/lib/grommunio-admin-api"
+LEGACY_KEY_SUFFIX = ".dkim.key"
+IMPORT_MARKER = ("grommunio-admin", "dkim", "legacyFileImport")
+
+
+def _storeDkimKeyInRedis_(domain, selector, privateKey):
+    """Push a DKIM private key into the local Redis keystore.
+
+    rspamd (grommunio-antispam) reads keys from these hashes when
+    dkim_signing is configured with use_redis (key_prefix/selector_prefix
+    as configured in grommunio-setup).
+
+    Returns (stored, error); error is an error string if the push failed,
+    None otherwise.
+    """
+    if not Config.get("dkimRedis", {}).get("enabled", False):
+        return False, "DKIM keystore is disabled (dkimRedis.enabled)"
     try:
-        if os.path.exists(privateKeyFilepath):
-            oldPrivateKeyFilepath = privateKeyFilepath + ".old"
-            if os.path.exists(oldPrivateKeyFilepath):
-                os.remove(oldPrivateKeyFilepath)
-            os.rename(privateKeyFilepath, oldPrivateKeyFilepath)
-        if os.path.exists(publicKeyFilepath):
-            oldPublicKeyFilepath = publicKeyFilepath + ".old"
-            if os.path.exists(oldPublicKeyFilepath):
-                os.remove(oldPublicKeyFilepath)
-            os.rename(publicKeyFilepath, oldPublicKeyFilepath)
-    except Exception:
-        pass
+        with Service("dkimredis", errors=Service.SUPPRESS_INOP) as redis:
+            pipe = redis.pipeline()
+            pipe.hset("DKIM_PRIV_KEYS", "{}.{}".format(selector, domain), privateKey.strip())
+            pipe.hset("DKIM_SELECTORS", domain, selector)
+            pipe.execute()
+            return True, None
+    except Exception as err:
+        return False, str(err)
 
-    # Generate new keypair
-    pubKey = subprocess.run(("rspamadm", "dkim_keygen",
-                             "-s", selector,
-                             "-b", "2048",
-                             "-d", domain,
-                             "-t", type,
-                             "-o", mode,
-                             "-k", privateKeyFilepath),
-                                      stdout=subprocess.PIPE,
-                                      universal_newlines=True).stdout
-    shutil.chown(privateKeyFilepath, "grommunio", "grommunio")
-    os.chmod(privateKeyFilepath, 0o440)
 
-    with open(publicKeyFilepath, "w") as f:
-        f.write(pubKey)
-    shutil.chown(publicKeyFilepath, "grommunio", "grommunio")
-    os.chmod(publicKeyFilepath, 0o440)
+def loadDkimKeys():
+    """Load all DKIM keys from the database (the source of truth).
 
-    return pubKey, None
+    Returns
+    -------
+    list
+        (domainname, selector, privateKey) tuples, or None if the database
+        schema does not carry the dkim_keys table yet.
+    """
+    from orm import DB
+    if not DB.minVersion(135):
+        return None
+    from orm.dkim import DkimKeys
+    from orm.domains import Domains
+    return (DB.session.query(Domains.domainname, DkimKeys.selector, DkimKeys.privateKey)
+            .join(DkimKeys, DkimKeys.domainID == Domains.ID).all())
+
+
+def syncDkimKeysToRedis():
+    """Replicate the DKIM keys of the database into the local keystore.
+
+    The database is the source of truth; this pushes its rows into the
+    local Redis keystore that rspamd reads (use_redis). Run by
+    `grommunio-admin dkim sync` (grommunio-admin-dkim-sync.timer) and on
+    API startup, so failed pushes are retried until they succeed.
+
+    Returns (pushed, failed).
+    """
+    rows = loadDkimKeys()
+    if rows is None:
+        return 0, 0
+    pushed = failed = 0
+    for domainname, selector, privateKey in rows:
+        stored, error = _storeDkimKeyInRedis_(domainname, selector, privateKey)
+        if stored:
+            pushed += 1
+        else:
+            failed += 1
+            logger.error("Failed to push DKIM key %s.%s into the keystore: %s",
+                         selector, domainname, error)
+    return pushed, failed
+
+
+def importLegacyDkimFiles():
+    """Import DKIM key files of previous versions into the database.
+
+    Files named <domain>.dkim.key in the admin-api data directory are read,
+    stored in the database (selector "dkim", as before) and deleted - the
+    database is the only storage, there is no fallback to files. The import
+    runs once per node, guarded by the dbconf marker
+    grommunio-admin/dkim/legacyFileImport (comma separated list of host
+    names that completed the import). A node retries on its next start only
+    if the import failed before.
+
+    Returns None on success, an error string otherwise.
+    """
+    import glob
+    import os
+    import socket
+
+    from orm import DB
+    from orm.dkim import DkimKeys
+    from orm.domains import Domains
+    from orm.misc import DBConf
+
+    if not DB.minVersion(135):
+        return "Database schema too old for DKIM key storage (GX-135 required)"
+
+    hostname = socket.gethostname()
+    done = [entry for entry in (DBConf.getValue(*IMPORT_MARKER) or "").split(",") if entry]
+    if hostname in done:
+        return None
+    error = None
+    try:
+        for path in sorted(glob.glob(os.path.join(LEGACY_KEY_DIR, "*" + LEGACY_KEY_SUFFIX))):
+            domainname = os.path.basename(path)[:-len(LEGACY_KEY_SUFFIX)]
+            try:
+                with open(path, encoding="ascii") as f:
+                    pem = f.read().strip()
+                domain = Domains.query.filter(Domains.domainname == domainname).first()
+                if domain is None:
+                    raise LookupError("domain '{}' does not exist".format(domainname))
+                DkimKeys.upsert(domain.ID, "dkim", pem)
+                os.remove(path)
+                for suffix in (".pub", ".old", ".pub.old"):
+                    if os.path.exists(path + suffix):
+                        os.remove(path + suffix)
+                logger.info("Imported DKIM key for domain '%s' from %s", domainname, path)
+            except Exception as err:
+                error = str(err)
+                logger.error("Failed to import DKIM key file %s: %s", path, err)
+        if error is None and hostname not in done:
+            done.append(hostname)
+        DBConf.setFile(IMPORT_MARKER[0], IMPORT_MARKER[1], {IMPORT_MARKER[2]: ",".join(done)})
+        DB.session.commit()
+    except Exception as err:
+        DB.session.rollback()
+        return str(err)
+    return error
+
+
+def _removeLegacyKeyFiles_(domain):
+    """Remove plaintext key remains of previous versions of a domain."""
+    import os
+    base = os.path.join(LEGACY_KEY_DIR, domain + LEGACY_KEY_SUFFIX)
+    for suffix in ("", ".pub", ".old", ".pub.old"):
+        try:
+            if os.path.exists(base + suffix):
+                os.remove(base + suffix)
+        except Exception as err:
+            logger.warning("Failed to remove legacy DKIM key file %s: %s", base + suffix, err)
+
+
+def _parseDkimKeygenOutput_(out, mode):
+    """Split rspamadm dkim_keygen stdout into (privateKey, pubKey).
+
+    Without -k, rspamadm prints the private key to stdout first (a PEM
+    block for RSA, a bare base64 line for ed25519) followed by the public
+    key in the requested output format.
+    """
+    pem = _DKIM_PEM_RE.search(out)
+    if pem is not None:
+        return pem.group(0), out[pem.end():].strip()
+    lines = [line for line in out.splitlines() if line.strip()]
+    if not lines:
+        return None, None
+    if mode == "plain":
+        # Both parts are bare base64 lines, the private key comes first.
+        return lines[0], lines[-1]
+    marker = out.find("v=DKIM1;") if mode == "dnskey" else out.find("_domainkey")
+    if marker <= 0:
+        return None, None
+    return out[:marker].strip(), out[marker:].strip()
+
+
+def generateDkimKeys(domain, type="rsa", mode="dns", selector="dkim"):
+    """Generate a DKIM keypair, store the private key in the database and
+    replicate it into the local Redis keystore.
+
+    rspamadm prints the private key to stdout, so nothing is written to
+    disk: the key goes straight into the database, which is its only
+    storage. Plaintext key files of previous versions are removed once
+    the key is stored there (no fallback). The public key is returned
+    for the DNS TXT record; failed keystore pushes are retried by
+    `grommunio-admin dkim sync`.
+
+    Returns ({pubKey, dbStored, redisStored, redisError}, error).
+    """
+    from orm import DB
+    from orm.dkim import DkimKeys
+    from orm.domains import Domains
+
+    if not DB.minVersion(135):
+        return None, "Database schema too old for DKIM key storage (GX-135 required)"
+
+    domainEntry = Domains.query.filter(Domains.domainname == domain).first()
+    if domainEntry is None:
+        return None, "Domain not found"
+
+    proc = subprocess.run(("rspamadm", "dkim_keygen",
+                           "-s", selector,
+                           "-b", "2048",
+                           "-d", domain,
+                           "-t", type,
+                           "-o", mode),
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE,
+                          universal_newlines=True)
+    if proc.returncode != 0:
+        return None, "Key generation failed (rspamadm dkim_keygen): {}".format(proc.stderr.strip())
+    privateKey, pubKey = _parseDkimKeygenOutput_(proc.stdout, mode)
+    if not privateKey or not pubKey:
+        return None, "Key generation failed (unexpected rspamadm output)"
+
+    try:
+        DkimKeys.upsert(domainEntry.ID, selector, privateKey)
+    except Exception as err:
+        DB.session.rollback()
+        return None, "Failed to store key in database: {}".format(err)
+    _removeLegacyKeyFiles_(domain)
+
+    redisStored, redisError = _storeDkimKeyInRedis_(domain, selector, privateKey)
+    return {"pubKey": pubKey, "dbStored": True, "redisStored": redisStored,
+            "redisError": redisError}, None
