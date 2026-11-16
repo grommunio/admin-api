@@ -292,7 +292,8 @@ def _downsyncOrg(args, orgID, ldap, resCount):
         resCount.success += result
         resCount.failed += not result
 
-    if args.complete:
+    # Can't use dot-notation because 'import' is a keyword
+    if getattr(args, "import"):
         from services import Service
         with Service("ldap", orgID) as ldap:
             candidates = [candidate for candidate in ldap.searchUsers() if candidate.ID not in synced]
@@ -748,11 +749,11 @@ def _cliLdapParserSetup(subp: ArgumentParser):
     configure.add_argument("-d", "--delete", action="store_true", help="Do not configure anything, but delete configuration")
     configure.add_argument("-o", "--organization", metavar="ORGSPEC", help="Use organization specific LDAP connection")\
         .completer = _cliOrgspecCompleter
-    downsync = sub.add_parser("downsync", help="Import or update users from ldap")
+    downsync = sub.add_parser("downsync", help="Import and/or update users from ldap")
     downsync.set_defaults(_handle=cliLdapDownsync)
     downsync.add_argument("user", nargs="*", help="LDAP ID or user search query string. If omitted, all users linked to an "
                                                   "LDAP object are updated.")
-    downsync.add_argument("-c", "--complete", action="store_true", help="Import/update all users in the ldap tree")
+    downsync.add_argument("-i", "--import", action="store_true", help="Import new users from LDAP")
     downsync.add_argument("-f", "--force", action="store_true", help="Force synchronization of unassociated users")
     downsync.add_argument("-l", "--lang", help="Default language for imported users")
     downsync.add_argument("-o", "--organization", metavar="ORGSPEC", action="append",
