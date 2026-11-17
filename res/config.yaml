@@ -90,6 +90,14 @@ properties:
         type: string
         description: Path to store user home directories in
         default: /u-data/
+      ldapTlsVerify:
+        type: string
+        enum: [auto, always, never]
+        description: Verify LDAP server certificates. `auto` follows TLS_REQCERT in ldap.conf like gromox.
+        default: auto
+      ldapCACert:
+        type: string
+        description: CA file for LDAP server certificates, instead of TLS_CACERT from ldap.conf
       serverExplicitMount:
         type: boolean
         description: Place user and domain directories in server specific subdirectories

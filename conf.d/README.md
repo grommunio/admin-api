@@ -112,3 +112,5 @@ Further parameters can be set in the `options` object:
 - `antispamUrl` (`string`, default: `http://localhost:11334`): URL of the grommunio-antispam backend
 - `antispamEndpoints` (`list of strings`, default: `["stat", "graph", "errors"]`): List of allowed endpoints to proxy to grommunio-antispam
 - `vhosts` (`object`, default: `{}`): Name -> URL mapping of nginx VHost status endpoints
+- `ldapTlsVerify` (`string`, default: `auto`): Verify LDAP server certificates (`ldaps://` and STARTTLS). `auto` follows `TLS_REQCERT` in `/etc/openldap/ldap.conf` (or `/etc/ldap/ldap.conf`) the same way gromox does, i.e. verify unless set to `never` or `allow`. `always` and `never` override it.
+- `ldapCACert` (`string`): CA file used to verify LDAP server certificates. Default is `TLS_CACERT`/`TLS_CACERTDIR` from ldap.conf, else the system trust store.
