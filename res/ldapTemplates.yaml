@@ -53,13 +53,19 @@ ActiveDirectory:
 OpenLDAP:
   _altname: uid
   departmentNumber: departmentname
+  street: streetaddress
+  o: companyname
+  roomNumber: officelocation
+Univention:
+  _altname: uid
+  departmentNumber: departmentname
   title: displaynameprefix
   street: streetaddress
   o: companyname
   roomNumber: officelocation
-  # Jobtitle doesn't exist, no mapping required
-Univention:
-  _altname: uid
+  mailPrimaryAddress: smtpaddress
+UniventionSamba:
+  _altname: sAMAccountName
   departmentNumber: departmentname
 389ds:
   _altname: uid
