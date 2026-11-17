@@ -1,6 +1,9 @@
 admin-api 1.22 (development)
 ============================
 
+* The API sets the session cookie (HttpOnly, SameSite=Strict), scripts on
+  other services of the host can no longer read the admin token
+* New ``POST /logout`` endpoint, revokes the token (uses redis)
 * Fix live status (``/system/vhostStatus``) failing with a 502 error
 
 

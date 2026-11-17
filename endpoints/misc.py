@@ -8,7 +8,8 @@ import api
 import idna
 
 from api.core import API, secure
-from api.security import loginUser, refreshToken, getSecurityContext, mkCSRF
+from api.security import loginUser, refreshToken, getSecurityContext, mkCSRF, setAuthCookie, clearAuthCookie, \
+    revokeToken
 
 from . import oidc
 
@@ -43,13 +44,22 @@ def login():
         refreshed = refreshToken()
         if refreshed is None:
             return jsonify(message="Incomplete login form"), 400
-        return jsonify(grommunioAuthJwt=refreshed, csrf=mkCSRF(refreshed))
+        return setAuthCookie(jsonify(grommunioAuthJwt=refreshed, csrf=mkCSRF(refreshed)), refreshed)
     success, val = loginUser(request.form["user"], request.form["pass"])
     if not success:
         API.logger.warning("Failed login attempt for user '{}' from '{}': {}"
                            .format(request.form["user"], request.remote_addr, val))
         return jsonify(message="Login failed", error=val), 401
-    return jsonify(grommunioAuthJwt=val, csrf=mkCSRF(val))
+    return setAuthCookie(jsonify(grommunioAuthJwt=val, csrf=mkCSRF(val)), val)
+
+
+@API.route(api.BaseRoute+"/logout", methods=["POST"])
+@secure(requireAuth=False)
+def logout():
+    token = request.cookies.get("grommunioAuthJwt")
+    if token:
+        revokeToken(token)
+    return clearAuthCookie(jsonify(message="Logged out"))
 
 
 @API.route(api.BaseRoute+"/profile", methods=["GET"])

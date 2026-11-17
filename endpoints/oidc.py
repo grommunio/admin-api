@@ -18,7 +18,7 @@ from urllib.parse import urlencode, urlparse
 import api
 
 from api.core import API, secure
-from api.security import mkJWT, userLoginAllowed
+from api.security import mkJWT, setAuthCookie, userLoginAllowed
 from tools.config import Config
 
 STATE_COOKIE = "grommunioOidcState"
@@ -154,6 +154,6 @@ def oidcCallback():
     if not userLoginAllowed(user):
         return _fail("access_denied", "user '{}' is not allowed to log in".format(username))
     response = redirect("/login?sso=1")
-    response.set_cookie("grommunioAuthJwt", mkJWT({"usr": user.username}), path="/", secure=True, samesite="Lax")
+    setAuthCookie(response, mkJWT({"usr": user.username}))
     response.delete_cookie(STATE_COOKIE, path=OIDC_PATH)
     return response

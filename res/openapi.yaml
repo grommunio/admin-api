@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: grommunio Admin API
   description: grommunio administration REST API
-  version: 1.21.0
+  version: 1.22.0
 servers:
   - url: '/api/v1'
     description: Default deployment path
@@ -99,6 +99,24 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/DatabaseError'
+
+  /logout:
+    post:
+      summary: Logout user
+      description: Revoke the session token and clear the session cookie
+      operationId: postLogout
+      tags:
+        - Misc
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
 
   /login/oidc:
     get:
