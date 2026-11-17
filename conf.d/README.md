@@ -20,7 +20,7 @@ Possible parameters:
 ### Chat ###
 Parameters necessary to make the grommunio-chat management work can be configured in the `chat` object.  
 Possible parameters:
-- `connection` (`object`): Parameters for connecting to the grommunio-chat API. See [Mattermost Driver](https://pypi.org/project/mattermostdriver/) for possible parameters.
+- `connection` (`object`): Parameters for connecting to the grommunio-chat API. See [Mattermost Driver](https://pypi.org/project/mattermostdriver/) for possible parameters. `request_timeout` defaults to `10` seconds.
 
 ### Database ###
 Parameters necessary for database connection can be configured by the `DB` object.  

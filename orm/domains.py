@@ -254,16 +254,21 @@ class Domains(DataModel, DB.Base, NotifyTable):
 
     @property
     def chat(self):
+        """Whether the chat team is active, or None if grommunio-chat is not reachable."""
         if not self.chatID:
             return False
         if self._team is None:
+            team = Service.Unknown
             with Service("chat", errors=Service.SUPPRESS_ALL) as grochat:
-                self._team = grochat.getTeam(self.chatID)
+                team = grochat.getTeam(self.chatID)
+            if team is Service.Unknown:
+                return None
+            self._team = team
         return self._team["delete_at"] == 0 if self._team else False
 
     @chat.setter
     def chat(self, value):
-        if value == self.chat:
+        if value is None or value == self.chat:
             return
         if not DB.minVersion(79):
             raise ValueError("Cannot activate chat - please upgrade database schema to at least 79")

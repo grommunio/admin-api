@@ -44,7 +44,8 @@ def _dumpDomain(cli, domain):
     cli.print("  homeserver: "+homeserver)
     cli.print("  homedir: "+domain.homedir)
     cli.print("  chatID: "+(domain.chatID or cli.col("(none)", attrs=["dark"])) +
-              (" ("+cli.col("inactive", "red")+")" if domain.chatID and not domain.chat else ""))
+              (" ("+cli.col("unknown - chat unavailable", "yellow")+")" if domain.chatID and domain.chat is None else
+               " ("+cli.col("inactive", "red")+")" if domain.chatID and not domain.chat else ""))
     cli.print("  endDay: "+str(domain.endDay))
     cli.print("  title: "+domain.title)
     cli.print("  address: "+domain.address)

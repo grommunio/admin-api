@@ -105,7 +105,9 @@ def _defaultConfig():
             "policyHosts": ["127.0.0.1", "localhost", "::1", "::ffff:127.0.0.1"]
             },
         "chat": {
-            "connection": {},
+            "connection": {
+                "request_timeout": 10,
+                },
             },
         "oidc": {
             "enabled": False,

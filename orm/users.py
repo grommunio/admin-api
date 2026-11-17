@@ -620,23 +620,31 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @property
     def chat(self):
+        """Whether the chat user is active, or None if grommunio-chat is not reachable."""
         if not self.chatID:
             return False
         if self._chatUser is None:
+            chatUser = Service.Unknown
             with Service("chat", errors=Service.SUPPRESS_INOP) as chat:
-                self._chatUser = chat.getUser(self.chatID)
-        return self.domain.chat and self._chatUser["delete_at"] == 0 if self._chatUser else False
+                chatUser = chat.getUser(self.chatID)
+            if chatUser is Service.Unknown:
+                return None
+            self._chatUser = chatUser
+        if not self._chatUser:
+            return False
+        domainChat = self.domain.chat
+        return None if domainChat is None else domainChat and self._chatUser["delete_at"] == 0
 
     @chat.setter
     def chat(self, value):
-        if value == self.chat:
+        if value is None or value == self.chat:
             return
         if not DB.minVersion(78):
             raise ValueError("Cannot activate chat - please upgrade database schema to at least 78")
         if value and self.addressStatus:
             raise ValueError("Cannot activate chat for locked user")
         err_prefix = "Could not enable chat for user '{}': ".format(self.username)
-        if not self.domain.chat:
+        if self.domain.chat is False:
             logger.warning(err_prefix+"chat is not enabled for domain")
             return
         with Service("chat") as chat:
@@ -667,7 +675,7 @@ class Users(DataModel, DB.Base, NotifyTable):
 
     @chatAdmin.setter
     def chatAdmin(self, value):
-        if not self.chat or self.chatAdmin == bool(value):
+        if value is None or not self.chat or self.chatAdmin == bool(value):
             return
         if value:
             tmpRoles = " ".join(self._chatUser["roles"].split(" ")+["system_admin"])

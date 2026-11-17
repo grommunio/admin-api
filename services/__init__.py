@@ -140,8 +140,10 @@ class ServiceHub(metaclass=_ServiceHubMeta):
             except ServiceUnavailableError as err:
                 self.exc = err
                 self.logger.warning("Failed to load service: "+" - ".join(str(arg) for arg in err.args))
-                self.state = ServiceHub.SUSPENDED if self._reloads <= self._service._maxreloads else ServiceHub.ERROR
-                self._reloads = min(self._reloads, self._service._maxreloads)
+                maxreloads = self._service._maxreloads
+                self.state = ServiceHub.SUSPENDED if maxreloads is None or self._reloads <= maxreloads else ServiceHub.ERROR
+                if maxreloads is not None:
+                    self._reloads = min(self._reloads, maxreloads)
             except ServiceDisabledError as err:
                 self.exc = err
                 self.logger.warning("Failed to load service: "+err.args[0])
@@ -224,7 +226,8 @@ class ServiceHub(metaclass=_ServiceHubMeta):
         **kwargs : None
             Keyword argument dict, only for compatibility
         maxreloads : int, optional
-            Number of acceptable automatic reloads before service enters ERROR state. The default is 0.
+            Number of acceptable automatic reloads before service enters ERROR state or None for indefinite reloading.
+            The default is 0.
         maxfailures : int, optional
             Number acceptable load error before service enters ERROR state or None for indefinite reloading.
             The default is None.
@@ -291,6 +294,8 @@ class Service:
     SUPPRESS_NONE = 0   # All exceptions are passed to the calling function
     SUPPRESS_INOP = 1   # Suppress exceptions indicating service unavailability
     SUPPRESS_ALL = 2    # Suppress all exceptions
+
+    Unknown = object()  # Sentinel to detect whether a suppressed exception prevented an assignment
 
     class Stub:
         def __init__(self, name):

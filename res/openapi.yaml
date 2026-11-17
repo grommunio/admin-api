@@ -5523,7 +5523,8 @@ components:
           nullable: true
         chat:
           type: boolean
-          description: Whether chat is enabled for this domain
+          nullable: true
+          description: Whether chat is enabled for this domain (null if grommunio-chat is not reachable; ignored on update)
     domain:
       allOf:
         - $ref: '#/components/schemas/domainCommon'
@@ -5760,10 +5761,12 @@ components:
           nullable: true
         chat:
           type: boolean
-          description: Whether chat is enabled for this user
+          nullable: true
+          description: Whether chat is enabled for this user (null if grommunio-chat is not reachable; ignored on update)
         chatAdmin:
           type: boolean
-          description: Whether this user has grommunio-chat admin permissions
+          nullable: true
+          description: Whether this user has grommunio-chat admin permissions (null if grommunio-chat is not reachable; ignored on update)
         lang:
           type: string
           description: User language
@@ -5846,10 +5849,12 @@ components:
           nullable: true
         chat:
           type: boolean
-          description: Whether chat is enabled for this user
+          nullable: true
+          description: Whether chat is enabled for this user (null if grommunio-chat is not reachable; ignored on update)
         chatAdmin:
           type: boolean
-          description: Whether this user has grommunio-chat admin permissions
+          nullable: true
+          description: Whether this user has grommunio-chat admin permissions (null if grommunio-chat is not reachable; ignored on update)
         lang:
           type: string
           description: User language
@@ -5924,10 +5929,12 @@ components:
           nullable: true
         chat:
           type: boolean
-          description: Whether chat is enabled for this user
+          nullable: true
+          description: Whether chat is enabled for this user (null if grommunio-chat is not reachable; ignored on update)
         chatAdmin:
           type: boolean
-          description: Whether this user has grommunio-chat admin permissions
+          nullable: true
+          description: Whether this user has grommunio-chat admin permissions (null if grommunio-chat is not reachable; ignored on update)
         lang:
           type: string
           description: User language

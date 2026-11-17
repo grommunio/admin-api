@@ -6,7 +6,7 @@ from . import ServiceHub, ServiceUnavailableError
 
 from mattermostdriver import Driver
 from mattermostdriver.exceptions import InvalidOrMissingParameters, ResourceNotFound, ContentTooLarge, NoAccessTokenProvided
-from requests.exceptions import ConnectionError, HTTPError
+from requests.exceptions import ConnectionError, HTTPError, Timeout
 
 import hashlib
 import random
@@ -20,7 +20,7 @@ logger = logging.getLogger("chat")
 
 
 def handleGrochatExceptions(service, error):
-    if isinstance(error, ConnectionError):
+    if isinstance(error, (ConnectionError, Timeout)):
         return ServiceHub.SUSPENDED
     elif isinstance(error, (InvalidOrMissingParameters, ResourceNotFound, ContentTooLarge)):
         raise ValueError("grochat: invalid data")
@@ -28,7 +28,7 @@ def handleGrochatExceptions(service, error):
         return ServiceHub.UNAVAILABLE, "grommunio-chat returned an error: {}".format(error)
 
 
-@ServiceHub.register("chat", handleGrochatExceptions, maxreloads=3)
+@ServiceHub.register("chat", handleGrochatExceptions, maxreloads=None, reloadlocktime=30)
 class GrochatService:
     class _DriverWrap:
         def __init__(self, driver, obj=None):
@@ -197,7 +197,7 @@ class GrochatService:
             return None
         try:
             return self.driver.users.get_user(userID)
-        except HTTPError:
+        except ResourceNotFound:
             return None
 
     def domainToData(self, domain):

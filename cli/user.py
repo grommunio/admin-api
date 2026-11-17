@@ -103,7 +103,8 @@ def _dumpUser(cli, user, indent=0):
     cli.print(" "*indent+"ldapID: "+(escape_filter_chars(user.externID) if user.externID is not None else
                                      cli.col("(none)", attrs=["dark"])))
     cli.print(" "*indent+"chat: "+(user.chatID if user.chatID else cli.col("(none)", attrs=["dark"])) +
-              (" ("+cli.col("inactive", "red")+")" if user.chatID and not user.chat else ""))
+              (" ("+cli.col("unknown - chat unavailable", "yellow")+")" if user.chatID and user.chat is None else
+               " ("+cli.col("inactive", "red")+")" if user.chatID and not user.chat else ""))
     if user.chat:
         cli.print(" "*indent+"chatAdmin: "+(cli.col("yes", "yellow") if user.chatAdmin else "no"))
     cli.print(" "*indent+"aliases:"+(cli.col(" (none)", attrs=["dark"]) if len(user.aliases) == 0 else ""))

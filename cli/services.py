@@ -17,7 +17,7 @@ def _counts(cli, service):
     if service.state == ServiceHub.UNAVAILABLE:
         return cli.col(" ({}/{})".format(service.failures, service.maxfailures or "\u221e"), **_sstyle(service))
     elif service.state == ServiceHub.SUSPENDED:
-        return cli.col(" ({}/{})".format(service.reloads, service.maxreloads), **_sstyle(service))
+        return cli.col(" ({}/{})".format(service.reloads, "\u221e" if service.maxreloads is None else service.maxreloads), **_sstyle(service))
     elif service.state == ServiceHub.ERROR:
         if service.maxreloads:
             return cli.col(" ({}/{})".format(service.reloads, service.maxreloads), **_sstyle(service))
