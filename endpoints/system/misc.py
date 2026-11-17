@@ -225,11 +225,13 @@ def vhostStatus(host):
     if host not in conf:
         return jsonify(message="VHost not found"), 404
     try:
-        res = requests.get(conf[host], stream=True)
+        # brotli decoding fails with some urllib3 versions
+        res = requests.get(conf[host], headers={"Accept-Encoding": "identity"}, timeout=30)
     except BaseException as err:
         API.logger.error(type(err).__name__+": "+" - ".join(str(arg) for arg in err.args))
         return jsonify(message="Failed to connect to vhost"), 503
-    return res.raw.read(), res.status_code, res.headers.items()
+    # Do not pass on hop-by-hop headers
+    return res.content, res.status_code, {"Content-Type": res.headers.get("Content-Type", "application/json")}
 
 
 @API.route(api.BaseRoute+"/system/cli", methods=["POST"])

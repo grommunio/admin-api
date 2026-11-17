@@ -1,3 +1,9 @@
+admin-api 1.22 (development)
+============================
+
+* Fix live status (``/system/vhostStatus``) failing with a 502 error
+
+
 admin-api 1.21 (development)
 ============================
 
