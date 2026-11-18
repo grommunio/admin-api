@@ -32,12 +32,31 @@ import time
 from orm import DB
 
 
+def _resetDomains():
+    """Check that the current user may reset passwords and get the permitted domains.
+
+    Returns
+    -------
+    set
+        IDs of the permitted domains, or None if not restricted
+    """
+    permissions = request.auth["user"].permissions()
+    if ResetPasswdPermission() in permissions:
+        checkPermissions(ResetPasswdPermission())
+    else:
+        checkPermissions(DomainAdminPermission("*"))  # Any domain or organization admin
+    return permissions.resetPasswdDomains()
+
+
 @API.route(api.BaseRoute+"/passwd/<username>", methods=["PUT"])
 @secure(requireAuth=True, authLevel="user")
 def resetPasswd(username):
-    checkPermissions(ResetPasswdPermission())
+    domainIDs = _resetDomains()
     from orm.users import Users
-    user = Users.query.filter(Users.username == username, Users.maildir != "").first()
+    filters = (Users.username == username, Users.maildir != "")
+    if domainIDs is not None:
+        filters += (Users.domainID.in_(domainIDs),)
+    user = Users.query.filter(*filters).first()
     if not user:
         return jsonify(message="User not found."), 404
     if user.externID:
@@ -51,9 +70,12 @@ def resetPasswd(username):
 @API.route(api.BaseRoute+"/users", methods=["GET"])
 @secure(requireAuth=True, authLevel="user")
 def usernames():
-    checkPermissions(ResetPasswdPermission())
+    domainIDs = _resetDomains()
     from orm.users import Users
-    users = defaultListQuery(Users, (Users.ID != 0, Users.status == 0, Users.maildir != ""), result="list")
+    filters = (Users.ID != 0, Users.status == 0, Users.maildir != "")
+    if domainIDs is not None:
+        filters += (Users.domainID.in_(domainIDs),)
+    users = defaultListQuery(Users, filters, result="list")
     return jsonify(data=[{"username": user.username} for user in users])
 
 

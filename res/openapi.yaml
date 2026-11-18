@@ -263,6 +263,8 @@ paths:
   /passwd/{username}:
     put:
       summary: Change user password
+      description: Resetting any user requires the ResetPasswd permission. Domain and organization admins can only reset
+        users of their domains, other users are reported as not found.
       operationId: resetPasswd
       tags:
         - Misc
@@ -287,6 +289,8 @@ paths:
           description: Password updated
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '403':
+          description: Insufficient permissions
         '404':
           $ref: "#/components/responses/NotFound"
         '500':
@@ -297,6 +301,8 @@ paths:
   /users:
     get:
       summary: Get list of usernames
+      description: Lists the users available for `/passwd/{username}`. Domain and organization admins only get the users
+        of their domains.
       operationId: getUsernames
       tags:
         - Misc
@@ -320,6 +326,8 @@ paths:
                           type: string
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '403':
+          description: Insufficient permissions
         '500':
           $ref: '#/components/responses/ServerError'
         '503':
