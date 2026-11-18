@@ -18,6 +18,10 @@ admin-api 1.22 (development)
 * ``PUT /passwd/<username>`` no longer resets the password of the caller
   (use ``PUT /passwd`` with the old password instead) and rejects a missing
   or non-string ``new`` with 400
+* Security: the address an e-mail forward applies to can no longer be set
+  through the API, it always is the address of the user the forward belongs
+  to. Forwards require a user with a mail address (no contacts), and existing
+  users cannot be renamed to a name without domain part.
 
 
 admin-api 1.21 (development)

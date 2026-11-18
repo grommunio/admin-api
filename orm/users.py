@@ -310,7 +310,8 @@ class Users(DataModel, DB.Base, NotifyTable):
             if Users.count(Users.domainID == domain.ID) >= domain.maxUser:
                 raise ValueError("Maximum number of domain users reached")
 
-        if "username" in patches and patches["username"] != self.username:
+        renamed = "username" in patches and patches["username"] != self.username
+        if renamed:
             username = patches.pop("username")
             if "@" in username:
                 uname, dname = username.split("@", 1)
@@ -319,8 +320,10 @@ class Users(DataModel, DB.Base, NotifyTable):
                 self.username = uname+"@"+domain.domainname
             elif not isContact:
                 self.username = username+"@"+domain.domainname
-            else:
+            elif self.username is None:
                 self.username = username
+            else:
+                raise ValueError("'{}' is not a valid e-mail address".format(username))
             if not isContact and not formats.email.match(self.username):
                 raise ValueError("'{}' is not a valid e-mail address".format(self.username))
 
@@ -338,6 +341,10 @@ class Users(DataModel, DB.Base, NotifyTable):
             patches["aliases"] = aliases
 
         DataModel.fromdict(self, patches, *args, **kwargs)
+        # The MTA looks up forwards by username, which therefore must be the address of a real user
+        if (renamed or "forward" in patches or "status" in patches) and self.forward is not None and \
+           (self.status == Users.CONTACT or self.username.find("@") < 1):
+            raise ValueError("E-mail forwards require a user with a mail address")
         displaytype = self.properties.get("displaytypeex", 0)
         if displaytype in (0, 1, 7, 8):
             self._deprecated_addressType, self._deprecated_subType = self._decodeDisplayType(displaytype)
@@ -1174,13 +1181,14 @@ class Forwards(DataModel, DB.Base):
 
     _dictmapping_ = ((Text("forwardType", flags="patch"),
                       Text("destination", flags="patch")),
-                     (Id(), Text("username", flags="patch")))
+                     (Id(), Text("username")))
 
     CC = 0
     REDIRECT = 1
 
     def __init__(self, props, user, *args, **kwargs):
         self.user = user
+        self.username = user.username
         self.fromdict(props)
 
     @validates("destination")
