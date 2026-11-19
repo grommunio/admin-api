@@ -171,7 +171,8 @@ class Users(DataModel, DB.Base, NotifyTable):
     fetchmail = OptionalNC(75, [],
                            relationship("Fetchmail", cascade="all, delete-orphan", single_parent=True,
                                         order_by="Fetchmail.active.desc()", back_populates="user"))
-    forward = relationship("Forwards", uselist=False, cascade="all, delete-orphan", back_populates="user")
+    forward = relationship("Forwards", uselist=False, cascade="all, delete-orphan", back_populates="user",
+                           passive_updates=False)
     homeserver = OptionalNC(104, None,
                             relationship("Servers", foreign_keys=homeserverID, primaryjoin="Users.homeserverID == Servers.ID"))
     mlist = relationship("MLists", back_populates="user", uselist=False)
@@ -1217,3 +1218,24 @@ else:
 def _User_expire(target, *args, **kwargs):
     if target is not None:
         target._propcache = None
+
+
+def _dropStaleForward(connection, address):
+    """Delete the forward a previous holder of the address left behind."""
+    forwards, users = Forwards.__table__, Users.__table__
+    if connection.execute(forwards.select().where(forwards.c.username == address)).first() is not None and \
+       connection.execute(users.select().where(users.c.username == address)).first() is None:
+        connection.execute(forwards.delete().where(forwards.c.username == address))
+
+
+# Done at flush time, so the forward is only gone if the address really is taken
+@event.listens_for(Users, "before_insert")
+@event.listens_for(Users, "before_update")
+def _User_newUsername(mapper, connection, target):
+    if inspect(target).attrs.username.history.has_changes():
+        _dropStaleForward(connection, target.username)
+
+
+@event.listens_for(Aliases, "before_insert")
+def _Aliases_insert(mapper, connection, target):
+    _dropStaleForward(connection, target.aliasname)

@@ -22,6 +22,10 @@ admin-api 1.22 (development)
   through the API, it always is the address of the user the forward belongs
   to. Forwards require a user with a mail address (no contacts), and existing
   users cannot be renamed to a name without domain part.
+* Renaming a user keeps its e-mail forward. Purging a domain removes the
+  forwards of its addresses, and a forward left behind on an address is
+  removed when the address is given to a user (created or renamed) or added
+  as an alias.
 
 
 admin-api 1.21 (development)

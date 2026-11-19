@@ -325,7 +325,7 @@ class Domains(DataModel, DB.Base, NotifyTable):
         from .misc import DBConf
         from .mlists import MLists, Associations, Specifieds
         from .roles import AdminRoles as AR, AdminRolePermissionRelation as ARPR
-        from .users import Users, Aliases
+        from .users import Users, Aliases, Forwards
         users = Users.query.filter(Users.domainID == self.ID)
         if deleteFiles:
             from shutil import rmtree
@@ -346,6 +346,8 @@ class Domains(DataModel, DB.Base, NotifyTable):
         Associations.query.filter(Associations.listID.in_(mlists.with_entities(MLists.ID))).delete(**nosync)
         mlists.delete(**nosync)
         Aliases.query.filter(Aliases.mainname.in_(users.with_entities(Users.username))).delete(**nosync)
+        Forwards.query.filter(Forwards.username.in_(users.with_entities(Users.username))).delete(**nosync)
+        Forwards.query.filter(Forwards.username.endswith("@"+self.domainname, autoescape=True)).delete(**nosync)
         users.delete(**nosync)
         permissions = ARPR.query.filter(ARPR.permission == "DomainAdmin", ARPR._params == self.ID)
         roles = []
