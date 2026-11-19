@@ -6,7 +6,7 @@ from flask import jsonify, request
 
 import api
 from api.core import API, secure
-from api.security import checkPermissions
+from api.security import checkPermissions, checkTargetUser
 
 from services import Service
 from tools.ldap import downsyncObject, importObject
@@ -111,6 +111,12 @@ def importLdapUser():
     userinfo = ldap.getUserInfo(ID)
     if userinfo is None:
         return jsonify(message="LDAP object not found"), 404
+    if force and userinfo.type != "contact" and userinfo.email:
+        # Forced import links the existing user to the LDAP object
+        from orm.users import Users
+        existing = Users.query.filter(Users.username == userinfo.email).first()
+        if existing is not None and existing.externID != userinfo.ID:
+            checkTargetUser(existing)
 
     result, code = importObject(userinfo, ldap, orgID=orgID, force=force, lang=lang, syncMembers=True, syncExisting=True)
 

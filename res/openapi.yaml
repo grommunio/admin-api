@@ -4001,6 +4001,8 @@ paths:
                 $ref: '#/components/schemas/user'
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '403':
+          description: Insufficient permissions, or `force` would link a user holding permissions the caller does not have
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
