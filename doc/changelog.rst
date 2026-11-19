@@ -5,6 +5,14 @@ admin-api 1.22 (development)
   other services of the host can no longer read the admin token
 * New ``POST /logout`` endpoint, revokes the token (uses redis)
 * Fix live status (``/system/vhostStatus``) failing with a 502 error
+* Domain and organization admins can only reset passwords
+  (``PUT /passwd/<username>``) and list users (``GET /users``) of their own
+  domains. The ``ResetPasswd`` permission is no longer implied by
+  ``DomainAdmin`` and ``OrgAdmin`` and has to be granted explicitly to reset
+  users system-wide.
+* ``PUT /passwd/<username>`` no longer resets the password of the caller
+  (use ``PUT /passwd`` with the old password instead) and rejects a missing
+  or non-string ``new`` with 400
 
 
 admin-api 1.21 (development)
