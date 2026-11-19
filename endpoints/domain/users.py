@@ -5,7 +5,7 @@
 import api
 
 from api.core import API, secure
-from api.security import checkPermissions
+from api.security import checkPermissions, checkTargetUser
 from base64 import b64decode
 from datetime import datetime
 from flask import request, jsonify
@@ -61,6 +61,7 @@ def resetPasswd(username):
         return jsonify(message="User not found."), 404
     if user.ID == request.auth["user"].ID:
         return jsonify(message="Cannot reset own password, use '/passwd' endpoint instead"), 400
+    checkTargetUser(user)
     if user.externID:
         return jsonify(message="Cannot modify LDAP imported user"), 400
     data = request.get_json(silent=True)
@@ -165,6 +166,7 @@ def setUserPassword(domainID, userID):
     user = Users.query.filter(Users.ID == userID, Users.domainID == domainID).first()
     if user is None:
         return jsonify(message="User not found"), 404
+    checkTargetUser(user)
     if user.externID is not None:
         return jsonify(message="Cannot modify LDAP imported user"), 400
     data = request.get_json(silent=True)

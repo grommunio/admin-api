@@ -3191,6 +3191,8 @@ paths:
           description: User password updated
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '403':
+          description: Insufficient permissions, or the user holds permissions the caller does not have
         '404':
           $ref: '#/components/responses/NotFound'
         '500':

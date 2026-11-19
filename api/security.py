@@ -292,3 +292,28 @@ def checkPermissions(*requested):
     permissions = user.permissions()
     if not all(permission in permissions for permission in requested):
         raise InsufficientPermissions()
+
+
+def checkTargetUser(user):
+    """Check if current user may change the login names or credentials of a user.
+
+    Admins must not take over accounts that hold permissions they do not have themselves.
+
+    Parameters
+    ----------
+    user : orm.users.Users
+        User to be changed
+
+    Raises
+    ------
+    InsufficientPermissions
+        The user holds permissions the current user lacks
+
+    Returns
+    -------
+    None.
+    """
+    from .errors import InsufficientPermissions
+    current = request.auth["user"]
+    if user.ID != current.ID and not current.permissions().covers(user.permissions()):
+        raise InsufficientPermissions("User holds permissions you do not have")
