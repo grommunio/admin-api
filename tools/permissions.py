@@ -121,6 +121,28 @@ class Permissions:
         """
         return self.has(permission)
 
+    def covers(self, other):
+        """Check if the permissions of another permissions object are represented.
+
+        Used to keep admins from taking over accounts that hold more permissions than they do.
+        As wildcard parameters match any parameter, system-wide permissions (SystemAdmin, SystemAdminRO and permissions
+        with parameter '*') are only covered by SystemAdmin.
+
+        Parameters
+        ----------
+        other : Permissions
+            Permissions to check
+
+        Returns
+        -------
+        bool
+            True if every permission of `other` is represented, False otherwise
+        """
+        if SystemAdminPermission() in self:
+            return True
+        return all(not isinstance(perm, (SystemAdminPermission, SystemAdminROPermission)) and perm.params != "*" and
+                   perm in self for perm in other)
+
     def __iter__(self):
         """Return permission iterator
 
