@@ -2578,6 +2578,9 @@ paths:
                 $ref: '#/components/schemas/user'
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '403':
+          description: Insufficient permissions, or `username`, `ldapID` or `altnames` of a user holding permissions the
+            caller does not have would be changed
         '404':
           $ref: '#/components/responses/NotFound'
         '500':

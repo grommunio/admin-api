@@ -11,7 +11,7 @@ from datetime import datetime
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from .. import defaultObjectHandler, userQuery, defaultListQuery
+from .. import defaultDetailQuery, defaultPatch, userQuery, defaultListQuery
 
 from services import Service
 
@@ -115,6 +115,23 @@ def createUser(domainID):
     return jsonify(result.fulldesc()), 201
 
 
+def _loginChanged(user, data):
+    """Check if a patch changes the names or the LDAP object a user logs in with."""
+    if not isinstance(data, dict):
+        return False
+    # Clients resend complete objects, so compare the values
+    if "username" in data and data["username"] != user.username:
+        return True
+    if "ldapID" in data and data["ldapID"] != user.ldapID:
+        return True
+    if "altnames" in data:
+        try:
+            return {altname["altname"] for altname in data["altnames"]} != {altname.altname for altname in user.altnames}
+        except (KeyError, TypeError):
+            return True
+    return False
+
+
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["GET", "PATCH"])
 @secure(requireDB=True, authLevel="user")
 def userObjectEndpoint(domainID, userID):
@@ -126,7 +143,13 @@ def userObjectEndpoint(domainID, userID):
     if request.method == "PATCH" and _linksChat(request.get_json(silent=True)):
         return jsonify(message="Attribute 'chat' must be a boolean"), 400
     from orm.users import Users
-    return defaultObjectHandler(Users, userID, "User", filters=(Users.domainID == domainID,))
+    filters = (Users.domainID == domainID,)
+    if request.method == "GET":
+        return defaultDetailQuery(Users, userID, "User", filters)
+    user = Users.query.filter(Users.ID == userID, *filters).first()
+    if user is not None and _loginChanged(user, request.get_json(silent=True)):
+        checkTargetUser(user)
+    return defaultPatch(Users, userID, "User", user, filters)
 
 
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users/<int:userID>", methods=["DELETE"])
