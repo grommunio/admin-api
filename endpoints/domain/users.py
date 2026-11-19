@@ -90,6 +90,11 @@ def getUsers(domainID):
     return userQuery(domainID)
 
 
+def _linksChat(data):
+    """Check whether `chat` is the ID of an existing chat account to link instead of a flag, which is left to the CLI."""
+    return isinstance(data, dict) and isinstance(data.get("chat"), str)
+
+
 @API.route(api.BaseRoute+"/domains/<int:domainID>/users", methods=["POST"])
 @secure(requireDB=True, authLevel="user")
 def createUser(domainID):
@@ -100,6 +105,8 @@ def createUser(domainID):
     if SystemAdminPermission() not in request.auth["user"].permissions():
         data.pop("homeserver", None)
         data.pop("chatAdmin", None)  # grommunio-chat is shared by all domains
+    if _linksChat(data):
+        return jsonify(message="Attribute 'chat' must be a boolean"), 400
     isContact = data.get("status") == Users.CONTACT
     result, code = Users.mkContact(data) if isContact else Users.create(data)
     if code != 201:
@@ -115,6 +122,8 @@ def userObjectEndpoint(domainID, userID):
         data = request.get_json(silent=True) or {}
         data.pop("homeserver", None)
         data.pop("chatAdmin", None)  # grommunio-chat is shared by all domains
+    if request.method == "PATCH" and _linksChat(request.get_json(silent=True)):
+        return jsonify(message="Attribute 'chat' must be a boolean"), 400
     from orm.users import Users
     return defaultObjectHandler(Users, userID, "User", filters=(Users.domainID == domainID,))
 

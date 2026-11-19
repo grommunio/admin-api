@@ -9,6 +9,12 @@ admin-api 1.22 (development)
   dbconf or the LDAP configuration, tasks of other organizations).
   ``GET /system/users`` remains available to them, limited to the users of
   the administrated organization given as ``orgID``.
+* Security: only system admins can grant or revoke grommunio-chat admin
+  permissions (``chatAdmin``). As grommunio-chat is shared by all domains, the
+  attribute is ignored for domain and organization admins.
+* Security: the API and the creation defaults no longer accept the ID of an
+  existing chat account as ``chat`` value, linking chat accounts is left to
+  the CLI (``user create`` / ``user modify`` with ``--chat <ID>``)
 * Fix live status (``/system/vhostStatus``) failing with a 502 error
 * Domain and organization admins can only reset passwords
   (``PUT /passwd/<username>``) and list users (``GET /users``) of their own

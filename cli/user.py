@@ -301,6 +301,8 @@ def cliUserCreate(args):
             domain = Domains.query.filter(Domains.domainname == args.username.split("@", 1)[1]).with_entities(Domains.ID).first()
             if domain is not None:
                 props.update(DBConf.getFile("grommunio-admin", "defaults-domain-"+str(domain.ID), True).get("user", {}))
+        if isinstance(props.get("chat"), str):
+            del props["chat"]  # Defaults are set through the API and must not link existing chat accounts
     data = _splitData(args.__dict__)
     props.update(data["attributes"])
     props["username"] = args.username

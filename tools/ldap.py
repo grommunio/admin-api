@@ -220,6 +220,8 @@ def importUser(candidate, ldap, force=False, lang="", **kwargs):
     userdata = ldap.downsyncUser(candidate.ID)
     defaults.update(RecursiveDict(userdata))
     defaults["lang"] = lang or defaults.get("lang", "")
+    if isinstance(defaults.get("chat"), str):
+        del defaults["chat"]  # Defaults are set through the API and must not link existing chat accounts
     return Users.create(defaults, externID=candidate.ID)
 
 
