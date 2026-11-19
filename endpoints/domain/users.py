@@ -99,6 +99,7 @@ def createUser(domainID):
     data["domainID"] = domainID
     if SystemAdminPermission() not in request.auth["user"].permissions():
         data.pop("homeserver", None)
+        data.pop("chatAdmin", None)  # grommunio-chat is shared by all domains
     isContact = data.get("status") == Users.CONTACT
     result, code = Users.mkContact(data) if isContact else Users.create(data)
     if code != 201:
@@ -113,6 +114,7 @@ def userObjectEndpoint(domainID, userID):
     if request.method == "PATCH" and SystemAdminPermission() not in request.auth["user"].permissions():
         data = request.get_json(silent=True) or {}
         data.pop("homeserver", None)
+        data.pop("chatAdmin", None)  # grommunio-chat is shared by all domains
     from orm.users import Users
     return defaultObjectHandler(Users, userID, "User", filters=(Users.domainID == domainID,))
 

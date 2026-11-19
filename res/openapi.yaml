@@ -5872,7 +5872,8 @@ components:
         chatAdmin:
           type: boolean
           nullable: true
-          description: Whether this user has grommunio-chat admin permissions (null if grommunio-chat is not reachable; ignored on update)
+          description: Whether this user has grommunio-chat admin permissions (null if grommunio-chat is not reachable; ignored on update).
+            Only system admins can set this, it is ignored otherwise.
         lang:
           type: string
           description: User language
@@ -5952,7 +5953,8 @@ components:
         chatAdmin:
           type: boolean
           nullable: true
-          description: Whether this user has grommunio-chat admin permissions (null if grommunio-chat is not reachable; ignored on update)
+          description: Whether this user has grommunio-chat admin permissions (null if grommunio-chat is not reachable; ignored on update).
+            Only system admins can set this, it is ignored otherwise.
         lang:
           type: string
           description: User language
