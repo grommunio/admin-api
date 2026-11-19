@@ -4,6 +4,11 @@ admin-api 1.22 (development)
 * The API sets the session cookie (HttpOnly, SameSite=Strict), scripts on
   other services of the host can no longer read the admin token
 * New ``POST /logout`` endpoint, revokes the token (uses redis)
+* Organization admins no longer pass read-only system admin checks and lose
+  access to system-wide data (``/system`` endpoints such as roles, logs,
+  dbconf or the LDAP configuration, tasks of other organizations).
+  ``GET /system/users`` remains available to them, limited to the users of
+  the administrated organization given as ``orgID``.
 * Fix live status (``/system/vhostStatus``) failing with a 502 error
 * Domain and organization admins can only reset passwords
   (``PUT /passwd/<username>``) and list users (``GET /users``) of their own
