@@ -63,7 +63,9 @@ def resetPasswd(username):
         return jsonify(message="Cannot reset own password, use '/passwd' endpoint instead"), 400
     if user.externID:
         return jsonify(message="Cannot modify LDAP imported user"), 400
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get("new"), str):
+        return jsonify(message="Incomplete data"), 400
     user.password = data["new"]
     DB.session.commit()
     return jsonify(message="Password reset successfully.")
