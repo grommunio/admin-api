@@ -264,7 +264,7 @@ paths:
     put:
       summary: Change user password
       description: Resetting any user requires the ResetPasswd permission. Domain and organization admins can only reset
-        users of their domains, other users are reported as not found.
+        users of their domains, other users are reported as not found. Use `/passwd` to change the own password.
       operationId: resetPasswd
       tags:
         - Misc

@@ -59,6 +59,8 @@ def resetPasswd(username):
     user = Users.query.filter(*filters).first()
     if not user:
         return jsonify(message="User not found."), 404
+    if user.ID == request.auth["user"].ID:
+        return jsonify(message="Cannot reset own password, use '/passwd' endpoint instead"), 400
     if user.externID:
         return jsonify(message="Cannot modify LDAP imported user"), 400
     data = request.get_json()
