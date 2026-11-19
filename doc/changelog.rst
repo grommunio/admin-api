@@ -32,6 +32,13 @@ admin-api 1.22 (development)
   forwards of its addresses, and a forward left behind on an address is
   removed when the address is given to a user (created or renamed) or added
   as an alias.
+* Security: admins can no longer take over users who hold permissions they do
+  not have themselves, e.g. a system admin located in their domain. Setting
+  the password, changing ``username``, ``ldapID`` or ``altnames`` and a forced
+  LDAP import of such a user are rejected with 403. Users without roles and
+  admins with the same or fewer permissions can be managed as before, holders
+  of system-wide permissions (``SystemAdmin``, ``SystemAdminRO``, wildcard
+  parameters) only by a system admin.
 
 
 admin-api 1.21 (development)
