@@ -8,15 +8,21 @@ import api
 from api.core import API, secure
 from api.security import checkPermissions
 
-from tools.permissions import Permissions, SystemAdminPermission, SystemAdminROPermission
+from tools.permissions import Permissions, SystemAdminPermission, SystemAdminROPermission, OrgAdminPermission
 from .. import defaultListHandler, defaultObjectHandler, userQuery
 
 
 @API.route(api.BaseRoute+"/system/users", methods=["GET"])
-@secure(requireDB=True)
+@secure(requireDB=True, authLevel="user")
 def userListEndpointUnrestricted():
-    checkPermissions(SystemAdminROPermission())
-    return userQuery()
+    orgID = request.args.get("orgID", type=int)
+    if SystemAdminROPermission() in request.auth["user"].permissions() or orgID is None or orgID <= 0:
+        checkPermissions(SystemAdminROPermission())
+        return userQuery()
+    # Organization admins only get the users of their organization
+    checkPermissions(OrgAdminPermission(orgID))
+    from orm.users import Users
+    return userQuery(filters=(Users.orgID == orgID,))
 
 
 @API.route(api.BaseRoute+"/system/roles/permissions", methods=["GET"])

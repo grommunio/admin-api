@@ -348,13 +348,15 @@ def defaultObjectHandler(Model, ID, name, filters=()):
         return defaultDelete(Model, ID, name, filters)
 
 
-def userQuery(domainID=None):
+def userQuery(domainID=None, filters=()):
     """Query users.
 
     Parameters
     ----------
     domainID : int, optional
         Filter by domain ID. The default is None.
+    filters : iterable, optional
+        Additional filter expressions to apply to the query. The default is ().
 
     Returns
     -------
@@ -370,7 +372,7 @@ def userQuery(domainID=None):
 
     Users._init()
     verbosity = int(request.args.get("level", 1))
-    filters = (Users.domainID == domainID,) if domainID is not None else ()
+    filters = tuple(filters)+((Users.domainID == domainID,) if domainID is not None else ())
     filters += (Users.ID > 0,)
     query, limit, offset, _ = defaultListHandler(Users, filters=filters, result="query", include_count=None, automatch=False)
     sorts = request.args.getlist("sort")

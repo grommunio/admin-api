@@ -1183,6 +1183,8 @@ paths:
   /system/users:
     get:
       summary: Get list of all users
+      description: Requires read-only system admin permissions. Organization admins can only list the users of their
+        organization and have to specify it with `orgID`.
       operationId: getAllUsers
       tags:
         - System Admin/Domains
@@ -1197,6 +1199,12 @@ paths:
         - $ref: '#/components/parameters/filterProp'
         - $ref: '#/components/parameters/matchProps'
         - $ref: '#/components/parameters/propnames'
+        - name: orgID
+          description: Filter by organization ID
+          in: query
+          explode: false
+          schema:
+            $ref: '#/components/schemas/intList'
         - name: mlist
           description: Hide MList users
           in: query
@@ -1218,6 +1226,8 @@ paths:
                       $ref: '#/components/schemas/user'
         '400':
           $ref: '#/components/responses/InvalidRequest'
+        '403':
+          description: Insufficient permissions
         '500':
           $ref: '#/components/responses/ServerError'
         '503':
