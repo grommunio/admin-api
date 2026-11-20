@@ -15,6 +15,16 @@ class InsufficientPermissions(RuntimeError):
         RuntimeError(self, msg)
 
 
+class AccountDeactivated(RuntimeError):
+    def __init__(self, msg=None):
+        RuntimeError(self, msg)
+
+
+class AuthenticationError(RuntimeError):
+    def __init__(self, msg=None):
+        RuntimeError(self, msg)
+
+
 @API.errorhandler(DatabaseError)
 def database_error(error):
     API.logger.error("Database query failed: {}".format(error))
@@ -24,7 +34,19 @@ def database_error(error):
 @API.errorhandler(InsufficientPermissions)
 def insufficient_permissions(error):
     msg = error.args[0] if len(error.args) else "Insufficient permissions for this operation"
-    return jsonify(message="Access denied: "+msg), 403
+    return jsonify(message="Access denied: "+str(msg)), 403
+
+
+@API.errorhandler(AccountDeactivated)
+def account_deactivated(error):
+    msg = error.args[0] if len(error.args) else "Account has been deactivated"
+    return jsonify(message="Access denied: "+str(msg)), 403
+
+
+@API.errorhandler(AuthenticationError)
+def account_deactivated(error):
+    msg = error.args[0] if len(error.args) else "Account could not be authenticated"
+    return jsonify(message="Access denied: "+str(msg)), 403
 
 
 @API.errorhandler(ServiceDisabledError)

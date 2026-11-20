@@ -5,7 +5,7 @@
 import api
 
 from api.core import API, secure
-from api.security import checkPermissions, checkTargetUser
+from api.security import checkPermissions, checkTargetUser, resetDomains
 from base64 import b64decode
 from datetime import datetime
 from flask import request, jsonify
@@ -19,7 +19,7 @@ from tools import formats
 from tools.config import Config
 from tools.constants import PropTags, PropTypes, ExchangeErrors, PrivateFIDs, Permissions
 from tools.misc import loadPSO
-from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission, ResetPasswdPermission
+from tools.permissions import SystemAdminPermission, DomainAdminPermission, DomainAdminROPermission
 from tools.rop import nxTime, makeEidEx
 from tools.storage import StoreInUseError, removeUser, setDirectoryOwner, setDirectoryPermission
 from tools.deviceutils import retrieve_lastconnecttime
@@ -32,26 +32,10 @@ import time
 from orm import DB
 
 
-def _resetDomains():
-    """Check that the current user may reset passwords and get the permitted domains.
-
-    Returns
-    -------
-    set
-        IDs of the permitted domains, or None if not restricted
-    """
-    permissions = request.auth["user"].permissions()
-    if ResetPasswdPermission() in permissions:
-        checkPermissions(ResetPasswdPermission())
-    else:
-        checkPermissions(DomainAdminPermission("*"))  # Any domain or organization admin
-    return permissions.resetPasswdDomains()
-
-
 @API.route(api.BaseRoute+"/passwd/<username>", methods=["PUT"])
 @secure(requireAuth=True, authLevel="user")
 def resetPasswd(username):
-    domainIDs = _resetDomains()
+    domainIDs = resetDomains()
     from orm.users import Users
     filters = (Users.username == username, Users.maildir != "")
     if domainIDs is not None:
@@ -75,7 +59,7 @@ def resetPasswd(username):
 @API.route(api.BaseRoute+"/users", methods=["GET"])
 @secure(requireAuth=True, authLevel="user")
 def usernames():
-    domainIDs = _resetDomains()
+    domainIDs = resetDomains()
     from orm.users import Users
     filters = (Users.ID != 0, Users.status == 0, Users.maildir != "")
     if domainIDs is not None:

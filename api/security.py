@@ -265,6 +265,17 @@ def loginUser(username, password):
     return True, token
 
 
+def _validateAccount():
+    from .errors import AuthenticationError, AuthenticationError, AccountDeactivated
+    from orm.users import Users
+    error = getUser()
+    if error is not None:
+        raise AuthenticationError(error)
+    user = request.auth["user"]
+    if user.ID != 0 and user.addressStatus != 0:
+        raise AccountDeactivated("Account is shared mailbox" if user.addressStatus == Users.SHARED else "Account is deactivated")
+
+
 def checkPermissions(*requested):
     """Check if current user has requested permissions.
 
@@ -286,20 +297,29 @@ def checkPermissions(*requested):
     -------
     None.
     """
-    from .errors import InsufficientPermissions, AuthenticationError, AccountDeactivated
-    from orm.users import Users
-    error = getUser()
-    if error is not None:
-        raise AuthenticationError(error)
+    from .errors import InsufficientPermissions
+    _validateAccount()
     user = request.auth["user"]
-    if user.ID != 0 and user.addressStatus != 0:
-        raise AccountDeactivated("Account is shared mailbox" if user.addressStatus == Users.SHARED else "Account is deactivated")
     permissions = user.permissions()
     if not all(permission in permissions for permission in requested):
         raise InsufficientPermissions()
 
 
-def checkTargetUser(user):
+
+def resetDomains():
+    """Check that the current user may reset passwords and get the permitted domains.
+
+    Returns
+    -------
+    set
+        IDs of the permitted domains, or None if not restricted
+    """
+    _validateAccount()
+    user = request.auth["user"]
+    return user.permissions().resetPasswdDomains()
+
+
+def checkTargetUser(user, validateAccount=False):
     """Check if current user may change the login names or credentials of a user.
 
     Admins must not take over accounts that hold permissions they do not have themselves.
@@ -318,7 +338,13 @@ def checkTargetUser(user):
     -------
     None.
     """
-    from .errors import InsufficientPermissions
+    if validateAccount:
+        _validateAccount()
+    if user is None:
+        raise ValueError("Invalid target user")
+    from .errors import InsufficientPermissions, AuthenticationError
     current = request.auth["user"]
+    if current is None:
+        raise AuthenticationError()
     if user.ID != current.ID and not current.permissions().covers(user.permissions()):
         raise InsufficientPermissions("User holds permissions you do not have")
