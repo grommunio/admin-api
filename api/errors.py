@@ -44,18 +44,19 @@ def account_deactivated(error):
 
 
 @API.errorhandler(AuthenticationError)
-def account_deactivated(error):
+def authentication_error(error):
     msg = error.args[0] if len(error.args) else "Account could not be authenticated"
     return jsonify(message="Access denied: "+str(msg)), 403
 
 
 @API.errorhandler(ServiceDisabledError)
-def service_unavailable(error):
+def service_disabled(error):
     return jsonify(message=error.args[0]), 503
 
-    @API.errorhandler(ServiceUnavailableError)
-    def service_unavailable(error):
-        return jsonify(message=error.args[0]), 503
+
+@API.errorhandler(ServiceUnavailableError)
+def service_unavailable(error):
+    return jsonify(message=error.args[0]), 503
 
 
 @API.errorhandler(Exception)
