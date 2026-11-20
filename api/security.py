@@ -316,7 +316,11 @@ def resetDomains():
     """
     _validateAccount()
     user = request.auth["user"]
-    return user.permissions().resetPasswdDomains()
+    domainIDs = user.permissions().resetPasswdDomains()
+    if domainIDs is not None and len(domainIDs) == 0:
+        from .errors import InsufficientPermissions
+        raise InsufficientPermissions()
+    return domainIDs
 
 
 def checkTargetUser(user, validateAccount=False):
