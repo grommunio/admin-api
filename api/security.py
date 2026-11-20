@@ -277,18 +277,23 @@ def checkPermissions(*requested):
     ------
     InsufficientPermissions
         At least one permission check failed
+    AuthenticationError
+        Account could not be verified and/or authenticated
+    AccountDeactivated
+        Account is marked as deactivated or shared
 
     Returns
     -------
     None.
     """
-    from .errors import InsufficientPermissions
+    from .errors import InsufficientPermissions, AuthenticationError, AccountDeactivated
+    from orm.users import Users
     error = getUser()
     if error is not None:
-        raise InsufficientPermissions(error)
+        raise AuthenticationError(error)
     user = request.auth["user"]
     if user.ID != 0 and user.addressStatus != 0:
-        raise InsufficientPermissions("Account deactivated")
+        raise AccountDeactivated("Account is shared mailbox" if user.addressStatus == Users.SHARED else "Account is deactivated")
     permissions = user.permissions()
     if not all(permission in permissions for permission in requested):
         raise InsufficientPermissions()
