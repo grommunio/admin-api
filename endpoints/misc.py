@@ -14,7 +14,7 @@ from api.security import loginUser, refreshToken, getSecurityContext, mkCSRF, se
 from . import oidc
 
 from orm import DB
-from services import Service
+from services import Service, ServiceUnavailableError
 from tools import audit, formats
 from tools.tasq import TasQServer
 from tools.permissions import OrgAdminPermission
@@ -86,10 +86,14 @@ def updatePasswordUnauth(data):
     if user is None:
         return jsonify(message="Invalid username or password"), 401
     if user.externID is not None:
-        with Service("ldap") as ldap:
-            error = ldap.authUser(user.externID, data["old"])
-            if error is not None:
-                return jsonify(message=error), 401
+        try:
+            with Service("ldap") as ldap:
+                error = ldap.authUser(user.externID, data["old"])
+                if error is not None:
+                    return jsonify(message=error), 401
+        except ServiceUnavailableError as err:
+            API.logger.warning("Cannot authenticate '{}': {}".format(user.username, err.args[0]))
+            raise ServiceUnavailableError("Authentication service not available")
         return jsonify(message="Cannot modify LDAP imported user"), 400
     if not user.chkPw(data["old"]):
         return jsonify(message="Invalid username or password"), 401

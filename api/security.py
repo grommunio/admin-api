@@ -9,7 +9,7 @@ import time
 import jwt
 
 from base64 import b64encode
-from services import Service
+from services import Service, ServiceUnavailableError
 from tools.config import Config
 
 
@@ -237,6 +237,11 @@ def loginUser(username, password):
     password : str
         Password to check
 
+    Raises
+    ------
+    services.ServiceUnavailableError
+        The LDAP service is not available
+
     Returns
     -------
     bool
@@ -250,10 +255,14 @@ def loginUser(username, password):
     if user is None:
         return False, "Invalid username or password"
     if user.externID is not None:
-        with Service("ldap", user.orgID) as ldap:
-            error = ldap.authUser(user.externID, password)
-            if error:
-                return False, error
+        try:
+            with Service("ldap", user.orgID) as ldap:
+                error = ldap.authUser(user.externID, password)
+                if error:
+                    return False, error
+        except ServiceUnavailableError as err:
+            logger.warning("Cannot authenticate '{}': {}".format(user.username, err.args[0]))
+            raise ServiceUnavailableError("Authentication service not available")
     elif not user.chkPw(password):
         return False, "Invalid username or password"
     if not userLoginAllowed(user):
