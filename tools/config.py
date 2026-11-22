@@ -89,6 +89,12 @@ def _defaultConfig():
             "updateLogPath": "/var/log/grommunio-update.log",
             "updateSkriptPath": "/usr/sbin/grommunio-update",
             "ldapTlsVerify": "auto",
+            "ldapPasswordChange": False,
+            "passwordPolicy": {
+                "minLength": 0,
+                "minCharClasses": 0,
+                "forbidUsername": False,
+                },
             },
         "security": {
             "jwtPrivateKeyFile": "/var/lib/grommunio-admin-api/auth-private.pem",

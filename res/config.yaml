@@ -98,6 +98,32 @@ properties:
       ldapCACert:
         type: string
         description: CA file for LDAP server certificates, instead of TLS_CACERT from ldap.conf
+      ldapPasswordChange:
+        type: boolean
+        description: Let LDAP imported users with the changePassword privilege change their password in the directory
+        default: false
+      passwordPolicy:
+        type: object
+        description: Rules for a new password set by the user (local and LDAP)
+        properties:
+          minLength:
+            type: integer
+            minimum: 0
+            description: Minimum number of characters (0 = no limit)
+            default: 0
+          minCharClasses:
+            type: integer
+            minimum: 0
+            maximum: 4
+            description: Minimum number of character classes from lowercase, uppercase, digits and other characters
+            default: 0
+          forbidUsername:
+            type: boolean
+            description: Reject the user name and its local part
+            default: false
+          blocklist:
+            type: string
+            description: File with one rejected password on each line
       serverExplicitMount:
         type: boolean
         description: Place user and domain directories in server specific subdirectories

@@ -254,7 +254,7 @@ paths:
         '401':
           description: Authentication failed
         '403':
-          description: Incorrect old password
+          description: Incorrect old password, or password change not permitted
         '500':
           $ref: '#/components/responses/ServerError'
         '503':
