@@ -5,13 +5,13 @@
 import api
 
 from api.core import API, secure
-from api.security import checkPermissions, checkTargetUser, resetDomains
+from api.security import checkPermissions, checkTargetUser, resetDomains, usersInPermissionScope
 from base64 import b64decode
 from datetime import datetime
 from flask import request, jsonify
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from .. import defaultDetailQuery, defaultPatch, userQuery, defaultListQuery
+from .. import defaultDetailQuery, defaultPatch, userQuery
 
 from services import Service
 
@@ -59,12 +59,7 @@ def resetPasswd(username):
 @API.route(api.BaseRoute+"/users", methods=["GET"])
 @secure(requireAuth=True, authLevel="user")
 def usernames():
-    domainIDs = resetDomains()
-    from orm.users import Users
-    filters = (Users.ID != 0, Users.status == 0, Users.maildir != "")
-    if domainIDs is not None:
-        filters += (Users.domainID.in_(domainIDs),)
-    users = defaultListQuery(Users, filters, result="list")
+    users = usersInPermissionScope()
     return jsonify(data=[{"username": user.username} for user in users])
 
 

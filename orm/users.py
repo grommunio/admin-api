@@ -9,6 +9,7 @@ from tools.constants import PropTags, PropTypes
 from tools.DataModel import DataModel, Id, Text, Int, BoolP, RefProp, Bool, Date
 from tools.DataModel import InvalidAttributeError, MismatchROError, MissingRequiredAttributeError
 from tools.rop import nxTime
+from api.security import usersInPermissionScope
 
 from sqlalchemy import Column, ForeignKey, event, func, inspect, select
 from sqlalchemy.dialects.mysql import ENUM, INTEGER, TEXT, TIMESTAMP, TINYINT, VARBINARY, VARCHAR
@@ -346,6 +347,14 @@ class Users(DataModel, DB.Base, NotifyTable):
         if (renamed or "forward" in patches or "status" in patches) and self.forward is not None and \
            (self.status == Users.CONTACT or self.username.find("@") < 1):
             raise ValueError("E-mail forwards require a user with a mail address")
+
+        # Check if forward target is within the admin's permission scope
+        if "forward" in patches and patches["forward"] is not None and patches["forward"]["destination"] is not None:
+            usersInPScope = usersInPermissionScope(self)
+            if patches["forward"]["destination"] not in [user.username for user in usersInPScope]:
+                from api.errors import InsufficientPermissions
+                raise InsufficientPermissions("Cannot forward e-mail to mailbox outside of permission scope")
+
         displaytype = self.properties.get("displaytypeex", 0)
         if displaytype in (0, 1, 7, 8):
             self._deprecated_addressType, self._deprecated_subType = self._decodeDisplayType(displaytype)

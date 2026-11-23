@@ -12,6 +12,8 @@ from base64 import b64encode
 from services import Service, ServiceUnavailableError
 from tools.config import Config
 
+from endpoints import defaultListQuery
+
 
 logger = logging.getLogger("security")
 _priFile = Config["security"]["jwtPrivateKeyFile"]
@@ -315,7 +317,7 @@ def checkPermissions(*requested):
 
 
 
-def resetDomains():
+def resetDomains(account=None):
     """Check that the current user may reset passwords and get the permitted domains.
 
     Returns
@@ -323,13 +325,23 @@ def resetDomains():
     set
         IDs of the permitted domains, or None if not restricted
     """
-    _validateAccount()
-    user = request.auth["user"]
+    if account is None:
+        _validateAccount()
+    user = account or request.auth["user"]
     domainIDs = user.permissions().resetPasswdDomains()
     if domainIDs is not None and len(domainIDs) == 0:
         from .errors import InsufficientPermissions
         raise InsufficientPermissions()
     return domainIDs
+
+
+def usersInPermissionScope(account=None):
+    domainIDs = resetDomains(account)
+    from orm.users import Users
+    filters = (Users.ID != 0, Users.status == 0, Users.maildir != "")
+    if domainIDs is not None:
+        filters += (Users.domainID.in_(domainIDs),)
+    return Users.optimized_query(1).filter(*filters).all()
 
 
 def checkTargetUser(user, validateAccount=False):
