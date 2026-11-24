@@ -190,7 +190,7 @@ def checkLdapUsers():
     if failed:
         failedIDs = {user["ID"] for user in failed}
         orphanedData = [user for user in orphanedData if user["ID"] not in failedIDs]
-    extra = {key: value for key, value in (("pending", pending), ("failed", failed)) if value}
+    extra = {key: value for key, value in (("pending", pending), ("failed", failed))}
     return jsonify(deleted=orphanedData, **extra)
 
 
