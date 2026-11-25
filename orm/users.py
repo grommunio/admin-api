@@ -350,8 +350,8 @@ class Users(DataModel, DB.Base, NotifyTable):
 
         # Check if forward target is within the admin's permission scope
         if "forward" in patches and patches["forward"] is not None and patches["forward"]["destination"] is not None:
-            usersInPScope = usersInPermissionScope(self)
-            if patches["forward"]["destination"] not in [user.username for user in usersInPScope]:
+            usersInPScope = usersInPermissionScope()
+            if patches["forward"]["destination"].lower() not in [user.username.lower() for user in usersInPScope]:
                 from api.errors import InsufficientPermissions
                 raise InsufficientPermissions("Cannot forward e-mail to mailbox outside of permission scope")
 
