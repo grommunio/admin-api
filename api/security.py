@@ -335,10 +335,14 @@ def resetDomains(account=None):
     return domainIDs
 
 
-def usersInPermissionScope(account=None):
+def usersInPermissionScope(allowShared=False, account=None):
     domainIDs = resetDomains(account)
     from orm.users import Users
-    filters = (Users.ID != 0, Users.status == 0, Users.maildir != "")
+    filters = (Users.ID != 0, Users.maildir != "")
+    if allowShared:
+        filters += (Users.status.in_([0, 4]),)
+    else:
+        filters += (Users.status == 0,)
     if domainIDs is not None:
         filters += (Users.domainID.in_(domainIDs),)
     return Users.optimized_query(1).filter(*filters).all()
