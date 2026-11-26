@@ -16,6 +16,8 @@ from . import oidc
 from orm import DB
 from services import Service, ServiceUnavailableError
 from tools import audit, formats
+from tools.config import Config
+from tools.passwordpolicy import checkPassword, PolicyUnavailableError
 from tools.tasq import TasQServer
 from tools.permissions import OrgAdminPermission
 
@@ -78,6 +80,59 @@ def getProfile():
     return jsonify(user=user.fulldesc(exclude={"fetchmail"}), capabilities=capabilities, permittedOrgs=permittedOrgs)
 
 
+def checkNewPassword(user, data):
+    """Check the new password against `options.passwordPolicy`.
+
+    Returns
+    -------
+    Response tuple if the password is rejected, or None if it is accepted
+    """
+    try:
+        error = checkPassword(data["new"], user.username)
+    except PolicyUnavailableError as err:
+        return jsonify(message=str(err)), 503
+    return (jsonify(message=error), 400) if error else None
+
+
+def updateLdapPassword(user, data, unauth):
+    """Change the password of an LDAP imported user in the directory.
+
+    Enabled by `options.ldapPasswordChange`. The old password is verified by
+    binding as the user. The account must be active, the user must have the
+    changePassword privilege, and the new password must pass
+    `options.passwordPolicy`. The password policy of the directory applies too.
+    """
+    from services.ldap import InsecureConnectionError
+
+    def check():
+        if user.addressStatus != 0:
+            return 403, "Account is deactivated"
+        if not user.changePassword:
+            return 403, "Password change not permitted"
+        error = checkPassword(data["new"], user.username)
+        return (400, error) if error else None
+
+    try:
+        with Service("ldap", user.orgID) as ldap:
+            try:
+                error = ldap.changePassword(user.externID, data["old"], data["new"], check)
+            except InsecureConnectionError as err:
+                API.logger.warning("Refusing to change password of '{}': {}".format(user.username, err))
+                return jsonify(message="Password change requires an encrypted connection to the directory"), 503
+            except PolicyUnavailableError as err:
+                return jsonify(message=str(err)), 503
+    except ServiceUnavailableError as err:
+        if not unauth:
+            raise
+        API.logger.warning("Cannot change password of '{}': {}".format(user.username, err.args[0]))
+        raise ServiceUnavailableError("Authentication service not available")
+    if error is None:
+        return jsonify(message="Password updated")
+    if error[0] == 401 and not unauth:
+        return jsonify(message="Old password does not match"), 403
+    return jsonify(message=error[1]), error[0]
+
+
 def updatePasswordUnauth(data):
     from orm.users import Users, Altnames
     user = Users.query.join(Altnames, isouter=True)\
@@ -86,6 +141,8 @@ def updatePasswordUnauth(data):
     if user is None:
         return jsonify(message="Invalid username or password"), 401
     if user.externID is not None:
+        if Config["options"].get("ldapPasswordChange"):
+            return updateLdapPassword(user, data, unauth=True)
         try:
             with Service("ldap") as ldap:
                 error = ldap.authUser(user.externID, data["old"])
@@ -97,6 +154,9 @@ def updatePasswordUnauth(data):
         return jsonify(message="Cannot modify LDAP imported user"), 400
     if not user.chkPw(data["old"]):
         return jsonify(message="Invalid username or password"), 401
+    error = checkNewPassword(user, data)
+    if error:
+        return error
     user.password = data["new"]
     DB.session.commit()
     return jsonify(message="Password updated for user '{}'".format(data["user"]))
@@ -106,7 +166,8 @@ def updatePasswordUnauth(data):
 @secure(requireAuth=False)
 def updatePassword():
     data = request.get_json(silent=True)
-    if data is None or "new" not in data or "old" not in data:
+    if not isinstance(data, dict) or not isinstance(data.get("new"), str) or not isinstance(data.get("old"), str)\
+            or not isinstance(data.get("user", ""), str):
         return jsonify(message="Incomplete data"), 400
     if "user" in data:
         return updatePasswordUnauth(data)
@@ -115,9 +176,14 @@ def updatePassword():
         return jsonify(message=error), 401
     user = request.auth["user"]
     if user.externID is not None:
+        if Config["options"].get("ldapPasswordChange"):
+            return updateLdapPassword(user, data, unauth=False)
         return jsonify(message="Cannot modify LDAP imported user"), 400
     if not user.chkPw(data["old"]):
         return jsonify(message="Old password does not match"), 403
+    error = checkNewPassword(user, data)
+    if error:
+        return error
     user.password = data["new"]
     DB.session.commit()
     return jsonify(message="Password updated")

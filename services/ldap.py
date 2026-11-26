@@ -71,6 +71,10 @@ def _tlsError(err):
     return "certificate is not valid for "+match.group(1) if match else None
 
 
+class InsecureConnectionError(Exception):
+    """An encrypted and verified connection is required, but not possible."""
+
+
 def handleLdapError(service, error):
     if isinstance(error,
                   (ldapexc.LDAPSocketOpenError, ldapexc.LDAPSocketSendError, ldapexc.LDAPSessionTerminatedByServerError,
@@ -327,7 +331,7 @@ class LdapService:
         return userAttributes
 
     @staticmethod
-    def _getConnection(server, user, password, starttls=False):
+    def _getConnection(server, user, password, starttls=False, requireTLS=False):
         """Setup connection
 
         Parameters
@@ -340,9 +344,18 @@ class LdapService:
             Bind password.
         starttls : bool, optional
             Initiate STARTTLS connection.
+        requireTLS : bool, optional
+            Do not bind unless all servers use ldaps:// or STARTTLS, and the server
+            certificate is verified. A lost connection is not restarted.
 
         Certificates are verified according to `tlsSettings()`. A failed STARTTLS is
         an error, never a fallback to an unencrypted bind.
+
+        Raises
+        ------
+        InsecureConnectionError
+            requireTLS is set and the connection is not encrypted or not verified.
+            The credentials are not sent.
 
         Returns
         -------
@@ -353,11 +366,17 @@ class LdapService:
         tls = ldap3.Tls(validate=ssl.CERT_REQUIRED if verify else ssl.CERT_NONE,
                         ca_certs_file=cafile, ca_certs_path=cadir)
         servers = [ldap3.Server(s[:-1] if s.endswith("/") else s, get_info=ldap3.NONE, tls=tls) for s in server.split()]
+        if requireTLS and not verify:
+            raise InsecureConnectionError(f"Certificate verification for {server} is off "
+                                          "(options.ldapTlsVerify or TLS_REQCERT)")
+        if requireTLS and not (starttls or all(s.ssl for s in servers)):
+            raise InsecureConnectionError(f"Connection to {server} is not encrypted")
         if not verify and server not in _warned and (starttls or any(s.ssl for s in servers)):
             _warned.add(server)
             logger.warning(f"Not verifying the TLS certificate of {server} (see options.ldapTlsVerify)")
         pool = servers[0] if len(servers) == 1 else ldap3.ServerPool(servers, "FIRST", active=1)
-        conn = ldap3.Connection(pool, user=user, password=password, client_strategy=ldap3.RESTARTABLE)
+        strategy = ldap3.SYNC if requireTLS else ldap3.RESTARTABLE
+        conn = ldap3.Connection(pool, user=user, password=password, client_strategy=strategy)
         try:
             conn.open()
             if starttls and not conn.start_tls():
@@ -369,9 +388,13 @@ class LdapService:
                 raise ldapexc.LDAPSocketOpenError(f"TLS certificate of {server} rejected ({reason}), "
                                                   "see TLS_CACERT in ldap.conf or options.ldapCACert") from None
             raise
+        if requireTLS and not (conn.tls_started or conn.server.ssl):
+            conn.unbind()
+            raise InsecureConnectionError(f"Connection to {server} is not encrypted")
         if not conn.bind():
-            raise ldapexc.LDAPBindError(
-                "LDAP bind failed ({}): {}".format(conn.result["description"], conn.result["message"]))
+            message = "LDAP bind failed ({}): {}".format(conn.result["description"], conn.result["message"])
+            conn.unbind()
+            raise ldapexc.LDAPBindError(message)
         return conn
 
     def _matchFilters(self, ID):
@@ -541,6 +564,76 @@ class LdapService:
                                 self._config["connection"].get("starttls"))
         except ldapexc.LDAPBindError:
             return "Invalid username or Password"
+
+    def changePassword(self, ID, oldPassword, newPassword, check=None):
+        """Change the password of an LDAP user, bound as that user.
+
+        The service account needs no write access. The access control and the
+        password policy of the directory apply.
+
+        Active Directory (template `ActiveDirectory`) uses the unicodePwd
+        delete/add pair, which AD handles as a change by the user. All other
+        servers use the Password Modify extended operation (RFC 3062), so the
+        server makes the hash.
+
+        No password goes over a connection that is not encrypted and verified.
+
+        Parameters
+        ----------
+        ID : str or bytes
+            ID of the LDAP object representing the user
+        oldPassword : str
+            Current password, used to bind as the user.
+        newPassword : str
+            New password.
+        check : callable, optional
+            Called after a successful bind and before the change. Returns None to
+            continue, or (HTTP status, message) to stop.
+
+        Raises
+        ------
+        InsecureConnectionError
+            The connection is not encrypted or not verified. No password was sent.
+
+        Returns
+        -------
+        tuple(int, str)
+            HTTP status and error message if the change failed, or None if successful.
+            401 means that the old password is incorrect.
+        """
+        if not oldPassword:  # An empty password is an unauthenticated bind (RFC 4513, 5.1.2)
+            return 401, "Invalid username or password"
+        attributes = (self._config["objectID"], self._config["users"]["username"])
+        response = self._search(self._matchFilters(ID), attributes=attributes, types="user")
+        if len(response) != 1:
+            return 401, "Invalid username or password"
+        userDN = response[0].DN
+        conf = self._config["connection"]
+        try:
+            conn = self._getConnection(conf["server"], userDN, oldPassword, conf.get("starttls"), requireTLS=True)
+        except ldapexc.LDAPBindError:
+            return 401, "Invalid username or password"
+        try:
+            error = check() if check else None
+            if error is not None:
+                return error
+            if "ActiveDirectory" in self._config["users"].get("templates", []):
+                conn.extend.microsoft.modify_password(userDN, newPassword, oldPassword)
+            else:
+                conn.extend.standard.modify_password(userDN, oldPassword, newPassword)
+            result = conn.result
+        finally:
+            conn.unbind()
+        if result["result"] == 0:
+            logger.info("Password changed for '{}'".format(userDN))
+            return None
+        logger.info("Password change for '{}' rejected: {} {}".format(userDN, result["description"],
+                                                                      result["message"]))
+        if result["result"] in (19, 53):  # constraintViolation, unwillingToPerform (AD): password policy
+            return 400, "Password rejected by directory policy: " + (result["message"] or result["description"])
+        if result["result"] == 50:  # insufficientAccessRights
+            return 403, "Password change not permitted by directory"
+        return 500, "Password change failed ({})".format(result["description"])
 
     def downsyncUser(self, ID, props=None):
         """Create dictionary representation of the user from LDAP data.

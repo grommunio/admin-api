@@ -114,3 +114,11 @@ Further parameters can be set in the `options` object:
 - `vhosts` (`object`, default: `{}`): Name -> URL mapping of nginx VHost status endpoints
 - `ldapTlsVerify` (`string`, default: `auto`): Verify LDAP server certificates (`ldaps://` and STARTTLS). `auto` follows `TLS_REQCERT` in `/etc/openldap/ldap.conf` (or `/etc/ldap/ldap.conf`) the same way gromox does, i.e. verify unless set to `never` or `allow`. `always` and `never` override it.
 - `ldapCACert` (`string`): CA file used to verify LDAP server certificates. Default is `TLS_CACERT`/`TLS_CACERTDIR` from ldap.conf, else the system trust store.
+- `ldapPasswordChange` (`boolean`, default: `false`): Let LDAP imported users change their password with `PUT /passwd` (for example, from grommunio-web). The API binds as the user with the current password and changes the password on that connection. The service account can have read-only access. The access control and the password policy of the directory apply. OpenLDAP and other servers use the Password Modify extended operation (RFC 3062). Users with the `ActiveDirectory` template use `unicodePwd`. The user must have the `changePassword` privilege and an active account. The connection must be `ldaps://` or STARTTLS with a verified certificate. If not, the API rejects the change.
+- `passwordPolicy` (`object`): Rules for a new password that a user sets with `PUT /passwd`, for local and LDAP users. Not used when an administrator sets a password. The defaults do not set limits.
+  - `minLength` (`integer`, default: `0`): Minimum number of characters
+  - `minCharClasses` (`integer`, default: `0`): Minimum number of character classes from lowercase, uppercase, digits and other characters
+  - `forbidUsername` (`boolean`, default: `false`): Reject the user name and its local part
+  - `blocklist` (`string`): File with one rejected password on each line. A password is rejected only if it is equal to a full line. Uppercase, lowercase and whitespace at the start or end are ignored. Lines that start with `#` are comments. If the API cannot read the file, it rejects all changes.
+
+With OpenLDAP, you can limit password changes by the user to the hosts that operate the Admin API. Then a user cannot change a password with a bind from a different host. Add one `by self peername.ip=<address> write` for each host to the `userPassword` access rule.

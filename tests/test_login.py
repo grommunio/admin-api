@@ -41,6 +41,9 @@ class _Service:
     def authUser(self, ID, password):
         raise ServiceUnavailableError(REASON)
 
+    def changePassword(self, ID, oldPassword, newPassword, check=None):
+        raise ServiceUnavailableError(REASON)
+
 
 class Unauthenticated(unittest.TestCase):
     @classmethod
@@ -50,6 +53,8 @@ class Unauthenticated(unittest.TestCase):
         services.Service = _Service
         services.ServiceUnavailableError = ServiceUnavailableError
         services.ServiceDisabledError = type("ServiceDisabledError", (Exception,), {})
+        services.ldap = types.ModuleType("services.ldap")
+        services.ldap.InsecureConnectionError = type("InsecureConnectionError", (Exception,), {})
         orm = types.ModuleType("orm")
         orm.DB = None
         orm.users = types.ModuleType("orm.users")
@@ -64,7 +69,7 @@ class Unauthenticated(unittest.TestCase):
         cls.config = mock.patch.dict(Config["security"], keys)
         cls.config.start()
         cls.loaded = set(sys.modules)
-        sys.modules.update({"services": services, "orm": orm, "orm.users": orm.users})
+        sys.modules.update({"services": services, "services.ldap": services.ldap, "orm": orm, "orm.users": orm.users})
         cls.API = importlib.import_module("endpoints.misc").API
 
     @classmethod
@@ -84,6 +89,15 @@ class Unauthenticated(unittest.TestCase):
 
     def test_passwd(self):
         with self.assertLogs(self.API.logger, "WARNING") as logs:
+            response = self.API.test_client().put("/api/v1/passwd", json={"user": "user@example.com", "old": "secret",
+                                                                          "new": "new"})
+        self.assertEqual((response.status_code, response.get_json()), (503, MESSAGE))
+        self.assertIn(REASON, logs.output[0])
+
+    def test_passwd_ldap_password_change(self):
+        from tools.config import Config
+        with mock.patch.dict(Config["options"], {"ldapPasswordChange": True}), \
+                self.assertLogs(self.API.logger, "WARNING") as logs:
             response = self.API.test_client().put("/api/v1/passwd", json={"user": "user@example.com", "old": "secret",
                                                                           "new": "new"})
         self.assertEqual((response.status_code, response.get_json()), (503, MESSAGE))
