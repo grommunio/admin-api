@@ -290,6 +290,10 @@ def syncTop():
                    now-value["update"] > expUpd:
                     remove.append(key)
                 elif not (value["ended"] != 0 and now-value["ended"] > fend or now-value["update"] > fupd):
+                    # grommunio-sync sets False when the request has no authentication
+                    for prop in ("user", "asversion"):
+                        if value.get(prop) is False:
+                            value[prop] = ""
                     data.append(value)
             except Exception as err:
                 API.logger.warning(type(err).__name__+": "+str(err.args))
